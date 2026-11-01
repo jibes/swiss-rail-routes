@@ -206,14 +206,14 @@ Plus the standard e2e smoke: load at base path, plan T3 from canned answers, go 
 
 **Out of scope (MVP):** ticket purchase and seat reservation (hand off to the SBB app); multi-day tours; international routing beyond GA border stations; accessibility routing; cloud sync.
 
-| Risk                                                                           | Impact                        | Mitigation                                                                                  |
-| ------------------------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------- |
-| OJP omits intermediate stops or projection for some operators (cog, cable car) | Must-pass check fails falsely | Fall back to `sequences.v1.json` from GTFS                                                  |
-| Templates drift with the December timetable change                             | Wrong must-pass stops         | `data.yml` checks templates against the new GTFS; T1–T6 on the new timetable before release |
-| GA area has no API                                                             | Wrong validity flags          | Curated list, reviewed each December; "report an error" link prefilled as a GitHub issue    |
-| SBB app link format changes                                                    | Export breaks                 | Web URL fallback with from/to/date/time; covered by `live.yml` monthly                      |
-| OJP quota under many replans                                                   | Throttling                    | Debounce, per-leg cache in the Worker and on the device, one request per leg for all beams  |
-| OJP terms on proxying/caching                                                  | Key revoked                   | Check the terms before launch (open question)                                               |
+| Risk                                                                           | Impact                        | Mitigation                                                                                                                         |
+| ------------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| OJP omits intermediate stops or projection for some operators (cog, cable car) | Must-pass check fails falsely | Fall back to `sequences.v1.json` from GTFS                                                                                         |
+| Templates drift with the December timetable change                             | Wrong must-pass stops         | `data.yml` checks templates against the new GTFS; T1–T6 on the new timetable before release                                        |
+| GA area has no API                                                             | Wrong validity flags          | Curated list, reviewed each December; "report an error" link prefilled as a GitHub issue                                           |
+| SBB app link format changes                                                    | Export breaks                 | Web URL fallback with from/to/date/time; covered by `live.yml` monthly                                                             |
+| OJP quota under many replans                                                   | Throttling                    | Debounce, per-leg cache in the Worker and on the device, one request per leg for all beams                                         |
+| OJP terms on proxying/caching                                                  | Key revoked                   | Check the terms before launch. Fallback: the user's own key on the device; OJP allows browser calls (CORS `*`, checked 2026-11-01) |
 
 **Open questions**
 
