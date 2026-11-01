@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "[ -d node_modules ] || npm ci --no-audit --no-fund" },
+          {
+            "type": "command",
+            "command": "[ -e /opt/pw-browsers/chromium ] && [ -n \"$CLAUDE_ENV_FILE\" ] && echo 'export CHROMIUM_PATH=/opt/pw-browsers/chromium' >> \"$CLAUDE_ENV_FILE\"; true"
+          }
+        ]
+      }
+    ]
+  }
+}

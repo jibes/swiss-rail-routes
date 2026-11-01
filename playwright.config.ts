@@ -1,0 +1,23 @@
+import { defineConfig, devices } from '@playwright/test';
+
+const base = process.env.VITE_BASE && process.env.VITE_BASE !== './' ? process.env.VITE_BASE : '/';
+
+export default defineConfig({
+  testDir: 'e2e',
+  reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
+  use: {
+    baseURL: `http://localhost:4173${base}`,
+    trace: 'retain-on-failure',
+    // Cloud sessions ship one preinstalled Chromium; CI installs the matching one.
+    launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined },
+  },
+  webServer: {
+    command: 'npm run preview -- --port 4173 --strictPort',
+    port: 4173,
+    reuseExistingServer: !process.env.CI,
+  },
+  projects: [
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'phone', use: { ...devices['Pixel 7'] } },
+  ],
+});
