@@ -22,7 +22,7 @@ Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
 ## Deploy
 
-`main` deploys to GitHub Pages after all checks pass (`.github/workflows/deploy.yml`). Repo settings: Pages source "GitHub Actions"; `main` protected with `CI / check` required.
+`main` deploys to GitHub Pages after all checks pass (`.github/workflows/deploy.yml`). Repo setting: Pages source "GitHub Actions". No branch protection; direct pushes to `main` are fine because deploy is gated on CI.
 
 ## Privacy
 
