@@ -1,13 +1,43 @@
 import { decodeTour } from '../core/export/share';
+import { parseRoute } from '../core/export/routeLink';
+import { stopKey } from '../core/stops';
+import { TEMPLATES } from '../data';
+import { useNow } from './useNow';
+import { useStopIndex } from './useStopIndex';
 import { useT } from '../store';
-import { useTours } from '../tours';
+import { defaultDate, useTours } from '../tours';
 import { go } from './useHash';
 
-/** `#/t/<data>`: a tour someone shared. Saving makes it a new tour of this device. */
-export function SharedTour({ hash }: { hash: string }) {
+/**
+ * A route someone shared: `#/r/<stops>?…` (or a route's address from another device), or the
+ * older `#/t/<data>`. Saving makes it a new route of this device.
+ */
+export function SharedTour({
+  stops,
+  query = '',
+  legacy,
+}: {
+  stops?: string;
+  query?: string;
+  legacy?: string;
+}) {
   const t = useT();
   const create = useTours((s) => s.create);
-  const tour = decodeTour(`#${hash}`, 'shared');
+  const index = useStopIndex();
+  const now = useNow();
+  const tour =
+    legacy !== undefined
+      ? decodeTour(`#${legacy}`, 'shared')
+      : (() => {
+          const r = parseRoute(stops ?? '', new URLSearchParams(query), {
+            templates: TEMPLATES,
+            name: (ref) =>
+              index?.byRef(stopKey(ref))?.name ??
+              TEMPLATES.flatMap((x) => x.chain).find((c) => c.ref === ref)?.name,
+            today: defaultDate(new Date(now)),
+          });
+          return r && { ...r, id: 'shared' };
+        })();
   if (!tour)
     return (
       <main className="page">

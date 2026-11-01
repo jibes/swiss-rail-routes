@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { LiveRide, LiveState } from '../core/live';
 import type { Connection, Section } from '../core/model';
 import type { PlannedChain } from '../core/planner/plan';
@@ -94,6 +94,43 @@ function rowsOf(c: Connection): Row[] {
     });
   });
   return rows;
+}
+
+/**
+ * With a ride's stops open, puts the marker (and the grey/blue split of the rail) where the
+ * train is between the two stops shown, measured from the laid-out list.
+ */
+function SyncHere({ i, fraction }: { i: number; fraction: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const row = ref.current?.closest<HTMLElement>('.row');
+    const rail = row?.querySelector<HTMLElement>(':scope > .rail');
+    if (!row || !rail) return;
+    const place = () => {
+      const top = rail.getBoundingClientRect().top;
+      const mids = [...row.querySelectorAll<HTMLElement>('.mids > li:not(.here-mid)')];
+      // Points along the rail: the departure (row top), each stop between, the arrival (row end).
+      const points = [
+        0,
+        ...mids.map((li) => {
+          const r = li.getBoundingClientRect();
+          return r.top + r.height / 2 - top;
+        }),
+        rail.getBoundingClientRect().height,
+      ];
+      const a = points[Math.min(i, points.length - 1)]!;
+      const b = points[Math.min(i + 1, points.length - 1)]!;
+      row.style.setProperty('--f', `${(a + (b - a) * fraction).toFixed(1)}px`);
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(row);
+    return () => {
+      ro.disconnect();
+      row.style.removeProperty('--f');
+    };
+  }, [i, fraction]);
+  return <span ref={ref} hidden />;
 }
 
 function HereMid() {
@@ -198,7 +235,7 @@ function Leg({
         return (
           <li
             key={i}
-            className={`row ride ${pos} ${riding ? 'here' : ''} ${riding && shown ? 'here-in-mids' : ''} ${passed ? 'passed' : ''}`}
+            className={`row ride ${pos} ${riding ? 'here' : ''} ${shown ? 'with-mids' : ''} ${passed ? 'passed' : ''}`}
             style={riding ? ({ '--f': `${(f * 100).toFixed(1)}%` } as CSSProperties) : undefined}
           >
             <span />
@@ -243,6 +280,9 @@ function Leg({
                 </ol>
               )}
               <Warnings list={own} />
+              {riding && shown && live!.state.between && (
+                <SyncHere i={live!.state.between.i} fraction={live!.state.between.fraction} />
+              )}
             </span>
           </li>
         );

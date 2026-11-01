@@ -24,7 +24,7 @@ import { useDragList } from './useDragList';
 import { go } from './useHash';
 import { autoName } from '../core/naming';
 import { shareLink } from './share';
-import { encodeTour } from '../core/export/share';
+import { routeHash, tourHash } from '../core/export/routeLink';
 
 export function Builder({ id, showTemplates }: { id: string; showTemplates?: boolean }) {
   const t = useT();
@@ -60,6 +60,8 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
     if (showTemplates) document.getElementById('routes')?.scrollIntoView({ block: 'center' });
   }, [showTemplates]);
 
+  useAddress(tour, showTemplates ? '/templates' : '');
+
   if (!tour) return <NotFound />;
   const edit = (f: (x: Tour) => Tour) => update(id, f);
   const legs = expandLegs(tour).length;
@@ -88,7 +90,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
           className="icon"
           aria-label={t('shareRoute')}
           disabled={wps.length < 2}
-          onClick={() => void shareLink(encodeTour(tour), tour.name || t('untitled'))}
+          onClick={() => void shareLink(routeHash(tour), tour.name || t('untitled'))}
         >
           <Icon name="share" />
         </button>
@@ -192,6 +194,20 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
       </div>
     </main>
   );
+}
+
+/**
+ * Keeps the address bar a share link: `#/tour/<id><sub>?s=…` follows every edit (replacing the
+ * history entry, so back still leaves the screen).
+ */
+export function useAddress(tour: Tour | undefined, sub: string) {
+  useEffect(() => {
+    if (!tour || tour.waypoints.length < 2) return;
+    const path = `#/tour/${tour.id}${sub}`;
+    if (location.hash.split('?')[0] !== path) return;
+    const next = tourHash(tour, sub);
+    if (location.hash !== next) history.replaceState(history.state, '', next);
+  }, [tour, sub]);
 }
 
 export function NotFound() {

@@ -1508,33 +1508,31 @@ a.secondary {
   font-variant-numeric: tabular-nums;
 }
 
-/* With the stops open, the marker sits between the last stop passed and the next. */
-.row.ride.here-in-mids .rail::after {
-  display: none;
-}
-
+/* With the stops open, SyncHere sets --f in px to where the train is between the stops shown. */
 .mids .here-mid {
-  position: relative;
   height: 0;
 }
 
-/* The rail's centre is 24 px left of the content column (see .row grid). */
-.mids .here-mid::before {
-  content: '';
-  position: absolute;
-  left: -34px;
-  top: -10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid var(--bg);
-  background: var(--rail);
+/* Each stop between gets a small tick on the rail. */
+.row.ride.with-mids .mids li:not(.here-mid) {
+  position: relative;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .mids .here-mid::before {
-    animation: here 2s ease-out infinite;
-  }
+.row.ride.with-mids .mids li:not(.here-mid)::before {
+  content: '';
+  position: absolute;
+  /* Centred on the rail, 24 px left of the content column (12 px gap + half the rail column). */
+  left: -30px;
+  top: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--rail);
+}
+
+.chain.live .row.ride.with-mids .mids li.passed::before {
+  border-color: var(--ink-3);
 }
 
 .stop-change {

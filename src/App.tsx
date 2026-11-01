@@ -19,8 +19,15 @@ import { useHash } from './ui/useHash';
 
 const MapView = lazy(() => import('./ui/MapView'));
 
-function Route({ hash }: { hash: string }) {
-  if (hash.startsWith('/t/')) return <SharedTour hash={hash} />;
+function Route({ hash: full }: { hash: string }) {
+  const [hash = '/', q = ''] = full.split('?');
+  const tourId = /^\/tour\/([\w-]+)/.exec(hash)?.[1];
+  const known = useTours((s) => s.tours.some((x) => x.id === tourId));
+  if (hash.startsWith('/t/')) return <SharedTour legacy={hash} />;
+  if (hash.startsWith('/r/')) return <SharedTour stops={hash.slice(3)} query={q} />;
+  // Someone else's route address (the address bar is a share link): the route to save.
+  const foreign = tourId && !known && new URLSearchParams(q).get('s');
+  if (foreign) return <SharedTour stops={foreign} query={q} />;
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips') return <Trips />;
   const tr = /^\/trip\/([\w-]+)(\/(map|now|replan))?$/.exec(hash);

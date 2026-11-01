@@ -52,6 +52,10 @@ One-time setup:
 
 Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a custom domain there.
 
+## Links
+
+A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d=2026-11-21&dep=08:00` (stops as name and SLOID number, `.60` = get off for 60 min, `@bernina` a route template; settings optional). `#/r/@bernina` alone opens that template. Everything after `#` stays in the browser; the server never sees it. Trips share as an exact snapshot (`#/j/…`).
+
 ## Privacy
 
 Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. The Android app schedules its notifications on the phone.

@@ -28,3 +28,28 @@ test('a shared trip opens as planned, without replanning, and saves to Trips', a
   await expect(page.getByRole('link', { name: /Shared T5/ })).toBeVisible();
   expect(asked, 'no planning request for a shared trip').toBe(0);
 });
+
+test('route links: a template by name, the address bar shares the route', async ({
+  page,
+  browser,
+}) => {
+  await page.goto('./#/r/@bernina?d=2026-11-21&dep=09:00');
+  await expect(page.getByText('Someone shared this tour with you.')).toBeVisible();
+  await expect(page.locator('.line .stop').first()).toContainText('St. Moritz');
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
+
+  // The builder's address is the route: readable, and it follows edits.
+  await expect(page).toHaveURL(
+    /#\/tour\/[\w-]+\?s=st-moritz\.\d+\.@bernina~.*&d=2026-11-21&dep=09:00$/,
+  );
+  await page.getByLabel('Tour name').fill('Bernina day');
+  await expect(page).toHaveURL(/&name=Bernina%20day$/);
+  const url = page.url();
+
+  // On another device (no saved routes) the same address offers the route to save.
+  const other = await browser.newPage({ baseURL: new URL('./', url).href });
+  await other.goto(url);
+  await expect(other.getByRole('heading', { level: 1 })).toHaveText('Bernina day');
+  await expect(other.locator('.line .stop').last()).toContainText('Tirano');
+  await other.close();
+});

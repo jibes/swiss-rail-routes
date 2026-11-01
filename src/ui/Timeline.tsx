@@ -9,7 +9,7 @@ import { useT } from '../store';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { newTrip } from '../core/trip';
-import { NotFound } from './Builder';
+import { NotFound, useAddress } from './Builder';
 import { ChainView } from './ChainView';
 import { OptionTabs } from './OptionTabs';
 import { PlanSettings } from './PlanSettings';
@@ -85,6 +85,7 @@ export function Timeline({ id }: { id: string }) {
     return () => ctrl.abort();
   }, [json, attempt]);
 
+  useAddress(tour, '/plan');
   if (!tour) return <NotFound />;
   const legs = result?.legs ?? expandLegs(tour);
   const options = result?.options ?? [];

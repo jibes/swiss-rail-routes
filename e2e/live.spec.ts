@@ -26,6 +26,24 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.locator('.row.ride.here .mids li').first()).toBeVisible();
   await expect(page.locator('.here-mid')).toHaveCount(1);
   await expect(page.locator('.here-mid')).toHaveText('You are here');
+  // The marker sits on the rail between the stop before and the one after it.
+  const marker = await page.evaluate(() => {
+    const row = document.querySelector('.row.ride.here')!;
+    const dot = getComputedStyle(row.querySelector('.rail')!, '::after');
+    const rail = row.querySelector('.rail')!.getBoundingClientRect();
+    const y = rail.top + parseFloat(dot.top) + parseFloat(dot.height) / 2;
+    const mid = row.querySelector('.here-mid')!;
+    const box = (e: Element | null) => e?.getBoundingClientRect();
+    const before = box(mid.previousElementSibling);
+    const after = box(mid.nextElementSibling);
+    return {
+      y,
+      from: before ? before.top + before.height / 2 : rail.top,
+      to: after ? after.top + after.height / 2 : rail.bottom,
+    };
+  });
+  expect(marker.y).toBeGreaterThanOrEqual(marker.from - 1);
+  expect(marker.y).toBeLessThanOrEqual(marker.to + 1);
   await expect(page.locator('.chain.live .row.passed').first()).toBeVisible();
   expect(Number(await page.getByRole('progressbar').getAttribute('aria-valuenow'))).toBeGreaterThan(
     0,
