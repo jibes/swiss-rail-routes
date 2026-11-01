@@ -64,6 +64,12 @@ describe('parseTrips on recorded OJP answers', () => {
     }
   });
 
+  it('treats "no trip found" as no connections, other problems as errors', () => {
+    const raw = (n: string) => readFileSync(`tests/fixtures/ojp/errors/${n}.xml`, 'utf8');
+    expect(parseTrips(raw('notripfound'))).toEqual([]);
+    expect(() => parseTrips(raw('identical'))).toThrow('TRIP_ORIGINDESTINATIONIDENTICAL');
+  });
+
   it('rejects what is not a trip delivery', () => {
     expect(() => parseTrips('<html/>')).toThrow(OjpError);
   });

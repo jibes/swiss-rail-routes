@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from '../src/core/edit';
 import type { Tour } from '../src/core/model';
-import { legRules, plan } from '../src/core/planner/plan';
+import { legRules, mergeRepeats, plan } from '../src/core/planner/plan';
 import { DATE, conn, deps, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (name: string) => ({ stopRef: ref(name), name });
@@ -269,5 +269,49 @@ describe('round trips', () => {
     expect(rules).toHaveLength(1);
     expect(rules[0]!.templates.map((x) => x.id)).toEqual(['albula', 'bernina']);
     expect(index.byRef(rules[0]!.mustPass[0]!)?.name).toBe('Chur');
+  });
+});
+
+describe('repeated stops', () => {
+  it('merges consecutive waypoints at one stop, keeping the stop and the longer dwell', () => {
+    const t: Tour = {
+      ...newTour('t', DATE),
+      waypoints: [
+        { ...stop('Zürich HB'), kind: 'start', dwellMin: 0 },
+        { ...stop('Luzern'), kind: 'via', dwellMin: 0 },
+        { ...stop('Luzern'), kind: 'stop', dwellMin: 60, templateId: 'bruenig' },
+        { ...stop('Bern'), kind: 'end', dwellMin: 0 },
+        { ...stop('Bern'), kind: 'end', dwellMin: 0 },
+      ],
+    };
+    const m = mergeRepeats(t);
+    expect(m.waypoints.map((w) => `${w.name}:${w.kind}:${w.dwellMin}`)).toEqual([
+      'Zürich HB:start:0',
+      'Luzern:stop:60',
+      'Bern:end:0',
+    ]);
+    expect(m.waypoints[1]!.templateId).toBe('bruenig');
+  });
+
+  it('never asks OJP for a leg from a stop to itself', async () => {
+    const c = conn(
+      ride('IR 70', [
+        ['Zürich HB', '08:04'],
+        ['Luzern', '08:45'],
+      ]),
+    );
+    const t: Tour = {
+      ...newTour('t', DATE),
+      anchor: { departAt: '08:00' },
+      waypoints: [
+        { ...stop('Zürich HB'), kind: 'start', dwellMin: 0 },
+        { ...stop('Zürich HB'), kind: 'via', dwellMin: 0 },
+        { ...stop('Luzern'), kind: 'end', dwellMin: 0 },
+      ],
+    };
+    const d = deps([c]);
+    const r = await plan(t, d.deps);
+    expect(r.recommended?.dep).toBe(c.dep);
+    expect(d.tt.calls.every((q) => q.origin.ref !== q.destination.ref)).toBe(true);
   });
 });

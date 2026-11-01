@@ -81,6 +81,24 @@ export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates' | 'segment
  * OJP cannot plan a leg that ends where it starts. Such a loop (a round trip without a stop)
  * turns at its middle via: that via becomes a stop of 0 min.
  */
+/** Consecutive waypoints at the same stop are one: the later one's stop and dwell win. */
+export function mergeRepeats(tour: Tour): Tour {
+  const out: Waypoint[] = [];
+  for (const w of tour.waypoints) {
+    const prev = out.at(-1);
+    if (prev && stopKey(prev.stopRef) === stopKey(w.stopRef)) {
+      const keep = w.kind === 'via' ? prev : w;
+      out[out.length - 1] = {
+        ...keep,
+        kind: out.length === 1 ? 'start' : keep.kind,
+        dwellMin: Math.max(prev.dwellMin, w.dwellMin),
+        templateId: w.templateId ?? prev.templateId,
+      };
+    } else out.push(w);
+  }
+  return out.length === tour.waypoints.length ? tour : { ...tour, waypoints: out };
+}
+
 export function splitLoops(tour: Tour): Tour {
   const turn = new Set<Waypoint>();
   for (const leg of expandLegs(tour))
@@ -148,7 +166,7 @@ const lastArr = (b: Beam) => ms(b.conns.at(-1)!.arr);
 const total = (b: Beam) => (lastArr(b) - firstDep(b)) / MIN + b.penalty;
 
 async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<PlanResult> {
-  const tour = splitLoops(input);
+  const tour = splitLoops(mergeRepeats(input));
   const wt = { ...DEFAULT_WEIGHTS, ...deps.weights };
   const width = deps.beamWidth ?? 6;
   const minTransfer = deps.minTransferMin ?? 3;

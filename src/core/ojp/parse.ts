@@ -132,7 +132,12 @@ export function parseTrips(xml: string): Connection[] {
   const delivery = obj(obj(obj(obj(doc?.OJP)?.OJPResponse)?.ServiceDelivery)?.OJPTripDelivery);
   if (!delivery) throw new OjpError('no TripDelivery');
   const err = obj(delivery.ErrorCondition);
-  if (err) throw new OjpError(text(obj(err.OtherError)?.Description) ?? 'OJP error');
+  if (err) {
+    // No connection is an answer, not a failure: the planner relaxes or reports the leg.
+    const problem = str(err.TripProblemType);
+    if (problem === 'TRIP_NOTRIPFOUND') return [];
+    throw new OjpError(problem ?? text(obj(err.OtherError)?.Description) ?? 'OJP error');
+  }
 
   const notices = new Map<string, string>();
   for (const s of arr(obj(obj(delivery.TripResponseContext)?.Situations)?.PtSituation)) {
