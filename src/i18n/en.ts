@@ -200,6 +200,9 @@ export const en = {
   undoChange: 'Undo last change',
   liveStale: 'Live data from {time}; not updated right now',
   mapStraight: 'Dashed: the track is not known there, so it is drawn straight.',
+  tripChangedMeanwhile:
+    'This trip was changed meanwhile (on another device or in another window). Open it again and replan from there.',
+  lateBy: '{n} min late',
 };
 
 export type Catalogue = typeof en;

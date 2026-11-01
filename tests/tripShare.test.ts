@@ -59,6 +59,12 @@ describe('trip share link', async () => {
   });
 
   it('rejects broken links', async () => {
+    // Valid shape at the top, but a ride without its ends.
+    const bad = {
+      ...trip,
+      chain: { ...trip.chain, connections: [{ ...trip.chain.connections[0]!, sections: [{}] }] },
+    };
+    expect(await decodeTrip(await encodeTrip(bad as unknown as typeof trip), 'x')).toBeNull();
     expect(await decodeTrip('#/j/AAAA', 'x')).toBeNull();
     expect(await decodeTrip('#/t/abc', 'x')).toBeNull();
   });

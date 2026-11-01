@@ -148,6 +148,70 @@ describe('replanPoint: the travelled train keeps its track', () => {
   });
 });
 
+describe('remainingRoute: stays and loops', () => {
+  it('keeps the planned stay at the next stop: the rest leaves when it is over', () => {
+    // On the IR to Luzern (stay 60 min there), arriving 08:45: the rest leaves at 09:45.
+    const p = replanPoint(trip, liveState(chain, at('08:30')), at('08:30'))!;
+    expect(p.stop.name).toBe('Luzern');
+    expect(remainingRoute(trip, p).anchor).toEqual({ departAt: '09:45' });
+    // Waiting there, 20 min into the stay: still 09:45.
+    const w = replanPoint(trip, liveState(chain, at('09:05')), at('09:05'))!;
+    expect(remainingRoute(trip, w).anchor).toEqual({ departAt: '09:45' });
+  });
+
+  it('a round trip keeps the vias of the way back that the way out passed too', () => {
+    // Zürich → (Zug) → Luzern [stay] → (Zug) → Zürich, replanned on the way back before Zug.
+    const loop: Leg[] = [
+      { index: 0, from: w('Zürich HB', 'start'), vias: [w('Zug')], to: w('Luzern', 'stop', 30) },
+      { index: 1, from: w('Luzern', 'stop', 30), vias: [w('Zug')], to: w('Zürich HB', 'end') },
+    ];
+    const c = [
+      conn(
+        ride(
+          'IR',
+          [
+            ['Zürich HB', '08:04'],
+            ['Zug', '08:25'],
+            ['Luzern', '08:45'],
+          ],
+          { journey: 'a' },
+        ),
+      ),
+      conn(
+        ride(
+          'IR',
+          [
+            ['Luzern', '09:20'],
+            ['Rotkreuz', '09:35'],
+            ['Zug', '09:45'],
+            ['Zürich HB', '10:10'],
+          ],
+          {
+            journey: 'b',
+          },
+        ),
+      ),
+    ];
+    const t = newTrip(
+      'z',
+      {
+        ...newTour('r3', DATE),
+        waypoints: [loop[0]!.from, loop[0]!.vias[0]!, loop[0]!.to, loop[1]!.vias[0]!, loop[1]!.to],
+      },
+      loop,
+      { connections: c, warnings: [], score: 0, dep: c[0]!.dep, arr: c[1]!.arr },
+      new Date(0),
+    );
+    const p = replanPoint(t, liveState(c, at('09:25')), at('09:25'))!;
+    expect(p.stop.name).toBe('Rotkreuz');
+    expect(remainingRoute(t, p).waypoints.map((x) => x.name)).toEqual([
+      'Rotkreuz',
+      'Zug',
+      'Zürich HB',
+    ]);
+  });
+});
+
 describe('remainingRoute: round trips', () => {
   it('keeps the way home when the trip ends where the point is', () => {
     // Luzern → Zürich → Luzern, replanned before departure: from Luzern, still back to Luzern.
@@ -190,6 +254,41 @@ describe('remainingRoute: round trips', () => {
       'Zürich HB:stop',
       'Luzern:end',
     ]);
+  });
+});
+
+describe('mergeReplan: the route follows the replan', () => {
+  it('travelled stations, then the new rest: the map and shares show what runs', () => {
+    const p = replanPoint(trip, liveState(chain, at('08:15')), at('08:15'))!; // on the IR, next Zug
+    const newLeg: Leg = {
+      index: 0,
+      from: w('Zug', 'start'),
+      vias: [],
+      to: w('Interlaken Ost', 'end'),
+    };
+    const rest = conn(
+      ride(
+        'IR',
+        [
+          ['Zug', '08:40'],
+          ['Interlaken Ost', '10:40'],
+        ],
+        { journey: 'n' },
+      ),
+    );
+    const v = mergeReplan(trip, p, [newLeg], {
+      connections: [rest],
+      warnings: [],
+      score: 0,
+      dep: rest.dep,
+      arr: rest.arr,
+    });
+    expect(v.route.waypoints.map((x) => `${x.name}:${x.kind}`)).toEqual([
+      'Zürich HB:start',
+      'Zug:via',
+      'Interlaken Ost:end',
+    ]);
+    expect(v.route.date).toBe(trip.route.date);
   });
 });
 

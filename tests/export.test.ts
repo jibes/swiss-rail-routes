@@ -77,3 +77,15 @@ describe('gpx', () => {
     expect(gpx).toContain('<name>A &amp; B</name>');
   });
 });
+
+describe('ICS line folding', () => {
+  it('folds at 75 octets between whole characters (ü, →, emoji)', async () => {
+    const { fold } = await import('../src/core/export/ics');
+    const line = `SUMMARY:${'Zürich → Göschenen 🚆 '.repeat(8)}`;
+    const parts = fold(line).split('\r\n ');
+    const bytes = (s: string) => new TextEncoder().encode(s).length;
+    expect(bytes(parts[0]!)).toBeLessThanOrEqual(75);
+    for (const p of parts.slice(1)) expect(bytes(p)).toBeLessThanOrEqual(74);
+    expect(parts.join('')).toBe(line); // nothing split inside a character
+  });
+});

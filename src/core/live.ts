@@ -185,6 +185,12 @@ export const WATCH_NEXT_MIN = 20;
  */
 export function journeysToWatch(state: LiveState, now: number): string[] {
   if (state.phase === 'done') return [];
+  const soon = (r?: LiveRide) => {
+    const d = r?.stops[0]?.dep;
+    return d !== undefined && d - now <= WATCH_NEXT_MIN * 60_000;
+  };
+  // Waiting (a stay, or before the first train): the train to board only once it is close.
+  if (state.phase !== 'riding' && !soon(state.rides[state.current])) return [];
   const rides = [state.rides[state.current]];
   const next = state.rides[state.current + 1];
   const dep = next?.stops[0]?.dep;

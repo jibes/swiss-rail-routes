@@ -206,4 +206,7 @@ export const de = {
   liveStale: 'Live-Daten von {time}; gerade keine Aktualisierung',
   mapStraight:
     'Gestrichelt: Dort ist der Gleisverlauf nicht bekannt, die Strecke ist gerade gezeichnet.',
+  tripChangedMeanwhile:
+    'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Öffne sie neu und plane von dort aus.',
+  lateBy: '{n} Min. verspätet',
 } satisfies Catalogue;

@@ -80,6 +80,17 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
     const data = JSON.parse(new TextDecoder().decode(bytes));
     if (data?.schema !== 1 || !data.chain?.connections?.length || !Array.isArray(data.legs))
       return null;
+    // Every ride with its two ends: a damaged link must not reach the timetable view.
+    const sound = (data.chain.connections as unknown[]).every(
+      (c) =>
+        Array.isArray((c as { sections?: unknown }).sections) &&
+        (
+          c as { sections: { from?: { name?: unknown }; to?: { name?: unknown } }[] }
+        ).sections.every(
+          (s) => typeof s?.from?.name === 'string' && typeof s?.to?.name === 'string',
+        ),
+    );
+    if (!sound || data.legs.length !== data.chain.connections.length) return null;
     return { ...full(data), id, version: 1 } as Trip;
   } catch {
     return null;

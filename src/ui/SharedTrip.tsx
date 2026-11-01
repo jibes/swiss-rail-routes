@@ -51,8 +51,17 @@ export function SharedTrip({ hash }: { hash: string }) {
             type="button"
             className="primary wide"
             onClick={() => {
+              // The same shared trip saved before: open it (no second copy, no double alerts).
+              const same = useTrips
+                .getState()
+                .trips.find(
+                  (x) =>
+                    x.chain.dep === trip.chain.dep &&
+                    JSON.stringify(x.legs) === JSON.stringify(trip.legs),
+                );
+              if (same) return location.replace(`#/trip/${same.id}`);
               add(trip);
-              go(`/trip/${trip.id}`);
+              location.replace(`#/trip/${trip.id}`);
             }}
           >
             {t('saveToTrips')}

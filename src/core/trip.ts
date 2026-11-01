@@ -75,16 +75,24 @@ export function undo(t: Trip): Trip {
 }
 
 /** Upcoming and live trips soonest first, then past ones most recent first. */
-export function sortTrips(trips: Trip[], now: number): { current: Trip[]; past: Trip[] } {
+/** The expected arrival of a trip from live data, when there is some (see expectedArrival). */
+export type ArrivalOf = (t: Trip) => number | undefined;
+
+export function sortTrips(
+  trips: Trip[],
+  now: number,
+  arrivalOf: ArrivalOf = () => undefined,
+): { current: Trip[]; past: Trip[] } {
   const dep = (t: Trip) => Date.parse(t.chain.dep);
+  const past = (t: Trip) => tripStatus(t, now, arrivalOf(t)) === 'past';
   return {
-    current: trips.filter((t) => tripStatus(t, now) !== 'past').sort((a, b) => dep(a) - dep(b)),
-    past: trips.filter((t) => tripStatus(t, now) === 'past').sort((a, b) => dep(b) - dep(a)),
+    current: trips.filter((t) => !past(t)).sort((a, b) => dep(a) - dep(b)),
+    past: trips.filter(past).sort((a, b) => dep(b) - dep(a)),
   };
 }
 
 /** The trip under way now, if any (the one that started last). */
-export const liveTrip = (trips: Trip[], now: number) =>
+export const liveTrip = (trips: Trip[], now: number, arrivalOf: ArrivalOf = () => undefined) =>
   trips
-    .filter((t) => tripStatus(t, now) === 'live')
+    .filter((t) => tripStatus(t, now, arrivalOf(t)) === 'live')
     .sort((a, b) => Date.parse(b.chain.dep) - Date.parse(a.chain.dep))[0];

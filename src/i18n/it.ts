@@ -203,4 +203,7 @@ export const it = {
   undoChange: 'Annulla l’ultima modifica',
   liveStale: 'Dati in tempo reale delle {time}; al momento non aggiornati',
   mapStraight: 'Tratteggiato: lì il tracciato non è noto, la linea è disegnata dritta.',
+  tripChangedMeanwhile:
+    'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Riaprilo e ripianifica.',
+  lateBy: '{n} min di ritardo',
 } satisfies Catalogue;

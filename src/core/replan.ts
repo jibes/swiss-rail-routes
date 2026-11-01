@@ -3,6 +3,7 @@
 import type { LiveState } from './live';
 import type { Connection, Leg, Section, Tour, Waypoint } from './model';
 import type { PlannedChain } from './planner/plan';
+import { normalise } from './edit';
 import { stopKey } from './stops';
 import type { Trip, TripVersion } from './trip';
 
@@ -19,18 +20,33 @@ export interface ReplanPoint {
 /** Where a stop is, [lon, lat], when known (the stop index); trims a cut ride's track. */
 export type StopPosition = (key: string) => [number, number] | undefined;
 
-/** The track up to the point nearest `at`; undefined when there is no track or no position. */
-function trimTrack(track: Section['geometry'], at?: [number, number]): Section['geometry'] {
-  if (!track || track.length < 2 || !at) return undefined;
-  let best = 0;
+/** Index of the track point nearest `at`, searching from `from` on. */
+function nearest(track: [number, number][], at: [number, number], from = 0): number {
+  let best = from;
   let dist = Infinity;
-  track.forEach(([x, y], i) => {
+  for (let i = from; i < track.length; i++) {
+    const [x, y] = track[i]!;
     const d = (x - at[0]) ** 2 + (y - at[1]) ** 2;
     if (d < dist) {
       dist = d;
       best = i;
     }
-  });
+  }
+  return best;
+}
+
+/**
+ * The track up to the point nearest `at`, searched after the point nearest the stop before it
+ * (`after`), so a line that passes near the stop earlier (a loop, a spiral) is not cut there.
+ * Undefined when there is no track or no position.
+ */
+function trimTrack(
+  track: Section['geometry'],
+  at?: [number, number],
+  after?: [number, number],
+): Section['geometry'] {
+  if (!track || track.length < 2 || !at) return undefined;
+  const best = nearest(track, at, after ? nearest(track, after) : 0);
   return best >= 1 ? track.slice(0, best + 1) : undefined;
 }
 
@@ -48,7 +64,7 @@ function cutRide(s: Section, key: string, pos?: StopPosition): Section {
     ...s,
     to: { ...end, dep: undefined },
     intermediate: s.intermediate.slice(0, i - 1),
-    geometry: trimTrack(s.geometry, pos?.(key)),
+    geometry: trimTrack(s.geometry, pos?.(key), pos?.(stopKey(calls[i - 1]!.stopRef))),
   };
 }
 
@@ -101,12 +117,26 @@ export function replanPoint(
 
 /** The rest of the route from the point: unpassed vias and stops of its leg, then the later legs. */
 export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
+  // Stations passed on the current leg only: on a round trip the way back passes stations the
+  // way out passed too, and those vias stay.
+  const cutLeg = point.keep.length > point.leg ? point.keep[point.leg] : undefined;
   const passed = new Set(
-    point.keep.flatMap((c) =>
-      c.sections.flatMap((s) => [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef))),
+    (cutLeg?.sections ?? []).flatMap((s) =>
+      [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)),
     ),
   );
   const current = trip.legs[point.leg]!;
+  // A planned stay at the point (the end of the current leg, or its start while waiting there)
+  // is kept: the rest leaves when the stay is over, not on arrival.
+  const key = stopKey(point.stop.stopRef);
+  const stay =
+    stopKey(current.to.stopRef) === key && cutLeg
+      ? current.to.dwellMin
+      : point.keep.length === point.leg && stopKey(current.from.stopRef) === key
+        ? current.from.dwellMin
+        : 0;
+  const arrived = point.keep.length ? Date.parse(point.keep.at(-1)!.arr) : point.at;
+  const leave = Math.max(point.at, arrived + stay * 60_000);
   const all: Waypoint[] = [
     ...current.vias.filter((w) => !passed.has(stopKey(w.stopRef))),
     current.to,
@@ -118,7 +148,7 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
   const rest = first === 0 ? all.slice(1) : all;
   // Date and time of the point in Zurich: after midnight that is the next day.
   const zurich = (o: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich', ...o }).format(point.at);
+    new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich', ...o }).format(leave);
   const local = zurich({ hour: '2-digit', minute: '2-digit' });
   const date = zurich({ year: 'numeric', month: '2-digit', day: '2-digit' });
   const waypoints: Waypoint[] = [
@@ -161,9 +191,19 @@ export function mergeReplan(
   const keptWarnings = trip.chain.warnings.filter((w) => w.legIndex < point.keep.length);
   const offset = point.keep.length;
   const connections = [...point.keep, ...chain.connections];
+  // The trip's route as it now runs: what was travelled, then the new rest (its stops, map,
+  // shares and "Save as route" all follow the replanned trip). Date and time stay the trip's.
+  const legs = [...keptLegs, ...newLegs.map((l, i) => ({ ...l, index: offset + i }))];
+  const first = legs[0]?.from;
+  const route: Tour = first
+    ? {
+        ...trip.route,
+        waypoints: normalise([first, ...legs.flatMap((l) => [...l.vias, l.to])]),
+      }
+    : trip.route;
   return {
-    route: trip.route,
-    legs: [...keptLegs, ...newLegs.map((l, i) => ({ ...l, index: offset + i }))],
+    route,
+    legs,
     chain: {
       connections,
       warnings: [

@@ -4,6 +4,7 @@ import type { Tour } from '../core/model';
 import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
 import { revise, tripStatus } from '../core/trip';
+import { stopKey } from '../core/stops';
 import { GA, SEGMENTS } from '../data';
 import { fetchTrips, WorkerError } from '../io/ojp';
 import { stopSearch } from '../io/stops';
@@ -44,8 +45,8 @@ export function EditTrip({ id }: { id: string }) {
   const [whole] = useState(() => tripState === 'upcoming');
   // The live state and time it was opened with: the cut is made again at saving, with stop
   // positions, so the travelled train keeps its track up to the stop.
-  const [opened] = useState(() => ({ state, now }));
-  const [point] = useState<ReplanPoint | null>(() =>
+  const [opened, setOpened] = useState(() => ({ state, now, version: trip?.version }));
+  const [point, setPoint] = useState<ReplanPoint | null>(() =>
     trip && state && !whole ? replanPoint(trip, state, now) : null,
   );
   const index = useStopIndex();
@@ -54,7 +55,7 @@ export function EditTrip({ id }: { id: string }) {
   );
   const [result, setResult] = useState<PlanResult | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'planning' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'planning' | 'error' | 'changed'>('idle');
   const [detail, setDetail] = useState('');
   const edit = (f: (x: Tour) => Tour) => {
     setDraft((d) => (d ? f(d) : d));
@@ -93,10 +94,34 @@ export function EditTrip({ id }: { id: string }) {
 
   const run = async () => {
     setStatus('planning');
+    // Under way the train moved on while the rest was edited: plan from where it is now.
+    let from = draft;
+    if (point && state && trip) {
+      const p = replanPoint(trip, state, now);
+      if (p && p.stop.stopRef !== point.stop.stopRef) {
+        const key = stopKey(p.stop.stopRef);
+        const at = draft.waypoints.findIndex((w) => stopKey(w.stopRef) === key);
+        const fresh = remainingRoute(trip, p);
+        from = {
+          ...draft,
+          date: fresh.date,
+          anchor: fresh.anchor,
+          waypoints: [fresh.waypoints[0]!, ...draft.waypoints.slice(at > 0 ? at + 1 : 1)],
+        };
+      } else if (p) {
+        const fresh = remainingRoute(trip, p);
+        from = { ...draft, date: fresh.date, anchor: fresh.anchor };
+      }
+      if (p) {
+        setPoint(p);
+        setOpened({ state, now, version: opened.version });
+        setDraft(from);
+      }
+    }
     try {
       const index = await stopSearch();
       setResult(
-        await plan(draft, {
+        await plan(from, {
           fetchTrips: (q) => fetchTrips(q),
           templates: TEMPLATES,
           segments: SEGMENTS,
@@ -179,6 +204,11 @@ export function EditTrip({ id }: { id: string }) {
         </div>
       </div>
 
+      {status === 'changed' && (
+        <p role="alert" className="notice red">
+          {t('tripChangedMeanwhile')}
+        </p>
+      )}
       {status === 'error' && (
         <p role="alert" className="notice red">
           {t('planFailed')} {detail && <code className="muted">{detail}</code>}
@@ -224,6 +254,12 @@ export function EditTrip({ id }: { id: string }) {
                 type="button"
                 className="primary wide"
                 onClick={() => {
+                  // Changed meanwhile (another device, another tab, undo): its legs and trains
+                  // are not the ones this plan was cut from.
+                  if (
+                    useTrips.getState().trips.find((x) => x.id === id)?.version !== opened.version
+                  )
+                    return setStatus('changed');
                   update(id, (x) =>
                     revise(
                       x,

@@ -1,18 +1,22 @@
-import { liveState } from '../core/live';
+import { expectedArrival, liveState } from '../core/live';
 import { liveTrip } from '../core/trip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { badge } from './ChainView';
 import { hhmm } from './format';
+import { useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 
 /** On the lists while a trip is under way: its next step, one tap to "Now". */
 export function LiveBar() {
   const t = useT();
   const now = useNow();
-  const trip = useTrips((s) => liveTrip(s.trips, now));
+  const trips = useTrips((s) => s.trips);
+  // The same live data as the trip screen: delays, new platforms, a late last train.
+  const status = useLiveStatus((s) => s.status);
+  const trip = liveTrip(trips, now, (x) => expectedArrival(x.chain.connections, status));
   if (!trip) return null;
-  const s = liveState(trip.chain.connections, now);
+  const s = liveState(trip.chain.connections, now, status);
   const n = s.next;
   const ride = n ? s.rides[n.ride] : undefined;
   return (

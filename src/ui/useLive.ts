@@ -17,9 +17,11 @@ const POLL_MS = 120_000;
  */
 export const useLiveStatus = create<{
   status: Map<string, JourneyStatus>;
+  /** The journeys `fetchedAt` and `failed` are about. */
+  watch: string;
   fetchedAt: number | null;
   failed: boolean;
-}>()(() => ({ status: new Map(), fetchedAt: null, failed: false }));
+}>()(() => ({ status: new Map(), watch: '', fetchedAt: null, failed: false }));
 
 /** `trip` only while it is under way; otherwise nothing is polled. */
 export function useLive(trip: Trip | undefined) {
@@ -32,17 +34,23 @@ export function useLive(trip: Trip | undefined) {
   const watch = state ? journeysToWatch(state, now).join('|') : '';
 
   useEffect(() => {
+    // "Live at" and "not updated" describe the trains watched now, not an earlier trip's.
+    if (useLiveStatus.getState().watch !== watch)
+      useLiveStatus.setState({ watch, fetchedAt: null, failed: false });
     if (!watch || !ojpConfigured()) return;
     const ctrl = new AbortController();
     const poll = async () => {
       if (document.visibilityState !== 'visible') return;
       try {
-        const got = await Promise.all(
+        // One train's answer failing does not throw away the other's.
+        const settled = await Promise.allSettled(
           watch.split('|').map(async (j) => {
             const q = journeyQueryOf(j);
             return q ? ([j, await fetchJourney(q, ctrl.signal)] as const) : null;
           }),
         );
+        if (settled.every((x) => x.status === 'rejected')) throw new Error('live');
+        const got = settled.map((x) => (x.status === 'fulfilled' ? x.value : null));
         const next = new Map(useLiveStatus.getState().status);
         for (const g of got) if (g) next.set(g[0], g[1]);
         useLiveStatus.setState({ status: next, fetchedAt: Date.now(), failed: false });

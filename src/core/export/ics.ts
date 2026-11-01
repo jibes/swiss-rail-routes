@@ -9,8 +9,27 @@ const stamp = (iso: string) =>
 
 const escape = (s: string) => s.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, '\\n');
 
-/** Folds lines at 75 octets as the RFC requires (approximated by UTF-16 units; fine for our text). */
-const fold = (line: string) => line.match(/.{1,74}/g)!.join('\r\n ');
+const utf8 = new TextEncoder();
+
+/** Folds lines at 75 octets as RFC 5545 requires, between whole characters (ü, →, emoji). */
+export function fold(line: string): string {
+  const parts: string[] = [];
+  let part = '';
+  let size = 0;
+  for (const ch of line) {
+    const n = utf8.encode(ch).length;
+    // The first line holds 75 octets; continuations 74 after their leading space.
+    if (size + n > (parts.length ? 74 : 75)) {
+      parts.push(part);
+      part = '';
+      size = 0;
+    }
+    part += ch;
+    size += n;
+  }
+  parts.push(part);
+  return parts.join('\r\n ');
+}
 
 export function toIcs(tourName: string, chain: Connection[], uidBase: string, now: Date): string {
   const lines = [

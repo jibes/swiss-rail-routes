@@ -1,3 +1,4 @@
+import { expectedArrival } from '../core/live';
 import { sortTrips, tripStatus, type Trip } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
@@ -5,12 +6,14 @@ import { hhmm, longDate } from './format';
 import { MiniLine } from './Home';
 import { LiveBar } from './LiveBar';
 import { TabBar } from './TabBar';
+import { useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 
 function TripCard({ trip, now }: { trip: Trip; now: number }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
-  const live = tripStatus(trip, now) === 'live';
+  const status = useLiveStatus((s) => s.status);
+  const live = tripStatus(trip, now, expectedArrival(trip.chain.connections, status)) === 'live';
   return (
     <li>
       <a href={`#/trip/${trip.id}`} className={`tour-card ${live ? 'is-live' : ''}`}>
@@ -30,8 +33,11 @@ function TripCard({ trip, now }: { trip: Trip; now: number }) {
 export function Trips() {
   const t = useT();
   const trips = useTrips((s) => s.trips);
+  const liveStatus = useLiveStatus((s) => s.status);
   const now = useNow();
-  const { current, past } = sortTrips(trips, now);
+  const { current, past } = sortTrips(trips, now, (x) =>
+    expectedArrival(x.chain.connections, liveStatus),
+  );
   return (
     <main className="page with-tabs">
       <LiveBar />

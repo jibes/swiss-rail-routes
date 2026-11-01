@@ -38,7 +38,13 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
       </p>
       <p className="next-time">
         <span className="num">{hhmm(next.at)}</span>
-        {next.delayMin > 0 && <span className="late"> +{next.delayMin}</span>}
+        {next.delayMin > 0 && (
+          <span className="late">
+            {' '}
+            <span aria-hidden="true">+{next.delayMin}</span>
+            <span className="sr-only">{t('lateBy', { n: next.delayMin })}</span>
+          </span>
+        )}
         <span className="next-in">{inMin === 0 ? t('nowNow') : t('inMin', { n: inMin })}</span>
       </p>
       <p className="next-what">

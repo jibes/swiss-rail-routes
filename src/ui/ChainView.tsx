@@ -39,13 +39,20 @@ function Warnings({ list }: { list: Warning[] }) {
 
 /** A time as expected, with "+N" when late (live view only). */
 function When({ plan, live }: { plan?: string; live?: number }) {
+  const t = useT();
   if (!plan) return null;
   const planned = Date.parse(plan);
   const late = live !== undefined ? Math.round((live - planned) / 60_000) : 0;
   return (
     <time>
       {hhmm(live ?? planned)}
-      {late > 0 && <span className="late"> +{late}</span>}
+      {late > 0 && (
+        <span className="late">
+          {' '}
+          <span aria-hidden="true">+{late}</span>
+          <span className="sr-only">{t('lateBy', { n: late })}</span>
+        </span>
+      )}
     </time>
   );
 }

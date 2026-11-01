@@ -62,6 +62,9 @@ describe('liveState', () => {
     expect(journeysToWatch(liveState(chain, at('08:10')), at('08:10'))).toEqual(['j1']);
     expect(journeysToWatch(liveState(chain, at('08:40')), at('08:40'))).toEqual(['j1', 'j2']);
     expect(journeysToWatch(liveState(chain, at('10:42')), at('10:42'))).toEqual([]);
+    // Before the trip or during a stay: the next train only once it leaves within 20 min.
+    expect(journeysToWatch(liveState(chain, at('07:30')), at('07:30'))).toEqual([]);
+    expect(journeysToWatch(liveState(chain, at('07:50')), at('07:50'))).toEqual(['j1']);
   });
 
   it('done after the last arrival', () => {
