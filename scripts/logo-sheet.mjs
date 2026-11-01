@@ -3,8 +3,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
-const sets = [['r1c-ring', 'R1c · Ring']];
-const width = 1150;
+const sets = [['c2-sonnentag', 'C2 · Sonnentag']];
+const width = 380;
 const read = (k, f) =>
   'data:image/svg+xml;base64,' +
   Buffer.from(readFileSync(`docs/design/logos/${k}/${f}.svg`)).toString('base64');
