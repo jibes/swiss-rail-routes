@@ -91,7 +91,26 @@ def around(fg, accent, bg, mono=False):
     return s + start(fg, *at(*c, r, 180))
 
 
+def ring3(layout):
+    # Ring with three stations; `layout` = (solid angles, ring angles), degrees from the top.
+    solid, hollow = layout
+
+    def motif(fg, accent, bg, mono=False):
+        c, r = (54, 54), 25
+        s = f'<circle cx="54" cy="54" r="25" stroke="{fg}" stroke-width="{SW}" fill="none"/>'
+        for d in solid:
+            s += off(fg, *at(*c, r, d))
+        for d in hollow:
+            s += through(fg, bg, *at(*c, r, d), mono)
+        return s + start(fg, *at(*c, r, 180))
+
+    return motif
+
+
 SETS = [
+    ('r1a-ring-gleichmaessig', ring3(((0,), (90, 270))), RED, WHITE, WHITE),
+    ('r1b-ring-aussteigen', ring3(((0, 90), (270,))), RED, WHITE, WHITE),
+    ('r1c-ring-frei', ring3(((40,), (110, 290))), RED, WHITE, WHITE),
     ('r1-ring', ring, RED, WHITE, WHITE),
     ('r2-gipfelrunde', summit, RED, WHITE, WHITE),
     ('r3-netzplan', metro, RED, WHITE, WHITE),
