@@ -115,6 +115,7 @@ Three questions, one kind of thing each (MECE):
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
 - **Replan from here**: from the next stop the train calls at (or the station you are at), the rest of the route editable (spontaneous stop, longer stay, reorder, remove); the travelled part is kept; the result is a new version of the trip, undo restores the previous one.
 - **Sharing**: a route as `#/t/…` (the recipient plans); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
+- **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip). The two: where you get off, longest stay first; then spread out (farthest from the start and from the one picked). Shown as the placeholder; a saved trip keeps it as its name.
 - **Intermediate stops** expand on every ride (plan, trip, Now); on Now the ride being travelled shows them, with a marker between the last stop passed and the next.
 
 ## 4. Data sources

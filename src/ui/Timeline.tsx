@@ -16,6 +16,9 @@ import { PlanSettings } from './PlanSettings';
 import { duration, hhmm, minutesBetween } from './format';
 import { TEMPLATES } from './TemplatePicker';
 import { Icon } from './icons';
+import { useStopIndex } from './useStopIndex';
+import { autoName } from '../core/naming';
+import { stopKey } from '../core/stops';
 import { go } from './useHash';
 
 type Status = 'planning' | 'done' | 'unavailable' | 'error';
@@ -35,6 +38,8 @@ export function Timeline({ id }: { id: string }) {
   const [picked, setPicked] = useState<string | null>(null);
   const update = useTours((s) => s.update);
   const addTrip = useTrips((s) => s.add);
+  const index = useStopIndex();
+  const stop = (r: string) => index?.byRef(stopKey(r));
   const [attempt, setAttempt] = useState(0);
   const [detail, setDetail] = useState('');
   const json = tour ? JSON.stringify(tour) : '';
@@ -112,7 +117,7 @@ export function Timeline({ id }: { id: string }) {
         >
           <Icon name="back" />
         </button>
-        <h1>{tour.name || t('untitled')}</h1>
+        <h1>{tour.name || autoName(tour, stop) || t('untitled')}</h1>
         <button
           type="button"
           className="icon"
@@ -209,7 +214,15 @@ export function Timeline({ id }: { id: string }) {
                     className="primary wide"
                     onClick={() => {
                       const tripId = crypto.randomUUID();
-                      addTrip(newTrip(tripId, tour, legs, chain, new Date()));
+                      addTrip(
+                        newTrip(
+                          tripId,
+                          { ...tour, name: tour.name || autoName(tour, stop) },
+                          legs,
+                          chain,
+                          new Date(),
+                        ),
+                      );
                       go(`/trip/${tripId}`);
                     }}
                   >

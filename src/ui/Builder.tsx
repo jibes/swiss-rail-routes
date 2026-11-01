@@ -22,6 +22,7 @@ import { dwellLabel, StopRow } from './StopRow';
 import { directionFrom, TEMPLATES, TemplatePicker } from './TemplatePicker';
 import { useDragList } from './useDragList';
 import { go } from './useHash';
+import { autoName } from '../core/naming';
 import { shareLink } from './share';
 import { encodeTour } from '../core/export/share';
 
@@ -78,7 +79,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
         <input
           className="title"
           aria-label={t('tourName')}
-          placeholder={t('untitled')}
+          placeholder={autoName(tour, stop) || t('untitled')}
           value={tour.name}
           onChange={(e) => edit((x) => ({ ...x, name: e.target.value }))}
         />

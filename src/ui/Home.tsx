@@ -8,6 +8,9 @@ import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
 import { TabBar } from './TabBar';
 import { go } from './useHash';
+import { useStopIndex } from './useStopIndex';
+import { autoName } from '../core/naming';
+import { stopKey } from '../core/stops';
 
 /** The tour drawn as a tiny line: solid dots where you get off, rings where you ride through. */
 export function MiniLine({ tour }: { tour: Tour }) {
@@ -42,6 +45,8 @@ export function Home() {
   const setLang = usePrefs((s) => s.setLang);
   const tours = useTours((s) => s.tours);
   const create = useTours((s) => s.create);
+  const index = useStopIndex();
+  const stop = (r: string) => index?.byRef(stopKey(r));
 
   return (
     <main className="page home with-tabs">
@@ -71,7 +76,7 @@ export function Home() {
             return (
               <li key={tour.id}>
                 <a href={`#/tour/${tour.id}`} className="tour-card">
-                  <strong>{tour.name || t('untitled')}</strong>
+                  <strong>{tour.name || autoName(tour, stop) || t('untitled')}</strong>
                   {tour.waypoints.length > 1 && <MiniLine tour={tour} />}
                   <span className="meta">
                     {longDate(tour.date, lang)}

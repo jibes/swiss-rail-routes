@@ -46,8 +46,8 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
 
   // Listed under Trips, and readable offline.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.getByRole('link', { name: /Untitled tour/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ })).toBeVisible();
   await page.context().setOffline(true);
   await page.reload();
-  await expect(page.getByRole('link', { name: /Untitled tour/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ })).toBeVisible();
 });
