@@ -67,9 +67,7 @@ export const fr = {
   relaxedMustPass: 'Tronçon {n} : aucune liaison par tous les arrêts choisis ; affiché sans eux.',
   relaxedAvoid: 'Tronçon {n} : uniquement des liaisons par un tunnel à éviter.',
   alternatives: 'Variantes',
-  earliest: 'Plus tôt',
   recommended: 'Recommandé',
-  latest: 'Plus tard',
   transfers: '{n} changements',
   walk: 'À pied',
   platform: 'Voie {p}',
@@ -98,4 +96,7 @@ export const fr = {
   mapOffline: 'Impossible de charger la carte.',
   wNotice: '{from}–{to}: {text}',
   transfer1: '1 changement',
+  earlier: 'Plus tôt',
+  later: 'Plus tard',
+  onlyOne: 'Une seule liaison convient à ce circuit à cette heure.',
 } satisfies Catalogue;

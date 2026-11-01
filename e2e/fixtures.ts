@@ -7,7 +7,7 @@ import { gunzipSync } from 'node:zlib';
 import { expect, test as base } from '@playwright/test';
 
 const DIR = 'tests/fixtures/ojp';
-const tours = readdirSync(DIR).filter((d) => /^T\d$/.test(d));
+const tours = readdirSync(DIR).filter((d) => /^T\d/.test(d));
 
 export function recordedAnswer(body: string): string | null {
   const key = createHash('sha1').update(body).digest('hex').slice(0, 12);

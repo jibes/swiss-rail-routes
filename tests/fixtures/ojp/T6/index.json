@@ -2,19 +2,28 @@
   "ea7e35bce293": {
     "from": "Zürich HB",
     "to": "Lugano",
-    "via": ["Arth-Goldau", "Göschenen", "Airolo", "Bellinzona"],
+    "via": [
+      "Arth-Goldau",
+      "Göschenen",
+      "Airolo",
+      "Bellinzona"
+    ],
     "time": "2026-11-07T08:00"
   },
   "ecdaa04f3b0e": {
     "from": "Zürich HB",
     "to": "Göschenen",
-    "via": ["Arth-Goldau"],
+    "via": [
+      "Arth-Goldau"
+    ],
     "time": "2026-11-07T08:00"
   },
   "975893e03402": {
     "from": "Göschenen",
     "to": "Bellinzona",
-    "via": ["Airolo"],
+    "via": [
+      "Airolo"
+    ],
     "time": "2026-11-07T09:50"
   },
   "d358506efa9c": {

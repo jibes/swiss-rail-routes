@@ -51,5 +51,8 @@ export function acceptanceTours(date: string): Record<string, Tour> {
     st('Lugano'),
   );
 
-  return { T1: t1, T2: t2, T3: t3, T4: t4, T5: t5, T6: t6 };
+  // T5 an hour later: what the timeline's "Later" button asks for (e2e/acceptance.spec.ts).
+  const t5later: Tour = { ...t5, anchor: { departAt: '10:00' } };
+
+  return { T1: t1, T2: t2, T3: t3, T4: t4, T5: t5, T5L: t5later, T6: t6 };
 }

@@ -383,7 +383,7 @@ h2 {
 /* Timeline */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -505,4 +505,12 @@ h2 {
   z-index: 2;
   top: calc(72px + env(safe-area-inset-top));
   left: 8px;
+}
+
+.shift {
+  justify-content: space-between;
+}
+
+.shift > * {
+  flex: 0 1 auto;
 }

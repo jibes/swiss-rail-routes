@@ -119,3 +119,44 @@ describe('stitched', () => {
     expect(passesVias(out[0]!, ['Filisur', 'Thusis', 'Bergün/Bravuogn'].map(w))).toBe(true);
   });
 });
+
+describe('stitched diversity', () => {
+  it('keeps different starts apart instead of funnelling them into one chain', async () => {
+    const a = (d: string, a_: string, j: string) =>
+      conn(
+        ride(
+          'IR 1',
+          [
+            ['Zürich HB', d],
+            ['Chur', a_],
+          ],
+          { journey: j },
+        ),
+      );
+    const b = (d: string, a_: string, j: string) =>
+      conn(
+        ride(
+          'RE 2',
+          [
+            ['Chur', d],
+            ['Preda', a_],
+          ],
+          { journey: j },
+        ),
+      );
+    const legs: Record<string, Connection[]> = {
+      'Zürich HB>Chur': [a('07:00', '08:15', 'a1'), a('08:00', '09:15', 'a2')],
+      'Chur>Preda': [b('09:30', '10:30', 'b1'), b('10:30', '11:30', 'b2')],
+    };
+    const query = async (from: Waypoint, to: Waypoint) => legs[`${from.name}>${to.name}`] ?? [];
+    const out = await stitched(
+      w('Zürich HB'),
+      [w('Thusis'), w('Chur'), w('Filisur')],
+      w('Preda'),
+      0,
+      query,
+      3,
+    );
+    expect(new Set(out.map((c) => c.dep)).size).toBe(2);
+  });
+});

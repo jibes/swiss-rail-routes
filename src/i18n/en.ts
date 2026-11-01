@@ -65,9 +65,7 @@ export const en = {
   relaxedMustPass: 'Leg {n}: no connection through every chosen stop; shown without them.',
   relaxedAvoid: 'Leg {n}: only connections through a tunnel you wanted to avoid.',
   alternatives: 'Alternatives',
-  earliest: 'Earliest',
   recommended: 'Recommended',
-  latest: 'Latest',
   transfers: '{n} changes',
   walk: 'Walk',
   platform: 'Pl. {p}',
@@ -96,6 +94,9 @@ export const en = {
   mapOffline: 'Map tiles could not be loaded.',
   wNotice: '{from}–{to}: {text}',
   transfer1: '1 change',
+  earlier: 'Earlier',
+  later: 'Later',
+  onlyOne: 'Only one connection works for this tour at this time.',
 };
 
 export type Catalogue = typeof en;

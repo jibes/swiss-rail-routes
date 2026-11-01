@@ -13,12 +13,7 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
   await search.press('Enter');
   await page.getByRole('button', { name: 'Plan' }).click();
 
-  const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveCount(3);
-  await expect(page.getByRole('tab', { name: /Recommended/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
   await expect(
     page.getByText(/Not covered by GA .*Kleine Scheidegg: 50 % with GA/).first(),
   ).toBeVisible();
@@ -36,5 +31,5 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
   // The plan is kept: offline, the timeline still shows it.
   await page.context().setOffline(true);
   await page.reload();
-  await expect(page.getByRole('tab')).toHaveCount(3);
+  await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
 });

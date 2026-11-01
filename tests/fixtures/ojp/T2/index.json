@@ -2,13 +2,20 @@
   "37ecc267d95e": {
     "from": "Zürich HB",
     "to": "Disentis/Mustér",
-    "via": ["Chur", "Ilanz"],
+    "via": [
+      "Chur",
+      "Ilanz"
+    ],
     "time": "2026-11-07T07:30"
   },
   "769e17e059e0": {
     "from": "Disentis/Mustér",
     "to": "Zürich HB",
-    "via": ["Oberalppass", "Andermatt", "Göschenen"],
+    "via": [
+      "Oberalppass",
+      "Andermatt",
+      "Göschenen"
+    ],
     "time": "2026-11-07T10:12"
   }
 }

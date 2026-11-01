@@ -77,7 +77,7 @@ Must = MVP; Should = v1.1; Could = later.
 
 - [Must] One OJP TripRequest per leg with all its forced vias; leg n+1 departs ≥ arrival n + dwell + minTransfer.
 - [Must] Line enforcement: drop candidates that miss a must-pass stop or forced line, or use an avoided segment (Gotthard / Lötschberg / Ceneri base tunnels, Vereina when Albula is intended…).
-- [Must] Three chains (earliest, recommended, latest) with total duration and the time at each stop.
+- [Must] Up to three options that leave at different times (the best-scored one marked), with total duration and the time at each stop; one option says so. Earlier/Later move the departure by an hour and replan.
 - [Should] Auto-fix: when a leg is impossible, propose the nearest valid substitute and say what is lost.
 
 **Validation and warnings**
@@ -133,7 +133,7 @@ The planner never trusts the fastest result: it fetches candidates per leg, filt
    Weights in `src/core/planner/weights.ts`, tuned on T1–T4.
 6. **Chain** with beam search (width 3): keep the best 3 partial chains after each leg, so an early choice can't make a later leg impossible. A leg whose candidates all start before a beam's ready time is re-queried for that beam only.
 7. **Fallback** when a leg has no survivor, in order: (a) +1 transfer, (b) replacement bus on the disrupted segment, (c) alternative template (Albula closed → Vereina). Always tell the user what was relaxed.
-8. **Return** 3 chains (earliest / recommended / latest start) with per-stop times and all warnings.
+8. **Return** up to 3 options with different departures: the best-scored chain plus the earliest and latest other departure, each the best chain for its start time. Stitching keeps two onward rides per partial chain so different starts stay different.
 
 Edge cases: out-and-back (same track twice only on a turnaround), cog and cable-car sections without platforms, boat legs (mode filter), cross-border sections (Tirano, Domodossola), midnight rollover, the December timetable change, OJP omitting intermediate stops (→ `sequences.v1.json`).
 
@@ -143,7 +143,7 @@ Five screens, hash routes; mobile portrait first, one-handed, light/dark from th
 
 1. **Home:** saved tours as cards (name, date, total h, warning chips); "New tour" and "From template"; template gallery (Albula, Bernina, Oberalp, Voralpen-Express, Brünig, Rigi…) with photo, duration from Zürich and a season note. Photos self-hosted, licences in `THIRD_PARTY_NOTICES.md`.
 2. **Tour builder:** vertical waypoint list with drag handles; each row: station, ride/stop toggle, dwell stepper; "+ add route" inserts a template; round-trip switch; date and depart / back-by picker; live total-duration footer.
-3. **Result timeline:** swipe between the 3 chains; per section: time, platform, line badge, operator; dwell blocks shaded; chips inline (red disruption, amber after-sunset, grey non-GA); seat-side tip; a sunset line across the timeline.
+3. **Result timeline:** tabs for the options (one: a note instead), Earlier/Later buttons; per section: time, platform, line badge, operator; dwell blocks shaded; chips inline (red disruption, amber after-sunset, grey non-GA); seat-side tip; a sunset line across the timeline.
 4. **Map:** tour coloured per template, highlights as stars, sunset-critical ones marked; tapping a section jumps to the timeline.
 5. **Export sheet:** SBB link per leg, calendar (.ics), GPX/KML, share link, print.
 

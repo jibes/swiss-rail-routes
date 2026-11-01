@@ -67,9 +67,7 @@ export const de = {
   relaxedMustPass: 'Abschnitt {n}: keine Verbindung über alle gewählten Halte; ohne sie angezeigt.',
   relaxedAvoid: 'Abschnitt {n}: nur Verbindungen durch einen Tunnel, den du meiden wolltest.',
   alternatives: 'Varianten',
-  earliest: 'Früheste',
   recommended: 'Empfohlen',
-  latest: 'Späteste',
   transfers: '{n} Umstiege',
   walk: 'Fussweg',
   platform: 'Gl. {p}',
@@ -98,4 +96,7 @@ export const de = {
   mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
   wNotice: '{from}–{to}: {text}',
   transfer1: '1 Umstieg',
+  earlier: 'Früher',
+  later: 'Später',
+  onlyOne: 'Zu dieser Zeit passt nur eine Verbindung für diese Tour.',
 } satisfies Catalogue;

@@ -64,6 +64,20 @@ const sameVehicle = (a: Connection, b: Connection) => {
   return !!x && x === rides(b)[0]?.[0].journey;
 };
 
+const signature = (c: Connection) =>
+  `${c.dep}|${c.arr}|${c.sections.map((s) => s.journey ?? s.mode).join()}`;
+
+/** Unique chains, at most RESULTS: the earliest arrival per departure first, then the rest. */
+function diverse(list: Connection[]): Connection[] {
+  const seen = new Set<string>();
+  const unique = list
+    .sort((a, b) => ms(a.dep) - ms(b.dep) || ms(a.arr) - ms(b.arr))
+    .filter((c) => !seen.has(signature(c)) && !!seen.add(signature(c)));
+  const firstPerDep = unique.filter((c, i) => i === 0 || unique[i - 1]!.dep !== c.dep);
+  const rest = unique.filter((c) => !firstPerDep.includes(c));
+  return [...firstPerDep, ...rest].slice(0, RESULTS).sort((a, b) => ms(a.dep) - ms(b.dep));
+}
+
 /** Stitched candidates for a leg, earliest first; at most RESULTS. */
 export async function stitched(
   from: Waypoint,
@@ -82,23 +96,15 @@ export async function stitched(
     const next: Connection[] = [];
     for (const c of partial) {
       const ready = (x: Connection) => ms(c.arr) + (sameVehicle(c, x) ? 0 : minTransferMin * MIN);
-      let pick = pool.find((x) => ms(x.dep) >= ready(x));
-      if (!pick) {
-        const later = await query(p.from, p.to, p.via, ms(c.arr));
-        pick = later.find((x) => ms(x.dep) >= ready(x));
-      }
-      if (pick) next.push(join(c, pick));
+      let picks = pool.filter((x) => ms(x.dep) >= ready(x));
+      if (!picks.length)
+        picks = (await query(p.from, p.to, p.via, ms(c.arr))).filter((x) => ms(x.dep) >= ready(x));
+      // The first onward ride, and the next one: different starts keep different chains.
+      for (const x of picks.slice(0, 2)) next.push(join(c, x));
     }
-    partial = next;
+    partial = diverse(next);
   }
-  // Two partials can meet the same onward ride; keep each departure once.
-  const seen = new Set<string>();
-  return partial
-    .sort((a, b) => ms(a.dep) - ms(b.dep))
-    .filter((c) => {
-      const k = `${c.dep}|${c.arr}|${c.sections.map((s) => s.journey ?? s.mode).join()}`;
-      return !seen.has(k) && !!seen.add(k);
-    });
+  return partial;
 }
 
 /** True when a connection calls at every via, in any order. */

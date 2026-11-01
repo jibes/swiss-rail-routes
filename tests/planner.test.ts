@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from '../src/core/edit';
 import type { Tour } from '../src/core/model';
-import { legRules, mergeRepeats, plan } from '../src/core/planner/plan';
+import {
+  legRules,
+  mergeRepeats,
+  pickOptions,
+  plan,
+  type PlannedChain,
+} from '../src/core/planner/plan';
 import { DATE, conn, deps, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (name: string) => ({ stopRef: ref(name), name });
@@ -66,8 +72,8 @@ describe('line enforcement (T6)', () => {
     const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Lugano')), '08:00');
     const r = await plan(t, deps(list).deps);
     expect(r.recommended!.connections[0]!.sections[0]!.category).toBe('IC');
-    expect(r.earliest!.dep).toBe(list[0]!.dep);
-    expect(r.latest!.dep).toBe(list[2]!.dep);
+    expect(r.options![0]!.dep).toBe(list[0]!.dep);
+    expect(r.options!.at(-1)!.dep).toBe(list[2]!.dep);
   });
 });
 
@@ -113,12 +119,12 @@ describe('chaining with dwell', () => {
 
   it('leaves each stop no earlier than arrival + dwell', async () => {
     const r = await plan(t, deps([...l1, ...l2]).deps);
-    for (const c of [r.earliest!, r.recommended!, r.latest!]) {
+    for (const c of r.options!) {
       const [a, b] = c.connections;
       expect(Date.parse(b!.dep) - Date.parse(a!.arr)).toBeGreaterThanOrEqual(60 * 60_000);
     }
-    expect(r.earliest!.arr).toBe(l2[1]!.arr);
-    expect(r.latest!.dep).toBe(l1[1]!.dep);
+    expect(r.options![0]!.arr).toBe(l2[1]!.arr);
+    expect(r.options!.at(-1)!.dep).toBe(l1[1]!.dep);
   });
 
   it('reports the failing leg', async () => {
@@ -174,8 +180,7 @@ describe('supplement trains', () => {
     );
     const t = tour('St. Moritz', (x) => addWaypoint(x, stop('Tirano')), '08:30');
     const r = await plan(t, deps([bex, r1]).deps);
-    for (const c of [r.earliest!, r.recommended!, r.latest!])
-      expect(c.connections[0]!.sections[0]!.category).toBe('R');
+    for (const c of r.options!) expect(c.connections[0]!.sections[0]!.category).toBe('R');
   });
 });
 
@@ -225,7 +230,7 @@ describe('warnings', () => {
     };
     const r = await plan(t, deps([day, dusk]).deps);
     expect(r.recommended!.dep).toBe(day.dep);
-    const late = r.latest!.warnings.filter((w) => w.type === 'after-sunset');
+    const late = r.options!.at(-1)!.warnings.filter((w) => w.type === 'after-sunset');
     expect(late.map((w) => w.params.name)).toContain('Landwasserviadukt');
     expect(r.recommended!.warnings.some((w) => w.type === 'after-sunset')).toBe(false);
   });
@@ -337,7 +342,54 @@ describe('planned legs', () => {
       'Zürich HB>Luzern',
       'Luzern>Zürich HB',
     ]);
-    for (const c of [r.earliest!, r.recommended!, r.latest!])
-      expect(c.connections).toHaveLength(r.legs!.length);
+    for (const c of r.options!) expect(c.connections).toHaveLength(r.legs!.length);
+  });
+});
+
+describe('options', () => {
+  const chain = (dep: string, score: number): PlannedChain => ({
+    connections: [],
+    warnings: [],
+    score,
+    dep: `2026-11-07T${dep}:00Z`,
+    arr: `2026-11-07T18:00:00Z`,
+  });
+
+  it('offers up to 3 departures: the best, the earliest and the latest other, by time', () => {
+    const r = pickOptions([
+      chain('08:00', 50),
+      chain('07:00', 80),
+      chain('09:00', 60),
+      chain('10:00', 90),
+      chain('07:00', 70),
+    ]);
+    expect(r.options!.map((c) => [c.dep.slice(11, 16), c.score])).toEqual([
+      ['07:00', 70],
+      ['08:00', 50],
+      ['10:00', 90],
+    ]);
+    expect(r.recommended!.dep).toContain('08:00');
+  });
+
+  it('never repeats a departure', () => {
+    const r = pickOptions([chain('08:00', 50), chain('08:00', 40)]);
+    expect(r.options).toHaveLength(1);
+    expect(r.recommended!.score).toBe(40);
+  });
+
+  it('plans options with different departures when the timetable has them', async () => {
+    const l1 = ['07:04', '08:04', '09:04'].map((d, i) =>
+      conn(
+        ride('IR 70', [
+          ['Zürich HB', d],
+          ['Luzern', `0${7 + i}:45`],
+        ]),
+      ),
+    );
+    const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Luzern')), '07:00');
+    const r = await plan(t, deps(l1).deps);
+    const deps_ = r.options!.map((c) => c.dep);
+    expect(new Set(deps_).size).toBe(deps_.length);
+    expect(r.options).toHaveLength(3);
   });
 });

@@ -53,9 +53,10 @@ export interface PlannedChain {
 }
 
 export interface PlanResult {
-  earliest?: PlannedChain;
+  /** Up to 3 chains that leave at different times, earliest first. */
+  options?: PlannedChain[];
+  /** The best-scored option (also in `options`). */
   recommended?: PlannedChain;
-  latest?: PlannedChain;
   relaxed: { legIndex: number; rule: Relaxed }[];
   /** First leg with no connection at all, even relaxed. */
   failedLeg?: number;
@@ -255,9 +256,12 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
       }
     }
     if (!next.length) return { relaxed: relaxedOut, failedLeg: i, legs };
-    // Keep the best, but always the earliest- and latest-starting chains for the 3 views.
+    // Keep the best chain per first departure, so options can differ; then the best overall.
     next.sort((a, b) => total(a) - total(b));
-    const keep = new Set(next.slice(0, width));
+    const perStart = new Map<number, Beam>();
+    for (const b of next) if (!perStart.has(firstDep(b))) perStart.set(firstDep(b), b);
+    const keep = new Set([...perStart.values()].slice(0, width));
+    for (const b of next) if (keep.size < width) keep.add(b);
     keep.add(next.reduce((a, b) => (firstDep(b) < firstDep(a) ? b : a)));
     keep.add(next.reduce((a, b) => (firstDep(b) > firstDep(a) ? b : a)));
     beams = [...keep];
@@ -270,13 +274,27 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
     dep: b.conns[0]!.dep,
     arr: b.conns.at(-1)!.arr,
   }));
-  const by = (f: (a: PlannedChain, b: PlannedChain) => number) => [...done].sort(f)[0];
+  return { ...pickOptions(done), relaxed: relaxedOut, legs };
+}
+
+/**
+ * Up to 3 options that leave at different times: the best-scored one, the earliest and the
+ * latest other departure (each the best chain for its departure), sorted by departure.
+ */
+export function pickOptions(chains: PlannedChain[]): Pick<PlanResult, 'options' | 'recommended'> {
+  if (!chains.length) return {};
+  const perStart = new Map<string, PlannedChain>();
+  for (const c of [...chains].sort((a, b) => a.score - b.score))
+    if (!perStart.has(c.dep)) perStart.set(c.dep, c);
+  const distinct = [...perStart.values()];
+  const recommended = distinct[0]!;
+  const others = distinct.slice(1).sort((a, b) => ms(a.dep) - ms(b.dep));
+  const picked = new Set(
+    [recommended, others[0], others.at(-1)].filter((c): c is PlannedChain => !!c),
+  );
   return {
-    recommended: by((a, b) => a.score - b.score),
-    earliest: by((a, b) => ms(a.dep) - ms(b.dep) || a.score - b.score),
-    latest: by((a, b) => ms(b.dep) - ms(a.dep) || a.score - b.score),
-    relaxed: relaxedOut,
-    legs,
+    recommended,
+    options: [...picked].sort((a, b) => ms(a.dep) - ms(b.dep)),
   };
 }
 
@@ -296,18 +314,8 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   let last: PlanResult = { relaxed: [] };
   for (let attempt = 0; attempt < 4; attempt++, start -= 60 * MIN) {
     last = await planFrom(start, tour, deps);
-    const inTime = [last.earliest, last.recommended, last.latest].filter(
-      (c): c is PlannedChain => !!c && ms(c.arr) <= by,
-    );
-    if (inTime.length) {
-      const pick = (f: (a: PlannedChain, b: PlannedChain) => number) => [...inTime].sort(f)[0];
-      return {
-        ...last,
-        recommended: pick((a, b) => a.score - b.score),
-        earliest: pick((a, b) => ms(a.dep) - ms(b.dep)),
-        latest: pick((a, b) => ms(b.dep) - ms(a.dep)),
-      };
-    }
+    const inTime = (last.options ?? []).filter((c) => ms(c.arr) <= by);
+    if (inTime.length) return { ...last, ...pickOptions(inTime) };
   }
-  return { ...last, earliest: undefined, recommended: undefined, latest: undefined };
+  return { ...last, options: undefined, recommended: undefined };
 }

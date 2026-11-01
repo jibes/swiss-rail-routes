@@ -2,19 +2,26 @@
   "231761ef77df": {
     "from": "Zürich HB",
     "to": "Rigi Kulm",
-    "via": ["Arth-Goldau"],
+    "via": [
+      "Arth-Goldau"
+    ],
     "time": "2026-11-07T08:00"
   },
   "31b89602629f": {
     "from": "Rigi Kulm",
     "to": "Zürich HB",
-    "via": ["Vitznau", "Luzern"],
+    "via": [
+      "Vitznau",
+      "Luzern"
+    ],
     "time": "2026-11-07T10:19"
   },
   "b9466259aed1": {
     "from": "Rigi Kulm",
     "to": "Luzern",
-    "via": ["Vitznau"],
+    "via": [
+      "Vitznau"
+    ],
     "time": "2026-11-07T10:19"
   },
   "9dd4a1702466": {
@@ -38,13 +45,18 @@
   "431f74f55490": {
     "from": "Rigi Kulm",
     "to": "Zürich HB",
-    "via": ["Vitznau", "Luzern"],
+    "via": [
+      "Vitznau",
+      "Luzern"
+    ],
     "time": "2026-11-07T13:19"
   },
   "282d82b1963a": {
     "from": "Rigi Kulm",
     "to": "Luzern",
-    "via": ["Vitznau"],
+    "via": [
+      "Vitznau"
+    ],
     "time": "2026-11-07T13:19"
   },
   "62190ccc345b": {
@@ -68,13 +80,18 @@
   "96a156868689": {
     "from": "Rigi Kulm",
     "to": "Zürich HB",
-    "via": ["Vitznau", "Luzern"],
+    "via": [
+      "Vitznau",
+      "Luzern"
+    ],
     "time": "2026-11-07T14:19"
   },
   "37481fafbd1f": {
     "from": "Rigi Kulm",
     "to": "Luzern",
-    "via": ["Vitznau"],
+    "via": [
+      "Vitznau"
+    ],
     "time": "2026-11-07T14:19"
   },
   "664e80c5f0a9": {
@@ -104,13 +121,18 @@
   "259eeb02f1d3": {
     "from": "Rigi Kulm",
     "to": "Zürich HB",
-    "via": ["Vitznau", "Luzern"],
+    "via": [
+      "Vitznau",
+      "Luzern"
+    ],
     "time": "2026-11-07T15:19"
   },
   "fce987649627": {
     "from": "Rigi Kulm",
     "to": "Luzern",
-    "via": ["Vitznau"],
+    "via": [
+      "Vitznau"
+    ],
     "time": "2026-11-07T15:19"
   },
   "fac5cac23fa0": {

@@ -68,9 +68,7 @@ export const it = {
     'Tratta {n}: nessun collegamento attraverso tutte le fermate scelte; mostrato senza.',
   relaxedAvoid: 'Tratta {n}: solo collegamenti attraverso una galleria da evitare.',
   alternatives: 'Alternative',
-  earliest: 'Più presto',
   recommended: 'Consigliato',
-  latest: 'Più tardi',
   transfers: '{n} cambi',
   walk: 'A piedi',
   platform: 'Bin. {p}',
@@ -99,4 +97,7 @@ export const it = {
   mapOffline: 'Impossibile caricare la mappa.',
   wNotice: '{from}–{to}: {text}',
   transfer1: '1 cambio',
+  earlier: 'Prima',
+  later: 'Più tardi',
+  onlyOne: 'A quest’ora solo un collegamento va bene per questo giro.',
 } satisfies Catalogue;

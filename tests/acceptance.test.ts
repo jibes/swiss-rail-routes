@@ -29,8 +29,7 @@ const planned = (id: string) => {
   return results.get(id)!;
 };
 
-const chains = (r: PlanResult) =>
-  [r.earliest, r.recommended, r.latest].filter((c): c is PlannedChain => !!c);
+const chains = (r: PlanResult) => r.options ?? [];
 const stopsOf = (c: PlannedChain, leg?: number) =>
   new Set(
     c.connections
@@ -97,6 +96,21 @@ suite('acceptance tours', { timeout }, () => {
   it('T5 non-GA: Wengen–Kleine Scheidegg flagged 50 % with GA', async () => {
     const r = await planned('T5');
     for (const c of chains(r)) expect(c.warnings.map((w) => w.key)).toContain('wGaHalf');
+  });
+
+  it('every tour offers options that leave at different times', async () => {
+    for (const id of Object.keys(tours)) {
+      const r = await planned(id);
+      const deps = chains(r).map((c) => c.dep);
+      expect(deps.length, id).toBeGreaterThan(0);
+      expect(new Set(deps).size, id).toBe(deps.length);
+      expect(chains(r), id).toContain(r.recommended);
+    }
+  });
+
+  it('T5 an hour later starts later', async () => {
+    const [a, b] = await Promise.all([planned('T5'), planned('T5L')]);
+    expect(Date.parse(b.options![0]!.dep)).toBeGreaterThan(Date.parse(a.options![0]!.dep));
   });
 
   it('T6 base tunnel: every chain over the mountain line', async () => {

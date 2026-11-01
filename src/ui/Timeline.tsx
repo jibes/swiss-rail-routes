@@ -15,14 +15,21 @@ import { TEMPLATES } from './TemplatePicker';
 import { go } from './useHash';
 
 type Status = 'planning' | 'done' | 'unavailable' | 'error';
-const VIEWS = ['earliest', 'recommended', 'latest'] as const;
+
+/** Earlier/Later move the tour's anchor time by an hour, within the day. */
+function shifted(time: string, min: number): string {
+  const [h, m] = time.split(':').map(Number) as [number, number];
+  const t = Math.min(23 * 60 + 59, Math.max(0, h * 60 + m + min));
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
 
 export function Timeline({ id }: { id: string }) {
   const t = useT();
   const tour = useTours((s) => s.tours.find((x) => x.id === id));
   const [status, setStatus] = useState<Status>('planning');
   const [result, setResult] = useState<PlanResult | null>(null);
-  const [view, setView] = useState<(typeof VIEWS)[number]>('recommended');
+  const [picked, setPicked] = useState<string | null>(null);
+  const update = useTours((s) => s.update);
   const [attempt, setAttempt] = useState(0);
   const [detail, setDetail] = useState('');
   const json = tour ? JSON.stringify(tour) : '';
@@ -34,7 +41,7 @@ export function Timeline({ id }: { id: string }) {
     (async () => {
       const saved = (await loadPlans())[current.id];
       // Plans saved before they carried their legs are planned again.
-      if (saved?.tourJson === json && saved.result.legs) {
+      if (saved?.tourJson === json && saved.result.legs && saved.result.options) {
         setResult(saved.result);
         setStatus('done');
         return;
@@ -70,7 +77,21 @@ export function Timeline({ id }: { id: string }) {
 
   if (!tour) return <NotFound />;
   const legs = result?.legs ?? expandLegs(tour);
-  const chain: PlannedChain | undefined = result?.[view];
+  const options = result?.options ?? [];
+  // The option shown: the one picked (by departure), else the recommended one.
+  const chain: PlannedChain | undefined =
+    options.find((c) => c.dep === picked) ?? result?.recommended ?? options[0];
+  const anchorTime = 'departAt' in tour.anchor ? tour.anchor.departAt : tour.anchor.arriveBy;
+  const shift = (min: number) => {
+    setPicked(null);
+    update(id, (x) => ({
+      ...x,
+      anchor:
+        'departAt' in x.anchor
+          ? { departAt: shifted(anchorTime, min) }
+          : { arriveBy: shifted(anchorTime, min) },
+    }));
+  };
 
   return (
     <main className="page timeline">
@@ -113,29 +134,38 @@ export function Timeline({ id }: { id: string }) {
           ))}
           {chain && (
             <>
-              <div role="tablist" className="tabs" aria-label={t('alternatives')}>
-                {VIEWS.map((v) => {
-                  const c = result[v];
-                  return (
+              {options.length > 1 ? (
+                <div role="tablist" className="tabs" aria-label={t('alternatives')}>
+                  {options.map((c) => (
                     <button
-                      key={v}
+                      key={c.dep}
                       role="tab"
                       type="button"
-                      aria-selected={view === v}
-                      disabled={!c}
-                      onClick={() => setView(v)}
+                      aria-selected={c === chain}
+                      onClick={() => setPicked(c.dep)}
                     >
-                      <span>{t(v)}</span>
-                      {c && (
-                        <span className="muted">
-                          {hhmm(c.dep)}–{hhmm(c.arr)} · {duration(minutesBetween(c.dep, c.arr))}
-                        </span>
-                      )}
+                      <span>
+                        {hhmm(c.dep)}–{hhmm(c.arr)}
+                      </span>
+                      <span className="muted">
+                        {duration(minutesBetween(c.dep, c.arr))}
+                        {c === result.recommended && <> · {t('recommended')}</>}
+                      </span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">{t('onlyOne')}</p>
+              )}
+              <div className="row shift">
+                <button type="button" onClick={() => shift(-60)}>
+                  ← {t('earlier')}
+                </button>
+                <button type="button" onClick={() => shift(60)}>
+                  {t('later')} →
+                </button>
               </div>
-              <div role="tabpanel">
+              <div role={options.length > 1 ? 'tabpanel' : undefined}>
                 <ChainView chain={chain} dwell={legs.map((l) => l.to.dwellMin)} />
               </div>
               <ExportSheet tour={tour} chain={chain} legs={legs} />
