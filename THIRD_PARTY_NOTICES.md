@@ -21,5 +21,7 @@ Map attribution is shown on the map itself.
 | idb-keyval                    | Apache-2.0   |
 | MapLibre GL JS                | BSD-3-Clause |
 | Workbox (via vite-plugin-pwa) | MIT          |
+| uqr (QR codes for sync)       | MIT          |
+| Capacitor                     | MIT          |
 
 Full licence texts ship in each package under `node_modules/<name>/LICENSE`.

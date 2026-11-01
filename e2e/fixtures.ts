@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 
 const DIR = 'tests/fixtures/ojp';
 const tours = readdirSync(DIR).filter((d) => /^T\d/.test(d));
@@ -16,6 +16,34 @@ export function recordedAnswer(body: string): string | null {
     if (existsSync(f)) return gunzipSync(readFileSync(f)).toString('utf8');
   }
   return null;
+}
+
+/** The Worker's sync mailbox, shared by every page of a run (ids are random per key). */
+const boxes = new Map<string, { v: number; data: string }>();
+
+/** Answers the Worker as the build expects it: recorded OJP answers and a sync mailbox. */
+export async function answerWorker(page: Page) {
+  await page.route('https://tiles.openfreemap.org/**', (r) => r.abort());
+  await page.route('https://ojp.invalid/**', async (route) => {
+    const req = route.request();
+    const sync = /\/sync\/([\w-]{43})$/.exec(new URL(req.url()).pathname);
+    if (sync) {
+      const id = sync[1]!;
+      const json = (status: number, body: unknown) =>
+        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      const cur = boxes.get(id);
+      if (req.method() === 'GET') return cur ? json(200, cur) : json(404, { v: 0 });
+      if (req.method() === 'DELETE') return (void boxes.delete(id), route.fulfill({ status: 204 }));
+      const { v, data } = req.postDataJSON() as { v: number; data: string };
+      if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });
+      boxes.set(id, { v: v + 1, data });
+      return json(200, { v: v + 1 });
+    }
+    const xml = recordedAnswer(req.postData() ?? '');
+    await (xml
+      ? route.fulfill({ status: 200, contentType: 'application/xml', body: xml })
+      : route.fulfill({ status: 500, body: 'no recorded answer' }));
+  });
 }
 
 export const test = base.extend<{ pageErrors: string[] }>({
@@ -31,13 +59,7 @@ export const test = base.extend<{ pageErrors: string[] }>({
         )
           errors.push(`console.error: ${m.text()}`);
       });
-      await page.route('https://tiles.openfreemap.org/**', (r) => r.abort());
-      await page.route('https://ojp.invalid/**', async (route) => {
-        const xml = recordedAnswer(route.request().postData() ?? '');
-        await (xml
-          ? route.fulfill({ status: 200, contentType: 'application/xml', body: xml })
-          : route.fulfill({ status: 500, body: 'no recorded answer' }));
-      });
+      await answerWorker(page);
       await use(errors);
       expect(errors, 'page errors').toEqual([]);
     },

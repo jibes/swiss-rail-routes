@@ -1,5 +1,6 @@
 // OJP proxy: typed JSON in, OJP XML out. Holds the key, limits per client IP.
-// POST /trip and /stops (cached 10 min), POST /journey (live calls of one train, cached 30 s).
+// POST /trip and /stops (cached 10 min), POST /journey (live calls of one train, cached 30 s),
+// GET/PUT/DELETE /sync/<id> (an encrypted blob per sync id, see sync.ts).
 // Standard Fetch API only, so tests run it in Node with fakes.
 import {
   cacheKeyOf,
@@ -10,6 +11,7 @@ import {
   stopRequestXml,
   tripRequestXml,
 } from '../../../src/core/ojp/request';
+import { SYNC_ID } from './sync';
 
 /** Request kinds: how to validate, how to build the OJP XML, how long to cache. */
 const KINDS = {
@@ -33,6 +35,8 @@ export interface Deps {
   now: () => Date;
   /** Keeps the cache write alive after the response is sent (ctx.waitUntil). */
   defer: (p: Promise<unknown>) => void;
+  /** Passes a sync request to the storage of its id (a Durable Object in production). */
+  sync: (id: string, req: Request) => Promise<Response>;
 }
 
 const REQUESTOR = 'swiss-rail-routes';
@@ -41,7 +45,7 @@ function cors(origin: string | null, allowed: string[]): Record<string, string> 
   if (!origin || !allowed.includes(origin)) return {};
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'POST',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -74,10 +78,24 @@ async function route(req: Request, d: Deps): Promise<Response> {
 
   if (origin && !h['Access-Control-Allow-Origin']) return reply(403, 'origin');
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
+
+  const path = new URL(req.url).pathname;
+  if (path.startsWith('/sync/')) {
+    const id = path.slice(6);
+    if (!SYNC_ID.test(id)) return reply(404, 'sync id');
+    if (!(await d.limit(`sync:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}`)))
+      return reply(429, 'rate', { 'Retry-After': '60' });
+    const res = await d.sync(id, req);
+    return new Response(res.body, {
+      status: res.status,
+      headers: { ...h, ...Object.fromEntries(res.headers) },
+    });
+  }
+
   if (req.method !== 'POST') return reply(405, 'method');
   if (!d.apiKey) return reply(503, 'not configured: OJP_API_KEY');
 
-  const kind = new URL(req.url).pathname.slice(1) as Kind;
+  const kind = path.slice(1) as Kind;
   if (!Object.hasOwn(KINDS, kind)) return reply(404, 'path');
   const spec = KINDS[kind];
 

@@ -1,8 +1,6 @@
 import type { Tour } from '../core/model';
 import { isRoundTrip, totalDwellMin } from '../core/tour';
-import { LANGS, type Lang } from '../i18n';
-import { usePrefs, useT } from '../store';
-import { Select } from './Select';
+import { useT } from '../store';
 import { useTours } from '../tours';
 import { dwellLabel } from './StopRow';
 import { Icon } from './icons';
@@ -42,8 +40,6 @@ function EmptyLine() {
 
 export function Home() {
   const t = useT();
-  const lang = usePrefs((s) => s.lang);
-  const setLang = usePrefs((s) => s.setLang);
   const tours = useTours((s) => s.tours);
   const create = useTours((s) => s.create);
   const index = useStopIndex();
@@ -92,13 +88,10 @@ export function Home() {
       )}
 
       <footer className="home-foot">
-        <Select
-          className="quiet"
-          label={t('language')}
-          value={lang}
-          options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))}
-          onChange={(l) => setLang(l as Lang)}
-        />
+        <a className="settings-link" href="#/settings">
+          <Icon name="gear" size={18} />
+          {t('settings')}
+        </a>
         <span>{t('build', { sha: __BUILD__.sha })}</span>
       </footer>
 

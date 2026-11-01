@@ -155,4 +155,36 @@ export const fr = {
   editTripHint:
     'Gares, arrêts, date et heure ; le voyage est replanifié. Annuler rétablit l’ancien plan.',
   planAgain: 'Planifier à nouveau',
+  settings: 'Réglages',
+  syncTitle: 'Synchroniser entre vos appareils',
+  syncIntro:
+    'Vos itinéraires et voyages sur chaque appareil, sans compte : une clé que vous gardez les relie. Seules des données chiffrées quittent cet appareil ; personne d’autre ne peut les lire.',
+  syncStart: 'Démarrer la synchro',
+  syncJoin: 'J’ai une clé',
+  syncKeyLabel: 'Clé de votre autre appareil',
+  syncJoinHint:
+    'Les itinéraires et voyages de cet appareil sont conservés et fusionnés avec les autres.',
+  syncJoinButton: 'Rejoindre la synchro',
+  syncUnavailable: 'La synchro a besoin du serveur de l’app, absent de cette version.',
+  syncing: 'Synchronisation…',
+  syncOffline: 'Hors ligne : synchronise au retour en ligne',
+  syncFailed: 'Échec de la synchro',
+  syncedAt: 'Synchronisé à {time}',
+  syncOn: 'La synchro est active',
+  syncNow: 'Synchroniser',
+  addDevice: 'Ajouter un appareil',
+  addDeviceHint:
+    'Scannez le code avec l’autre appareil, ou saisissez-y la clé : Réglages → J’ai une clé.',
+  qrLabel: 'Code QR avec la clé de synchro',
+  copyKey: 'Copier la clé',
+  keySecret:
+    'Qui a cette clé peut lire et modifier vos itinéraires et voyages. Si elle a fuité, créez-en une nouvelle.',
+  renewKey: 'Nouvelle clé',
+  renewConfirm: 'Nouvelle clé ? Les autres appareils devront rejoindre',
+  syncOff: 'Désactiver sur cet appareil',
+  syncOffConfirm: 'Désactiver ? Itinéraires et voyages restent ici',
+  lang_en: 'English',
+  lang_de: 'Deutsch',
+  lang_fr: 'Français',
+  lang_it: 'Italiano',
 } satisfies Catalogue;

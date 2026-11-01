@@ -10,6 +10,8 @@ interface TripsState {
   add: (t: Trip) => void;
   update: (id: string, edit: (t: Trip) => Trip) => void;
   remove: (id: string) => void;
+  /** Everything at once, saved at once (sync). */
+  replaceAll: (list: Trip[]) => void;
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -56,6 +58,10 @@ export const useTrips = create<TripsState>()((set, get) => ({
   },
   remove: (id) => {
     const trips = get().trips.filter((t) => t.id !== id);
+    set({ trips });
+    void persistNow(trips);
+  },
+  replaceAll: (trips) => {
     set({ trips });
     void persistNow(trips);
   },

@@ -11,6 +11,8 @@ interface ToursState {
   create: (tour?: Omit<Tour, 'id'>) => string;
   update: (id: string, edit: (t: Tour) => Tour) => void;
   remove: (id: string) => void;
+  /** Everything at once, saved at once (sync). */
+  replaceAll: (list: Tour[]) => void;
 }
 
 const newId = () => crypto.randomUUID();
@@ -69,6 +71,10 @@ export const useTours = create<ToursState>()((set, get) => ({
   },
   remove: (id) => {
     const tours = get().tours.filter((t) => t.id !== id);
+    set({ tours });
+    void persistNow(tours);
+  },
+  replaceAll: (tours) => {
     set({ tours });
     void persistNow(tours);
   },

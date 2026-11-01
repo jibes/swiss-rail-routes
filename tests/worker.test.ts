@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { handle, type Deps } from '../workers/ojp/src/handler';
+import { MAX_DATA, syncHandle, type SyncRecord } from '../workers/ojp/src/sync';
 
 const ORIGIN = 'https://jibes.github.io';
 const body = {
@@ -7,6 +8,8 @@ const body = {
   destination: { ref: '8509000', name: 'Chur' },
   time: '2026-11-07T08:00',
 };
+
+const syncBoxes = new Map<string, SyncRecord>();
 
 function setup(over: Partial<Deps> = {}) {
   const store = new Map<string, string>();
@@ -26,6 +29,14 @@ function setup(over: Partial<Deps> = {}) {
     limit: async () => true,
     now: () => new Date('2026-11-01T12:00:00Z'),
     defer: (p) => void pending.push(p),
+    sync: async (id, req) => {
+      const boxes = syncBoxes;
+      return syncHandle(req, {
+        get: async () => boxes.get(id),
+        put: async (r) => void boxes.set(id, r),
+        delete: async () => void boxes.delete(id),
+      });
+    },
     ...over,
   };
   const call = (path = '/trip', init: RequestInit = {}) =>
@@ -80,7 +91,7 @@ describe('OJP worker', () => {
     const { call } = setup();
     const res = await call('/trip', { method: 'OPTIONS', body: null });
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('POST');
+    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, PUT, DELETE');
   });
 
   it('rate-limits misses with 429', async () => {
@@ -132,5 +143,43 @@ describe('OJP worker', () => {
     await flush();
     expect((await call('/journey', { body })).headers.get('X-Cache')).toBe('hit');
     expect((await call('/journey', { body: '{"journey":"x"}' })).status).toBe(400);
+  });
+});
+
+describe('sync mailbox', () => {
+  const ID = 'a'.repeat(43);
+  const sync = (method: string, body?: unknown, id = ID) =>
+    setup().call(`/sync/${id}`, {
+      method,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+  it('stores one blob per id, version by version, and refuses a stale write', async () => {
+    syncBoxes.clear();
+    expect((await sync('GET')).status).toBe(404);
+    const first = await sync('PUT', { v: 0, data: 'abc' });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ v: 1 });
+    expect(first.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    // Another device that read nothing must merge first: it gets what is there.
+    const stale = await sync('PUT', { v: 0, data: 'other' });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({ v: 1, data: 'abc' });
+    expect((await sync('PUT', { v: 1, data: 'def' })).status).toBe(200);
+    expect(await (await sync('GET')).json()).toEqual({ v: 2, data: 'def' });
+    expect((await sync('DELETE')).status).toBe(204);
+    expect((await sync('GET')).status).toBe(404);
+  });
+
+  it('rejects odd ids, shapes and sizes', async () => {
+    expect((await sync('GET', undefined, 'short')).status).toBe(404);
+    expect((await sync('PUT', { v: -1, data: 'x' })).status).toBe(400);
+    expect((await sync('PUT', { v: 0, data: 'not base64url!' })).status).toBe(400);
+    expect((await sync('PUT', { v: 0, data: 'x'.repeat(MAX_DATA + 1) })).status).toBe(413);
+  });
+
+  it('answers the preflight for PUT', async () => {
+    const res = await setup().call(`/sync/${ID}`, { method: 'OPTIONS', body: undefined });
+    expect(res.headers.get('Access-Control-Allow-Methods')).toContain('PUT');
   });
 });

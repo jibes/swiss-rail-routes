@@ -156,4 +156,36 @@ export const de = {
   editTripHint:
     'Stationen, Aufenthalte, Datum und Zeit; die Reise wird neu geplant. Rückgängig holt den alten Plan zurück.',
   planAgain: 'Nochmals planen',
+  settings: 'Einstellungen',
+  syncTitle: 'Zwischen deinen Geräten synchronisieren',
+  syncIntro:
+    'Deine Routen und Reisen auf jedem Gerät, ohne Konto: ein Schlüssel, den nur du hast, verbindet sie. Nur verschlüsselte Daten verlassen dieses Gerät; niemand sonst kann sie lesen.',
+  syncStart: 'Synchronisierung starten',
+  syncJoin: 'Ich habe einen Schlüssel',
+  syncKeyLabel: 'Schlüssel von deinem anderen Gerät',
+  syncJoinHint:
+    'Routen und Reisen auf diesem Gerät bleiben und werden mit den anderen zusammengeführt.',
+  syncJoinButton: 'Synchronisierung beitreten',
+  syncUnavailable: 'Die Synchronisierung braucht den Server der App, den dieser Build nicht hat.',
+  syncing: 'Wird synchronisiert …',
+  syncOffline: 'Offline: synchronisiert, sobald wieder online',
+  syncFailed: 'Synchronisierung fehlgeschlagen',
+  syncedAt: 'Synchronisiert {time}',
+  syncOn: 'Synchronisierung ist an',
+  syncNow: 'Jetzt synchronisieren',
+  addDevice: 'Gerät hinzufügen',
+  addDeviceHint:
+    'Scanne den Code mit dem anderen Gerät oder tippe dort den Schlüssel ein: Einstellungen → Ich habe einen Schlüssel.',
+  qrLabel: 'QR-Code mit dem Synchronisierungsschlüssel',
+  copyKey: 'Schlüssel kopieren',
+  keySecret:
+    'Wer diesen Schlüssel hat, kann deine Routen und Reisen lesen und ändern. Ist er nach aussen gelangt, erstelle einen neuen.',
+  renewKey: 'Neuer Schlüssel',
+  renewConfirm: 'Neuer Schlüssel? Andere Geräte müssen neu beitreten',
+  syncOff: 'Auf diesem Gerät ausschalten',
+  syncOffConfirm: 'Ausschalten? Routen und Reisen bleiben hier',
+  lang_en: 'English',
+  lang_de: 'Deutsch',
+  lang_fr: 'Français',
+  lang_it: 'Italiano',
 } satisfies Catalogue;

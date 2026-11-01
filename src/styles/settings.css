@@ -1,0 +1,133 @@
+/* ─── Settings: language, sync ─── */
+
+.settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.setting > p {
+  margin: 0;
+}
+
+.sync-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.sync-state .text-button {
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.sync-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+
+.sync-dot.ok {
+  background: #1f9d55;
+}
+
+.sync-dot.syncing {
+  background: var(--rail);
+}
+
+.sync-dot.error {
+  background: var(--red);
+}
+
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.sync-key {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sync-key p {
+  margin: 0;
+}
+
+.sync-key .text-button {
+  align-self: flex-start;
+}
+
+/* The code stays dark on white in both themes, so every camera reads it. */
+.qr {
+  padding: 12px;
+  border-radius: var(--r);
+  background: #fff;
+  line-height: 0;
+}
+
+.qr svg {
+  width: 220px;
+  height: 220px;
+}
+
+.key {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  /* Wraps only at the dashes between groups of four. */
+  word-break: normal;
+  overflow-wrap: normal;
+  user-select: all;
+}
+
+.sync-join {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+}
+
+.sync-join label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.sync-join input {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  background: var(--surface);
+  font:
+    15px ui-monospace,
+    monospace;
+  letter-spacing: 0.04em;
+}
+
+.sync-join p {
+  margin: 0;
+}
+
+.settings .build {
+  margin-top: auto;
+  font-size: 13px;
+}

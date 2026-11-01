@@ -126,6 +126,17 @@ The trip screen follows the trip's time:
 - **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip). The two: where you get off, longest stay first; then spread out (farthest from the start and from the one picked). Shown as the placeholder; a saved trip keeps it as its name.
 - **Intermediate stops** expand on every ride; under way the ride being travelled shows them, the marker between the last stop passed and the next.
 
+## 3b. Sync between one's own devices (added 1 Nov 2026)
+
+Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start sync** makes a random 256-bit key, shown as 13 groups of four characters and as a QR code (a link `#/sync/<key>` that opens Settings to confirm); **I have a key** joins (typed in any case, with spaces or dashes; O/0 and I/L/1 read alike).
+
+- From the key each device derives (HKDF-SHA-256) an id and an AES-GCM key. The Worker stores one blob per id in a Durable Object: the routes and trips, deflated and encrypted. It never sees the key, names, stops or times.
+- Writes are compare-and-swap on a version: a device that read an old version gets the current one back (409), merges and tries again.
+- Merge per route and trip: the newer change wins; deletions travel as tombstones for 90 days. Changes are noticed by hashing each item, so the stores need no timestamps.
+- Sync runs on opening, when the app comes back into view and 3 s after a change.
+- **New key** moves everything to a new key and deletes the old blob (for a key that got out); other devices join again. **Turn off on this device** keeps its data.
+- Without the key nothing can be recovered; every device keeps its own copy either way.
+
 ## 4. Data sources
 
 Timetable and realtime from opentransportdata.swiss; one API key per service, held only as Worker secrets.

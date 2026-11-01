@@ -153,6 +153,37 @@ export const en = {
   editTripHint:
     'Stations, stays, date and time; the trip is planned anew. Undo brings back the old plan.',
   planAgain: 'Plan again',
+  settings: 'Settings',
+  syncTitle: 'Sync between your devices',
+  syncIntro:
+    'Your routes and trips on every device, without an account: a key you keep links them. Only encrypted data leaves this device; nobody else can read it.',
+  syncStart: 'Start sync',
+  syncJoin: 'I have a key',
+  syncKeyLabel: 'Key from your other device',
+  syncJoinHint: 'Routes and trips on this device are kept and merged with the others.',
+  syncJoinButton: 'Join sync',
+  syncUnavailable: "Sync needs the app's server, which this build does not have.",
+  syncing: 'Syncing…',
+  syncOffline: 'Offline: syncs when back online',
+  syncFailed: 'Sync failed',
+  syncedAt: 'Synced {time}',
+  syncOn: 'Sync is on',
+  syncNow: 'Sync now',
+  addDevice: 'Add a device',
+  addDeviceHint:
+    'Scan the code with the other device, or type the key there under Settings → I have a key.',
+  qrLabel: 'QR code with the sync key',
+  copyKey: 'Copy key',
+  keySecret:
+    'Whoever has this key can read and change your routes and trips. If it got out, make a new key.',
+  renewKey: 'New key',
+  renewConfirm: 'New key? Other devices must join again',
+  syncOff: 'Turn off on this device',
+  syncOffConfirm: 'Turn off? Routes and trips stay here',
+  lang_en: 'English',
+  lang_de: 'Deutsch',
+  lang_fr: 'Français',
+  lang_it: 'Italiano',
 };
 
 export type Catalogue = typeof en;

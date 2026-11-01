@@ -9,6 +9,8 @@ import { Timeline } from './ui/Timeline';
 import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
 import { EditTrip } from './ui/EditTrip';
+import { Settings } from './ui/Settings';
+import { watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
@@ -29,6 +31,8 @@ function Route({ hash: full }: { hash: string }) {
   if (foreign) return <SharedTour stops={foreign} query={q} />;
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips') return <Trips />;
+  if (hash === '/settings') return <Settings />;
+  if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;
   // `now` and `replan` are older addresses of the same two screens.
   const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
   if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditTrip id={tr[1]!} />;
@@ -74,6 +78,8 @@ export function App() {
     const timer = setTimeout(() => void scheduleTrips(trips, lang).catch(() => undefined), 500);
     return () => clearTimeout(timer);
   }, [trips, tripsLoaded, lang]);
+  // Sync once both lists are loaded; then on return to the app and after changes.
+  useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}`)), []);
   // Opening the app during a trip goes straight to "Now" (once, from the start screen).
   useEffect(() => {

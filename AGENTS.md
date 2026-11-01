@@ -27,6 +27,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 - e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (every option, export, map), so planner changes that break a screen fail before release.
 - Routes and Trips (SPEC §3a): `src/ui/TripView.tsx` (before / under way / after), `src/ui/EditTrip.tsx` (whole trip before departure, from here under way), `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (`srr.tours.v1`) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
 - Links (`src/core/export/routeLink.ts`): `#/r/<stops>?<settings>` is a route anywhere (`slug.<SLOID number>` plus modifiers, `@<template>` inserts one); a route's own address `#/tour/<id>[/plan]?s=<stops>&…` follows edits (`useAddress`, replaceState) and opens as that route on a device that lacks the id. `#/t/<base64>` stays readable (older links). Trips share as `#/j/` snapshots; their address stays local.
+- Sync (SPEC §3b): `src/core/sync.ts` (pure: key, HKDF, AES-GCM, stamps, merge), `src/io/sync.ts` (engine; `srr.sync.v1`), `src/ui/Settings.tsx`; Worker `workers/ojp/src/sync.ts` + Durable Object `SyncBox`. e2e answers `/sync/` from a shared in-memory mailbox (`answerWorker` in `e2e/fixtures.ts`).
 - Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
@@ -44,7 +45,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 ## Invariants
 
 - Storage keys follow `srr.<name>.v<N>`. Never rename an existing key: bump the version and migrate.
-- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device. CSP `connect-src` lists only the Worker and the tile host.
+- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device, except with sync on: routes and trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
 - API keys exist only as Worker secrets.
 - Curated data in `src/data/` is schema-checked by a test; a template change needs a fixture run of T1–T6.
 - Tests never hit the network: OJP answers are recorded fixtures. Live checks run only in `live.yml`.
