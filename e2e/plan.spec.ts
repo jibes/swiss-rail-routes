@@ -1,25 +1,7 @@
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
-
-// Built with VITE_OJP_URL=https://ojp.invalid (ci.yml); the Worker is answered from the
-// recorded T5 answers, keyed like tests/acceptance/ojp.ts.
-const answer = (body: string) => {
-  const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
-  const file = `tests/fixtures/ojp/T5/${key}.xml.gz`;
-  return existsSync(file) ? gunzipSync(readFileSync(file)).toString('utf8') : null;
-};
+import { expect, test } from './fixtures';
 
 test('plans T5 and shows the GA warning, alternatives and exports', async ({ page }) => {
-  await page.route('https://ojp.invalid/**', async (route) => {
-    const xml = answer(route.request().postData() ?? '');
-    await (xml
-      ? route.fulfill({ status: 200, contentType: 'application/xml', body: xml })
-      : route.fulfill({ status: 500, body: 'no fixture' }));
-  });
-
   await page.goto('./');
   await page.getByRole('button', { name: 'New tour' }).click();
   await page.getByLabel('Date').fill('2026-11-07');

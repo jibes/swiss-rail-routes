@@ -1,11 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('map opens for a tour and says so when tiles are unreachable', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  // Tests never reach the network: the tile host fails here.
-  await page.route('https://tiles.openfreemap.org/**', (r) => r.abort());
-
   await page.goto('./');
   await page.getByRole('button', { name: 'New tour' }).click();
   const search = page.locator('.picker input');
@@ -19,5 +14,4 @@ test('map opens for a tour and says so when tiles are unreachable', async ({ pag
   await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
   await page.getByRole('button', { name: /Back/ }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Untitled tour');
-  expect(errors).toEqual([]);
 });

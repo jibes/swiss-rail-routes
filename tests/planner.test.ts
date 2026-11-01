@@ -315,3 +315,29 @@ describe('repeated stops', () => {
     expect(d.tt.calls.every((q) => q.origin.ref !== q.destination.ref)).toBe(true);
   });
 });
+
+describe('planned legs', () => {
+  it('returns the legs it planned, one per connection, also for a turned loop', async () => {
+    // Zürich → Luzern → Zürich without a stop: the planner turns at Luzern (2 legs, 1 in the tour).
+    const out = conn(
+      ride('IR 70', [
+        ['Zürich HB', '08:04'],
+        ['Luzern', '08:45'],
+      ]),
+    );
+    const back = conn(
+      ride('IR 75', [
+        ['Luzern', '09:05'],
+        ['Zürich HB', '09:46'],
+      ]),
+    );
+    const t = tour('Zürich HB', (x) => setRoundTrip(addWaypoint(x, stop('Luzern')), true), '08:00');
+    const r = await plan(t, deps([out, back]).deps);
+    expect(r.legs!.map((l) => `${l.from.name}>${l.to.name}`)).toEqual([
+      'Zürich HB>Luzern',
+      'Luzern>Zürich HB',
+    ]);
+    for (const c of [r.earliest!, r.recommended!, r.latest!])
+      expect(c.connections).toHaveLength(r.legs!.length);
+  });
+});

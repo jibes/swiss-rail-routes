@@ -59,6 +59,9 @@ export interface PlanResult {
   relaxed: { legIndex: number; rule: Relaxed }[];
   /** First leg with no connection at all, even relaxed. */
   failedLeg?: number;
+  /** The legs actually planned (after merging repeated stops and turning loops); index i of
+   * every chain's connections belongs to legs[i]. Absent in plans saved before 2026-11-01. */
+  legs?: Leg[];
 }
 
 export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates' | 'segments'>): LegRules[] {
@@ -171,6 +174,7 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
   const width = deps.beamWidth ?? 6;
   const minTransfer = deps.minTransferMin ?? 3;
   const rulesList = legRules(tour, deps);
+  const legs = rulesList.map((r) => r.leg);
   const relaxedOut: PlanResult['relaxed'] = [];
   const cache = new Map<string, Connection[]>();
 
@@ -250,7 +254,7 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
         break;
       }
     }
-    if (!next.length) return { relaxed: relaxedOut, failedLeg: i };
+    if (!next.length) return { relaxed: relaxedOut, failedLeg: i, legs };
     // Keep the best, but always the earliest- and latest-starting chains for the 3 views.
     next.sort((a, b) => total(a) - total(b));
     const keep = new Set(next.slice(0, width));
@@ -272,6 +276,7 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
     earliest: by((a, b) => ms(a.dep) - ms(b.dep) || a.score - b.score),
     latest: by((a, b) => ms(b.dep) - ms(a.dep) || a.score - b.score),
     relaxed: relaxedOut,
+    legs,
   };
 }
 

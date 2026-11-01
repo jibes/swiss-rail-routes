@@ -3,9 +3,8 @@ import { toGpx } from '../core/export/gpx';
 import { toIcs } from '../core/export/ics';
 import { sbbUrl } from '../core/export/sbb';
 import { encodeTour } from '../core/export/share';
-import type { Tour } from '../core/model';
+import type { Leg, Tour } from '../core/model';
 import type { PlannedChain } from '../core/planner/plan';
-import { expandLegs } from '../core/tour';
 import { useT } from '../store';
 import { hhmm } from './format';
 
@@ -21,10 +20,17 @@ function download(name: string, type: string, text: string) {
 const fileName = (tour: Tour, ext: string) =>
   `${(tour.name || 'tour').replace(/[^\p{L}\p{N}]+/gu, '-')}-${tour.date}.${ext}`;
 
-export function ExportSheet({ tour, chain }: { tour: Tour; chain: PlannedChain }) {
+export function ExportSheet({
+  tour,
+  chain,
+  legs,
+}: {
+  tour: Tour;
+  chain: PlannedChain;
+  legs: Leg[];
+}) {
   const t = useT();
   const [copied, setCopied] = useState(false);
-  const legs = expandLegs(tour);
   const name = tour.name || t('untitled');
   return (
     <section className="export" aria-label={t('export')}>
@@ -62,13 +68,17 @@ export function ExportSheet({ tour, chain }: { tour: Tour; chain: PlannedChain }
         </button>
       </div>
       <ul className="sbb">
-        {chain.connections.map((c, i) => (
-          <li key={i}>
-            <a href={sbbUrl(legs[i]!, tour.date, hhmm(c.dep))} target="_blank" rel="noreferrer">
-              {t('openSbb', { from: legs[i]!.from.name, to: legs[i]!.to.name })}
-            </a>
-          </li>
-        ))}
+        {chain.connections.map((c, i) => {
+          const leg = legs[i];
+          if (!leg) return null;
+          return (
+            <li key={i}>
+              <a href={sbbUrl(leg, tour.date, hhmm(c.dep))} target="_blank" rel="noreferrer">
+                {t('openSbb', { from: leg.from.name, to: leg.to.name })}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

@@ -33,7 +33,8 @@ export function Timeline({ id }: { id: string }) {
     const ctrl = new AbortController();
     (async () => {
       const saved = (await loadPlans())[current.id];
-      if (saved?.tourJson === json) {
+      // Plans saved before they carried their legs are planned again.
+      if (saved?.tourJson === json && saved.result.legs) {
         setResult(saved.result);
         setStatus('done');
         return;
@@ -68,7 +69,7 @@ export function Timeline({ id }: { id: string }) {
   }, [json, attempt]);
 
   if (!tour) return <NotFound />;
-  const legs = expandLegs(tour);
+  const legs = result?.legs ?? expandLegs(tour);
   const chain: PlannedChain | undefined = result?.[view];
 
   return (
@@ -100,8 +101,8 @@ export function Timeline({ id }: { id: string }) {
             <p role="alert" className="chip red">
               {t('legFailed', {
                 n: result.failedLeg + 1,
-                from: legs[result.failedLeg]!.from.name,
-                to: legs[result.failedLeg]!.to.name,
+                from: legs[result.failedLeg]?.from.name ?? '',
+                to: legs[result.failedLeg]?.to.name ?? '',
               })}
             </p>
           )}
@@ -137,7 +138,7 @@ export function Timeline({ id }: { id: string }) {
               <div role="tabpanel">
                 <ChainView chain={chain} dwell={legs.map((l) => l.to.dwellMin)} />
               </div>
-              <ExportSheet tour={tour} chain={chain} />
+              <ExportSheet tour={tour} chain={chain} legs={legs} />
             </>
           )}
         </>

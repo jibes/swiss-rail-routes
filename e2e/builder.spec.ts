@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('builds a round trip from stations and a template, keeps it after reload', async ({
   page,

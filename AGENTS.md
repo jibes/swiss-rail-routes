@@ -24,6 +24,7 @@ Status: complete MVP path (builder, planner on real OJP answers, timeline, map, 
   - Category `PE` is also used for regular trains (Luzern-Interlaken Express). Reservation-only panorama trains carry attribute `A__PR`; product names (`BERNINA EXPRESS`) are matched against `ga.json`.
   - Cog railways come as PtMode `telecabin`/`funicular` with category `CC`; replacement buses as `EV`.
 - Acceptance tests (`tests/acceptance.test.ts`) replay the planner's own OJP requests from `tests/fixtures/ojp/<tour>/<sha1>.xml.gz` (tracks thinned to every 20th point). A planner change that alters its requests needs a re-record: `NODE_USE_ENV_PROXY=1 npm run record:ojp` with `OJP_API_KEY` set.
+- e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (all three alternatives, export, map), so planner changes that break a screen fail before release.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 
