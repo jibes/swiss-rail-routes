@@ -14,7 +14,7 @@ for (const scheme of ['light', 'dark'] as const) {
       page.screenshot({ path: `${dir}/${scheme}-${name}.png`, fullPage: full });
     const t3 = { ...acceptanceTours(FIXTURE_DATE).T3!, name: 'Voralpen-Express + Brünig' };
     await page.goto(`./${encodeTour(t3)}`);
-    await page.getByRole('button', { name: 'Save to my routes' }).click();
+    await page.getByRole('button', { name: 'Save as idea' }).click();
     await page.waitForTimeout(300);
     await shot('2-builder');
     await shot('2-builder-full', true);
@@ -33,7 +33,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15 Zürich
     const t5 = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Kleine Scheidegg' };
     await page.goto(`./${encodeTour(t5)}`);
-    await page.getByRole('button', { name: 'Save to my routes' }).click();
+    await page.getByRole('button', { name: 'Save as idea' }).click();
     await page.getByRole('button', { name: 'Plan' }).click();
     await page.getByRole('button', { name: 'Save trip' }).click();
     await page.locator('.row.ride.here').waitFor();

@@ -13,7 +13,7 @@ export interface TripVersion {
 
 export interface Trip extends TripVersion {
   id: string;
-  /** The saved route it came from, if any (a shared trip has none). */
+  /** The idea it was planned from (before 0.3.0 a route kept beside it; now the idea is gone). */
   routeId?: string;
   name: string;
   version: number;

@@ -3,7 +3,7 @@ import { expect, test } from './fixtures';
 
 test('plans T5 and shows the GA warning, alternatives and exports', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'New tour' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
   const search = page.locator('.picker input');
   await search.fill('Interlaken Ost');
   await search.press('Enter');

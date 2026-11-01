@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a) complete; Android shell with trip notifications. Next: SPEC §3 Should/Could items.
+Status: one object (ideas and trips in one list, one time-aware trip screen, one edit screen; SPEC §3a) complete; Android shell with trip notifications. Next: SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -25,7 +25,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
   - Cog railways come as PtMode `telecabin`/`funicular` with category `CC`; replacement buses as `EV`.
 - Acceptance tests (`tests/acceptance.test.ts`) replay the planner's own OJP requests from `tests/fixtures/ojp/<tour>/<sha1>.xml.gz` (tracks thinned to every 20th point). A planner change that alters its requests needs a re-record: `NODE_USE_ENV_PROXY=1 npm run record:ojp` with `OJP_API_KEY` set.
 - e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (every option, export, map), so planner changes that break a screen fail before release.
-- Routes and Trips (SPEC §3a): `src/ui/TripView.tsx` (before / under way / after), `src/ui/EditTrip.tsx` (whole trip before departure, from here under way), `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (`srr.tours.v1`) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
+- Ideas and Trips (SPEC §3a): `src/ui/Home.tsx` (the one list), the idea is the builder (`Builder.tsx`, `Timeline.tsx`; Save trip removes the idea), `src/ui/TripView.tsx` (before / under way / after), `src/ui/EditTrip.tsx` (whole trip before departure, from here under way), `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (ideas, `srr.tours.v1`; code still says tour) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
 - Links (`src/core/export/routeLink.ts`): `#/r/<stops>?<settings>` is a route anywhere (`slug.<SLOID number>` plus modifiers, `@<template>` inserts one); a route's own address `#/tour/<id>[/plan]?s=<stops>&…` follows edits (`useAddress`, replaceState) and opens as that route on a device that lacks the id. `#/t/<base64>` stays readable (older links). Trips share as `#/j/` snapshots; their address stays local.
 - Sync (SPEC §3b): `src/core/sync.ts` (pure: key, HKDF, AES-GCM, stamps, merge), `src/io/sync.ts` (engine; `srr.sync.v1`), `src/ui/Settings.tsx`, `src/ui/QrScanner.tsx` (BarcodeDetector, else lazy jsQR; e2e feeds a fake camera from an MJPEG, `e2e/scan.spec.ts`); Worker `workers/ojp/src/sync.ts` + Durable Object `SyncBox`. e2e answers `/sync/` from a shared in-memory mailbox (`answerWorker` in `e2e/fixtures.ts`).
 - Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
@@ -45,7 +45,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 
 ## Invariants
 
-- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.sync.v1`, `srr.syncLast.v1`; localStorage: `srr.prefs.v1`; sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
+- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.sync.v1`, `srr.syncLast.v1`; localStorage: `srr.prefs.v1`, `srr.oneList.v1` (routes folded into trips once, 0.3.0); sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
 - Leg queries (stops, date, time) go to the Worker; nothing else leaves the device, except with sync on: routes and trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
 - API keys exist only as Worker secrets.
 - Curated data in `src/data/` is schema-checked by a test; a template change needs a fixture run of T1–T6.

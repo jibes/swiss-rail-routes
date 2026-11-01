@@ -2,7 +2,7 @@
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** Routes (builder with drag and drop, route templates), planning with options and Earlier/Later, Trips (one screen through the day: timetable, then live delays, connections at risk and position on the line; edit all of it before departure, replan from here under way, undo; tickets, calendar, GPX, exact share links), map, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
+**Status:** One list of trips (an idea until planned: builder with drag and drop, route templates; planning with options and Earlier/Later; then one screen through the day: timetable, live delays, connections at risk, position on the line, edit before departure, replan from here, undo; copy as idea; tickets, calendar, GPX, exact share links), map, sync between your own devices, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 

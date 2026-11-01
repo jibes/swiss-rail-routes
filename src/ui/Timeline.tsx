@@ -39,6 +39,7 @@ export function Timeline({ id }: { id: string }) {
   const [picked, setPicked] = useState<string | null>(null);
   const update = useTours((s) => s.update);
   const addTrip = useTrips((s) => s.add);
+  const removeIdea = useTours((s) => s.remove);
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));
   const [attempt, setAttempt] = useState(0);
@@ -226,7 +227,10 @@ export function Timeline({ id }: { id: string }) {
                           new Date(),
                         ),
                       );
-                      go(`/trip/${tripId}`);
+                      // Planned, the idea becomes this trip (one object, SPEC §3a): the idea goes,
+                      // and Back does not lead to it. Removed after leaving its screen.
+                      location.replace(`#/trip/${tripId}`);
+                      setTimeout(() => removeIdea(id), 0);
                     }}
                   >
                     {t('saveTrip')}

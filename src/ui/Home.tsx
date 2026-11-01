@@ -6,7 +6,12 @@ import { madeHere, useTours } from '../tours';
 import { dwellLabel } from './StopRow';
 import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
-import { TabBar } from './TabBar';
+import { TripCard } from './TripCard';
+import { useLiveStatus } from './useLive';
+import { useNow } from './useNow';
+import { expectedArrival } from '../core/live';
+import { sortTrips } from '../core/trip';
+import { useTrips } from '../trips';
 import { go } from './useHash';
 import { useStopIndex } from './useStopIndex';
 import { autoName } from '../core/naming';
@@ -39,61 +44,99 @@ function EmptyLine() {
   );
 }
 
+/** An idea as a card: its line, where it goes, how long the stays add up to. */
+function IdeaCard({ tour, stop }: { tour: Tour; stop: Parameters<typeof autoName>[1] }) {
+  const t = useT();
+  const first = tour.waypoints[0]?.name;
+  const last = tour.waypoints.at(-1)?.name;
+  const route = !first
+    ? ''
+    : isRoundTrip(tour)
+      ? `${first} ↺`
+      : last && last !== first
+        ? `${first} → ${last}`
+        : first;
+  return (
+    <li>
+      <a href={`#/tour/${tour.id}`} className="tour-card idea">
+        <strong>{tour.name || autoName(tour, stop) || t('untitled')}</strong>
+        {tour.waypoints.length > 1 && <MiniLine tour={tour} />}
+        <span className="meta">
+          {route}
+          {totalDwellMin(tour) > 0 && ` · ${t('staysFor', { d: dwellLabel(totalDwellMin(tour)) })}`}
+        </span>
+      </a>
+    </li>
+  );
+}
+
+/**
+ * The one list (SPEC §3a): a trip is an idea until it is planned. Upcoming trips (the one
+ * under way first), ideas (no timetable yet), past trips.
+ */
 export function Home() {
   const t = useT();
   const tours = useTours((s) => s.tours);
+  const trips = useTrips((s) => s.trips);
+  const liveStatus = useLiveStatus((s) => s.status);
+  const now = useNow();
   const removeTour = useTours((s) => s.remove);
-  // "New tour" and then Back leaves an empty route: tidy it away on coming back (only when it
-  // has neither a station nor a name: a named one was meant).
+  // "New trip" and then Back leaves an empty idea: tidy it away on coming back (only one this
+  // device made, with neither a station nor a name).
   useEffect(() => {
-    // Only routes this device made itself: an empty one from another device may be filled there.
     for (const x of useTours.getState().tours)
       if (madeHere.has(x.id) && !x.waypoints.length && !x.name.trim()) removeTour(x.id);
   }, [removeTour]);
   const create = useTours((s) => s.create);
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));
+  const { current, past } = sortTrips(trips, now, (x) =>
+    expectedArrival(x.chain.connections, liveStatus),
+  );
 
   return (
-    <main className="page home with-tabs">
+    <main className="page home">
       <LiveBar />
       <header className="hero">
-        <h1>{t('routes')}</h1>
+        <h1>{t('trips')}</h1>
         <p>{t('tagline')}</p>
       </header>
 
-      {tours.length === 0 ? (
+      {!tours.length && !trips.length && (
         <div className="empty">
           <EmptyLine />
           <p>{t('noTours')}</p>
         </div>
-      ) : (
-        <ul className="tours" aria-label={t('savedTours')}>
-          {tours.map((tour) => {
-            const first = tour.waypoints[0]?.name;
-            const last = tour.waypoints.at(-1)?.name;
-            const route = !first
-              ? ''
-              : isRoundTrip(tour)
-                ? `${first} ↺`
-                : last && last !== first
-                  ? `${first} → ${last}`
-                  : first;
-            return (
-              <li key={tour.id}>
-                <a href={`#/tour/${tour.id}`} className="tour-card">
-                  <strong>{tour.name || autoName(tour, stop) || t('untitled')}</strong>
-                  {tour.waypoints.length > 1 && <MiniLine tour={tour} />}
-                  <span className="meta">
-                    {route}
-                    {totalDwellMin(tour) > 0 &&
-                      ` · ${t('staysFor', { d: dwellLabel(totalDwellMin(tour)) })}`}
-                  </span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+      )}
+      {current.length > 0 && (
+        <section>
+          <h2 className="section-label">{t('upcoming')}</h2>
+          <ul className="tours" aria-label={t('upcoming')}>
+            {current.map((x) => (
+              <TripCard key={x.id} trip={x} now={now} />
+            ))}
+          </ul>
+        </section>
+      )}
+      {tours.length > 0 && (
+        <section>
+          <h2 className="section-label">{t('savedTours')}</h2>
+          <ul className="tours" aria-label={t('savedTours')}>
+            {tours.map((x) => (
+              <IdeaCard key={x.id} tour={x} stop={stop} />
+            ))}
+          </ul>
+        </section>
+      )}
+      {past.length > 0 && (
+        <section>
+          <h2 className="section-label">{t('past')}</h2>
+          <ul className="tours past" aria-label={t('past')}>
+            {past.map((x) => (
+              <TripCard key={x.id} trip={x} now={now} />
+            ))}
+          </ul>
+        </section>
       )}
 
       <footer className="home-foot">
@@ -119,7 +162,6 @@ export function Home() {
           </button>
         </div>
       </div>
-      <TabBar />
     </main>
   );
 }

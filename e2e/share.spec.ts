@@ -23,7 +23,7 @@ test('a shared trip opens as planned, without replanning, and saves to Trips', a
   await page.goto(`./${hash}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shared T5');
   await expect(page.locator('.summary .big')).toContainText('09:04');
-  await page.getByRole('button', { name: 'Save to my trips' }).click();
+  await page.getByRole('button', { name: 'Save trip' }).click();
   await expect(page).toHaveURL(/#\/trip\//);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('link', { name: /Shared T5/ })).toBeVisible();
@@ -35,13 +35,13 @@ test('route links: a template by name, the address bar shares the route', async 
   browser,
 }) => {
   await page.goto('./#/r/@bernina');
-  await expect(page.getByText('Someone shared this tour with you.')).toBeVisible();
+  await expect(page.getByText('Someone shared this idea with you.')).toBeVisible();
   await expect(page.locator('.line .stop').first()).toContainText('St. Moritz');
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
 
   // The builder's address is the route (where, not when): readable, and it follows edits.
   await expect(page).toHaveURL(/#\/tour\/[\w-]+\?s=st-moritz\.\d+\.@bernina~[^&?]*tirano[^&?]*$/);
-  await page.getByLabel('Tour name').fill('Bernina day');
+  await page.getByLabel('Name', { exact: true }).fill('Bernina day');
   await expect(page).toHaveURL(/&name=Bernina%20day$/);
   const url = page.url();
 
@@ -62,7 +62,7 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   await page.addInitScript(() => Object.defineProperty(navigator, 'share', { value: undefined }));
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) });
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 shared' })}`);
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
 

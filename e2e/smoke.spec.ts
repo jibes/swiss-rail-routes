@@ -17,7 +17,7 @@ test('switches language and keeps it', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Language' }).click();
   await page.getByRole('option', { name: 'Deutsch' }).click();
   await page.getByRole('button', { name: 'Zurück' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routen');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Reisen');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 });

@@ -5,7 +5,7 @@ test('builds a round trip from stations and a template, keeps it after reload', 
   page,
 }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'New tour' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
 
   const search = page.locator('.picker input');
   await expect(search).toBeEnabled();
@@ -54,9 +54,9 @@ test('builds a round trip from stations and a template, keeps it after reload', 
     .getByRole('button', { name: /^Sarnen/ })
     .click();
   await page.getByRole('button', { name: 'Clear' }).click();
-  await page.getByLabel('Tour name').click();
+  await page.getByLabel('Name', { exact: true }).click();
   await expect(rows.filter({ hasText: 'Sarnen' })).toHaveCount(0);
-  await page.getByLabel('Tour name').fill('Brünig loop');
+  await page.getByLabel('Name', { exact: true }).fill('Brünig loop');
 
   const results = new AxeBuilder({ page }).analyze();
   const blocking = (await results).violations.filter(
@@ -68,14 +68,14 @@ test('builds a round trip from stations and a template, keeps it after reload', 
 
   await page.waitForTimeout(400); // debounced save
   await page.reload();
-  await expect(page.getByLabel('Tour name')).toHaveValue('Brünig loop');
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Brünig loop');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('link', { name: /Brünig loop/ })).toBeVisible();
 });
 
 test('reorders stations by dragging the grip, and with arrow keys', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'New tour' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
   const search = page.locator('.picker input');
   for (const name of ['Zürich HB', 'Luzern', 'Bern', 'Thun']) {
     await search.fill(name);
@@ -107,7 +107,7 @@ test('dragging while another station is being edited cancels the edit, deletes n
   page,
 }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: 'New tour' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
   const search = page.locator('.stop.add .picker input');
   for (const name of ['Zürich HB', 'Luzern', 'Zug', 'Arth-Goldau', 'Bern']) {
     await search.fill(name);
@@ -130,8 +130,8 @@ test('dragging while another station is being edited cancels the edit, deletes n
 
   // Leaving an edit by tapping another field keeps the focus there (the phone's keyboard opens).
   await page.getByRole('button', { name: /^Zug/ }).click();
-  await page.getByLabel('Tour name').click();
-  await expect(page.getByLabel('Tour name')).toBeFocused();
+  await page.getByLabel('Name', { exact: true }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
 });
 
 test('a crafted old #/t/ link cannot put a broken route into the app', async ({ page }) => {
@@ -151,8 +151,8 @@ test('a crafted old #/t/ link cannot put a broken route into the app', async ({ 
     }),
   ).toString('base64url');
   await page.goto(`./#/t/${odd}`);
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.getByRole('button', { name: 'Plan' }).waitFor();
   await page.goto('./');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routes');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Trips');
 });

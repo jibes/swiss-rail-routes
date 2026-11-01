@@ -11,7 +11,7 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.goto(
     `./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'From the phone' })}`,
   );
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.goto('./#/settings');
   await page.getByRole('button', { name: 'Start sync' }).click();
   await expect(page.getByRole('status')).toContainText(/Synced/);
@@ -34,8 +34,8 @@ test('sync: start on one device, join with the key on another, changes go both w
   await expect(laptop.getByRole('link', { name: /From the phone/ })).toBeVisible();
 
   // A route made on the laptop reaches the phone; one deleted there disappears here.
-  await laptop.getByRole('button', { name: 'New tour' }).click();
-  await laptop.getByLabel('Tour name').fill('From the laptop');
+  await laptop.getByRole('button', { name: 'New trip' }).click();
+  await laptop.getByLabel('Name', { exact: true }).fill('From the laptop');
   await laptop.waitForTimeout(3500); // sync 3 s after the last change
   await laptop.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.goto('./');
@@ -45,10 +45,10 @@ test('sync: start on one device, join with the key on another, changes go both w
 
   // An edit and a deletion of things both already have (the reported bug: neither went up).
   await page.getByRole('link', { name: /From the phone/ }).click();
-  await page.getByLabel('Tour name').fill('Renamed on the phone');
+  await page.getByLabel('Name', { exact: true }).fill('Renamed on the phone');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('link', { name: /From the laptop/ }).click();
-  await page.getByRole('button', { name: 'Delete tour' }).click();
+  await page.getByRole('button', { name: 'Delete idea' }).click();
   await page.getByRole('button', { name: 'Tap again to delete' }).click();
   await page.waitForTimeout(3500);
   await laptop.goto('./');

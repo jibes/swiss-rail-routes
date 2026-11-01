@@ -20,7 +20,7 @@ All colours, radii and spacing are CSS custom properties in `src/styles/base.css
 
 ## Navigation
 
-Two tabs, **Routes** (where) and **Trips** (when). Under way a trip shows itself live: a live bar on the lists, and the app opens to it.
+One list, no tabs: Upcoming, Ideas, Past (SPEC §3a). An idea is a trip without a timetable; planning turns it into the trip. Under way a trip shows itself live: a live bar on the list, and the app opens to it.
 
 ## Screens
 

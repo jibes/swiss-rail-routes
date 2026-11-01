@@ -8,7 +8,7 @@ import { expect, test } from './fixtures';
 test('a trip under way: next step, progress, the marker on the line', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // 08:50 in Zürich
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
 
@@ -57,13 +57,13 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.goto('./#/trips');
   await page.goto('./#/');
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routes');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Trips');
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15, on the R62
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
 
@@ -93,12 +93,12 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page.locator('.chain .leg')).toHaveCount(1);
 });
 
-test('one trip screen: edit all of it before departure, plan it again afterwards', async ({
+test('one object: an idea planned becomes the trip; edit before departure; copy as idea after', async ({
   page,
 }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) }); // 06:00, hours before
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Save as idea' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
 
@@ -115,20 +115,22 @@ test('one trip screen: edit all of it before departure, plan it again afterwards
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   await expect(page.getByText('Replanned', { exact: false })).toBeVisible();
 
-  // Afterwards: the record; its route still exists unchanged, so the trip opens it.
-  await page.clock.runFor('10:00:00');
-  const tripUrl = page.url();
-  await page.getByRole('button', { name: 'Open route' }).click();
-  await expect(page).toHaveURL(/#\/tour\//);
-  await expect(page.getByLabel('Tour name')).toHaveValue('T5');
+  // The idea it was planned from became this trip: the list holds it once.
+  await page.goto('./');
+  await expect(page.getByRole('list', { name: 'Ideas' })).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Upcoming' }).getByRole('link')).toHaveCount(1);
 
-  // With the route deleted, the trip saves itself as a new route (no date: a route is where).
-  await page.getByRole('button', { name: 'Delete tour' }).click();
-  await page.getByRole('button', { name: 'Tap again to delete' }).click();
-  await page.goto(tripUrl);
-  await page.getByRole('button', { name: 'Save as route' }).click();
-  await expect(page.getByLabel('Tour name')).toHaveValue('T5');
+  // Afterwards: the record, under Past; Copy as idea makes it a new idea to plan again.
+  await page.clock.runFor('10:00:00');
+  await page.reload();
+  await page.getByRole('list', { name: 'Past' }).getByRole('link').first().click();
+  await page.getByRole('button', { name: 'Copy as idea' }).click();
+  await expect(page).toHaveURL(/#\/tour\//);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('T5');
   await expect(
     page.getByRole('list', { name: 'Stops' }).getByRole('listitem').first(),
   ).toContainText('Interlaken Ost');
+  await page.goto('./');
+  await expect(page.getByRole('list', { name: 'Ideas' }).getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('list', { name: 'Past' }).getByRole('link')).toHaveCount(1);
 });

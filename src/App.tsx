@@ -6,7 +6,6 @@ import { Home } from './ui/Home';
 import { SharedTour } from './ui/SharedTour';
 import { SharedTrip } from './ui/SharedTrip';
 import { Timeline } from './ui/Timeline';
-import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
 import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
@@ -21,6 +20,8 @@ import { useHash } from './ui/useHash';
 
 /** Set once the app opened in this tab (srr.<name>.v<N>). */
 const OPENED = 'srr.opened.v1';
+/** Set once routes covered by a trip were folded into it (one list, 0.3.0). */
+const ONE_LIST = 'srr.oneList.v1';
 
 const MapView = lazy(() => import('./ui/MapView'));
 
@@ -34,7 +35,8 @@ function Route({ hash: full }: { hash: string }) {
   const foreign = tourId && !known && new URLSearchParams(q).get('s');
   if (foreign) return <SharedTour stops={foreign} query={q} />;
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
-  if (hash === '/trips') return <Trips />;
+  // One list now (Ideas and Trips together); the old Trips tab's address opens it.
+  if (hash === '/trips') return <Home />;
   if (hash === '/settings') return <Settings />;
   if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;
   // `now` and `replan` are older addresses of the same two screens.
@@ -82,6 +84,27 @@ export function App() {
     const timer = setTimeout(() => void scheduleTrips(trips, lang), 500);
     return () => clearTimeout(timer);
   }, [trips, tripsLoaded, lang]);
+  // One list (0.3.0): a route that a saved trip was planned from, unchanged since, was the same
+  // thing twice; the trip stays, the route goes. Once per device; other routes stay as ideas.
+  useEffect(() => {
+    if (!loaded || !tripsLoaded) return;
+    try {
+      if (localStorage.getItem(ONE_LIST)) return;
+      localStorage.setItem(ONE_LIST, '1');
+    } catch {
+      return;
+    }
+    const trips = useTrips.getState().trips;
+    for (const idea of useTours.getState().tours)
+      if (
+        trips.some(
+          (x) =>
+            x.routeId === idea.id &&
+            JSON.stringify(x.route.waypoints) === JSON.stringify(idea.waypoints),
+        )
+      )
+        useTours.getState().remove(idea.id);
+  }, [loaded, tripsLoaded]);
   // Sync once both lists are loaded; then on return to the app and after changes.
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.

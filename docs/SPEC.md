@@ -100,14 +100,18 @@ Must = MVP; Should = v1.1; Could = later.
 - [Should] One-page printout via print CSS (instead of a PDF library).
 - [Could] Notifications before each transfer and before a sunset-critical leg. Needs the Capacitor shell (local notifications); not possible reliably in a PWA.
 
-## 3a. Routes and Trips (added 1 Nov 2026, merged Trip and Now the same day)
+## 3a. One object: a trip, idea first (added 1 Nov 2026; one list since 0.3.0)
 
-Two questions, one kind of thing each (MECE). "Now" is not a thing of its own: it is a trip at a certain time.
+There is one kind of thing, the **trip**, in two states that cannot overlap. Under way and done are not states: they are a planned trip at a certain time, and its screen follows the clock.
 
-| Question | Thing     | Holds                                                                                                          | Screens                                     |
-| -------- | --------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Where?   | **Route** | Stations, stays, templates, round trip. No date: planning presets date, time, ticket from the values last used | Routes tab, builder; planning picks when    |
-| When?    | **Trip**  | A route frozen with its date, time, ticket and the chosen connections; one previous version for undo           | Trips tab, one trip screen, one edit screen |
+| State    | Holds                                                                                       | Its actions                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Idea** | Stations, stays, templates, round trip; no timetable                                        | **Plan** (date, time, ticket, an option): the idea becomes the trip and is gone; Share; Delete |
+| **Trip** | The idea frozen with its date, time, ticket and the chosen connections; one version to undo | **Edit** (see below); **Copy as idea** (stations and stays as a new idea); Share; Delete       |
+
+- **One list**, no tabs: Upcoming (a trip under way first), Ideas, Past. "New trip" and "From template" start an idea. To repeat a trip: Past → Copy as idea → Plan.
+- **Share** sends what it is: an idea as a route link (`#/r/`, opens as an idea), a trip with its times (`#/j/`, opens as a trip). A recipient who wants only the idea uses Copy as idea.
+- Upgrading to 0.3.0 removes, once per device, routes that a saved trip was planned from and that are unchanged since (the same thing twice); other routes stay as ideas. Storage and sync are unchanged: ideas are `srr.tours.v1`, trips `srr.trips.v1`.
 
 The trip screen follows the trip's time:
 
@@ -115,7 +119,7 @@ The trip screen follows the trip's time:
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Before (until 30 min before departure)                      | Date, departure–arrival, the timetable                                              | **Edit trip**: stations, stays, date, time, ticket, all of it  |
 | Under way (30 min before departure to 15 min after arrival) | Progress, the next step, connections at risk, the timetable live with where you are | **Replan from here**: the rest; the travelled part fixed, grey |
-| After                                                       | The record                                                                          | **Save as route** (or **Open route**)                          |
+| After                                                       | The record                                                                          | **Copy as idea**                                               |
 
 - **Save as route** (any time; the main action afterwards): the trip's stations and stays become a route, without date, time or ticket, the general from the specific (planning is the other way). If the route it came from still exists unchanged, it says **Open route** and opens that instead of making a copy.
 - Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.

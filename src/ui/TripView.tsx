@@ -61,7 +61,7 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
 /**
  * A saved trip, one screen for its whole life: before departure its timetable (edit all of
  * it), under way the same timetable live (next step, risks, where you are; change from here),
- * afterwards the record. Any time: save it as a route (or open the route it came from).
+ * afterwards the record. Any time: copy it as an idea, to plan it for another day.
  */
 export function TripView({ id }: { id: string }) {
   const t = useT();
@@ -69,17 +69,7 @@ export function TripView({ id }: { id: string }) {
   const trip = useTrips((s) => s.trips.find((x) => x.id === id));
   const remove = useTrips((s) => s.remove);
   const update = useTrips((s) => s.update);
-  const createRoute = useTours((s) => s.create);
-  // The route this trip came from, if it still exists with the same stations and stays.
-  const route = useTours((s) =>
-    trip
-      ? s.tours.find(
-          (x) =>
-            x.id === trip.routeId &&
-            JSON.stringify(x.waypoints) === JSON.stringify(trip.route.waypoints),
-        )
-      : undefined,
-  );
+  const createIdea = useTours((s) => s.create);
   const [confirm, setConfirm] = useState(false);
   const now = useNow();
   const liveStatus = useLiveStatus((s) => s.status);
@@ -93,27 +83,23 @@ export function TripView({ id }: { id: string }) {
     return (
       <main className="page">
         <p>{t('notFound')}</p>
-        <button type="button" className="secondary" onClick={() => go('/trips')}>
+        <button type="button" className="secondary" onClick={() => go('/')}>
           {t('back')}
         </button>
       </main>
     );
   const state = live.state;
-  // From the specific to the general: the trip's stations and stays as a route (no date).
-  const toRoute = () => {
-    if (route) return go(`/tour/${route.id}`);
+  // Copy as idea: the trip's stations and stays as a new idea, to plan for another day.
+  const copyAsIdea = () => {
     const { id: _id, ...r } = trip.route;
-    const routeId = createRoute({ ...r, name: trip.name });
-    update(id, (x) => ({ ...x, routeId }));
-    go(`/tour/${routeId}`);
+    go(`/tour/${createIdea({ ...r, name: trip.name })}`);
   };
-  const routeLabel = route ? t('openRoute') : t('saveAsRoute');
   const changes = trip.chain.connections.reduce((n, c) => n + c.transfers, 0);
 
   return (
     <main className={`page ${state ? 'now' : ''}`}>
       <header className="bar">
-        <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/trips')}>
+        <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
         </button>
         <h1>{trip.name || t('untitled')}</h1>
@@ -207,8 +193,8 @@ export function TripView({ id }: { id: string }) {
       <Tickets tour={trip.route} chain={trip.chain} legs={trip.legs} />
 
       {status !== 'past' && (
-        <button type="button" className="text-button" onClick={toRoute}>
-          {routeLabel}
+        <button type="button" className="text-button" onClick={copyAsIdea}>
+          {t('saveAsRoute')}
         </button>
       )}
 
@@ -218,7 +204,7 @@ export function TripView({ id }: { id: string }) {
         onClick={() => {
           if (!confirm) return setConfirm(true);
           remove(id);
-          go('/trips');
+          go('/');
         }}
       >
         {confirm ? t('confirmDeleteTrip') : t('deleteTrip')}
@@ -228,9 +214,9 @@ export function TripView({ id }: { id: string }) {
         <div className="dock-inner">
           <ExportButtons tour={trip.route} chain={trip.chain} uid={trip.id} />
           {status === 'past' || state?.phase === 'done' ? (
-            <button type="button" className="secondary wide" onClick={toRoute}>
+            <button type="button" className="secondary wide" onClick={copyAsIdea}>
               <Icon name="loop" />
-              {routeLabel}
+              {t('saveAsRoute')}
             </button>
           ) : (
             <a
