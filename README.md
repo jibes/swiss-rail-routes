@@ -2,7 +2,7 @@
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** app shell, tour model and edits, sunset, exports (share link, .ics, GPX), OJP Worker. Planner and screens follow [`docs/SPEC.md`](docs/SPEC.md).
+**Status:** tour builder (station search, route templates, stops with dwell, round trip, depart/arrive-by), planner and warnings, timeline with 3 alternatives, exports (share link, .ics, GPX, sbb.ch per leg), OJP Worker, monthly stop index. Missing: OJP answer parser (needs recorded answers), map. See [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Run
 

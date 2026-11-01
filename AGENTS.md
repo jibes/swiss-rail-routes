@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md).
 
-Status: core (tour, edits, sun, exports), OJP request builder and Worker. Next: OJP parser + recorded fixtures (needs network to `api.opentransportdata.swiss`), stop index, curated data, planner, screens.
+Status: builder, planner, warnings, timeline, exports, Worker, stop index, curated data. Next: OJP parser from recorded fixtures (`npm run record:ojp`, needs `OJP_API_KEY` in the session), then the map, `live.yml`, gallery photos.
 
 ## Stack
 
@@ -20,6 +20,9 @@ Status: core (tour, edits, sun, exports), OJP request builder and Worker. Next: 
 - `workers/ojp/src/handler.ts` uses only the standard Fetch API with injected deps (tested in Node); `index.ts` wires Cloudflare bindings. Its OJP element names are unverified until fixtures are recorded.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
+
+- Curated data: `src/data/templates.json`, `segments.json`, `ga.json` (types in `src/core/data.ts`). Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
+- `src/core/export/sbb.ts` uses the old sbb.ch timetable URL; unverified, check when touching exports.
 
 ## Invariants
 
