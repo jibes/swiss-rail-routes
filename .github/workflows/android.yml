@@ -1,0 +1,275 @@
+name: Android
+
+on:
+  pull_request:
+    paths: &app
+      - 'src/**'
+      - 'public/**'
+      - 'android/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.ts'
+      - 'vite.config.ts'
+      - 'scripts/android-smoke.sh'
+      - '.github/workflows/android.yml'
+  push:
+    branches: [main]
+    paths: *app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Builds the APK and smoke-tests it on an emulator. No secrets in this job: npm ci runs
+  # third-party install scripts, and pull requests run it too. The APK leaves it unsigned;
+  # the emulator gets a copy signed with a throwaway key made on the spot.
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.apk.outputs.version }}
+    steps:
+      # The runner ships JDK 21 and the Android SDK; no setup actions needed.
+      - run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check
+
+      - name: Build web and sync into the shell
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          npm run build
+          npx cap sync android
+        env:
+          # The app is served from https://localhost (Worker ALLOWED_ORIGINS lists it).
+          VITE_BASE: ./
+          VITE_OJP_URL: ${{ vars.OJP_WORKER_URL }}
+
+      # The wrapper JAR runs with the build's rights: it must be Gradle's own (gradle.org's
+      # published checksum for the version in gradle-wrapper.properties).
+      - name: Check the Gradle wrapper
+        run: echo "7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172  android/gradle/wrapper/gradle-wrapper.jar" | sha256sum -c -
+
+      - name: Assemble unsigned release APK
+        working-directory: android
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Name it, and sign a copy for the emulator
+        id: apk
+        run: |
+          version=$(node -p "require('./package.json').version")
+          unsigned="swiss-rail-routes-v$version-unsigned.apk"
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          # Aligned before any signing, as apksigner requires.
+          "$tools"zipalign -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$unsigned"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/smoke.jks" -storepass smoke-only \
+            -alias smoke -keyalg RSA -keysize 2048 -validity 1 -dname CN=smoke >/dev/null
+          "$tools"apksigner sign --ks "$RUNNER_TEMP/smoke.jks" --ks-pass pass:smoke-only \
+            --out smoke.apk "$unsigned"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "unsigned=$unsigned" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apk-unsigned
+          path: ${{ steps.apk.outputs.unsigned }}
+          retention-days: 14
+
+      # Smoke test on an emulator before anything is published: install, launch, look.
+      # Uses the runner's SDK directly instead of a third-party emulator action.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The Android the app targets (36); installed without any permission granted, as on a phone.
+      - name: Start emulator
+        env:
+          IMAGE: system-images;android-36;google_apis;x86_64
+        run: |
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | "$sdk/sdkmanager" --licenses >/dev/null || true
+          "$sdk/sdkmanager" --install platform-tools emulator "$IMAGE" >/dev/null
+          # adb is not on the runner's PATH; this step and the smoke test need it.
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          # One AVD directory for both tools; by default they disagree on the runner.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          echo no | "$sdk/avdmanager" create avd -n smoke -k "$IMAGE" -d pixel_6 --force
+          "$ANDROID_HOME/emulator/emulator" -list-avds
+          nohup "$ANDROID_HOME/emulator/emulator" -avd smoke -no-window -no-audio -no-boot-anim \
+            -no-snapshot -gpu swiftshader_indirect -camera-back none > emulator.log 2>&1 &
+          # Bounded waits: a boot that never finishes fails here with its log, not at the job limit.
+          if ! timeout 600 bash -c 'adb wait-for-device && until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = 1 ]; do sleep 3; done'; then
+            echo "::error::emulator did not boot"
+            tail -n 80 emulator.log
+            exit 1
+          fi
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      - name: Smoke test
+        run: scripts/android-smoke.sh smoke.apk
+
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-smoke
+          path: |
+            smoke/
+            emulator.log
+          retention-days: 14
+
+  # The latest screenshot also goes to the orphan branch ci-smoke (force-pushed, one commit),
+  # so it can be looked at without downloading artifacts; also after a failed smoke test.
+  screenshot:
+    needs: apk
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.apk.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push ci-smoke
+      actions: read # gh run download
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dir=$(mktemp -d)
+          if ! gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n android-smoke -D "$dir/in"; then
+            echo "No smoke artifact."
+            exit 0
+          fi
+          [ -f "$dir/in/smoke/screen.png" ] || { echo "No screenshot."; exit 0; }
+          mkdir "$dir/out"
+          cp "$dir/in/smoke/screen.png" "$dir/out/screen.png"
+          cp "$dir/in/smoke/logcat.txt" "$dir/out/logcat.txt" 2>/dev/null || true
+          cd "$dir/out"
+          git init -q -b ci-smoke
+          git add -A
+          git -c user.name="github-actions" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Smoke screenshot for $GITHUB_SHA"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-smoke
+
+  # The web app's checks and end-to-end tests, as the web deploy runs them: an APK carries the
+  # same app, so it is published only when they pass too.
+  web:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    uses: ./.github/workflows/ci.yml
+
+  # Signs the tested APK with the release key and publishes it. Only on main, only after the
+  # smoke test and the web app's tests passed; the key never meets npm, Gradle or the code under
+  # test.
+  release:
+    needs: [apk, web]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # The signing secrets belong in this environment, limited to main (repository settings).
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # gh release create
+      actions: read # gh run download
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # Before the key is touched: a released version signs nothing, and only a plain x.y.z
+      # newer than the last release is published (a pre-release would share its versionCode).
+      - name: Check the version
+        id: version
+        env:
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION is already released."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$VERSION is not a plain x.y.z version"
+            exit 1
+          fi
+          latest=$(git tag -l 'v*' | sort -V | tail -1)
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "v$VERSION" | sort -V | tail -1)" != "v$VERSION" ]; then
+            echo "::error::v$VERSION is not newer than $latest"
+            exit 1
+          fi
+          echo "new=true" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the unsigned APK
+        if: steps.version.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n apk-unsigned -D in
+
+      - name: Sign
+        if: steps.version.outputs.new == 'true'
+        id: sign
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set; nothing is signed or published."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          out="swiss-rail-routes-v$VERSION.apk"
+          "$tools"apksigner sign --ks "$RUNNER_TEMP/release.jks" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --key-pass env:ANDROID_KEY_PASSWORD --out "$out" "in/swiss-rail-routes-v$VERSION-unsigned.apk"
+          rm -f "$RUNNER_TEMP/release.jks"
+          "$tools"apksigner verify --print-certs "$out" | tee signer.txt
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Check the release signer
+        if: steps.sign.outputs.signed == 'true'
+        run: |
+          expected=$(sed -n 's/^SHA-256 (release certificate): //p' README.md | tr -d ': ' | tr 'A-F' 'a-f')
+          # apksigner prefixes lines with "Signer #1" or "V2 Signer" depending on schemes present.
+          actual=$(grep -m1 -oE 'certificate SHA-256 digest: [0-9a-f]{64}' signer.txt | awk '{print $NF}')
+          echo "expected $expected"; echo "actual   $actual"
+          [ -n "$expected" ] && [ "$expected" = "$actual" ]
+
+      # A version bump on main publishes itself: release when v<version> has no tag yet.
+      - name: Release
+        if: steps.sign.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.apk.outputs.version }}
+          FILE: ${{ steps.sign.outputs.file }}
+        run: |
+          gh release create "v$VERSION" "$FILE" \
+            --target "$GITHUB_SHA" \
+            --title "Rail Day Trip $VERSION" \
+            --generate-notes \
+            --notes "Install or update with Obtainium: add https://github.com/${{ github.repository }}"

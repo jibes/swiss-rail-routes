@@ -1,6 +1,6 @@
 {
   "name": "swiss-rail-routes",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",
@@ -22,9 +22,13 @@
     "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
     "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
     "data:stops": "node --experimental-strip-types scripts/build-stops.ts",
-    "data:ga": "node --experimental-strip-types scripts/build-ga.ts"
+    "data:ga": "node --experimental-strip-types scripts/build-ga.ts",
+    "android:sync": "npm run build && cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/local-notifications": "^8.3.1",
     "fast-xml-parser": "^5.11.2",
     "idb-keyval": "^6.3.0",
     "maplibre-gl": "^6.16.0",
@@ -34,6 +38,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@capacitor/cli": "^8.6.0",
     "@cloudflare/workers-types": "^5.20261101.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",

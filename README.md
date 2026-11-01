@@ -19,12 +19,25 @@ Planning needs `VITE_OJP_URL` (the Worker). For the e2e tests build with `VITE_O
 | `check`                     | typecheck, lint, format:check, unit tests             |
 | `e2e`                       | Playwright smoke against `vite preview` (build first) |
 | `icons`                     | Renders `public/icons/icon.svg` to the manifest PNGs  |
+| `android:sync`              | Builds the web app and copies it into `android/`      |
 
 Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
 ## Deploy
 
 `main` deploys to GitHub Pages after all checks pass (`.github/workflows/deploy.yml`). Repo setting: Pages source "GitHub Actions". No branch protection; direct pushes to `main` are fine because deploy is gated on CI.
+
+## Android
+
+`android/` is a Capacitor shell (app ID `ch.brunodev.swissrailroutes`, permanent) around the same web build. It adds trip notifications: 10 min before each departure, 5 min before each stop to get off, and 10 min before a highlight (with sunset time when it is near). They are scheduled on the phone from the saved timetable (`src/io/notifications.ts`), so they need no network and do not follow live delays.
+
+Install and update with [Obtainium](https://github.com/ImranR98/Obtainium): add `https://github.com/jibes/swiss-rail-routes`.
+
+`android.yml` builds an unsigned APK, smoke-tests it on an Android 16 emulator, waits for the web checks, then signs it and publishes GitHub release `v<version>` when `package.json` `version` has no tag yet. versionCode = major·10⁷ + minor·10⁵ + patch·10³.
+
+Signing (one-time): environment `release` (Settings → Environments, deployment branches: `main`) with secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Without them the APK is built and tested but not published. The release job refuses a signer other than:
+
+SHA-256 (release certificate): not set yet
 
 ## OJP Worker
 
@@ -41,7 +54,7 @@ Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a cu
 
 ## Privacy
 
-Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking.
+Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. The Android app schedules its notifications on the phone.
 
 ## Third-party data and code
 

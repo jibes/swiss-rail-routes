@@ -136,4 +136,13 @@ export const fr = {
   changeTo: 'Au lieu de {name}',
   travelled: 'Parcouru',
   fromHere: 'D’ici · {time}',
+  nChannel: 'Alertes de voyage',
+  nDepartTitle: '{line} vers {to} · {time}',
+  nDepartBody: 'Depuis {from}{platform}, dans 10 min',
+  nExitTitle: 'Descendre à {stop}',
+  nExitBody: 'Arrivée {time}, dans 5 min',
+  nHighlightTitle: '{name} dans 10 min',
+  nSideRight: 'Asseyez-vous à droite',
+  nSideLeft: 'Asseyez-vous à gauche',
+  nSunset: 'Coucher du soleil {time}',
 } satisfies Catalogue;

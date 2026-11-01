@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: Routes · Trips · Now complete (SPEC §3a). Next: SPEC §3 Should/Could items (notifications need the Capacitor shell).
+Status: Routes · Trips · Now complete (SPEC §3a); Android shell with trip notifications. Next: SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -32,6 +32,13 @@ Status: Routes · Trips · Now complete (SPEC §3a). Next: SPEC §3 Should/Could
 
 - Curated data: `src/data/templates.json`, `segments.json` (types in `src/core/data.ts`). `ga.json` is generated (`npm run data:ga`) from SBB's OSDM fares; it covers fares SBB sells, so other operators' summit lines (Niesen, Harder…) are missing, never guessed. Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
 - `src/core/export/sbb.ts` uses the old sbb.ch timetable URL; unverified, check when touching exports.
+
+## Android
+
+- Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only.
+- Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight) and `src/io/notifications.ts` (cancels and reschedules all on every trips change; no-op on the web). Texts in i18n (`n*`).
+- Icon: launcher vectors in `android/app/src/main/res/drawable` follow logo set A (`docs/design/logos/`), provisional until a set is chosen.
+- Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.
 
 ## Invariants
 

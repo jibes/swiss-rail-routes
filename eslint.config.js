@@ -4,7 +4,16 @@ import globals from 'globals';
 import ts from 'typescript-eslint';
 
 export default ts.config(
-  { ignores: ['dist/', '.wrangler/', 'coverage/', 'playwright-report/', 'test-results/'] },
+  {
+    ignores: [
+      'dist/',
+      'android/',
+      '.wrangler/',
+      'coverage/',
+      'playwright-report/',
+      'test-results/',
+    ],
+  },
   js.configs.recommended,
   ...ts.configs.recommended,
   reactHooks.configs.flat.recommended,

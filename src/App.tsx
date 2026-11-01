@@ -11,6 +11,8 @@ import { TripView } from './ui/TripView';
 import { NowView } from './ui/NowView';
 import { ReplanView } from './ui/ReplanView';
 import { liveTrip } from './core/trip';
+import { onNotificationTap, scheduleTrips } from './io/notifications';
+import { isNative } from './native';
 import { useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
@@ -59,6 +61,14 @@ export function App() {
     void load();
     void loadTrips();
   }, [load, loadTrips]);
+  // Android: trip notifications follow the saved trips (scheduled anew on every change).
+  const trips = useTrips((s) => s.trips);
+  useEffect(() => {
+    if (!tripsLoaded) return;
+    const timer = setTimeout(() => void scheduleTrips(trips, lang).catch(() => undefined), 500);
+    return () => clearTimeout(timer);
+  }, [trips, tripsLoaded, lang]);
+  useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}/now`)), []);
   // Opening the app during a trip goes straight to "Now" (once, from the start screen).
   useEffect(() => {
     if (!tripsLoaded || opened.current) return;
@@ -71,7 +81,7 @@ export function App() {
   return (
     <>
       {loaded && tripsLoaded ? <Route hash={hash} /> : null}
-      <UpdateBanner />
+      {!isNative && <UpdateBanner />}
     </>
   );
 }

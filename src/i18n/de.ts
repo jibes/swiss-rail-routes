@@ -137,4 +137,13 @@ export const de = {
   changeTo: 'Statt {name}',
   travelled: 'Gefahren',
   fromHere: 'Ab hier · {time}',
+  nChannel: 'Reise-Hinweise',
+  nDepartTitle: '{line} nach {to} · {time}',
+  nDepartBody: 'Ab {from}{platform}, in 10 Min.',
+  nExitTitle: 'Aussteigen in {stop}',
+  nExitBody: 'Ankunft {time}, in 5 Min.',
+  nHighlightTitle: '{name} in 10 Min.',
+  nSideRight: 'Rechts sitzen',
+  nSideLeft: 'Links sitzen',
+  nSunset: 'Sonnenuntergang {time}',
 } satisfies Catalogue;

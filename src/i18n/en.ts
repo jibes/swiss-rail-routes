@@ -134,6 +134,15 @@ export const en = {
   changeTo: 'Instead of {name}',
   travelled: 'Travelled',
   fromHere: 'From here · {time}',
+  nChannel: 'Trip alerts',
+  nDepartTitle: '{line} to {to} · {time}',
+  nDepartBody: 'From {from}{platform}, in 10 min',
+  nExitTitle: 'Get off at {stop}',
+  nExitBody: 'Arrival {time}, in 5 min',
+  nHighlightTitle: '{name} in 10 min',
+  nSideRight: 'Sit on the right',
+  nSideLeft: 'Sit on the left',
+  nSunset: 'Sunset {time}',
 };
 
 export type Catalogue = typeof en;

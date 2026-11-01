@@ -137,4 +137,13 @@ export const it = {
   changeTo: 'Invece di {name}',
   travelled: 'Percorso',
   fromHere: 'Da qui · {time}',
+  nChannel: 'Avvisi di viaggio',
+  nDepartTitle: '{line} per {to} · {time}',
+  nDepartBody: 'Da {from}{platform}, tra 10 min',
+  nExitTitle: 'Scendere a {stop}',
+  nExitBody: 'Arrivo {time}, tra 5 min',
+  nHighlightTitle: '{name} tra 10 min',
+  nSideRight: 'Siediti a destra',
+  nSideLeft: 'Siediti a sinistra',
+  nSunset: 'Tramonto {time}',
 } satisfies Catalogue;
