@@ -122,4 +122,15 @@ describe('OJP worker', () => {
     expect(r2.status).toBe(500);
     expect(r2.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
   });
+
+  it('answers live journey calls, cached briefly', async () => {
+    const { call, upstream, flush } = setup();
+    const body = JSON.stringify({ journey: 'ch:1:sjyid:100001:726-001', day: '2026-11-01' });
+    const res = await call('/journey', { body });
+    expect(res.status).toBe(200);
+    expect(String(upstream.mock.calls[0]![1]!.body)).toContain('<OJPTripInfoRequest>');
+    await flush();
+    expect((await call('/journey', { body })).headers.get('X-Cache')).toBe('hit');
+    expect((await call('/journey', { body: '{"journey":"x"}' })).status).toBe(400);
+  });
 });

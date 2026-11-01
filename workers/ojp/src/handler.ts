@@ -2,11 +2,22 @@
 // Standard Fetch API only, so tests run it in Node with fakes.
 import {
   cacheKeyOf,
+  journeyRequestXml,
+  parseJourneyQuery,
   parseStopQuery,
   parseTripQuery,
   stopRequestXml,
   tripRequestXml,
 } from '../../../src/core/ojp/request';
+
+/** Request kinds: how to validate, how to build the OJP XML, how long to cache. */
+const KINDS = {
+  trip: { parse: parseTripQuery, xml: tripRequestXml, cache: 600 },
+  stops: { parse: parseStopQuery, xml: stopRequestXml, cache: 600 },
+  // Live calls of one vehicle: real time, so only briefly cached.
+  journey: { parse: parseJourneyQuery, xml: journeyRequestXml, cache: 30 },
+} as const;
+type Kind = keyof typeof KINDS;
 
 export interface Deps {
   apiKey: string;
@@ -23,7 +34,6 @@ export interface Deps {
   defer: (p: Promise<unknown>) => void;
 }
 
-export const CACHE_SECONDS = 600;
 const REQUESTOR = 'swiss-rail-routes';
 
 function cors(origin: string | null, allowed: string[]): Record<string, string> {
@@ -66,8 +76,9 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (req.method !== 'POST') return reply(405, 'method');
   if (!d.apiKey) return reply(503, 'not configured: OJP_API_KEY');
 
-  const path = new URL(req.url).pathname;
-  if (path !== '/trip' && path !== '/stops') return reply(404, 'path');
+  const kind = new URL(req.url).pathname.slice(1) as Kind;
+  if (!Object.hasOwn(KINDS, kind)) return reply(404, 'path');
+  const spec = KINDS[kind];
 
   let body: unknown;
   try {
@@ -75,8 +86,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
   } catch {
     return reply(400, 'json');
   }
-  const kind = path === '/trip' ? 'trip' : 'stops';
-  const q = kind === 'trip' ? parseTripQuery(body) : parseStopQuery(body);
+  const q = spec.parse(body);
   if (typeof q === 'string') return reply(400, q);
 
   const cacheReq = new Request(`https://cache.invalid/${await sha256(cacheKeyOf(kind, q))}`);
@@ -91,10 +101,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (!(await d.limit(req.headers.get('CF-Connecting-IP') ?? 'unknown')))
     return reply(429, 'rate', { 'Retry-After': '60' });
 
-  const xml =
-    kind === 'trip'
-      ? tripRequestXml(q as Parameters<typeof tripRequestXml>[0], d.now(), REQUESTOR)
-      : stopRequestXml(q as Parameters<typeof stopRequestXml>[0], d.now(), REQUESTOR);
+  const xml = (spec.xml as (q: unknown, now: Date, r: string) => string)(q, d.now(), REQUESTOR);
 
   let up: Response;
   try {
@@ -115,7 +122,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
       new Response(text, {
         headers: {
           'Content-Type': 'application/xml',
-          'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+          'Cache-Control': `public, max-age=${spec.cache}`,
         },
       }),
     ),

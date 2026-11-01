@@ -25,6 +25,13 @@ export interface StopQuery {
   results: number;
 }
 
+export interface JourneyQuery {
+  /** OJP JourneyRef, e.g. `ch:1:sjyid:100001:726-001`. */
+  journey: string;
+  /** Operating day, `YYYY-MM-DD`. */
+  day: string;
+}
+
 export const LIMITS = { vias: 20, notVias: 20, results: 10, text: 80 } as const;
 
 const REF = /^(ch:1:sloid:\d{1,7}(:\d+){0,2}|\d{7})$/;
@@ -80,6 +87,22 @@ export function parseStopQuery(v: unknown): StopQuery | string {
   if (!Number.isInteger(results) || (results as number) < 1 || (results as number) > LIMITS.results)
     return 'results';
   return { text, results: results as number };
+}
+
+const JOURNEY = /^ch:1:sjyid:[\w:.-]{1,80}$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function parseJourneyQuery(v: unknown): JourneyQuery | string {
+  if (!isObj(v) || typeof v.journey !== 'string' || !JOURNEY.test(v.journey)) return 'journey';
+  if (typeof v.day !== 'string' || !DAY.test(v.day) || Number.isNaN(Date.parse(v.day)))
+    return 'day';
+  return { journey: v.journey, day: v.day };
+}
+
+/** `2026-11-07:ch:1:sjyid:…` (Section.journey) → the query for its live calls. */
+export function journeyQueryOf(journey: string): JourneyQuery | null {
+  const m = /^(\d{4}-\d{2}-\d{2}):(.+)$/.exec(journey);
+  return m ? { day: m[1]!, journey: m[2]! } : null;
 }
 
 const esc = (s: string) =>
@@ -151,6 +174,17 @@ export function stopRequestXml(q: StopQuery, now: Date, requestor: string): stri
   return envelope(body, now, requestor);
 }
 
+export function journeyRequestXml(q: JourneyQuery, now: Date, requestor: string): string {
+  const body =
+    '<OJPTripInfoRequest>%TS%' +
+    `<JourneyRef>${esc(q.journey)}</JourneyRef><OperatingDayRef>${esc(q.day)}</OperatingDayRef>` +
+    '<Params><IncludeCalls>true</IncludeCalls><IncludeService>true</IncludeService></Params>' +
+    '</OJPTripInfoRequest>';
+  return envelope(body, now, requestor);
+}
+
 /** Stable cache key: the validated query, fields in a fixed order. */
-export const cacheKeyOf = (kind: 'trip' | 'stops', q: TripQuery | StopQuery) =>
-  `${kind}:${JSON.stringify(q)}`;
+export const cacheKeyOf = (
+  kind: 'trip' | 'stops' | 'journey',
+  q: TripQuery | StopQuery | JourneyQuery,
+) => `${kind}:${JSON.stringify(q)}`;
