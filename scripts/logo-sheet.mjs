@@ -3,16 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
-const sets = [
-  ['r1a-ring-gleichmaessig', 'R1a · evenly, 1 stop'],
-  ['r1b-ring-aussteigen', 'R1b · evenly, 2 stops'],
-  ['r1c-ring-frei', 'R1c · free, 1 stop'],
-  ['r1-ring', 'R1 · Ring'],
-  ['r2-gipfelrunde', 'R2 · Gipfelrunde'],
-  ['r3-netzplan', 'R3 · Netzplan'],
-  ['r4-lasso', 'R4 · Lasso'],
-  ['r5-rund-um-den-berg', 'R5 · Rund um den Berg'],
-];
+const sets = [['r1c-ring', 'R1c · Ring']];
 const width = 1150;
 const read = (k, f) =>
   'data:image/svg+xml;base64,' +

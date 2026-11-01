@@ -21,80 +21,88 @@ function download(name: string, type: string, text: string) {
 const fileName = (tour: Tour, ext: string) =>
   `${(tour.name || 'tour').replace(/[^\p{L}\p{N}]+/gu, '-')}-${tour.date}.${ext}`;
 
-/** Tickets per leg on sbb.ch, plus the dock: calendar, GPX and the share link. */
-export function ExportSheet({
-  tour,
-  chain,
-  legs,
-  shareHash,
-}: {
-  tour: Tour;
-  chain: PlannedChain;
-  legs: Leg[];
-  /** The `#/…` part of the share link: a route (#/t/) or a trip (#/j/). */
-  shareHash: () => string | Promise<string>;
-}) {
+/** Tickets per leg on sbb.ch. */
+export function Tickets({ tour, chain, legs }: { tour: Tour; chain: PlannedChain; legs: Leg[] }) {
   const t = useT();
-  const [copied, setCopied] = useState(false);
+  return (
+    <section className="export" aria-label={t('export')}>
+      <h2 className="section-label">{t('tickets')}</h2>
+      <ul className="sbb">
+        {chain.connections.map((c, i) => {
+          const leg = legs[i];
+          if (!leg) return null;
+          return (
+            <li key={i}>
+              <a href={sbbUrl(leg, tour.date, hhmm(c.dep))} target="_blank" rel="noreferrer">
+                <span>{t('openSbb', { from: leg.from.name, to: leg.to.name })}</span>
+                <Icon name="external" size={18} />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Calendar (ICS) and GPX downloads, as icon buttons for a dock. */
+export function ExportButtons({ tour, chain }: { tour: Tour; chain: PlannedChain }) {
+  const t = useT();
   const name = tour.name || t('untitled');
   return (
     <>
-      <section className="export" aria-label={t('export')}>
-        <h2 className="section-label">{t('tickets')}</h2>
-        <ul className="sbb">
-          {chain.connections.map((c, i) => {
-            const leg = legs[i];
-            if (!leg) return null;
-            return (
-              <li key={i}>
-                <a href={sbbUrl(leg, tour.date, hhmm(c.dep))} target="_blank" rel="noreferrer">
-                  <span>{t('openSbb', { from: leg.from.name, to: leg.to.name })}</span>
-                  <Icon name="external" size={18} />
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <div className="dock">
-        <div className="dock-inner">
-          <button
-            type="button"
-            className="icon secondary"
-            aria-label={t('calendar')}
-            onClick={() =>
-              download(
-                fileName(tour, 'ics'),
-                'text/calendar',
-                toIcs(name, chain.connections, tour.id, new Date()),
-              )
-            }
-          >
-            <Icon name="calendar" />
-          </button>
-          <button
-            type="button"
-            className="icon secondary"
-            aria-label={t('gpx')}
-            onClick={() =>
-              download(fileName(tour, 'gpx'), 'application/gpx+xml', toGpx(name, chain.connections))
-            }
-          >
-            <Icon name="route" />
-          </button>
-          <button
-            type="button"
-            className="primary wide"
-            onClick={async () => {
-              if ((await shareLink(await shareHash(), name)) === 'copied') setCopied(true);
-            }}
-          >
-            <Icon name="share" />
-            {copied ? t('copied') : t('shareTrip')}
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        className="icon secondary"
+        aria-label={t('calendar')}
+        onClick={() =>
+          download(
+            fileName(tour, 'ics'),
+            'text/calendar',
+            toIcs(name, chain.connections, tour.id, new Date()),
+          )
+        }
+      >
+        <Icon name="calendar" />
+      </button>
+      <button
+        type="button"
+        className="icon secondary"
+        aria-label={t('gpx')}
+        onClick={() =>
+          download(fileName(tour, 'gpx'), 'application/gpx+xml', toGpx(name, chain.connections))
+        }
+      >
+        <Icon name="route" />
+      </button>
     </>
+  );
+}
+
+/** A header share button; where there is no share sheet the link is copied, and it says so. */
+export function ShareButton({
+  label,
+  title,
+  hash,
+}: {
+  label: string;
+  title: string;
+  hash: () => string | Promise<string>;
+}) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="icon"
+      aria-label={copied ? t('copied') : label}
+      onClick={async () => {
+        if ((await shareLink(await hash(), title)) !== 'copied') return;
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+    >
+      <Icon name={copied ? 'check' : 'share'} />
+    </button>
   );
 }

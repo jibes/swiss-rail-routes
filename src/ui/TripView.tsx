@@ -6,7 +6,7 @@ import { usePrefs, useT } from '../store';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { badge, ChainView } from './ChainView';
-import { ExportSheet } from './ExportSheet';
+import { ExportButtons, ShareButton, Tickets } from './ExportSheet';
 import { duration, hhmm, longDate, minutesBetween } from './format';
 import { Icon } from './icons';
 import { go } from './useHash';
@@ -87,6 +87,11 @@ export function TripView({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <h1>{trip.name || t('untitled')}</h1>
+        <ShareButton
+          label={t('shareTrip')}
+          title={trip.name || t('untitled')}
+          hash={() => encodeTrip(trip)}
+        />
         <button
           type="button"
           className="icon"
@@ -167,12 +172,7 @@ export function TripView({ id }: { id: string }) {
         </p>
       )}
 
-      <ExportSheet
-        tour={trip.route}
-        chain={trip.chain}
-        legs={trip.legs}
-        shareHash={() => encodeTrip(trip)}
-      />
+      <Tickets tour={trip.route} chain={trip.chain} legs={trip.legs} />
 
       <button
         type="button"
@@ -188,6 +188,7 @@ export function TripView({ id }: { id: string }) {
 
       <div className="dock">
         <div className="dock-inner">
+          <ExportButtons tour={trip.route} chain={trip.chain} />
           {status === 'past' ? (
             <button
               type="button"

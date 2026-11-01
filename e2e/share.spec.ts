@@ -1,3 +1,4 @@
+import { encodeTour } from '../src/core/export/share';
 import { encodeTrip } from '../src/core/export/tripShare';
 import { plan } from '../src/core/planner/plan';
 import { newTrip } from '../src/core/trip';
@@ -49,5 +50,36 @@ test('route links: a template by name, the address bar shares the route', async 
   await other.goto(url);
   await expect(other.getByRole('heading', { level: 1 })).toHaveText('Bernina day');
   await expect(other.locator('.line .stop').last()).toContainText('Tirano');
+  await other.close();
+});
+
+test('the trip screen shares the exact timetable: a link that opens the same trip elsewhere', async ({
+  page,
+  context,
+  browser,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => Object.defineProperty(navigator, 'share', { value: undefined }));
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) });
+  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 shared' })}`);
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Plan' }).click();
+  await page.getByRole('button', { name: 'Save trip' }).click();
+
+  // Share is in the header, visible, not under the dock.
+  const share = page.getByRole('button', { name: 'Share trip' });
+  await expect(share).toBeInViewport();
+  await share.click();
+  await expect(page.getByRole('button', { name: 'Link copied' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toMatch(/#\/j\//);
+
+  const other = await browser.newPage({ baseURL: new URL('./', url).href });
+  let asked = 0;
+  other.on('request', (q) => q.url().startsWith('https://ojp.invalid/') && asked++);
+  await other.goto(url);
+  await expect(other.getByRole('heading', { level: 1 })).toHaveText('T5 shared');
+  await expect(other.locator('.summary .big')).toContainText('09:04');
+  expect(asked, 'the shared trip is the timetable itself, not replanned').toBe(0);
   await other.close();
 });
