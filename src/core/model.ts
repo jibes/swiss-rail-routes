@@ -49,3 +49,48 @@ export interface Leg {
 
 export type WarningType =
   'disruption' | 'after-sunset' | 'not-ga' | 'reservation' | 'tight-transfer' | 'seasonal';
+
+export interface LatLon {
+  lat: number;
+  lon: number;
+}
+
+export interface StopCall {
+  stopRef: string;
+  name: string;
+  arr?: string;
+  dep?: string;
+}
+
+/** One vehicle ride (or walk) inside a connection. Times are ISO 8601 with offset. */
+export interface Section {
+  mode: Mode | 'walk';
+  line?: string;
+  category?: string;
+  number?: string;
+  operator?: string;
+  from: StopCall & { platform?: string };
+  to: StopCall & { platform?: string };
+  intermediate: StopCall[];
+  /** Track geometry, [lon, lat] pairs (GeoJSON order). */
+  geometry?: [number, number][];
+  reservationRequired?: boolean;
+  supplement?: boolean;
+  situationIds?: string[];
+}
+
+export interface Connection {
+  legIndex: number;
+  dep: string;
+  arr: string;
+  transfers: number;
+  sections: Section[];
+}
+
+export interface Highlight {
+  id: string;
+  name: string;
+  at: LatLon;
+  side?: 'L' | 'R';
+  sunlightRequired: boolean;
+}
