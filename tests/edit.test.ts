@@ -7,6 +7,7 @@ import {
   setDwell,
   setRoundTrip,
   setStop,
+  insertTemplate,
 } from '../src/core/edit';
 import { isRoundTrip } from '../src/core/tour';
 
@@ -48,5 +49,50 @@ describe('tour edits', () => {
 
   it('removing the end promotes the previous waypoint', () => {
     expect(kinds(removeWaypoint(base, 2))).toEqual(['Zurich:start', 'Luzern:end']);
+  });
+});
+
+describe('insertTemplate', () => {
+  const albula = {
+    id: 'albula',
+    chain: ['Chur', 'Thusis', 'Filisur', 'Preda', 'StMoritz'].map((n) => ({
+      ref: `ch:1:sloid:${n}`,
+      name: n,
+    })),
+    mustPass: ['Thusis', 'Preda'].map((n) => `ch:1:sloid:${n}`),
+  };
+
+  it('adds ends and must-pass stops, tagged, before the round-trip end', () => {
+    const t = insertTemplate(
+      setRoundTrip(addWaypoint(newTour('t', '2026-11-07', s('Zurich')), s('Chur')), true),
+      albula,
+    );
+    expect(kinds(t)).toEqual([
+      'Zurich:start',
+      'Chur:via',
+      'Thusis:via',
+      'Preda:via',
+      'StMoritz:via',
+      'Zurich:end',
+    ]);
+    expect(t.waypoints.map((w) => w.templateId ?? '-')).toEqual([
+      '-',
+      'albula',
+      'albula',
+      'albula',
+      'albula',
+      '-',
+    ]);
+  });
+
+  it('runs reversed', () => {
+    const t = insertTemplate(newTour('t', '2026-11-07', s('Zurich')), albula, true);
+    expect(kinds(t)).toEqual([
+      'Zurich:start',
+      'StMoritz:via',
+      'Preda:via',
+      'Thusis:via',
+      'Chur:end',
+    ]);
   });
 });

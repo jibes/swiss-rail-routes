@@ -96,3 +96,34 @@ export function setRoundTrip(tour: Tour, on: boolean): Tour {
     ? withWaypoints(tour, [...tour.waypoints, { ...first }])
     : withWaypoints(tour, tour.waypoints.slice(0, -1));
 }
+
+/**
+ * Inserts a route template: its first stop (unless the tour is already there), its must-pass
+ * stops and its last stop, all tagged with the template so the planner applies its rules.
+ * `reversed` runs it end to start. Inserted before the end of a round trip, else appended.
+ */
+export function insertTemplate(
+  tour: Tour,
+  template: { id: string; chain: { ref: string; name: string }[]; mustPass: string[] },
+  reversed = false,
+): Tour {
+  const chain = reversed ? [...template.chain].reverse() : template.chain;
+  const must = new Set(template.mustPass);
+  const picked = chain.filter((s, i) => i === 0 || i === chain.length - 1 || must.has(s.ref));
+  const list = [...tour.waypoints];
+  const at = isClosed(tour) ? list.length - 1 : list.length;
+  const before = list[at - 1];
+  const add = picked
+    .filter((s, i) => !(i === 0 && before?.stopRef === s.ref))
+    .map((s): Waypoint => ({
+      stopRef: s.ref,
+      name: s.name,
+      kind: 'via',
+      dwellMin: 0,
+      templateId: template.id,
+    }));
+  if (before && before.stopRef === picked[0]?.ref)
+    list[at - 1] = { ...before, templateId: template.id };
+  list.splice(at, 0, ...add);
+  return withWaypoints(tour, list);
+}

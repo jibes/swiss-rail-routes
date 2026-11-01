@@ -12,4 +12,12 @@ export const it = {
   dismiss: 'Chiudi',
   offlineReady: 'Pronto per l’uso offline.',
   build: 'Build {sha}',
+  wDisruption: 'Perturbazione {from}–{to}',
+  wReservation: 'Prenotazione o supplemento richiesti {from}–{to}',
+  wGaHalf: 'Non coperto dall’AG {from}–{to}: 50 % con l’AG',
+  wGaReduced: 'Non coperto dall’AG {from}–{to}: tariffa ridotta con l’AG',
+  wGaNone: 'Non coperto dall’AG {from}–{to}',
+  wTightTransfer: 'Coincidenza stretta a {at}: {min} min',
+  wAfterSunset: '{name} dopo il tramonto ({time})',
+  wSeasonal: 'Limitazioni stagionali',
 } satisfies Catalogue;

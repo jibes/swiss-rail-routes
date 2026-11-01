@@ -98,3 +98,18 @@ export function createStopSearch(file: StopIndexFile): StopSearch {
     },
   };
 }
+
+/**
+ * Normalises OJP stop refs to the stop's SLOID: quay refs (`ch:1:sloid:3000:0:7`) to the stop,
+ * Swiss DIDOK numbers (`8503000`) to `ch:1:sloid:3000`; other numbers keep their value.
+ */
+export function stopKey(ref: string): string {
+  const sloid = /^ch:1:sloid:(\d+)/.exec(ref);
+  if (sloid) return `ch:1:sloid:${Number(sloid[1])}`;
+  const didok = /^(\d{7})$/.exec(ref);
+  if (didok) {
+    const n = didok[1]!;
+    return `ch:1:sloid:${n.startsWith('85') ? Number(n.slice(2)) : Number(n)}`;
+  }
+  return ref;
+}

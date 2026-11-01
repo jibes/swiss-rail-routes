@@ -15,6 +15,8 @@ export interface Waypoint {
   dwellMin: number;
   earliestArr?: string;
   latestDep?: string;
+  /** Set on the stops a route template inserted; its rules apply to the leg containing them. */
+  templateId?: string;
 }
 
 export interface LegConstraint {
