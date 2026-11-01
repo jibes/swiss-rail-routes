@@ -1237,9 +1237,20 @@ button {
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--ink-3);
+  color: var(--ink-2);
   cursor: grab;
   touch-action: none;
+}
+
+/* Six dots large enough to read as a handle at a glance. */
+.grip svg {
+  stroke-width: 3.5;
+}
+
+.grip:hover,
+.grip:focus-visible {
+  background: var(--hair);
+  color: var(--ink);
 }
 
 .grip:active {
