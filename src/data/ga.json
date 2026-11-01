@@ -1,0 +1,69 @@
+{
+  "version": "2026",
+  "reviewed": null,
+  "sections": [
+    {
+      "from": "ch:1:sloid:7372",
+      "to": "ch:1:sloid:7374",
+      "names": ["Wengen", "Kleine Scheidegg"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7380",
+      "to": "ch:1:sloid:7374",
+      "names": ["Grindelwald", "Kleine Scheidegg"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7374",
+      "to": "ch:1:sloid:7364",
+      "names": ["Kleine Scheidegg", "Jungfraujoch"],
+      "rule": "reduced"
+    },
+    {
+      "from": "ch:1:sloid:8317",
+      "to": "ch:1:sloid:8456",
+      "names": ["Alpnachstad", "Pilatus Kulm"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:1689",
+      "to": "ch:1:sloid:1694",
+      "names": ["Zermatt", "Gornergrat"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7455",
+      "to": "ch:1:sloid:7457",
+      "names": ["Mürren (Schilthornbahn)", "Schilthorn"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:8391",
+      "to": "ch:1:sloid:8363",
+      "names": ["Stans", "Stanserhorn"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7481",
+      "to": "ch:1:sloid:7459",
+      "names": ["Mülenen", "Niesen Kulm"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7368",
+      "to": "ch:1:sloid:7369",
+      "names": ["Interlaken Harderbahn", "Harder Kulm"],
+      "rule": "half"
+    }
+  ],
+  "supplementTrains": {
+    "categories": ["GEX", "BEX", "PE", "GPX"],
+    "names": [
+      "Glacier Express",
+      "Bernina Express",
+      "GoldenPass Express",
+      "Gotthard Panorama Express"
+    ]
+  }
+}

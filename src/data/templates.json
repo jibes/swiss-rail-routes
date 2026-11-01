@@ -1,0 +1,563 @@
+{
+  "version": "2026",
+  "templates": [
+    {
+      "id": "albula",
+      "name": "Albula",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:9000",
+          "name": "Chur"
+        },
+        {
+          "ref": "ch:1:sloid:9183",
+          "name": "Reichenau-Tamins"
+        },
+        {
+          "ref": "ch:1:sloid:9189",
+          "name": "Thusis"
+        },
+        {
+          "ref": "ch:1:sloid:9192",
+          "name": "Tiefencastel"
+        },
+        {
+          "ref": "ch:1:sloid:9195",
+          "name": "Filisur"
+        },
+        {
+          "ref": "ch:1:sloid:9197",
+          "name": "Bergün/Bravuogn"
+        },
+        {
+          "ref": "ch:1:sloid:9198",
+          "name": "Preda"
+        },
+        {
+          "ref": "ch:1:sloid:9251",
+          "name": "Samedan"
+        },
+        {
+          "ref": "ch:1:sloid:9252",
+          "name": "Celerina"
+        },
+        {
+          "ref": "ch:1:sloid:9253",
+          "name": "St. Moritz"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:9189", "ch:1:sloid:9195", "ch:1:sloid:9197", "ch:1:sloid:9198"],
+      "avoid": ["vereina"],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "landwasser",
+          "name": "Landwasserviadukt",
+          "lat": 46.6806,
+          "lon": 9.6756,
+          "sunlight": true,
+          "side": "R"
+        },
+        {
+          "id": "albula-loops",
+          "name": "Bergün–Preda loops",
+          "lat": 46.606,
+          "lon": 9.76,
+          "sunlight": true
+        }
+      ],
+      "seat": "R"
+    },
+    {
+      "id": "bernina",
+      "name": "Bernina",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:9253",
+          "name": "St. Moritz"
+        },
+        {
+          "ref": "ch:1:sloid:9252",
+          "name": "Celerina"
+        },
+        {
+          "ref": "ch:1:sloid:9254",
+          "name": "Punt Muragl"
+        },
+        {
+          "ref": "ch:1:sloid:9255",
+          "name": "Pontresina"
+        },
+        {
+          "ref": "ch:1:sloid:9353",
+          "name": "Morteratsch"
+        },
+        {
+          "ref": "ch:1:sloid:19370",
+          "name": "Bernina Diavolezza"
+        },
+        {
+          "ref": "ch:1:sloid:9356",
+          "name": "Ospizio Bernina"
+        },
+        {
+          "ref": "ch:1:sloid:9357",
+          "name": "Alp Grüm"
+        },
+        {
+          "ref": "ch:1:sloid:9358",
+          "name": "Cavaglia"
+        },
+        {
+          "ref": "ch:1:sloid:9361",
+          "name": "Poschiavo"
+        },
+        {
+          "ref": "ch:1:sloid:9366",
+          "name": "Brusio"
+        },
+        {
+          "ref": "ch:1:sloid:9367",
+          "name": "Campascio"
+        },
+        {
+          "ref": "ch:1:sloid:9369",
+          "name": "Tirano"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:9255", "ch:1:sloid:9356", "ch:1:sloid:9357"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "morteratsch",
+          "name": "Morteratsch glacier",
+          "lat": 46.45,
+          "lon": 9.93,
+          "sunlight": true
+        },
+        {
+          "id": "lago-bianco",
+          "name": "Lago Bianco",
+          "lat": 46.411,
+          "lon": 10.023,
+          "sunlight": true
+        },
+        {
+          "id": "brusio",
+          "name": "Brusio spiral viaduct",
+          "lat": 46.252,
+          "lon": 10.121,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "vereina",
+      "name": "Vereina",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:9002",
+          "name": "Landquart"
+        },
+        {
+          "ref": "ch:1:sloid:9068",
+          "name": "Klosters Platz"
+        },
+        {
+          "ref": "ch:1:sloid:9269",
+          "name": "Sagliains"
+        },
+        {
+          "ref": "ch:1:sloid:9262",
+          "name": "Zernez"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:9068", "ch:1:sloid:9269"],
+      "avoid": ["albula-line"],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "voralpen-express",
+      "name": "Voralpen-Express",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:6302",
+          "name": "St. Gallen"
+        },
+        {
+          "ref": "ch:1:sloid:6290",
+          "name": "Herisau"
+        },
+        {
+          "ref": "ch:1:sloid:6201",
+          "name": "Lichtensteig"
+        },
+        {
+          "ref": "ch:1:sloid:6200",
+          "name": "Wattwil"
+        },
+        {
+          "ref": "ch:1:sloid:3116",
+          "name": "Uznach"
+        },
+        {
+          "ref": "ch:1:sloid:3110",
+          "name": "Rapperswil SG"
+        },
+        {
+          "ref": "ch:1:sloid:3209",
+          "name": "Pfäffikon SZ"
+        },
+        {
+          "ref": "ch:1:sloid:3284",
+          "name": "Biberbrugg"
+        },
+        {
+          "ref": "ch:1:sloid:5004",
+          "name": "Arth-Goldau"
+        },
+        {
+          "ref": "ch:1:sloid:5000",
+          "name": "Luzern"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:6200", "ch:1:sloid:3284"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "sitter",
+          "name": "Sitterviadukt",
+          "lat": 47.406,
+          "lon": 9.333,
+          "sunlight": true
+        },
+        {
+          "id": "seedamm",
+          "name": "Seedamm Rapperswil",
+          "lat": 47.224,
+          "lon": 8.81,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "bruenig",
+      "name": "Brünig",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:5000",
+          "name": "Luzern"
+        },
+        {
+          "ref": "ch:1:sloid:8318",
+          "name": "Hergiswil NW"
+        },
+        {
+          "ref": "ch:1:sloid:8314",
+          "name": "Sarnen"
+        },
+        {
+          "ref": "ch:1:sloid:8312",
+          "name": "Giswil"
+        },
+        {
+          "ref": "ch:1:sloid:8310",
+          "name": "Lungern"
+        },
+        {
+          "ref": "ch:1:sloid:8309",
+          "name": "Brünig-Hasliberg"
+        },
+        {
+          "ref": "ch:1:sloid:8308",
+          "name": "Meiringen"
+        },
+        {
+          "ref": "ch:1:sloid:8305",
+          "name": "Brienz"
+        },
+        {
+          "ref": "ch:1:sloid:7492",
+          "name": "Interlaken Ost"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:8314", "ch:1:sloid:8308", "ch:1:sloid:8305"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "lungernsee",
+          "name": "Lungerersee",
+          "lat": 46.79,
+          "lon": 8.16,
+          "sunlight": true
+        },
+        {
+          "id": "bruenig-pass",
+          "name": "Brünig pass",
+          "lat": 46.757,
+          "lon": 8.138,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "gotthard-bergstrecke",
+      "name": "Gotthard-Bergstrecke",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:5004",
+          "name": "Arth-Goldau"
+        },
+        {
+          "ref": "ch:1:sloid:5112",
+          "name": "Flüelen"
+        },
+        {
+          "ref": "ch:1:sloid:5113",
+          "name": "Altdorf UR"
+        },
+        {
+          "ref": "ch:1:sloid:5114",
+          "name": "Erstfeld"
+        },
+        {
+          "ref": "ch:1:sloid:5119",
+          "name": "Göschenen"
+        },
+        {
+          "ref": "ch:1:sloid:5201",
+          "name": "Airolo"
+        },
+        {
+          "ref": "ch:1:sloid:5204",
+          "name": "Faido"
+        },
+        {
+          "ref": "ch:1:sloid:5209",
+          "name": "Biasca"
+        },
+        {
+          "ref": "ch:1:sloid:5213",
+          "name": "Bellinzona"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:5119", "ch:1:sloid:5201"],
+      "avoid": ["gotthard-base"],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "wassen",
+          "name": "Wassen church loops",
+          "lat": 46.7067,
+          "lon": 8.599,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "loetschberg-bergstrecke",
+      "name": "Lötschberg-Bergstrecke",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:7483",
+          "name": "Spiez"
+        },
+        {
+          "ref": "ch:1:sloid:7478",
+          "name": "Frutigen"
+        },
+        {
+          "ref": "ch:1:sloid:7475",
+          "name": "Kandersteg"
+        },
+        {
+          "ref": "ch:1:sloid:7474",
+          "name": "Goppenstein"
+        },
+        {
+          "ref": "ch:1:sloid:1609",
+          "name": "Brig"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:7475", "ch:1:sloid:7474"],
+      "avoid": ["loetschberg-base"],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "kander-loops",
+          "name": "Kander valley loops",
+          "lat": 46.51,
+          "lon": 7.67,
+          "sunlight": true
+        },
+        {
+          "id": "bietschtal",
+          "name": "Bietschtal viaduct",
+          "lat": 46.311,
+          "lon": 7.838,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "oberalp",
+      "name": "Oberalp",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:9179",
+          "name": "Disentis/Mustér"
+        },
+        {
+          "ref": "ch:1:sloid:5176",
+          "name": "Sedrun"
+        },
+        {
+          "ref": "ch:1:sloid:5172",
+          "name": "Oberalppass"
+        },
+        {
+          "ref": "ch:1:sloid:5170",
+          "name": "Nätschen"
+        },
+        {
+          "ref": "ch:1:sloid:5165",
+          "name": "Andermatt"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:5172"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "oberalpsee",
+          "name": "Oberalpsee",
+          "lat": 46.659,
+          "lon": 8.671,
+          "sunlight": true
+        }
+      ],
+      "season": {
+        "months": [11, 12, 1, 2, 3, 4],
+        "note": {
+          "en": "Winter: Oberalp section can close at short notice; check before travelling.",
+          "de": "Winter: Oberalp-Abschnitt kann kurzfristig gesperrt sein; vor der Reise prüfen.",
+          "fr": "Hiver : le tronçon de l'Oberalp peut fermer à bref délai ; vérifier avant le départ.",
+          "it": "Inverno: la tratta dell’Oberalp può chiudere con breve preavviso; verificare prima del viaggio."
+        }
+      }
+    },
+    {
+      "id": "rigi-arth",
+      "name": "Rigi (Arth-Goldau)",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:5004",
+          "name": "Arth-Goldau"
+        },
+        {
+          "ref": "ch:1:sloid:5068",
+          "name": "Rigi Staffel"
+        },
+        {
+          "ref": "ch:1:sloid:5069",
+          "name": "Rigi Kulm"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:5069"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "rigi-kulm",
+          "name": "Rigi Kulm",
+          "lat": 47.0567,
+          "lon": 8.485,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "rigi-vitznau",
+      "name": "Rigi (Vitznau)",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:5069",
+          "name": "Rigi Kulm"
+        },
+        {
+          "ref": "ch:1:sloid:5068",
+          "name": "Rigi Staffel"
+        },
+        {
+          "ref": "ch:1:sloid:8464",
+          "name": "Vitznau"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:8464"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "lake-lucerne",
+      "name": "Lake Lucerne boat",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:8464",
+          "name": "Vitznau"
+        },
+        {
+          "ref": "ch:1:sloid:5000",
+          "name": "Luzern"
+        }
+      ],
+      "mustPass": [],
+      "avoid": [],
+      "modes": ["boat"],
+      "highlights": [],
+      "season": {
+        "months": [11, 12, 1, 2, 3],
+        "note": {
+          "en": "Winter boat timetable: few sailings.",
+          "de": "Winterfahrplan: wenige Schiffskurse.",
+          "fr": "Horaire d’hiver : peu de bateaux.",
+          "it": "Orario invernale: poche corse."
+        }
+      }
+    },
+    {
+      "id": "bergbahn-muerren",
+      "name": "Lauterbrunnen–Mürren",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:7384",
+          "name": "Lauterbrunnen"
+        },
+        {
+          "ref": "ch:1:sloid:7378",
+          "name": "Grütschalp"
+        },
+        {
+          "ref": "ch:1:sloid:7379",
+          "name": "Mürren BLM"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:7378"],
+      "avoid": [],
+      "modes": ["rail", "cog", "cableCar", "bus"],
+      "highlights": [
+        {
+          "id": "lauterbrunnen-valley",
+          "name": "Lauterbrunnen valley",
+          "lat": 46.56,
+          "lon": 7.9,
+          "sunlight": true
+        }
+      ]
+    }
+  ]
+}

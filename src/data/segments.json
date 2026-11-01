@@ -1,0 +1,46 @@
+{
+  "version": "2026",
+  "segments": [
+    {
+      "id": "gotthard-base",
+      "name": "Gotthard base tunnel",
+      "a": [
+        "ch:1:sloid:5004",
+        "ch:1:sloid:2204",
+        "ch:1:sloid:5112",
+        "ch:1:sloid:5113",
+        "ch:1:sloid:5114"
+      ],
+      "b": ["ch:1:sloid:5209", "ch:1:sloid:5213", "ch:1:sloid:5214", "ch:1:sloid:5300"],
+      "via": ["ch:1:sloid:5119", "ch:1:sloid:5201"]
+    },
+    {
+      "id": "ceneri-base",
+      "name": "Ceneri base tunnel",
+      "a": ["ch:1:sloid:5213", "ch:1:sloid:5214"],
+      "b": ["ch:1:sloid:5219", "ch:1:sloid:5300"],
+      "via": ["ch:1:sloid:5216"]
+    },
+    {
+      "id": "loetschberg-base",
+      "name": "Lötschberg base tunnel",
+      "a": ["ch:1:sloid:7000", "ch:1:sloid:7100", "ch:1:sloid:7483", "ch:1:sloid:7478"],
+      "b": ["ch:1:sloid:1605", "ch:1:sloid:1609"],
+      "via": ["ch:1:sloid:7475", "ch:1:sloid:7474"]
+    },
+    {
+      "id": "vereina",
+      "name": "Vereina tunnel",
+      "a": ["ch:1:sloid:9068", "ch:1:sloid:9095"],
+      "b": ["ch:1:sloid:9269"],
+      "via": []
+    },
+    {
+      "id": "albula-line",
+      "name": "Albula line",
+      "a": ["ch:1:sloid:9195", "ch:1:sloid:9197"],
+      "b": ["ch:1:sloid:9251", "ch:1:sloid:9252", "ch:1:sloid:9253"],
+      "via": []
+    }
+  ]
+}
