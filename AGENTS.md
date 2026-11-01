@@ -38,7 +38,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 
 - Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only.
 - Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight) and `src/io/notifications.ts` (cancels and reschedules all on every trips change; no-op on the web). Texts in i18n (`n*`).
-- Icon: launcher vectors in `android/app/src/main/res/drawable` follow logo set A (`docs/design/logos/`), provisional until a set is chosen.
+- Icon: launcher vectors in `android/app/src/main/res/drawable` are provisional until a set from `docs/design/logos/` is chosen.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.
 
 ## Invariants

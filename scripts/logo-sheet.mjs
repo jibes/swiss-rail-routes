@@ -1,37 +1,16 @@
+// Renders docs/design/logos/comparison.png: each logo set as app icon, masks, themed icon,
+// home screens light and dark, and browser tab. CHROMIUM_PATH=… node scripts/logo-sheet.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
-const all = [
-  ['a-line', 'A · Die Linie'],
-  ['b-loop', 'B · Rundreise'],
-  ['c-daylight', 'C · Tageslicht'],
-  ['d-spiral', 'D · Kehrtunnel'],
-  ['e-summit', 'E · Gipfel'],
-  ['f-viaduct', 'F · Viadukt'],
-  ['g-dayarc', 'G · Tagesbogen'],
-  ['h-vanish', 'H · Fluchtpunkt'],
+
+const sets = [
+  ['r1-ring', 'R1 · Ring'],
+  ['r2-gipfelrunde', 'R2 · Gipfelrunde'],
+  ['r3-netzplan', 'R3 · Netzplan'],
+  ['r4-lasso', 'R4 · Lasso'],
+  ['r5-rund-um-den-berg', 'R5 · Rund um den Berg'],
 ];
-const variants = [
-  ['variants/h1-fluchtpunkt', 'H1 · Fluchtpunkt'],
-  ['variants/h2-fluchtpunkt-tag', 'H2 · Fluchtpunkt, Tag'],
-  ['variants/h3-fluchtpunkt-nacht', 'H3 · Fluchtpunkt, Nacht'],
-  ['variants/a1-linie-kraeftig', 'A1 · Linie, kräftig'],
-  ['variants/a2-linie-bogen', 'A2 · Linie, Bogen'],
-  ['variants/a3-linie-hell', 'A3 · Linie, hell'],
-  ['variants/d1-kehrtunnel', 'D1 · Kehrtunnel'],
-  ['variants/d2-kehrtunnel-geometrisch', 'D2 · Kehrtunnel, geometrisch'],
-  ['variants/d3-kehrtunnel-hell', 'D3 · Kehrtunnel, hell'],
-];
-// `node scripts/logo-sheet.mjs` → comparison.png; `… variants` → variants.png (3 a row);
-// `… d e f` renders only those sets to a scratch file.
-const only = process.argv.slice(2);
-const isVariants = only[0] === 'variants';
-const sets = isVariants ? variants : only.length ? all.filter(([k]) => only.includes(k[0])) : all;
-const out = isVariants
-  ? 'docs/design/logos/variants.png'
-  : only.length
-    ? '/tmp/logo-sheet.png'
-    : 'docs/design/logos/comparison.png';
-const width = isVariants ? 1150 : 1440;
+const width = 1150;
 const read = (k, f) =>
   'data:image/svg+xml;base64,' +
   Buffer.from(readFileSync(`docs/design/logos/${k}/${f}.svg`)).toString('base64');
@@ -66,5 +45,5 @@ writeFileSync('docs/design/logos/.sheet.html', html);
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const p = await b.newPage({ viewport: { width: width + 80, height: 900 }, deviceScaleFactor: 2 });
 await p.goto('file://' + process.cwd() + '/docs/design/logos/.sheet.html');
-await p.screenshot({ path: out, fullPage: true });
+await p.screenshot({ path: 'docs/design/logos/comparison.png', fullPage: true });
 await b.close();
