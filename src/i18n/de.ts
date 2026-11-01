@@ -93,4 +93,7 @@ export const de = {
   modeMetro: 'Metro',
   modeBus: 'Bus',
   modeLift: 'Lift',
+  map: 'Karte',
+  timeline: 'Fahrplan',
+  mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
 } satisfies Catalogue;

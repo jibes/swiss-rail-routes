@@ -76,6 +76,9 @@ export function Timeline({ id }: { id: string }) {
           ← {t('edit')}
         </button>
         <h1>{tour.name || t('untitled')}</h1>
+        <button type="button" onClick={() => go(`/tour/${id}/map`)}>
+          {t('map')}
+        </button>
       </header>
 
       {status === 'planning' && <p role="status">{t('planning')}</p>}

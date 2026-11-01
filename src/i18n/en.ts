@@ -91,6 +91,9 @@ export const en = {
   modeMetro: 'metro',
   modeBus: 'bus',
   modeLift: 'lift',
+  map: 'Map',
+  timeline: 'Timetable',
+  mapOffline: 'Map tiles could not be loaded.',
 };
 
 export type Catalogue = typeof en;

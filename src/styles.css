@@ -473,3 +473,36 @@ h2 {
   color: var(--text);
   line-height: 2.2;
 }
+
+/* Map */
+.mapview {
+  position: fixed;
+  inset: 0;
+}
+
+.mapview .map {
+  position: absolute;
+  inset: 0;
+}
+
+.bar.overlay {
+  position: absolute;
+  z-index: 2;
+  inset: env(safe-area-inset-top) 8px auto;
+  padding: 8px 0;
+}
+
+.bar.overlay h1 {
+  flex: 1;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.map-note {
+  position: absolute;
+  z-index: 2;
+  top: calc(72px + env(safe-area-inset-top));
+  left: 8px;
+}

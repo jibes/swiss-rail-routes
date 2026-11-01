@@ -45,6 +45,13 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
           ← {t('back')}
         </button>
         <h1>{tour.name || t('untitled')}</h1>
+        <button
+          type="button"
+          disabled={!tour.waypoints.length}
+          onClick={() => go(`/tour/${id}/map`)}
+        >
+          {t('map')}
+        </button>
       </header>
 
       <div className="fields">

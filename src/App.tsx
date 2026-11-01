@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { usePrefs } from './store';
 import { useTours } from './tours';
 import { Builder } from './ui/Builder';
@@ -8,10 +8,18 @@ import { Timeline } from './ui/Timeline';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
 
+const MapView = lazy(() => import('./ui/MapView'));
+
 function Route({ hash }: { hash: string }) {
   if (hash.startsWith('/t/')) return <SharedTour hash={hash} />;
-  const m = /^\/tour\/([\w-]+)(\/(plan|templates))?$/.exec(hash);
+  const m = /^\/tour\/([\w-]+)(\/(plan|templates|map))?$/.exec(hash);
   if (m?.[3] === 'plan') return <Timeline id={m[1]!} />;
+  if (m?.[3] === 'map')
+    return (
+      <Suspense fallback={null}>
+        <MapView id={m[1]!} />
+      </Suspense>
+    );
   if (m) return <Builder key={m[1]} id={m[1]!} showTemplates={m[3] === 'templates'} />;
   return <Home />;
 }

@@ -94,4 +94,7 @@ export const it = {
   modeMetro: 'metropolitana',
   modeBus: 'bus',
   modeLift: 'ascensore',
+  map: 'Mappa',
+  timeline: 'Orario',
+  mapOffline: 'Impossibile caricare la mappa.',
 } satisfies Catalogue;

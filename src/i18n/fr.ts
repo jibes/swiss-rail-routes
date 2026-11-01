@@ -93,4 +93,7 @@ export const fr = {
   modeMetro: 'métro',
   modeBus: 'bus',
   modeLift: 'ascenseur',
+  map: 'Carte',
+  timeline: 'Horaire',
+  mapOffline: 'Impossible de charger la carte.',
 } satisfies Catalogue;
