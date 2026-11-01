@@ -2,7 +2,7 @@
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** scaffold (app shell, i18n, tour model). Planner, Worker and screens follow [`docs/SPEC.md`](docs/SPEC.md).
+**Status:** app shell, tour model and edits, sunset, exports (share link, .ics, GPX), OJP Worker. Planner and screens follow [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Run
 
@@ -24,9 +24,22 @@ Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
 `main` deploys to GitHub Pages after all checks pass (`.github/workflows/deploy.yml`). Repo setting: Pages source "GitHub Actions". No branch protection; direct pushes to `main` are fine because deploy is gated on CI.
 
+## OJP Worker
+
+`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `POST /stops`), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers 10 min and allows 30 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
+
+One-time setup:
+
+1. Cloudflare: create an API token from the template "Edit Cloudflare Workers". Add repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+2. Run "Deploy OJP Worker" (Actions → Run workflow). It deploys `srr-ojp` to `https://srr-ojp.<your-subdomain>.workers.dev`.
+3. Add the OJP 2.0 key as a Worker secret: Cloudflare dashboard → Workers → `srr-ojp` → Settings → Variables and Secrets → `OJP_API_KEY` (type Secret). Or `npx wrangler secret put OJP_API_KEY -c workers/ojp/wrangler.toml`.
+4. Add repo variable `OJP_WORKER_URL` with the Worker's URL and rerun "Deploy to GitHub Pages". The build adds its origin to the CSP.
+
+Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a custom domain there.
+
 ## Privacy
 
-Tours stay on the device. Leg queries (stops, date, time) will go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). Map tiles will come from OpenFreeMap. No accounts, analytics or tracking.
+Tours stay on the device. Leg queries and stop searches (stop names and ids, date, time) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles will come from OpenFreeMap. No accounts, analytics or tracking.
 
 ## Licence
 

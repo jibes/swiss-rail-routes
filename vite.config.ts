@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Origin of the OJP Worker (repo variable OJP_WORKER_URL in CI); added to the CSP connect-src.
+const ojpUrl = process.env.VITE_OJP_URL ?? '';
+const ojpOrigin = ojpUrl ? new URL(ojpUrl).origin : '';
+
 const build = {
   sha: execSync('git rev-parse --short HEAD').toString().trim(),
   time: new Date().toISOString(),
@@ -16,6 +20,11 @@ export default defineConfig({
   test: { include: ['tests/**/*.test.ts'] },
   plugins: [
     react(),
+    {
+      name: 'csp-connect',
+      transformIndexHtml: (html) =>
+        ojpOrigin ? html.replace("connect-src 'self'", `connect-src 'self' ${ojpOrigin}`) : html,
+    },
     {
       name: 'version-json',
       generateBundle() {

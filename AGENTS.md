@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md).
 
-Status: scaffold from `apps-data/templates/` (2026-11-01). Next: `src/core/ojp/`, `workers/ojp/`, planner.
+Status: core (tour, edits, sun, exports), OJP request builder and Worker. Next: OJP parser + recorded fixtures (needs network to `api.opentransportdata.swiss`), stop index, curated data, planner, screens.
 
 ## Stack
 
@@ -17,6 +17,7 @@ Status: scaffold from `apps-data/templates/` (2026-11-01). Next: `src/core/ojp/`
 - `src/core/` is pure logic with no DOM, and every module has tests in `tests/`.
 - The planner (`src/core/planner/`) gets all I/O injected (`fetchTrips`, `now`, templates, GA rules); tests replay `tests/fixtures/ojp/`.
 - `src/core/ojp/request.ts` is shared with the Worker; the Worker builds requests only from typed JSON and never forwards client XML.
+- `workers/ojp/src/handler.ts` uses only the standard Fetch API with injected deps (tested in Node); `index.ts` wires Cloudflare bindings. Its OJP element names are unverified until fixtures are recorded.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 

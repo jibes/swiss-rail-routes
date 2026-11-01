@@ -15,7 +15,6 @@ const fromB64Url = (s: string) =>
 /** Drops the id: a shared tour becomes a new tour on the receiving device. */
 export function encodeTour(tour: Tour): string {
   const { id: _id, ...rest } = tour;
-  void _id;
   return PREFIX + toB64Url(new TextEncoder().encode(JSON.stringify(rest)));
 }
 

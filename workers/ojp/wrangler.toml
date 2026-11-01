@@ -1,0 +1,16 @@
+# Deployed by .github/workflows/deploy-worker-ojp.yml. Secret OJP_API_KEY: `npx wrangler secret put OJP_API_KEY -c workers/ojp/wrangler.toml`.
+name = "srr-ojp"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+observability = { enabled = false }
+
+[vars]
+OJP_URL = "https://api.opentransportdata.swiss/ojp20"
+ALLOWED_ORIGINS = "https://jibes.github.io,http://localhost:5173,http://localhost:4173"
+
+# 30 requests a minute per client IP; cache hits don't count.
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
