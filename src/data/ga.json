@@ -1,25 +1,8 @@
 {
-  "version": "2026",
+  "version": "osdm 10.7",
+  "source": "https://data.opentransportdata.swiss/en/dataset/osdm-offline",
   "reviewed": null,
   "sections": [
-    {
-      "from": "ch:1:sloid:7372",
-      "to": "ch:1:sloid:7374",
-      "names": ["Wengen", "Kleine Scheidegg"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:7380",
-      "to": "ch:1:sloid:7374",
-      "names": ["Grindelwald", "Kleine Scheidegg"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:7374",
-      "to": "ch:1:sloid:7364",
-      "names": ["Kleine Scheidegg", "Jungfraujoch"],
-      "rule": "reduced"
-    },
     {
       "from": "ch:1:sloid:8317",
       "to": "ch:1:sloid:8456",
@@ -27,33 +10,57 @@
       "rule": "half"
     },
     {
+      "from": "ch:1:sloid:7456",
+      "to": "ch:1:sloid:7457",
+      "names": ["Birg (Schilthornbahn)", "Schilthorn"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:8455",
+      "to": "ch:1:sloid:8456",
+      "names": ["Fräkmüntegg", "Pilatus Kulm"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7364",
+      "to": "ch:1:sloid:7374",
+      "names": ["Jungfraujoch", "Kleine Scheidegg"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7374",
+      "to": "ch:1:sloid:7380",
+      "names": ["Kleine Scheidegg", "Grindelwald"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:8453",
+      "to": "ch:1:sloid:8455",
+      "names": ["Kriens (Pilatusbahn)", "Fräkmüntegg"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7379",
+      "to": "ch:1:sloid:7456",
+      "names": ["Mürren BLM", "Birg (Schilthornbahn)"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7387",
+      "to": "ch:1:sloid:7388",
+      "names": ["Schynige Platte", "Wilderswil"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:7372",
+      "to": "ch:1:sloid:7374",
+      "names": ["Wengen", "Kleine Scheidegg"],
+      "rule": "half"
+    },
+    {
       "from": "ch:1:sloid:1689",
       "to": "ch:1:sloid:1694",
       "names": ["Zermatt", "Gornergrat"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:7455",
-      "to": "ch:1:sloid:7457",
-      "names": ["Mürren (Schilthornbahn)", "Schilthorn"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:8391",
-      "to": "ch:1:sloid:8363",
-      "names": ["Stans", "Stanserhorn"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:7481",
-      "to": "ch:1:sloid:7459",
-      "names": ["Mülenen", "Niesen Kulm"],
-      "rule": "half"
-    },
-    {
-      "from": "ch:1:sloid:7368",
-      "to": "ch:1:sloid:7369",
-      "names": ["Interlaken Harderbahn", "Harder Kulm"],
       "rule": "half"
     }
   ],

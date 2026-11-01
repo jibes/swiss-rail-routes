@@ -46,8 +46,10 @@ export interface Segment {
 export type GaRule = 'half' | 'reduced' | 'none';
 
 export interface GaData {
+  /** OSDM delivery the list was built from (scripts/build-ga.ts). */
   version: string;
-  /** Date someone checked the list against the official GA validity list; null = not yet. */
+  source?: string;
+  /** Date a person checked the list by hand; null = generated only. */
   reviewed: string | null;
   sections: { from: string; to: string; names: [string, string]; rule: GaRule }[];
   supplementTrains: { categories: string[]; names: string[] };

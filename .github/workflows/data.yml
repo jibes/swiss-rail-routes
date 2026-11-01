@@ -1,6 +1,6 @@
 name: Data
 
-# Monthly DIDOK stop index. Commits only when the data changed, then deploys
+# Monthly DIDOK stop index and GA exceptions (OSDM fares). Commits only when the data changed, then deploys
 # (a push by GITHUB_TOKEN does not start other workflows, so this dispatches the deploy).
 on:
   schedule:
@@ -31,17 +31,18 @@ jobs:
 
       - run: npm ci
       - run: npm run data:stops
-      - run: npx vitest run tests/stops.test.ts
+      - run: npm run data:ga
+      - run: npx vitest run tests/stops.test.ts tests/data.test.ts tests/acceptance.test.ts
 
       - name: Commit if changed
         id: commit
         run: |
-          if git diff --quiet public/data; then
+          if git diff --quiet public/data src/data/ga.json; then
             echo "No change"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -am "Data: stop index $(jq -r .date public/data/stops.v1.json)"
+          git commit -am "Data: stops $(jq -r .date public/data/stops.v1.json), GA $(jq -r .version src/data/ga.json)"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
 

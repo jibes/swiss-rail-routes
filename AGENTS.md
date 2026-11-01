@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md).
 
-Status: complete MVP path (builder, planner on real OJP answers, timeline, map, exports, Worker, stop index, curated data). Next: GA list review against the official list.
+Status: complete MVP path (builder, planner on real OJP answers, timeline, map, exports, Worker, stop index, curated data). Next: see docs/SPEC.md §3 Should/Could items.
 
 ## Stack
 
@@ -27,7 +27,7 @@ Status: complete MVP path (builder, planner on real OJP answers, timeline, map, 
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 
-- Curated data: `src/data/templates.json`, `segments.json`, `ga.json` (types in `src/core/data.ts`). Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
+- Curated data: `src/data/templates.json`, `segments.json` (types in `src/core/data.ts`). `ga.json` is generated (`npm run data:ga`) from SBB's OSDM fares; it covers fares SBB sells, so other operators' summit lines (Niesen, Harder…) are missing, never guessed. Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
 - `src/core/export/sbb.ts` uses the old sbb.ch timetable URL; unverified, check when touching exports.
 
 ## Invariants

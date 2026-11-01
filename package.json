@@ -21,7 +21,8 @@
     "icons": "node scripts/icons.mjs",
     "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
     "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
-    "data:stops": "node --experimental-strip-types scripts/build-stops.ts"
+    "data:stops": "node --experimental-strip-types scripts/build-stops.ts",
+    "data:ga": "node --experimental-strip-types scripts/build-ga.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
@@ -42,6 +43,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "fflate": "^0.8.3",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",
