@@ -175,6 +175,8 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
   const cache = new Map<string, Connection[]>();
 
   const query: Query = async (from, to, via, at) => {
+    // OJP refuses a trip from a stop to itself (TRIP_ORIGINDESTINATIONIDENTICAL).
+    if (stopKey(from.stopRef) === stopKey(to.stopRef)) return [];
     const q: TripQuery = {
       origin: { ref: from.stopRef, name: from.name },
       destination: { ref: to.stopRef, name: to.name },
