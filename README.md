@@ -32,7 +32,7 @@ Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
 ## Android
 
-`android/` is a Capacitor shell (app ID `ch.brunodev.swissrailroutes`, permanent) around the same web build. It adds trip notifications: 10 min before each departure, 5 min before each stop to get off, and 10 min before a highlight (with sunset time when it is near). They are scheduled on the phone from the saved timetable (`src/io/notifications.ts`), so they need no network and do not follow live delays.
+`android/` is a Capacitor shell (app ID `ch.brunodev.swissrailroutes`, permanent) around the same web build. It adds trip notifications: 10 min before each departure, 5 min before each stop to get off, and 10 min before a highlight (with sunset time when it is near). They are scheduled on the phone from the saved timetable (`src/io/notifications.ts`), so they need no network and do not follow live delays. The back button goes up one screen; on the main list it puts the app in the background.
 
 Install and update with [Obtainium](https://github.com/ImranR98/Obtainium): add `https://github.com/jibes/swiss-rail-routes`.
 

@@ -38,6 +38,7 @@ Status: one object (ideas and trips in one list, one time-aware trip screen, one
 ## Android
 
 - Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only.
+- Back button: `src/io/back.ts` (`@capacitor/app`) goes up one screen (`parentOf`, `src/core/parent.ts`), replacing the address; on the main list the app goes to the background.
 - Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight) and `src/io/notifications.ts` (cancels and reschedules all on every trips change; no-op on the web). Texts in i18n (`n*`).
 - Logo C1 (`docs/design/logos/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.

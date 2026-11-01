@@ -11,6 +11,7 @@ import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchSync } from './io/sync';
+import { watchBack } from './io/back';
 import { liveTrip } from './core/trip';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
@@ -105,6 +106,7 @@ export function App() {
       )
         useTours.getState().remove(idea.id);
   }, [loaded, tripsLoaded]);
+  useEffect(() => watchBack(), []);
   // Sync once both lists are loaded; then on return to the app and after changes.
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.
