@@ -1,4 +1,5 @@
-// OJP proxy: typed JSON in, OJP XML out. Holds the key, caches 10 min, limits per client IP.
+// OJP proxy: typed JSON in, OJP XML out. Holds the key, limits per client IP.
+// POST /trip and /stops (cached 10 min), POST /journey (live calls of one train, cached 30 s).
 // Standard Fetch API only, so tests run it in Node with fakes.
 import {
   cacheKeyOf,

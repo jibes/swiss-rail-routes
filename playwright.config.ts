@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:4173${base}`,
     trace: 'retain-on-failure',
+    // No transitions: checks (axe contrast) see final colours, not a fade between themes.
+    reducedMotion: 'reduce',
     // Cloud sessions ship one preinstalled Chromium; CI installs the matching one.
     launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined },
   },
