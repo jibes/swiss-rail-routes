@@ -32,7 +32,7 @@ export async function answerWorker(page: Page) {
       const json = (status: number, body: unknown) =>
         route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       const cur = boxes.get(id);
-      if (req.method() === 'GET') return cur ? json(200, cur) : json(404, { v: 0 });
+      if (req.method() === 'GET') return json(200, cur ?? { v: 0 });
       if (req.method() === 'DELETE') return (void boxes.delete(id), route.fulfill({ status: 204 }));
       const { v, data } = req.postDataJSON() as { v: number; data: string };
       if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });

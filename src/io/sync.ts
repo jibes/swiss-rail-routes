@@ -58,10 +58,10 @@ class Conflict extends Error {}
 
 async function remote(id: string, aes: CryptoKey): Promise<{ v: number; doc: Doc | null }> {
   const res = await fetch(`${base()}/sync/${id}`, { cache: 'no-store' });
-  if (res.status === 404) return { v: 0, doc: null };
+  if (res.status === 404) return { v: 0, doc: null }; // Workers before empty answered 200
   if (!res.ok) throw new Error(`sync ${res.status}`);
-  const r = (await res.json()) as { v: number; data: string };
-  return { v: r.v, doc: await open<Doc>(r.data, aes) };
+  const r = (await res.json()) as { v: number; data?: string };
+  return { v: r.v, doc: r.data ? await open<Doc>(r.data, aes) : null };
 }
 
 async function push(id: string, v: number, data: string): Promise<number> {

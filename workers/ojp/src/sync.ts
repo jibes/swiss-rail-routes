@@ -2,7 +2,8 @@
 // it: the key never leaves the devices. Writes are compare-and-swap on a version number, so two
 // devices never overwrite each other unseen; the one that loses merges and tries again.
 //
-//   GET    /sync/<id>  → 200 {v, data} | 404
+//   GET    /sync/<id>  → 200 {v, data}, or 200 {v: 0} while empty (not 404: browsers log
+//                         every 404 as an error, and an empty mailbox is normal)
 //   PUT    /sync/<id>  {v: version it read (0 for none), data} → 200 {v} | 409 {v, data}
 //   DELETE /sync/<id>  → 204 (sync turned off everywhere, or a new key)
 
@@ -32,7 +33,7 @@ const json = (status: number, body: unknown) =>
 export async function syncHandle(req: Request, store: SyncStore): Promise<Response> {
   if (req.method === 'GET') {
     const r = await store.get();
-    return r ? json(200, r) : json(404, { v: 0 });
+    return json(200, r ?? { v: 0 });
   }
   if (req.method === 'DELETE') {
     await store.delete();

@@ -156,7 +156,8 @@ describe('sync mailbox', () => {
 
   it('stores one blob per id, version by version, and refuses a stale write', async () => {
     syncBoxes.clear();
-    expect((await sync('GET')).status).toBe(404);
+    const empty = await sync('GET');
+    expect([empty.status, await empty.json()]).toEqual([200, { v: 0 }]);
     const first = await sync('PUT', { v: 0, data: 'abc' });
     expect(first.status).toBe(200);
     expect(await first.json()).toEqual({ v: 1 });
@@ -168,7 +169,7 @@ describe('sync mailbox', () => {
     expect((await sync('PUT', { v: 1, data: 'def' })).status).toBe(200);
     expect(await (await sync('GET')).json()).toEqual({ v: 2, data: 'def' });
     expect((await sync('DELETE')).status).toBe(204);
-    expect((await sync('GET')).status).toBe(404);
+    expect(await (await sync('GET')).json()).toEqual({ v: 0 });
   });
 
   it('rejects odd ids, shapes and sizes', async () => {
