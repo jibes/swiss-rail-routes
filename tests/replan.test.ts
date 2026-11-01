@@ -107,6 +107,47 @@ describe('remainingRoute', () => {
   });
 });
 
+describe('replanPoint: the travelled train keeps its track', () => {
+  // Zürich (8.54, 47.38) → Zug (8.52, 47.17) → Luzern (8.31, 47.05), as a track.
+  const track: [number, number][] = [
+    [8.54, 47.38],
+    [8.53, 47.28],
+    [8.52, 47.17],
+    [8.4, 47.1],
+    [8.31, 47.05],
+  ];
+  const withTrack = {
+    ...trip,
+    chain: {
+      ...trip.chain,
+      connections: trip.chain.connections.map((c, i) =>
+        i === 0 ? { ...c, sections: c.sections.map((x) => ({ ...x, geometry: track })) } : c,
+      ),
+    },
+  };
+  const riding = liveState(withTrack.chain.connections, at('08:15'));
+
+  it('cut at a stop between: the track up to that stop', () => {
+    const p = replanPoint(withTrack, riding, at('08:15'), (k) =>
+      k === ref('Zug') ? [8.52, 47.17] : undefined,
+    )!;
+    expect(p.stop.name).toBe('Zug');
+    expect(p.keep[0]!.sections[0]!.geometry).toEqual(track.slice(0, 3));
+  });
+
+  it('without the stop position, that part is drawn straight (no track)', () => {
+    const p = replanPoint(withTrack, riding, at('08:15'))!;
+    expect(p.keep[0]!.sections[0]!.geometry).toBeUndefined();
+  });
+
+  it('at the train’s own last stop nothing is cut: the whole track stays', () => {
+    const late = liveState(withTrack.chain.connections, at('08:40'));
+    const p = replanPoint(withTrack, late, at('08:40'))!;
+    expect(p.stop.name).toBe('Luzern');
+    expect(p.keep[0]!.sections[0]!.geometry).toEqual(track);
+  });
+});
+
 describe('remainingRoute: round trips', () => {
   it('keeps the way home when the trip ends where the point is', () => {
     // Luzern → Zürich → Luzern, replanned before departure: from Luzern, still back to Luzern.

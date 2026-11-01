@@ -202,4 +202,5 @@ export const fr = {
   syncBusy: 'Le serveur est occupé. La synchro réessaie bientôt.',
   undoChange: 'Annuler la dernière modification',
   liveStale: 'Données en direct de {time} ; pas de mise à jour pour l’instant',
+  mapStraight: 'En pointillé : le tracé n’est pas connu, la ligne est tracée droite.',
 } satisfies Catalogue;

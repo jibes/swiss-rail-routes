@@ -29,6 +29,8 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
   const tripChain = trip?.chain.connections;
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
+  const [straight, setStraight] = useState(false);
   const json = tour ? JSON.stringify([tour, tripChain ?? null]) : '';
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
         savedChain ??
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
       const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r));
+      setStraight(d.lines.features.some((f) => !f.properties.exact));
       map = new maplibregl.Map({
         container: box.current,
         style: MAP_STYLE,
@@ -138,6 +141,7 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
           {t('mapOffline')}
         </p>
       )}
+      {straight && !failed && <p className="notice map-note map-legend">{t('mapStraight')}</p>}
       <div ref={box} className="map" />
     </main>
   );

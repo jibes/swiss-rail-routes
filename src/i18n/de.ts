@@ -204,4 +204,6 @@ export const de = {
   syncBusy: 'Der Server ist ausgelastet. Die Synchronisierung versucht es gleich wieder.',
   undoChange: 'Letzte Änderung rückgängig',
   liveStale: 'Live-Daten von {time}; gerade keine Aktualisierung',
+  mapStraight:
+    'Gestrichelt: Dort ist der Gleisverlauf nicht bekannt, die Strecke ist gerade gezeichnet.',
 } satisfies Catalogue;

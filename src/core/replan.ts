@@ -16,21 +16,48 @@ export interface ReplanPoint {
   leg: number;
 }
 
-/** Cuts a ride at a stop: it ends there, arriving as timetabled. */
-function cutRide(s: Section, key: string): Section {
+/** Where a stop is, [lon, lat], when known (the stop index); trims a cut ride's track. */
+export type StopPosition = (key: string) => [number, number] | undefined;
+
+/** The track up to the point nearest `at`; undefined when there is no track or no position. */
+function trimTrack(track: Section['geometry'], at?: [number, number]): Section['geometry'] {
+  if (!track || track.length < 2 || !at) return undefined;
+  let best = 0;
+  let dist = Infinity;
+  track.forEach(([x, y], i) => {
+    const d = (x - at[0]) ** 2 + (y - at[1]) ** 2;
+    if (d < dist) {
+      dist = d;
+      best = i;
+    }
+  });
+  return best >= 1 ? track.slice(0, best + 1) : undefined;
+}
+
+/**
+ * Cuts a ride at a stop: it ends there, arriving as timetabled. At its own last stop nothing is
+ * cut (the track stays whole); elsewhere the track is trimmed at the stop, or dropped when the
+ * stop's position is unknown (the map then draws that part straight).
+ */
+function cutRide(s: Section, key: string, pos?: StopPosition): Section {
   const calls = [s.from, ...s.intermediate, s.to];
   const i = calls.findIndex((c) => stopKey(c.stopRef) === key);
-  if (i <= 0) return s;
+  if (i <= 0 || i === calls.length - 1) return s;
   const end = calls[i]!;
   return {
     ...s,
     to: { ...end, dep: undefined },
     intermediate: s.intermediate.slice(0, i - 1),
-    geometry: undefined,
+    geometry: trimTrack(s.geometry, pos?.(key)),
   };
 }
 
-export function replanPoint(trip: Trip, state: LiveState, now: number): ReplanPoint | null {
+export function replanPoint(
+  trip: Trip,
+  state: LiveState,
+  now: number,
+  pos?: StopPosition,
+): ReplanPoint | null {
   if (state.phase === 'done' || !state.rides.length) return null;
   const chain = trip.chain.connections;
   if (state.phase === 'before') {
@@ -50,7 +77,9 @@ export function replanPoint(trip: Trip, state: LiveState, now: number): ReplanPo
   const upTo = state.phase === 'riding' ? ride.section : ride.section - 1;
   const sections = c.sections
     .slice(0, upTo + 1)
-    .map((s, i) => (i === ride.section && state.phase === 'riding' ? cutRide(s, stop.key) : s));
+    .map((s, i) =>
+      i === ride.section && state.phase === 'riding' ? cutRide(s, stop.key, pos) : s,
+    );
   const rides = sections.filter((s) => s.mode !== 'walk');
   const cut: Connection[] = rides.length
     ? [

@@ -199,6 +199,7 @@ export const en = {
   syncBusy: 'The server is busy. Sync tries again shortly.',
   undoChange: 'Undo last change',
   liveStale: 'Live data from {time}; not updated right now',
+  mapStraight: 'Dashed: the track is not known there, so it is drawn straight.',
 };
 
 export type Catalogue = typeof en;

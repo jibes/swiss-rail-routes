@@ -21,6 +21,7 @@ import { useDragList } from './useDragList';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
+import { useStopIndex } from './useStopIndex';
 import { expectedArrival } from '../core/live';
 
 /**
@@ -41,9 +42,13 @@ export function EditTrip({ id }: { id: string }) {
   const { state, now } = useLive(tripState === 'live' ? trip : undefined);
   // Decided when the screen opens, so the plan matches what was shown.
   const [whole] = useState(() => tripState === 'upcoming');
+  // The live state and time it was opened with: the cut is made again at saving, with stop
+  // positions, so the travelled train keeps its track up to the stop.
+  const [opened] = useState(() => ({ state, now }));
   const [point] = useState<ReplanPoint | null>(() =>
     trip && state && !whole ? replanPoint(trip, state, now) : null,
   );
+  const index = useStopIndex();
   const [draft, setDraft] = useState<Tour | null>(() =>
     !trip ? null : whole ? structuredClone(trip.route) : point ? remainingRoute(trip, point) : null,
   );
@@ -223,7 +228,17 @@ export function EditTrip({ id }: { id: string }) {
                     revise(
                       x,
                       point
-                        ? mergeReplan(x, point, result.legs ?? [], chain)
+                        ? mergeReplan(
+                            x,
+                            (opened.state &&
+                              replanPoint(x, opened.state, opened.now, (key) => {
+                                const st = index?.byRef(key);
+                                return st ? [st.lon, st.lat] : undefined;
+                              })) ||
+                              point,
+                            result.legs ?? [],
+                            chain,
+                          )
                         : { route: draft, legs: result.legs ?? [], chain },
                       new Date(),
                     ),
