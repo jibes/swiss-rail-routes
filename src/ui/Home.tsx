@@ -43,9 +43,11 @@ export function Home() {
   const t = useT();
   const tours = useTours((s) => s.tours);
   const removeTour = useTours((s) => s.remove);
-  // "New tour" and then Back leaves an empty route: tidy it away on coming back.
+  // "New tour" and then Back leaves an empty route: tidy it away on coming back (only when it
+  // has neither a station nor a name: a named one was meant).
   useEffect(() => {
-    for (const x of useTours.getState().tours) if (!x.waypoints.length) removeTour(x.id);
+    for (const x of useTours.getState().tours)
+      if (!x.waypoints.length && !x.name.trim()) removeTour(x.id);
   }, [removeTour]);
   const create = useTours((s) => s.create);
   const index = useStopIndex();
