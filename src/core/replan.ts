@@ -78,16 +78,20 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
     ),
   );
   const current = trip.legs[point.leg]!;
-  const rest: Waypoint[] = [
+  const all: Waypoint[] = [
     ...current.vias.filter((w) => !passed.has(stopKey(w.stopRef))),
     current.to,
     ...trip.legs.slice(point.leg + 1).flatMap((l) => [...l.vias, l.to]),
-  ].filter((w) => stopKey(w.stopRef) !== stopKey(point.stop.stopRef));
-  const local = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Europe/Zurich',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(point.at);
+  ];
+  // The point itself starts the rest; only its first appearance goes (a round trip ends there
+  // again, and that end stays).
+  const first = all.findIndex((w) => stopKey(w.stopRef) === stopKey(point.stop.stopRef));
+  const rest = first === 0 ? all.slice(1) : all;
+  // Date and time of the point in Zurich: after midnight that is the next day.
+  const zurich = (o: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich', ...o }).format(point.at);
+  const local = zurich({ hour: '2-digit', minute: '2-digit' });
+  const date = zurich({ year: 'numeric', month: '2-digit', day: '2-digit' });
   const waypoints: Waypoint[] = [
     { ...point.stop, kind: 'start', dwellMin: 0 },
     ...rest.map((w, i) =>
@@ -97,6 +101,7 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
   return {
     ...trip.route,
     id: `${trip.id}-replan`,
+    date,
     anchor: { departAt: local },
     waypoints,
   };

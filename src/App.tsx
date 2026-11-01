@@ -75,7 +75,7 @@ export function App() {
   const trips = useTrips((s) => s.trips);
   useEffect(() => {
     if (!tripsLoaded) return;
-    const timer = setTimeout(() => void scheduleTrips(trips, lang).catch(() => undefined), 500);
+    const timer = setTimeout(() => void scheduleTrips(trips, lang), 500);
     return () => clearTimeout(timer);
   }, [trips, tripsLoaded, lang]);
   // Sync once both lists are loaded; then on return to the app and after changes.

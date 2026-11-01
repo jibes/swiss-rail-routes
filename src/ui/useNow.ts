@@ -9,11 +9,14 @@ let timer: ReturnType<typeof setInterval> | undefined;
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
-  if (!timer)
+  if (!timer) {
+    // Nobody listened for a while: the time kept is old, read it afresh.
+    now = Date.now();
     timer = setInterval(() => {
       now = Date.now();
       listeners.forEach((l) => l());
     }, TICK_MS);
+  }
   return () => {
     listeners.delete(cb);
     if (!listeners.size) {

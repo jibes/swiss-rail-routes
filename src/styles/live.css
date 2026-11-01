@@ -55,7 +55,10 @@
 }
 
 .row.ride.here .rail::before {
-  background: linear-gradient(var(--ink-3) 0 var(--f), var(--rail) var(--f) 100%);
+  background: linear-gradient(
+    var(--ink-3) 0 var(--fm, var(--f)),
+    var(--rail) var(--fm, var(--f)) 100%
+  );
 }
 
 .row.ride.here .rail::after,
@@ -72,7 +75,7 @@
 }
 
 .row.ride.here .rail::after {
-  top: calc(var(--f) - 10px);
+  top: calc(var(--fm, var(--f)) - 10px);
 }
 
 .row.station.here .rail::after {

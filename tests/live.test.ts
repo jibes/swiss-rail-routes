@@ -95,6 +95,36 @@ describe('liveState', () => {
     ).toBe('cancelled');
   });
 
+  it('a change already made is no longer at risk; a cancelled first train is', () => {
+    const late: JourneyStatus = {
+      cancelled: false,
+      calls: [
+        {
+          key: ref('Luzern'),
+          name: 'Luzern',
+          arr: iso('08:45'),
+          arrEst: iso('08:50'),
+          passed: false,
+          cancelled: false,
+        },
+      ],
+    };
+    // 09:00: on the onward train already, so the tight change at Luzern is behind.
+    expect(liveState(chain, at('09:00'), new Map([['j1', late]])).risks).toEqual([]);
+    const gone = new Map([['j1', { cancelled: true, calls: [] }]]);
+    expect(liveState(chain, at('07:50'), gone).risks).toEqual([
+      { ride: 0, marginMin: 0, reason: 'cancelled' },
+    ]);
+    // Cancelled onward train: said once, not also as a tight change.
+    const both = new Map([
+      ['j1', late],
+      ['j2', { cancelled: true, calls: [] }],
+    ]);
+    expect(liveState(chain, at('08:30'), both).risks).toEqual([
+      { ride: 1, marginMin: 0, reason: 'cancelled' },
+    ]);
+  });
+
   it('a through train (same journey) is never a connection at risk', () => {
     const through = [
       conn(

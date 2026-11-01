@@ -24,7 +24,7 @@ describe('trip share link', async () => {
     new Date(0),
   );
 
-  it('round-trips the exact timetable without tracks, history or id', async () => {
+  it('round-trips the exact timetable with simplified tracks, without history or id', async () => {
     const withHistory = revise(
       trip,
       { route: trip.route, legs: trip.legs, chain: trip.chain },
@@ -41,7 +41,17 @@ describe('trip share link', async () => {
     expect(back.chain.connections.map((c) => c.sections.map((s) => s.journey))).toEqual(
       trip.chain.connections.map((c) => c.sections.map((s) => s.journey)),
     );
-    expect(back.chain.connections.flatMap((c) => c.sections).every((s) => !s.geometry)).toBe(true);
+    // Tracks come along, simplified: the map follows the rails, not straight lines.
+    const sent = trip.chain.connections.flatMap((c) => c.sections);
+    const got = back.chain.connections.flatMap((c) => c.sections);
+    got.forEach((s, i) => {
+      const g = sent[i]!.geometry;
+      if (!g || g.length < 2) return expect(s.geometry).toBeUndefined();
+      expect(s.geometry!.length).toBeGreaterThan(1);
+      expect(s.geometry!.length).toBeLessThanOrEqual(g.length);
+      expect(s.geometry![0]![0]).toBeCloseTo(g[0]![0], 4);
+      expect(s.geometry!.at(-1)![1]).toBeCloseTo(g.at(-1)![1], 4);
+    });
   });
 
   it('fits a link: a 3-leg day trip stays under 8000 characters', async () => {

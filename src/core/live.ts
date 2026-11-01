@@ -86,6 +86,15 @@ export function liveRides(chain: Connection[], status: Map<string, JourneyStatus
   );
 }
 
+/** Minutes of planned walking between two rides of the same connection. */
+function walkMin(chain: Connection[], a: LiveRide, b: LiveRide): number {
+  if (a.leg !== b.leg) return 0;
+  return chain[a.leg]!.sections.slice(a.section + 1, b.section).reduce((m, s) => {
+    if (s.mode !== 'walk' || !s.from.dep || !s.to.arr) return m;
+    return m + Math.max(0, (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000);
+  }, 0);
+}
+
 const depOf = (r: LiveRide) => r.stops[0]!.dep ?? r.stops[0]!.depPlan ?? 0;
 const arrOf = (r: LiveRide) => r.stops.at(-1)!.arr ?? r.stops.at(-1)!.arrPlan ?? 0;
 const delay = (expected?: number, plan?: number) =>
@@ -98,15 +107,21 @@ export function liveState(
 ): LiveState {
   const rides = liveRides(chain, status);
   const risks: Risk[] = [];
-  for (let i = 0; i + 1 < rides.length; i++) {
-    const a = rides[i]!;
-    const b = rides[i + 1]!;
-    if (b.cancelled) risks.push({ ride: i + 1, marginMin: 0, reason: 'cancelled' });
-    if (a.s.journey && a.s.journey === b.s.journey) continue;
+  // Only rides still to catch: a change already made is no longer at risk.
+  for (let i = 0; i < rides.length; i++) {
+    const b = rides[i]!;
+    if (depOf(b) <= now) continue;
+    if (b.cancelled) {
+      risks.push({ ride: i, marginMin: 0, reason: 'cancelled' });
+      continue;
+    }
+    const a = rides[i - 1];
+    if (!a || (a.s.journey && a.s.journey === b.s.journey)) continue;
+    // Time needed: the planned walk between the two (if any) plus the minimum change time.
+    const need = walkMin(chain, a, b) + MIN_TRANSFER_MIN;
     const margin = (depOf(b) - arrOf(a)) / 60_000;
-    if (margin < 0) risks.push({ ride: i + 1, marginMin: Math.round(margin), reason: 'missed' });
-    else if (margin < MIN_TRANSFER_MIN)
-      risks.push({ ride: i + 1, marginMin: Math.round(margin), reason: 'tight' });
+    if (margin < 0) risks.push({ ride: i, marginMin: Math.round(margin), reason: 'missed' });
+    else if (margin < need) risks.push({ ride: i, marginMin: Math.round(margin), reason: 'tight' });
   }
   if (!rides.length) return { phase: 'done', rides, current: 0, progress: 1, risks };
 
@@ -176,4 +191,13 @@ export function journeysToWatch(state: LiveState, now: number): string[] {
   if (state.phase === 'riding' && dep !== undefined && dep - now <= WATCH_NEXT_MIN * 60_000)
     rides.push(next);
   return rides.map((r) => r?.s.journey).filter((j): j is string => !!j);
+}
+
+/** The expected arrival at the end of the trip, with what live data says (undefined: none). */
+export function expectedArrival(
+  chain: Connection[],
+  status: Map<string, JourneyStatus>,
+): number | undefined {
+  const last = liveRides(chain, status).at(-1);
+  return last?.stops.at(-1)?.arr;
 }

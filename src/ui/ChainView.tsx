@@ -98,7 +98,8 @@ function rowsOf(c: Connection): Row[] {
 
 /**
  * With a ride's stops open, puts the marker (and the grey/blue split of the rail) where the
- * train is between the two stops shown, measured from the laid-out list.
+ * train is between the two stops shown, measured from the laid-out list (`--fm`; without it
+ * the CSS falls back to React's `--f`, the share of the whole ride).
  */
 function SyncHere({ i, fraction }: { i: number; fraction: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -120,14 +121,14 @@ function SyncHere({ i, fraction }: { i: number; fraction: number }) {
       ];
       const a = points[Math.min(i, points.length - 1)]!;
       const b = points[Math.min(i + 1, points.length - 1)]!;
-      row.style.setProperty('--f', `${(a + (b - a) * fraction).toFixed(1)}px`);
+      row.style.setProperty('--fm', `${(a + (b - a) * fraction).toFixed(1)}px`);
     };
     place();
     const ro = new ResizeObserver(place);
     ro.observe(row);
     return () => {
       ro.disconnect();
-      row.style.removeProperty('--f');
+      row.style.removeProperty('--fm');
     };
   }, [i, fraction]);
   return <span ref={ref} hidden />;

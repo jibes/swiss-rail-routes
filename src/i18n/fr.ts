@@ -105,7 +105,6 @@ export const fr = {
   liveNow: 'Maintenant',
   openLive: 'Afficher en direct',
   replanned: 'replanifié',
-  undoReplan: 'Annuler la dernière replanification',
   deleteTrip: 'Supprimer le voyage',
   confirmDeleteTrip: 'Toucher encore pour supprimer',
   arrived: 'Voyage terminé',
@@ -201,4 +200,6 @@ export const fr = {
     'Cette clé a été remplacée sur un autre appareil. Désactivez la synchro ici et rejoignez avec la nouvelle clé.',
   syncTooBig: 'Échec de la synchro : trop de données. Supprimez d’anciens voyages.',
   syncBusy: 'Le serveur est occupé. La synchro réessaie bientôt.',
+  undoChange: 'Annuler la dernière modification',
+  liveStale: 'Données en direct de {time} ; pas de mise à jour pour l’instant',
 } satisfies Catalogue;

@@ -1,6 +1,13 @@
-// Share a trip as its exact timetable (`#/j/<data>`): the trip without track geometry, deflated,
-// base64url. Opening it never replans (decision 2026-11-01: an exact snapshot).
+// Share a trip as its exact timetable (`#/j/<data>`): the trip with its tracks simplified to
+// ~100 m and polyline-encoded, deflated, base64url. Opening it never replans (decision
+// 2026-11-01: an exact snapshot).
+import { decodePolyline, encodePolyline, simplify } from '../polyline';
+import type { Section } from '../model';
 import type { Trip } from '../trip';
+
+/** About 100 m (75 m east–west): on the track at the zooms the map is used at, and the
+ * timetable stays most of the link (a 3-leg trip: ~4.2k characters, ~6.5k with tracks). */
+const TRACK_TOL = 0.001;
 
 const PREFIX = '#/j/';
 
@@ -21,7 +28,9 @@ async function pipe(
   return new Uint8Array(await out.arrayBuffer());
 }
 
-/** The trip as shared: no id, no history, no tracks (the map draws straight lines instead). */
+type Shared = Omit<Section, 'geometry'> & { track?: string };
+
+/** The trip as shared: no id, no history; tracks simplified and encoded (`track`). */
 function slim(t: Trip) {
   const { id: _id, previous: _p, routeId: _r, ...rest } = t;
   return {
@@ -30,7 +39,27 @@ function slim(t: Trip) {
       ...rest.chain,
       connections: rest.chain.connections.map((c) => ({
         ...c,
-        sections: c.sections.map(({ geometry: _g, ...s }) => s),
+        sections: c.sections.map(({ geometry, ...s }): Shared =>
+          geometry && geometry.length > 1
+            ? { ...s, track: encodePolyline(simplify(geometry, TRACK_TOL)) }
+            : s,
+        ),
+      })),
+    },
+  };
+}
+
+/** Tracks back as geometry (links made before tracks were shared have none: straight lines). */
+function full(data: ReturnType<typeof slim>) {
+  return {
+    ...data,
+    chain: {
+      ...data.chain,
+      connections: data.chain.connections.map((c) => ({
+        ...c,
+        sections: c.sections.map(({ track, ...s }: Shared): Section =>
+          track ? { ...s, geometry: decodePolyline(track) } : s,
+        ),
       })),
     },
   };
@@ -51,7 +80,7 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
     const data = JSON.parse(new TextDecoder().decode(bytes));
     if (data?.schema !== 1 || !data.chain?.connections?.length || !Array.isArray(data.legs))
       return null;
-    return { ...data, id, version: 1 } as Trip;
+    return { ...full(data), id, version: 1 } as Trip;
   } catch {
     return null;
   }

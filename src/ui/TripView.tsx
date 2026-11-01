@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { encodeTrip } from '../core/export/tripShare';
-import type { LiveState } from '../core/live';
+import { expectedArrival, type LiveState } from '../core/live';
 import { tripStatus, undo } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTours } from '../tours';
@@ -10,7 +10,7 @@ import { ExportButtons, ShareButton, Tickets } from './ExportSheet';
 import { duration, hhmm, longDate, minutesBetween } from './format';
 import { Icon } from './icons';
 import { go } from './useHash';
-import { useLive } from './useLive';
+import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 
 /** The next step in one sentence: what, when, where. */
@@ -32,8 +32,10 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
         ? t('nowDepart')
         : t('nowChange');
   return (
-    <section className="next" aria-live="polite">
-      <p className="next-label">{label}</p>
+    <section className="next">
+      <p className="next-label" aria-live="polite">
+        {label}
+      </p>
       <p className="next-time">
         <span className="num">{hhmm(next.at)}</span>
         {next.delayMin > 0 && <span className="late"> +{next.delayMin}</span>}
@@ -74,7 +76,10 @@ export function TripView({ id }: { id: string }) {
   );
   const [confirm, setConfirm] = useState(false);
   const now = useNow();
-  const status = trip ? tripStatus(trip, now) : 'past';
+  const liveStatus = useLiveStatus((s) => s.status);
+  const status = trip
+    ? tripStatus(trip, now, expectedArrival(trip.chain.connections, liveStatus))
+    : 'past';
   // Live calls only while the trip is under way.
   const live = useLive(status === 'live' ? trip : undefined);
 
@@ -92,7 +97,9 @@ export function TripView({ id }: { id: string }) {
   const toRoute = () => {
     if (route) return go(`/tour/${route.id}`);
     const { id: _id, ...r } = trip.route;
-    go(`/tour/${createRoute({ ...r, name: trip.name })}`);
+    const routeId = createRoute({ ...r, name: trip.name });
+    update(id, (x) => ({ ...x, routeId }));
+    go(`/tour/${routeId}`);
   };
   const routeLabel = route ? t('openRoute') : t('saveAsRoute');
   const changes = trip.chain.connections.reduce((n, c) => n + c.transfers, 0);
@@ -153,7 +160,7 @@ export function TripView({ id }: { id: string }) {
         <>
           <p className="muted">
             {longDate(trip.route.date, lang)}
-            {trip.version > 1 && ` · ${t('replanned')}`}
+            {trip.previous && ` · ${t('replanned')}`}
           </p>
           <div className="summary">
             <span className="big">
@@ -169,7 +176,7 @@ export function TripView({ id }: { id: string }) {
 
       {trip.previous && status !== 'past' && (
         <button type="button" className="text-button" onClick={() => update(id, undo)}>
-          {t('undoReplan')}
+          {t('undoChange')}
         </button>
       )}
 
@@ -181,10 +188,12 @@ export function TripView({ id }: { id: string }) {
 
       {state && (
         <p className="muted live-source">
-          {live.fetchedAt
-            ? t('liveAt', { time: hhmm(live.fetchedAt) })
-            : live.failed
-              ? t('liveOffline')
+          {live.failed
+            ? live.fetchedAt
+              ? t('liveStale', { time: hhmm(live.fetchedAt) })
+              : t('liveOffline')
+            : live.fetchedAt
+              ? t('liveAt', { time: hhmm(live.fetchedAt) })
               : t('liveTimetable')}
         </p>
       )}
@@ -211,8 +220,8 @@ export function TripView({ id }: { id: string }) {
 
       <div className="dock">
         <div className="dock-inner">
-          <ExportButtons tour={trip.route} chain={trip.chain} />
-          {status === 'past' ? (
+          <ExportButtons tour={trip.route} chain={trip.chain} uid={trip.id} />
+          {status === 'past' || state?.phase === 'done' ? (
             <button type="button" className="secondary wide" onClick={toRoute}>
               <Icon name="loop" />
               {routeLabel}

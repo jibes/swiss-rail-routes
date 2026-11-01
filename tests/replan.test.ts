@@ -107,6 +107,51 @@ describe('remainingRoute', () => {
   });
 });
 
+describe('remainingRoute: round trips', () => {
+  it('keeps the way home when the trip ends where the point is', () => {
+    // Luzern → Zürich → Luzern, replanned before departure: from Luzern, still back to Luzern.
+    const loop: Leg[] = [
+      { index: 0, from: w('Luzern', 'start'), vias: [], to: w('Zürich HB', 'stop', 30) },
+      { index: 1, from: w('Zürich HB', 'stop', 30), vias: [], to: w('Luzern', 'end') },
+    ];
+    const c = [
+      conn(
+        ride(
+          'IR',
+          [
+            ['Luzern', '08:10'],
+            ['Zürich HB', '08:51'],
+          ],
+          { journey: 'a' },
+        ),
+      ),
+      conn(
+        ride(
+          'IR',
+          [
+            ['Zürich HB', '09:30'],
+            ['Luzern', '10:10'],
+          ],
+          { journey: 'b' },
+        ),
+      ),
+    ];
+    const t = newTrip(
+      'l',
+      { ...newTour('r2', DATE), waypoints: [loop[0]!.from, loop[0]!.to, loop[1]!.to] },
+      loop,
+      { connections: c, warnings: [], score: 0, dep: c[0]!.dep, arr: c[1]!.arr },
+      new Date(0),
+    );
+    const p = replanPoint(t, liveState(c, at('07:50')), at('07:50'))!;
+    expect(remainingRoute(t, p).waypoints.map((x) => `${x.name}:${x.kind}`)).toEqual([
+      'Luzern:start',
+      'Zürich HB:stop',
+      'Luzern:end',
+    ]);
+  });
+});
+
 describe('mergeReplan', () => {
   it('keeps the travelled part, appends the new plan, re-indexes legs and warnings', () => {
     const p = replanPoint(trip, liveState(chain, at('09:00')), at('09:00'))!;

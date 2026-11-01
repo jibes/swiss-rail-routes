@@ -19,7 +19,9 @@ import { StopRow } from './StopRow';
 import { TEMPLATES } from './TemplatePicker';
 import { useDragList } from './useDragList';
 import { go } from './useHash';
-import { useLive } from './useLive';
+import { useLive, useLiveStatus } from './useLive';
+import { useNow } from './useNow';
+import { expectedArrival } from '../core/live';
 
 /**
  * Editing a saved trip, the one place for it. Before departure all of it: stations, stays, date,
@@ -30,9 +32,15 @@ export function EditTrip({ id }: { id: string }) {
   const t = useT();
   const trip = useTrips((s) => s.trips.find((x) => x.id === id));
   const update = useTrips((s) => s.update);
-  const { state, now } = useLive(trip);
+  const nowOpen = useNow();
+  const liveStatus = useLiveStatus((s) => s.status);
+  const tripState = trip
+    ? tripStatus(trip, nowOpen, expectedArrival(trip.chain.connections, liveStatus))
+    : 'past';
+  // Live answers (shared with the trip screen) only while it is under way.
+  const { state, now } = useLive(tripState === 'live' ? trip : undefined);
   // Decided when the screen opens, so the plan matches what was shown.
-  const [whole] = useState(() => !!trip && tripStatus(trip, now) === 'upcoming');
+  const [whole] = useState(() => tripState === 'upcoming');
   const [point] = useState<ReplanPoint | null>(() =>
     trip && state && !whole ? replanPoint(trip, state, now) : null,
   );

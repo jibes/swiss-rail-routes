@@ -84,7 +84,7 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   await expect(page.locator('.chain .leg')).toHaveCount(3);
   await expect(page.locator('.chain')).toContainText('Wengen');
-  await page.getByRole('button', { name: 'Undo last replan' }).click();
+  await page.getByRole('button', { name: 'Undo last change' }).click();
   await expect(page.locator('.chain .leg')).toHaveCount(1);
 });
 

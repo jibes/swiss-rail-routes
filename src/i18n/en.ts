@@ -103,7 +103,6 @@ export const en = {
   liveNow: 'Now',
   openLive: 'Show live',
   replanned: 'replanned',
-  undoReplan: 'Undo last replan',
   deleteTrip: 'Delete trip',
   confirmDeleteTrip: 'Tap again to delete',
   arrived: 'Trip complete',
@@ -198,6 +197,8 @@ export const en = {
     'This key was replaced on another device. Turn sync off here and join with the new key.',
   syncTooBig: 'Sync failed: too much data. Delete old trips to make room.',
   syncBusy: 'The server is busy. Sync tries again shortly.',
+  undoChange: 'Undo last change',
+  liveStale: 'Live data from {time}; not updated right now',
 };
 
 export type Catalogue = typeof en;

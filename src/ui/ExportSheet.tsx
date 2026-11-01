@@ -46,7 +46,16 @@ export function Tickets({ tour, chain, legs }: { tour: Tour; chain: PlannedChain
 }
 
 /** Calendar (ICS) and GPX downloads, as icon buttons for a dock. */
-export function ExportButtons({ tour, chain }: { tour: Tour; chain: PlannedChain }) {
+export function ExportButtons({
+  tour,
+  chain,
+  uid,
+}: {
+  tour: Tour;
+  chain: PlannedChain;
+  /** Base of the calendar entries' ids: the trip's own, so two trips never replace each other. */
+  uid: string;
+}) {
   const t = useT();
   const name = tour.name || t('untitled');
   return (
@@ -59,7 +68,7 @@ export function ExportButtons({ tour, chain }: { tour: Tour; chain: PlannedChain
           download(
             fileName(tour, 'ics'),
             'text/calendar',
-            toIcs(name, chain.connections, tour.id, new Date()),
+            toIcs(name, chain.connections, uid, new Date()),
           )
         }
       >

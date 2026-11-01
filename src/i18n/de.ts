@@ -105,7 +105,6 @@ export const de = {
   liveNow: 'Jetzt',
   openLive: 'Live anzeigen',
   replanned: 'neu geplant',
-  undoReplan: 'Letzte Neuplanung rückgängig',
   deleteTrip: 'Reise löschen',
   confirmDeleteTrip: 'Nochmals tippen zum Löschen',
   arrived: 'Reise beendet',
@@ -203,4 +202,6 @@ export const de = {
   syncTooBig:
     'Synchronisierung fehlgeschlagen: zu viele Daten. Lösche alte Reisen, um Platz zu schaffen.',
   syncBusy: 'Der Server ist ausgelastet. Die Synchronisierung versucht es gleich wieder.',
+  undoChange: 'Letzte Änderung rückgängig',
+  liveStale: 'Live-Daten von {time}; gerade keine Aktualisierung',
 } satisfies Catalogue;

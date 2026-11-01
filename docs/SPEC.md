@@ -123,7 +123,7 @@ The trip screen follows the trip's time:
 - **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min, when its delay or cancellation can break the connection (`journeysToWatch`). About a quarter of the requests of polling both every minute.
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
 - **Replan from here** starts at the next stop the train calls at (or the station you are at).
-- **Sharing**: a route as `#/r/…` (stops only; the recipient plans when); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
+- **Sharing**: a route as `#/r/…` (stops only; the recipient plans when); a trip as `#/j/…`, the exact timetable with its tracks simplified to ~100 m (polyline-encoded, deflated; a 3-leg trip ~6.5k characters; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
 - **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip). The two: where you get off, longest stay first; then spread out (farthest from the start and from the one picked). Shown as the placeholder; a saved trip keeps it as its name.
 - **Intermediate stops** expand on every ride; under way the ride being travelled shows them, the marker between the last stop passed and the next.
 

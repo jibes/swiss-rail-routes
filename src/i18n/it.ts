@@ -106,7 +106,6 @@ export const it = {
   liveNow: 'Ora',
   openLive: 'Mostra in diretta',
   replanned: 'ripianificato',
-  undoReplan: 'Annulla l’ultima ripianificazione',
   deleteTrip: 'Elimina viaggio',
   confirmDeleteTrip: 'Tocca di nuovo per eliminare',
   arrived: 'Viaggio concluso',
@@ -201,4 +200,6 @@ export const it = {
     'Questa chiave è stata sostituita su un altro dispositivo. Disattiva qui la sincronizzazione e unisciti con la nuova chiave.',
   syncTooBig: 'Sincronizzazione non riuscita: troppi dati. Elimina vecchi viaggi.',
   syncBusy: 'Il server è occupato. La sincronizzazione riprova a breve.',
+  undoChange: 'Annulla l’ultima modifica',
+  liveStale: 'Dati in tempo reale delle {time}; al momento non aggiornati',
 } satisfies Catalogue;

@@ -27,9 +27,10 @@ export type TripStatus = 'upcoming' | 'live' | 'past';
 export const LIVE_BEFORE_MIN = 30;
 export const LIVE_AFTER_MIN = 15;
 
-export function tripStatus(t: Pick<Trip, 'chain'>, now: number): TripStatus {
+/** `arrival`: the expected arrival with live delays, so a late last train keeps it live. */
+export function tripStatus(t: Pick<Trip, 'chain'>, now: number, arrival?: number): TripStatus {
   const dep = Date.parse(t.chain.dep);
-  const arr = Date.parse(t.chain.arr);
+  const arr = Math.max(Date.parse(t.chain.arr), arrival ?? 0);
   if (now < dep - LIVE_BEFORE_MIN * 60_000) return 'upcoming';
   if (now > arr + LIVE_AFTER_MIN * 60_000) return 'past';
   return 'live';
