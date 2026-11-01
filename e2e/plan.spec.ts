@@ -4,14 +4,15 @@ import { expect, test } from './fixtures';
 test('plans T5 and shows the GA warning, alternatives and exports', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'New tour' }).click();
-  await page.getByLabel('Date').fill('2026-11-07');
-  await page.getByLabel('Time', { exact: true }).fill('09:00');
   const search = page.locator('.picker input');
   await search.fill('Interlaken Ost');
   await search.press('Enter');
   await search.fill('Kleine Scheidegg');
   await search.press('Enter');
   await page.getByRole('button', { name: 'Plan' }).click();
+  // When is set on the planning screen.
+  await page.getByLabel('Date').fill('2026-11-07');
+  await page.getByLabel('Time', { exact: true }).fill('09:00');
 
   await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
   await expect(
@@ -19,10 +20,6 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
   ).toBeVisible();
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('CC 63', { exact: true }).first()).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /Open Interlaken Ost → Kleine Scheidegg on sbb.ch/ }),
-  ).toBeVisible();
-
   const blocking = (await new AxeBuilder({ page }).analyze()).violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
   );
@@ -38,8 +35,19 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
     [],
   );
 
-  // The plan is kept: offline, the timeline still shows it.
+  // Save the recommended option as a trip: its timetable, tickets and exports.
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.getByRole('button', { name: 'Save trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\//);
+  await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Open Interlaken Ost → Kleine Scheidegg on sbb.ch/ }),
+  ).toBeVisible();
+
+  // Listed under Trips, and readable offline.
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Untitled tour/ })).toBeVisible();
   await page.context().setOffline(true);
   await page.reload();
-  await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
+  await expect(page.getByRole('link', { name: /Untitled tour/ })).toBeVisible();
 });

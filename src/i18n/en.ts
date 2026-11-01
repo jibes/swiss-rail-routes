@@ -94,6 +94,19 @@ export const en = {
   shareTour: 'Share tour',
   stop1: '1 stop',
   drag: 'Move {name} (drag, or arrow keys)',
+  routes: 'Routes',
+  trips: 'Trips',
+  sections: 'Sections',
+  upcoming: 'Upcoming',
+  past: 'Past',
+  noTrips: 'No trips yet. Plan a route and save the connections you like.',
+  saveTrip: 'Save trip',
+  liveNow: 'Now',
+  openLive: 'Show live',
+  replanned: 'replanned',
+  undoReplan: 'Undo last replan',
+  deleteTrip: 'Delete trip',
+  confirmDeleteTrip: 'Tap again to delete',
 };
 
 export type Catalogue = typeof en;

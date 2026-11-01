@@ -9,6 +9,7 @@ import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { useT } from '../store';
 import { useTours } from '../tours';
+import { useTrips } from '../trips';
 import { NotFound } from './Builder';
 import { TEMPLATES } from './TemplatePicker';
 import { Icon } from './icons';
@@ -19,16 +20,24 @@ maplibregl.setWorkerUrl(workerUrl);
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 const ACCENT = '#c0261b';
 
-export default function MapView({ id }: { id: string }) {
+/** A route's map (with its last plan) or a trip's (with its saved connections). */
+export default function MapView({ id, trip: tripId }: { id: string; trip?: boolean }) {
   const t = useT();
-  const tour = useTours((s) => s.tours.find((x) => x.id === id));
+  const route = useTours((s) => s.tours.find((x) => x.id === id));
+  const trip = useTrips((s) => (tripId ? s.trips.find((x) => x.id === id) : undefined));
+  const tour = tripId ? trip?.route : route;
+  const tripChain = trip?.chain.connections;
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
-  const json = tour ? JSON.stringify(tour) : '';
+  const json = tour ? JSON.stringify([tour, tripChain ?? null]) : '';
 
   useEffect(() => {
     if (!json || !box.current) return;
-    const current = JSON.parse(json) as NonNullable<typeof tour>;
+    const [current, savedChain] = JSON.parse(json) as [
+      NonNullable<typeof tour>,
+      Connection[] | null,
+    ];
+    const routeJson = JSON.stringify(current);
     let map: maplibregl.Map | undefined;
     let gone = false;
     (async () => {
@@ -36,7 +45,8 @@ export default function MapView({ id }: { id: string }) {
       if (gone || !box.current) return;
       const saved = plans[current.id];
       const chain: Connection[] | undefined =
-        saved?.tourJson === json ? saved.result.recommended?.connections : undefined;
+        savedChain ??
+        (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
       const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r));
       map = new maplibregl.Map({
         container: box.current,
@@ -115,7 +125,11 @@ export default function MapView({ id }: { id: string }) {
         >
           <Icon name="back" />
         </button>
-        <button type="button" className="secondary" onClick={() => go(`/tour/${id}/plan`)}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => go(tripId ? `/trip/${id}` : `/tour/${id}/plan`)}
+        >
           {t('timeline')}
         </button>
       </div>

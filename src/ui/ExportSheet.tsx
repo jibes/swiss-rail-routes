@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { toGpx } from '../core/export/gpx';
 import { toIcs } from '../core/export/ics';
 import { sbbUrl } from '../core/export/sbb';
-import { encodeTour } from '../core/export/share';
 import type { Leg, Tour } from '../core/model';
 import type { PlannedChain } from '../core/planner/plan';
 import { useT } from '../store';
@@ -26,10 +25,13 @@ export function ExportSheet({
   tour,
   chain,
   legs,
+  shareHash,
 }: {
   tour: Tour;
   chain: PlannedChain;
   legs: Leg[];
+  /** The `#/…` part of the share link: a route (#/t/) or a trip (#/j/). */
+  shareHash: () => string | Promise<string>;
 }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -84,7 +86,7 @@ export function ExportSheet({
             type="button"
             className="primary wide"
             onClick={async () => {
-              const url = `${location.origin}${location.pathname}${encodeTour(tour)}`;
+              const url = `${location.origin}${location.pathname}${await shareHash()}`;
               if (navigator.share) {
                 try {
                   await navigator.share({ title: name, url });

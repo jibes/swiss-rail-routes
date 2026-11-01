@@ -8,14 +8,13 @@ import {
   setRoundTrip,
   setStop,
 } from '../core/edit';
-import type { TicketType, Tour } from '../core/model';
+import type { Tour } from '../core/model';
 import type { StopSearch } from '../core/stops';
 import { stopKey } from '../core/stops';
 import { expandLegs, isRoundTrip, totalDwellMin } from '../core/tour';
 import { stopSearch } from '../io/stops';
-import { usePrefs, useT } from '../store';
+import { useT } from '../store';
 import { useTours } from '../tours';
-import { shortDate } from './format';
 import { Icon } from './icons';
 import { StopPicker } from './StopPicker';
 import { dwellLabel, StopRow } from './StopRow';
@@ -23,16 +22,8 @@ import { directionFrom, TEMPLATES, TemplatePicker } from './TemplatePicker';
 import { useDragList } from './useDragList';
 import { go } from './useHash';
 
-const TICKETS: [TicketType, 'ticketGA' | 'ticketDay' | 'ticketHalf' | 'ticketNone'][] = [
-  ['GA', 'ticketGA'],
-  ['Tageskarte', 'ticketDay'],
-  ['Halbtax', 'ticketHalf'],
-  ['none', 'ticketNone'],
-];
-
 export function Builder({ id, showTemplates }: { id: string; showTemplates?: boolean }) {
   const t = useT();
-  const lang = usePrefs((s) => s.lang);
   const tour = useTours((s) => s.tours.find((x) => x.id === id));
   const update = useTours((s) => s.update);
   const remove = useTours((s) => s.remove);
@@ -67,8 +58,6 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
 
   if (!tour) return <NotFound />;
   const edit = (f: (x: Tour) => Tour) => update(id, f);
-  const departs = 'departAt' in tour.anchor;
-  const time = 'departAt' in tour.anchor ? tour.anchor.departAt : tour.anchor.arriveBy;
   const legs = expandLegs(tour).length;
   const closed = isRoundTrip(tour);
   const wps = tour.waypoints;
@@ -102,63 +91,6 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
       </header>
 
       <div className="strip">
-        <label className="pill picker-pill">
-          <span aria-hidden="true">{shortDate(tour.date, lang)}</span>
-          <input
-            aria-label={t('date')}
-            type="date"
-            value={tour.date}
-            onChange={(e) => e.target.value && edit((x) => ({ ...x, date: e.target.value }))}
-          />
-        </label>
-        <span className="pill">
-          <span className="seg" role="group" aria-label={t('anchor')}>
-            <button
-              type="button"
-              aria-pressed={departs}
-              onClick={() => edit((x) => ({ ...x, anchor: { departAt: time } }))}
-            >
-              {t('departAt')}
-            </button>
-            <button
-              type="button"
-              aria-pressed={!departs}
-              onClick={() => edit((x) => ({ ...x, anchor: { arriveBy: time } }))}
-            >
-              {t('arriveBy')}
-            </button>
-          </span>
-          <label className="picker-pill time-pill">
-            <span aria-hidden="true" className="num">
-              {time}
-            </span>
-            <input
-              aria-label={t('time')}
-              type="time"
-              value={time}
-              onChange={(e) =>
-                e.target.value &&
-                edit((x) => ({
-                  ...x,
-                  anchor: departs ? { departAt: e.target.value } : { arriveBy: e.target.value },
-                }))
-              }
-            />
-          </label>
-        </span>
-        <label className="pill">
-          <span className="sr-only">{t('ticket')}</span>
-          <select
-            value={tour.ticket}
-            onChange={(e) => edit((x) => ({ ...x, ticket: e.target.value as TicketType }))}
-          >
-            {TICKETS.map(([v, k]) => (
-              <option key={v} value={v}>
-                {t(k)}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="pill toggle-pill">
           <input
             type="checkbox"

@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { newTour } from '../src/core/edit';
+import type { PlannedChain } from '../src/core/planner/plan';
+import { liveTrip, newTrip, revise, sortTrips, tripStatus, undo } from '../src/core/trip';
+
+const chain = (dep: string, arr: string): PlannedChain => ({
+  connections: [],
+  warnings: [],
+  score: 0,
+  dep: `2026-11-07T${dep}:00Z`,
+  arr: `2026-11-07T${arr}:00Z`,
+});
+const at = (hhmm: string) => Date.parse(`2026-11-07T${hhmm}:00Z`);
+const trip = (id: string, dep: string, arr: string) =>
+  newTrip(id, { ...newTour('r', '2026-11-07'), name: id }, [], chain(dep, arr), new Date(0));
+
+describe('trip status', () => {
+  const t = trip('a', '08:00', '18:00');
+  it('is live from 30 min before departure to 15 min after arrival', () => {
+    expect(tripStatus(t, at('07:29'))).toBe('upcoming');
+    expect(tripStatus(t, at('07:30'))).toBe('live');
+    expect(tripStatus(t, at('18:15'))).toBe('live');
+    expect(tripStatus(t, at('18:16'))).toBe('past');
+  });
+
+  it('sorts current soonest first, past latest first, and finds the live one', () => {
+    const list = [
+      trip('late', '15:00', '16:00'),
+      trip('now', '09:00', '12:00'),
+      trip('done', '06:00', '07:00'),
+    ];
+    const s = sortTrips(list, at('10:00'));
+    expect(s.current.map((x) => x.name)).toEqual(['now', 'late']);
+    expect(s.past.map((x) => x.name)).toEqual(['done']);
+    expect(liveTrip(list, at('10:00'))?.name).toBe('now');
+    expect(liveTrip(list, at('13:00'))).toBeUndefined();
+  });
+});
+
+describe('versions', () => {
+  it('freezes the route, revises with undo of one step', () => {
+    const route = { ...newTour('r', '2026-11-07'), name: 'X' };
+    const t = newTrip('t', route, [], chain('08:00', '18:00'), new Date(0));
+    route.name = 'changed later';
+    expect(t.route.name).toBe('X');
+    const r = revise(
+      t,
+      { route: t.route, legs: [], chain: chain('08:00', '19:00') },
+      new Date(1000),
+    );
+    expect(r.version).toBe(2);
+    expect(r.chain.arr).toContain('19:00');
+    expect(r.previous?.chain.arr).toContain('18:00');
+    const u = undo(r);
+    expect(u.chain.arr).toContain('18:00');
+    expect(u.previous).toBeUndefined();
+    expect(undo(u)).toBe(u);
+  });
+});

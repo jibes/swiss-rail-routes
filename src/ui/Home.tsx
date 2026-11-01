@@ -5,6 +5,7 @@ import { usePrefs, useT } from '../store';
 import { useTours } from '../tours';
 import { longDate } from './format';
 import { Icon } from './icons';
+import { TabBar } from './TabBar';
 import { go } from './useHash';
 
 /** The tour drawn as a tiny line: solid dots where you get off, rings where you ride through. */
@@ -42,9 +43,9 @@ export function Home() {
   const create = useTours((s) => s.create);
 
   return (
-    <main className="page home">
+    <main className="page home with-tabs">
       <header className="hero">
-        <h1>{t('appName')}</h1>
+        <h1>{t('routes')}</h1>
         <p>{t('tagline')}</p>
       </header>
 
@@ -110,6 +111,7 @@ export function Home() {
           </button>
         </div>
       </div>
+      <TabBar />
     </main>
   );
 }

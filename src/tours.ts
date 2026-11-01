@@ -23,9 +23,28 @@ export function defaultDate(now = new Date()): string {
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined;
+let pending: (() => Promise<unknown>) | undefined;
+/** Edits are saved after 300 ms of quiet; adds and removes, and the page going away, at once. */
+const flush = () => {
+  clearTimeout(timer);
+  const p = pending;
+  pending = undefined;
+  return p?.();
+};
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => void flush());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void flush();
+  });
+}
+const persistNow = (list: Parameters<typeof saveTours>[0]) => {
+  pending = () => saveTours(list);
+  return flush();
+};
 const persist = (tours: Tour[]) => {
   clearTimeout(timer);
-  timer = setTimeout(() => void saveTours(tours), 300);
+  pending = () => saveTours(tours);
+  timer = setTimeout(() => void flush(), 300);
 };
 
 export const useTours = create<ToursState>()((set, get) => ({
@@ -40,7 +59,7 @@ export const useTours = create<ToursState>()((set, get) => ({
     const t: Tour = tour ? { ...tour, id } : newTour(id, defaultDate());
     const tours = [t, ...get().tours];
     set({ tours });
-    persist(tours);
+    void persistNow(tours);
     return id;
   },
   update: (id, edit) => {
@@ -51,6 +70,6 @@ export const useTours = create<ToursState>()((set, get) => ({
   remove: (id) => {
     const tours = get().tours.filter((t) => t.id !== id);
     set({ tours });
-    persist(tours);
+    void persistNow(tours);
   },
 }));

@@ -7,9 +7,11 @@ import { stopSearch } from '../io/stops';
 import { loadPlans, savePlans } from '../io/tours';
 import { useT } from '../store';
 import { useTours } from '../tours';
+import { useTrips } from '../trips';
+import { newTrip } from '../core/trip';
 import { NotFound } from './Builder';
 import { ChainView } from './ChainView';
-import { ExportSheet } from './ExportSheet';
+import { PlanSettings } from './PlanSettings';
 import { duration, hhmm, minutesBetween } from './format';
 import { TEMPLATES } from './TemplatePicker';
 import { Icon } from './icons';
@@ -31,6 +33,7 @@ export function Timeline({ id }: { id: string }) {
   const [result, setResult] = useState<PlanResult | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const update = useTours((s) => s.update);
+  const addTrip = useTrips((s) => s.add);
   const [attempt, setAttempt] = useState(0);
   const [detail, setDetail] = useState('');
   const json = tour ? JSON.stringify(tour) : '';
@@ -118,6 +121,8 @@ export function Timeline({ id }: { id: string }) {
           <Icon name="map" />
         </button>
       </header>
+
+      <PlanSettings tour={tour} edit={(f) => update(id, f)} />
 
       {status === 'planning' && (
         <p role="status" className="muted">
@@ -212,7 +217,21 @@ export function Timeline({ id }: { id: string }) {
               <div role={options.length > 1 ? 'tabpanel' : undefined}>
                 <ChainView chain={chain} dwell={legs.map((l) => l.to.dwellMin)} />
               </div>
-              <ExportSheet tour={tour} chain={chain} legs={legs} />
+              <div className="dock">
+                <div className="dock-inner">
+                  <button
+                    type="button"
+                    className="primary wide"
+                    onClick={() => {
+                      const tripId = crypto.randomUUID();
+                      addTrip(newTrip(tripId, tour, legs, chain, new Date()));
+                      go(`/trip/${tripId}`);
+                    }}
+                  >
+                    {t('saveTrip')}
+                  </button>
+                </div>
+              </div>
             </>
           )}
         </>
