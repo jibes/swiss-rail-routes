@@ -56,7 +56,8 @@ export default defineConfig({
       },
       workbox: {
         clientsClaim: true,
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm,json}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // stops.v1.json
         navigateFallback: 'index.html',
       },
     }),

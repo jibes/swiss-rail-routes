@@ -20,7 +20,8 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "icons": "node scripts/icons.mjs",
     "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
-    "record:ojp": "node --experimental-strip-types scripts/record-ojp.ts"
+    "record:ojp": "node --experimental-strip-types scripts/record-ojp.ts",
+    "data:stops": "node --experimental-strip-types scripts/build-stops.ts"
   },
   "dependencies": {
     "idb-keyval": "^6.3.0",
