@@ -106,4 +106,20 @@ describe('OJP worker', () => {
     expect(res.status).toBe(200);
     expect(String(upstream.mock.calls[0]![1]!.body)).toContain('<OJPLocationInformationRequest>');
   });
+
+  it('says what is wrong, readable by the app', async () => {
+    const { call } = setup({ apiKey: '' });
+    const res = await call();
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+    expect(await res.text()).toContain('OJP_API_KEY');
+    const broken = setup({
+      limit: async () => {
+        throw new Error('binding');
+      },
+    });
+    const r2 = await broken.call();
+    expect(r2.status).toBe(500);
+    expect(r2.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
+  });
 });

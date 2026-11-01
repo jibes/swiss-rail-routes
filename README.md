@@ -28,7 +28,7 @@ Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
 ## OJP Worker
 
-`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `POST /stops`), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers 10 min and allows 30 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
+`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `POST /stops`), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers 10 min and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
 
 One-time setup:
 

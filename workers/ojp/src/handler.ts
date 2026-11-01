@@ -42,7 +42,20 @@ const sha256 = async (s: string) =>
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 
+/** Every answer, errors included, carries CORS headers so the app can read why it failed. */
 export async function handle(req: Request, d: Deps): Promise<Response> {
+  try {
+    return await route(req, d);
+  } catch (e) {
+    const h = cors(req.headers.get('Origin'), d.allowedOrigins);
+    return new Response(`internal ${e instanceof Error ? e.name : 'error'}`, {
+      status: 500,
+      headers: { ...h, 'Content-Type': 'text/plain' },
+    });
+  }
+}
+
+async function route(req: Request, d: Deps): Promise<Response> {
   const origin = req.headers.get('Origin');
   const h = cors(origin, d.allowedOrigins);
   const reply = (status: number, body: string, extra: Record<string, string> = {}) =>
@@ -51,6 +64,7 @@ export async function handle(req: Request, d: Deps): Promise<Response> {
   if (origin && !h['Access-Control-Allow-Origin']) return reply(403, 'origin');
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
   if (req.method !== 'POST') return reply(405, 'method');
+  if (!d.apiKey) return reply(503, 'not configured: OJP_API_KEY');
 
   const path = new URL(req.url).pathname;
   if (path !== '/trip' && path !== '/stops') return reply(404, 'path');

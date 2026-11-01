@@ -38,7 +38,7 @@ const stopsOf = (c: PlannedChain, leg?: number) =>
       .flatMap((x) => calls(x).map((k) => k.key)),
   );
 
-// Live runs go one tour at a time: the Worker allows 30 uncached requests a minute per IP.
+// Live runs go one tour at a time: the Worker allows 120 uncached requests a minute per IP.
 const suite = LIVE_URL ? describe : describe.concurrent;
 
 suite('acceptance tours', { timeout }, () => {

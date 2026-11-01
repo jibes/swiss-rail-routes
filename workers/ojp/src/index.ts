@@ -10,9 +10,8 @@ interface Env {
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    if (!env.OJP_API_KEY) return new Response('not configured', { status: 503 });
     return handle(req, {
-      apiKey: env.OJP_API_KEY,
+      apiKey: env.OJP_API_KEY ?? '',
       upstream: env.OJP_URL,
       allowedOrigins: env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
       fetch: (...a) => fetch(...a),

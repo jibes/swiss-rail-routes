@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { plan, type PlanResult, type PlannedChain } from '../core/planner/plan';
 import { expandLegs } from '../core/tour';
 import { GA, SEGMENTS } from '../data';
-import { PlanningUnavailable, fetchTrips } from '../io/ojp';
+import { PlanningUnavailable, WorkerError, fetchTrips } from '../io/ojp';
 import { stopSearch } from '../io/stops';
 import { loadPlans, savePlans } from '../io/tours';
 import { useT } from '../store';
@@ -24,6 +24,7 @@ export function Timeline({ id }: { id: string }) {
   const [result, setResult] = useState<PlanResult | null>(null);
   const [view, setView] = useState<(typeof VIEWS)[number]>('recommended');
   const [attempt, setAttempt] = useState(0);
+  const [detail, setDetail] = useState('');
   const json = tour ? JSON.stringify(tour) : '';
 
   useEffect(() => {
@@ -57,6 +58,9 @@ export function Timeline({ id }: { id: string }) {
         });
       } catch (e) {
         if (ctrl.signal.aborted) return;
+        setDetail(
+          e instanceof WorkerError ? e.detail : e instanceof Error ? `${e.name}: ${e.message}` : '',
+        );
         setStatus(e instanceof PlanningUnavailable ? 'unavailable' : 'error');
       }
     })();
@@ -83,7 +87,7 @@ export function Timeline({ id }: { id: string }) {
       {status === 'unavailable' && <p role="status">{t('planUnavailable')}</p>}
       {status === 'error' && (
         <p role="alert">
-          {t('planFailed')}{' '}
+          {t('planFailed')} {detail && <code className="muted">{detail}</code>}{' '}
           <button type="button" onClick={() => setAttempt((a) => a + 1)}>
             {t('retry')}
           </button>
