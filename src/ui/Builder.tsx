@@ -34,6 +34,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
   const [index, setIndex] = useState<StopSearch | null>(null);
   // A new object per move, so moving to the same index twice still refocuses.
   const [focusGrip, setFocusGrip] = useState<{ i: number } | null>(null);
+  const [focusRow, setFocusRow] = useState<{ i: number } | null>(null);
   const {
     listRef,
     list: listEl,
@@ -53,6 +54,14 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
     if (focusGrip === null) return;
     listEl?.querySelector<HTMLElement>(`[data-grip="${focusGrip.i}"]`)?.focus();
   }, [focusGrip, listEl]);
+  useEffect(() => {
+    // Only when the focus would be lost (not when the user tapped or clicked something else).
+    if (focusRow === null || (document.activeElement && document.activeElement !== document.body))
+      return;
+    const rows = listEl?.querySelectorAll<HTMLElement>(':scope > li .stop-head');
+    const target = rows?.[Math.min(focusRow.i, rows.length - 1)];
+    (target ?? document.querySelector<HTMLElement>('.stop.add input'))?.focus();
+  }, [focusRow, listEl]);
   useEffect(() => {
     if (showTemplates) document.getElementById('routes')?.scrollIntoView({ block: 'center' });
   }, [showTemplates]);
@@ -121,14 +130,18 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
             const runStart = w.templateId && wps[i - 1]?.templateId !== w.templateId;
             return (
               <StopRow
-                key={`${i}-${w.stopRef}`}
+                // By position: a station replaced in place keeps its row (and the focus).
+                key={i}
                 w={w}
                 index={i}
+                noGrip={closed && (i === 0 || i === wps.length - 1)}
                 last={i === wps.length - 1}
                 caption={runStart ? TEMPLATES.find((x) => x.id === w.templateId)?.name : undefined}
                 onStay={(m) => edit((x) => setStay(x, i, m))}
                 onRemove={() => {
                   edit((x) => removeWaypoint(x, i));
+                  // Keyboard users keep their place: the next station, or adding one.
+                  setFocusRow({ i });
                 }}
                 onReplace={(stop) => edit((x) => replaceWaypoint(x, i, stop))}
                 grip={grip(i)}
@@ -158,7 +171,8 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
         onClick={() => {
           if (!confirm) return setConfirm(true);
           remove(id);
-          go('/');
+          // Replace: Back must not reopen the deleted route's address.
+          location.replace('#/');
         }}
       >
         {confirm ? t('confirmDelete') : t('deleteTour')}
@@ -190,11 +204,21 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
  */
 export function useAddress(tour: Tour | undefined, sub: string) {
   useEffect(() => {
-    if (!tour || tour.waypoints.length < 2) return;
+    if (!tour) return;
     const path = `#/tour/${tour.id}${sub}`;
     if (location.hash.split('?')[0] !== path) return;
-    const next = tourHash(tour, sub);
-    if (location.hash !== next) history.replaceState(history.state, '', next);
+    // Under two stations there is no route to share: the plain address.
+    const next = tour.waypoints.length < 2 ? path : tourHash(tour, sub);
+    if (location.hash === next) return;
+    // After typing stops (Safari refuses ~100 replaceState calls in a short time).
+    const timer = setTimeout(() => {
+      try {
+        history.replaceState(history.state, '', next);
+      } catch {
+        // Throttled: the next edit tries again.
+      }
+    }, 300);
+    return () => clearTimeout(timer);
   }, [tour, sub]);
 }
 

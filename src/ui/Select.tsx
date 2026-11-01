@@ -17,6 +17,7 @@ export function Select<V extends string>({
   onChange,
   label,
   className = '',
+  keepFocus = false,
 }: {
   value: V;
   options: Option<V>[];
@@ -24,6 +25,11 @@ export function Select<V extends string>({
   /** Accessible name (shown to screen readers only). */
   label: string;
   className?: string;
+  /**
+   * Inside an edit field: a tap must not take the focus from the field (Safari gives none to
+   * tapped buttons and the field would close before the list opens).
+   */
+  keepFocus?: boolean;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -32,6 +38,8 @@ export function Select<V extends string>({
     options.findIndex((o) => o.value === value),
   );
   const [active, setActive] = useState(current);
+  // Near the bottom of the screen the list opens upwards, clear of the dock.
+  const [up, setUp] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +64,8 @@ export function Select<V extends string>({
   };
   const show = () => {
     setActive(current);
+    const r = root.current?.getBoundingClientRect();
+    setUp(!!r && r.bottom + 340 > window.innerHeight && r.top > 340);
     setOpen(true);
   };
 
@@ -69,6 +79,7 @@ export function Select<V extends string>({
         aria-expanded={open}
         aria-controls={`${id}-list`}
         aria-activedescendant={open ? `${id}-${active}` : undefined}
+        onPointerDown={keepFocus ? (e) => e.preventDefault() : undefined}
         onClick={() => (open ? setOpen(false) : show())}
         onBlur={() => setOpen(false)}
         onKeyDown={(e) => {
@@ -93,7 +104,12 @@ export function Select<V extends string>({
         <Icon name="chevron" size={16} />
       </button>
       {open && (
-        <ul id={`${id}-list`} role="listbox" aria-label={label} className="select-list">
+        <ul
+          id={`${id}-list`}
+          role="listbox"
+          aria-label={label}
+          className={`select-list ${up ? 'up' : ''}`}
+        >
           {options.map((o, i) => (
             <li
               key={o.value}

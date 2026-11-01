@@ -45,6 +45,7 @@ export function StopPicker({
   const [failed, setFailed] = useState(false);
   const [text, setText] = useState(initial ?? '');
   const [active, setActive] = useState(0);
+  const [closed, setClosed] = useState(false);
 
   const input = useRef<HTMLInputElement>(null);
 
@@ -57,8 +58,9 @@ export function StopPicker({
   }, [autoFocus, index]);
 
   // An unchanged name searches nothing: the list opens once you type.
-  const query = text === initial ? '' : text.trim();
+  const query = text === initial || closed ? '' : text.trim();
   const hits = index && query.length >= 2 ? index.search(query, 8) : [];
+  const listOpen = !!index && query.length >= 2;
   const pick = (s: Stop) => {
     onPick(s);
     setText('');
@@ -80,7 +82,7 @@ export function StopPicker({
         ref={input}
         id={`${id}-in`}
         role="combobox"
-        aria-expanded={hits.length > 0}
+        aria-expanded={listOpen}
         aria-controls={`${id}-list`}
         aria-activedescendant={hits.length ? `${id}-${active}` : undefined}
         aria-autocomplete="list"
@@ -92,8 +94,13 @@ export function StopPicker({
         onChange={(e) => {
           setText(e.target.value);
           setActive(0);
+          setClosed(false);
         }}
         onKeyDown={(e) => {
+          if (e.key === 'Escape' && listOpen) {
+            e.preventDefault();
+            return setClosed(true);
+          }
           if (e.key === 'Escape' && onCancel) {
             e.preventDefault();
             return onCancel();
@@ -106,7 +113,6 @@ export function StopPicker({
           if (e.key === 'ArrowDown') setActive((a) => Math.min(a + 1, hits.length - 1));
           else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, 0));
           else if (e.key === 'Enter') pick(hits[active]!);
-          else if (e.key === 'Escape') setText('');
           else return;
           e.preventDefault();
         }}
@@ -120,15 +126,21 @@ export function StopPicker({
           onClick={() => {
             setText('');
             setActive(0);
+            // The button goes away with the text: keep the focus in the field.
+            input.current?.focus();
           }}
         >
           <Icon name="close" size={18} />
         </button>
       )}
       {trailing}
-      {query.length >= 2 && index && (
+      {listOpen && (
         <ul id={`${id}-list`} role="listbox" className="options">
-          {hits.length === 0 && <li className="muted">{t('noStops')}</li>}
+          {hits.length === 0 && (
+            <li className="muted" role="option" aria-selected={false} aria-disabled="true">
+              {t('noStops')}
+            </li>
+          )}
           {hits.map((s, i) => (
             <li
               key={s.ref}

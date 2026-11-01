@@ -10,7 +10,7 @@
 // Settings, each optional: d (date, default today), dep or arr (time, default dep=08:00),
 // ticket (default GA), class (default 2), name, notes.
 import type { RouteTemplate } from '../data';
-import { insertTemplate } from '../edit';
+import { insertTemplate, normalise } from '../edit';
 import type { TicketType, Tour, Waypoint } from '../model';
 import { fold } from '../stops';
 
@@ -161,16 +161,15 @@ export function parseRoute(
       else if (/^a\d{4}$/.test(m) && TIME.test(time(m.slice(1)))) w.earliestArr = time(m.slice(1));
       else if (/^b\d{4}$/.test(m) && TIME.test(time(m.slice(1)))) w.latestDep = time(m.slice(1));
     }
+    // A stop right after the same stop (a template's end written out again) is one stop.
+    const prev = tour.waypoints.at(-1);
+    if (prev?.stopRef === w.stopRef) continue;
     tour = { ...tour, waypoints: [...tour.waypoints, w] };
   }
-  const wps = tour.waypoints;
-  if (wps.length < 2) return null;
+  if (tour.waypoints.length < 2) return null;
   const { id: _id, ...rest } = tour;
-  return {
-    ...rest,
-    waypoints: wps.map((w, i) => {
-      const kind = i === 0 ? 'start' : i === wps.length - 1 ? 'end' : w.kind;
-      return kind === w.kind ? w : { ...w, kind, dwellMin: 0 };
-    }),
-  };
+  // Start and end where they are now, every station between them kept as what it is.
+  const middle = (w: Waypoint): Waypoint =>
+    w.kind === 'start' || w.kind === 'end' ? { ...w, kind: 'via', dwellMin: 0 } : w;
+  return { ...rest, waypoints: normalise(tour.waypoints.map(middle)) };
 }

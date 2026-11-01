@@ -71,6 +71,18 @@ describe('route links', () => {
     expect(r.waypoints[0]).toMatchObject({ stopRef: '8503000.1', name: 'Foo Bar' });
   });
 
+  it('a template in the middle: one end, one Tirano, kinds as the builder makes them', () => {
+    const r = read('#/r/zurich-hb.3000~chur.9000.60~@bernina~tirano.9369')!;
+    const kinds = r.waypoints.map((w) => w.kind);
+    expect(kinds[0]).toBe('start');
+    expect(kinds.at(-1)).toBe('end');
+    expect(kinds.slice(1, -1)).not.toContain('end');
+    expect(r.waypoints.filter((w) => w.name === 'Tirano')).toHaveLength(1);
+    // Read back, written again, read again: the same route.
+    const again = read(routeHash({ ...r, id: 'x' }))!;
+    expect(again.waypoints).toEqual(r.waypoints);
+  });
+
   it('rejects broken links', () => {
     expect(read('#/r/zurich')).toBeNull();
     expect(read('#/r/zurich-hb.3000')).toBeNull();

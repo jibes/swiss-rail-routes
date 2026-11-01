@@ -4,7 +4,7 @@ import type { Tour, Waypoint, WaypointKind } from './model';
 export const DWELL_PRESETS = [0, 30, 60] as const;
 
 /** First waypoint is `start`, last is `end`; inner ones keep their kind but never start/end. */
-function normalise(waypoints: Waypoint[]): Waypoint[] {
+export function normalise(waypoints: Waypoint[]): Waypoint[] {
   return waypoints.map((w, i, all) => {
     const kind: WaypointKind =
       i === 0
@@ -53,14 +53,27 @@ export function addWaypoint(
   return withWaypoints(tour, list);
 }
 
+/**
+ * Removes a station. In a round trip its start and return are one station: removing either
+ * removes both, and the trip closes again on the new first station (when two remain).
+ */
 export function removeWaypoint(tour: Tour, index: number): Tour {
+  const wps = tour.waypoints;
+  const last = wps.length - 1;
+  if (isClosed(tour) && (index === 0 || index === last)) {
+    const inner = wps.slice(1, -1);
+    return withWaypoints(tour, inner.length >= 2 ? [...inner, { ...inner[0]! }] : inner);
+  }
   return withWaypoints(
     tour,
-    tour.waypoints.filter((_, i) => i !== index),
+    wps.filter((_, i) => i !== index),
   );
 }
 
+/** Moves a station. A round trip's start and return stay where they are (they hold the loop). */
 export function moveWaypoint(tour: Tour, from: number, to: number): Tour {
+  const last = tour.waypoints.length - 1;
+  if (isClosed(tour) && (from === 0 || from === last || to <= 0 || to >= last)) return tour;
   const list = [...tour.waypoints];
   const [item] = list.splice(from, 1);
   if (!item) return tour;

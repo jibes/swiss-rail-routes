@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { Tour } from '../core/model';
 import { isRoundTrip, totalDwellMin } from '../core/tour';
 import { useT } from '../store';
@@ -41,6 +42,11 @@ function EmptyLine() {
 export function Home() {
   const t = useT();
   const tours = useTours((s) => s.tours);
+  const removeTour = useTours((s) => s.remove);
+  // "New tour" and then Back leaves an empty route: tidy it away on coming back.
+  useEffect(() => {
+    for (const x of useTours.getState().tours) if (!x.waypoints.length) removeTour(x.id);
+  }, [removeTour]);
   const create = useTours((s) => s.create);
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));

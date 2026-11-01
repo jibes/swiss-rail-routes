@@ -74,7 +74,8 @@ export function SharedTour({
           <button
             type="button"
             className="primary wide"
-            onClick={() => go(`/tour/${create(rest)}`)}
+            // Replace: Back must not offer the same route to save again.
+            onClick={() => location.replace(`#/tour/${create(rest)}`)}
           >
             {t('importTour')}
           </button>

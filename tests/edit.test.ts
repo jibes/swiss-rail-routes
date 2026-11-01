@@ -136,3 +136,26 @@ describe('setStay', () => {
     expect(setStay(t, 2, 30)).toBe(t);
   });
 });
+
+describe('round trip ends', () => {
+  const loop = () => {
+    let t = newTour('l', '2026-11-14', { stopRef: 'a', name: 'A' });
+    t = addWaypoint(t, { stopRef: 'b', name: 'B' });
+    t = addWaypoint(t, { stopRef: 'c', name: 'C' });
+    return setRoundTrip(t, true); // A B C A
+  };
+  const names = (t: ReturnType<typeof loop>) => t.waypoints.map((w) => `${w.name}:${w.kind}`);
+
+  it('removing the start or the return removes both and closes on the new first station', () => {
+    expect(names(removeWaypoint(loop(), 0))).toEqual(['B:start', 'C:via', 'B:end']);
+    expect(names(removeWaypoint(loop(), 3))).toEqual(['B:start', 'C:via', 'B:end']);
+  });
+
+  it('the start and the return do not move; stations between them do', () => {
+    const t = loop();
+    expect(moveWaypoint(t, 3, 1)).toBe(t);
+    expect(moveWaypoint(t, 0, 2)).toBe(t);
+    expect(moveWaypoint(t, 1, 3)).toBe(t);
+    expect(names(moveWaypoint(t, 1, 2))).toEqual(['A:start', 'C:via', 'B:via', 'A:end']);
+  });
+});

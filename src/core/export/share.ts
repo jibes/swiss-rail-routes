@@ -1,5 +1,5 @@
 // Share link: the tour as base64url JSON in the URL hash (`#/t/<data>`). No server involved.
-import type { Tour } from '../model';
+import type { Tour, Waypoint } from '../model';
 
 const PREFIX = '#/t/';
 
@@ -22,7 +22,13 @@ export function decodeTour(hash: string, id: string): Tour | null {
   if (!hash.startsWith(PREFIX)) return null;
   try {
     const data = JSON.parse(new TextDecoder().decode(fromB64Url(hash.slice(PREFIX.length))));
-    if (data?.schema !== 1 || !Array.isArray(data.waypoints)) return null;
+    const ok = (w: unknown) =>
+      !!w &&
+      typeof (w as Waypoint).stopRef === 'string' &&
+      typeof (w as Waypoint).name === 'string' &&
+      Number.isFinite((w as Waypoint).dwellMin ?? 0);
+    if (data?.schema !== 1 || !Array.isArray(data.waypoints) || !data.waypoints.every(ok))
+      return null;
     return { ...data, id } as Tour;
   } catch {
     return null;

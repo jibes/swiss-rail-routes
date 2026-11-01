@@ -31,6 +31,8 @@ interface Props {
   onReplace: (stop: { stopRef: string; name: string }) => void;
   /** Where you are: not editable, no grip (the replan start). */
   fixed?: boolean;
+  /** A round trip's start or return: editable, but it does not move. */
+  noGrip?: boolean;
   style?: CSSProperties;
   dragging?: boolean;
   grip: {
@@ -87,6 +89,7 @@ export function StopRow(p: Props) {
             trailing={
               inner && (
                 <Select
+                  keepFocus
                   className={`stay ${stay ? 'on' : ''}`}
                   label={t('stayLength', { name: w.name })}
                   value={String(stay)}
@@ -115,7 +118,7 @@ export function StopRow(p: Props) {
             {off && w.dwellMin > 0 && <span className="dwell-tag">{dwellLabel(w.dwellMin)}</span>}
           </button>
         )}
-        {!p.fixed && !editing && (
+        {!p.fixed && !p.noGrip && !editing && (
           <button
             type="button"
             className="grip"
