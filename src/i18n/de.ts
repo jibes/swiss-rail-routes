@@ -212,4 +212,6 @@ export const de = {
   screenFailed:
     'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Routen und Reisen bleiben erhalten.',
   toStart: 'Zurück zum Start',
+  syncOtherKey:
+    'Dieses Gerät synchronisiert bereits mit einem anderen Schlüssel. Um den aus dem Link zu nutzen, schalte die Synchronisierung hier zuerst aus und tritt dann bei.',
 } satisfies Catalogue;

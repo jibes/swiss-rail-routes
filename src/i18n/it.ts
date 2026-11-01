@@ -208,4 +208,6 @@ export const it = {
   lateBy: '{n} min di ritardo',
   screenFailed: 'Qualcosa è andato storto in questa schermata. Percorsi e viaggi sono conservati.',
   toStart: 'Torna all’inizio',
+  syncOtherKey:
+    'Questo dispositivo si sincronizza già con un’altra chiave. Per usare quella del link, disattiva prima la sincronizzazione qui e poi unisciti.',
 } satisfies Catalogue;

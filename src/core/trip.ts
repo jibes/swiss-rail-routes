@@ -1,5 +1,6 @@
 // A trip: a route frozen with its date, ticket and the connections chosen for it (SPEC "Trips").
 import type { Leg, Tour } from './model';
+import { simplify } from './polyline';
 import type { PlannedChain } from './planner/plan';
 
 export interface TripVersion {
@@ -18,7 +19,38 @@ export interface Trip extends TripVersion {
   version: number;
   /** The version before the last replan, for undo. */
   previous?: TripVersion;
+  /** Tracks already simplified (compactTrip): done once, so the trip's hash stays put. */
+  compact?: true;
   schema: 1;
+}
+
+/**
+ * Tracks within ~30 m are as good on the map and a fraction of the size: stored and synced
+ * trips stay small (a full OJP track runs to tens of kB per trip).
+ */
+export const TRACK_KEEP = 0.0003;
+
+const compactChain = (c: PlannedChain): PlannedChain => ({
+  ...c,
+  connections: c.connections.map((x) => ({
+    ...x,
+    sections: x.sections.map((s) =>
+      s.geometry && s.geometry.length > 2
+        ? { ...s, geometry: simplify(s.geometry, TRACK_KEEP) }
+        : s,
+    ),
+  })),
+});
+
+/** The trip with its tracks (and its undo version's) simplified, once. */
+export function compactTrip(t: Trip): Trip {
+  if (t.compact) return t;
+  return {
+    ...t,
+    chain: compactChain(t.chain),
+    ...(t.previous ? { previous: { ...t.previous, chain: compactChain(t.previous.chain) } } : {}),
+    compact: true,
+  };
 }
 
 export type TripStatus = 'upcoming' | 'live' | 'past';
@@ -43,7 +75,7 @@ export function newTrip(
   chain: PlannedChain,
   now: Date,
 ): Trip {
-  return {
+  return compactTrip({
     id,
     routeId: route.id,
     name: route.name,
@@ -53,19 +85,20 @@ export function newTrip(
     savedAt: now.toISOString(),
     version: 1,
     schema: 1,
-  };
+  });
 }
 
 /** A new version of the trip; the current one is kept for undo. */
 export function revise(t: Trip, next: Omit<TripVersion, 'savedAt'>, now: Date): Trip {
   const { route, legs, chain, savedAt } = t;
-  return {
+  return compactTrip({
     ...t,
     ...next,
     savedAt: now.toISOString(),
     version: t.version + 1,
     previous: { route, legs, chain, savedAt },
-  };
+    compact: undefined,
+  });
 }
 
 /** Back to the version before the last replan (only one step is kept). */

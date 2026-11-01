@@ -62,6 +62,10 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.getByRole('button', { name: /New key\?/ }).click();
   await expect(page.getByRole('status')).toContainText(/Synced/);
   await laptop.goto('./#/settings');
+  await laptop.getByRole('button', { name: 'Sync now' }).click();
+  await expect(laptop.getByRole('status')).toContainText(/replaced on another device/);
+  // Said again after a restart, before any round has run (the last status is kept).
+  await laptop.reload();
   await expect(laptop.getByRole('status')).toContainText(/replaced on another device/);
   await laptop.close();
 

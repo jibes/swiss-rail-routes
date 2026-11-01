@@ -205,6 +205,8 @@ export const en = {
   lateBy: '{n} min late',
   screenFailed: 'Something went wrong on this screen. Your routes and trips are kept.',
   toStart: 'Back to the start',
+  syncOtherKey:
+    'This device already syncs with another key. To use the one from the link, turn sync off here first, then join with it.',
 };
 
 export type Catalogue = typeof en;

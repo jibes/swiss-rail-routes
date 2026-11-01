@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { renderSVG } from 'uqr';
-import { parseKey } from '../core/sync';
+import { keyFromScan, parseKey } from '../core/sync';
 import { LANGS, type Lang } from '../i18n';
 import {
   renewKey,
@@ -226,7 +226,14 @@ export function Settings({ join }: { join?: string }) {
         {!syncAvailable() ? (
           <p className="muted">{t('syncUnavailable')}</p>
         ) : !loaded ? null : key ? (
-          <SyncOn syncKey={key} status={status} at={at} />
+          <>
+            {offered && keyFromScan(offered) && keyFromScan(offered) !== key && (
+              <p role="alert" className="notice">
+                {t('syncOtherKey')}
+              </p>
+            )}
+            <SyncOn syncKey={key} status={status} at={at} />
+          </>
         ) : (
           <SyncOff offered={offered} />
         )}

@@ -265,7 +265,8 @@ export function planRound<R extends { id: string }, T extends { id: string }>(in
   lastSync?: number;
 }): RoundPlan<R, T> {
   const { stamps, local, remote, now, lastSync } = input;
-  const stale = lastSync !== undefined && now - lastSync >= TOMBSTONE_DAYS * DAY;
+  // 10 days short of the tombstones' 90: other devices' clocks may run ahead of this one's.
+  const stale = lastSync !== undefined && now - lastSync >= (TOMBSTONE_DAYS - 10) * DAY;
   const side = <X extends { id: string }>(prev: Stamps, items: X[], theirs: Entry<X>[]) => {
     let mine = stampLocal(prev, items, now);
     if (stale && remote) {

@@ -17,16 +17,20 @@ import {
   type Stamps,
   type SyncDoc,
 } from '../core/sync';
-import type { Trip } from '../core/trip';
+import { compactTrip, type Trip } from '../core/trip';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { loadTours } from './tours';
 import { loadTrips } from './trips';
 
 const KEY = 'srr.sync.v1';
+/** The last key's stamps after turning off, for turning on again with the same key. */
+const LAST = 'srr.syncLast.v1';
 
 interface Saved {
   key: string;
+  /** How the last round ended, shown at the next start until a round runs. */
+  status?: SyncStatus;
   /** Server version last read or written; a lower one on the server means the copy was replaced. */
   v: number;
   stamps: { tours: Stamps; trips: Stamps };
@@ -62,23 +66,43 @@ class SyncProblem extends Error {
 }
 class Conflict extends Error {}
 
-/** A failed request: offline only when fetch itself failed (no answer at all). */
+/** A request that never answers (captive portal, dead connection) ends after this. */
+const TIMEOUT_MS = 20_000;
+
+/** A failed request: offline when fetch itself failed or timed out (no answer at all). */
 async function request(url: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, { cache: 'no-store', ...init });
+    return await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      ...init,
+    });
   } catch {
     throw new SyncProblem('offline');
   }
 }
 
+/** Larger than the Worker takes: said here instead of sending it (again) for nothing. */
+const MAX_DATA = 1_000_000;
+
 const problemOf = (status: number): SyncStatus =>
   status === 410 ? 'replaced' : status === 413 ? 'tooBig' : status === 429 ? 'busy' : 'error';
 
-async function remote(id: string, aes: CryptoKey): Promise<{ v: number; doc: Doc | null }> {
-  const res = await request(`${base()}/sync/${id}`);
+/**
+ * The shared copy. `known`: the version this device last saw; when the Worker still holds it,
+ * it answers `{v, same}` without the data (no download each minute), and the copy is what
+ * this device's stamps describe.
+ */
+async function remote(
+  id: string,
+  aes: CryptoKey,
+  known: number,
+): Promise<{ v: number; doc: Doc | null; same?: boolean }> {
+  const res = await request(`${base()}/sync/${id}${known ? `?v=${known}` : ''}`);
   if (res.status === 404) return { v: 0, doc: null };
   if (!res.ok) throw new SyncProblem(problemOf(res.status));
-  const r = (await res.json()) as { v: number; data?: string };
+  const r = (await res.json()) as { v: number; data?: string; same?: boolean };
+  if (r.same) return { v: r.v, doc: null, same: true };
   if (!r.data) return { v: r.v, doc: null };
   try {
     return { v: r.v, doc: await open<Doc>(r.data, aes) };
@@ -98,6 +122,19 @@ async function push(id: string, v: number, data: string): Promise<number> {
   return ((await res.json()) as { v: number }).v;
 }
 
+/**
+ * The shared copy as this device last saw it, rebuilt from its stamps (when the Worker said it
+ * is unchanged): items as they are here, at the times the stamps hold; deletions as stamped.
+ */
+function asShared(stamps: Saved['stamps'], local: { tours: Tour[]; trips: Trip[] }): Doc {
+  const side = <X extends { id: string }>(st: Stamps, items: X[]) =>
+    Object.entries(st).map(([id, p]) => {
+      const value = p.h ? items.find((x) => x.id === id) : undefined;
+      return value ? { id, at: p.at, value } : { id, at: p.at };
+    });
+  return { v: 1, tours: side(stamps.tours, local.tours), trips: side(stamps.trips, local.trips) };
+}
+
 /** Other tabs of the app reload their lists when one tab applied a sync. */
 const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('srr-sync');
 channel?.addEventListener('message', () => {
@@ -112,20 +149,32 @@ async function round(start: Saved): Promise<Saved> {
   const { id, aes } = await deriveKeys(bytes);
   let saved = start;
   for (let attempt = 0; ; attempt++) {
-    const { v, doc } = await remote(id, aes);
-    // The copy was deleted or replaced (a new key elsewhere): never fill the old id again.
-    if (saved.v > 0 && v < saved.v) throw new SyncProblem('replaced');
+    const got = await remote(id, aes, saved.v);
+    // A replaced key answers 410 (above). A version lower than the one seen: the copy expired
+    // (unused for 180 days) and is written afresh from what this device has.
+    const v = got.v < saved.v ? 0 : got.v;
     // Read the lists only now: edits made while waiting for the server are part of this round.
     const now = Date.now();
+    const local = {
+      tours: useTours.getState().tours,
+      // Stored and shared compactly (simplified tracks), once per trip.
+      trips: useTrips.getState().trips.map(compactTrip),
+    };
     const plan = planRound({
       stamps: saved.stamps,
-      local: { tours: useTours.getState().tours, trips: useTrips.getState().trips },
-      remote: doc,
+      local,
+      remote: got.same ? asShared(saved.stamps, local) : got.doc,
       now,
       lastSync: saved.at,
     });
-    if (plan.apply.tours) await useTours.getState().replaceAll(plan.apply.tours);
-    if (plan.apply.trips) await useTrips.getState().replaceAll(plan.apply.trips);
+    const store = useTrips.getState().trips;
+    const trips =
+      plan.apply.trips ?? (local.trips.some((t, i) => t !== store[i]) ? local.trips : undefined);
+    // Both lists set first, then both saves awaited: an edit cannot slip in between.
+    await Promise.all([
+      plan.apply.tours && useTours.getState().replaceAll(plan.apply.tours),
+      trips && useTrips.getState().replaceAll(trips),
+    ]);
     if (plan.apply.tours || plan.apply.trips) channel?.postMessage('applied');
     // What this device now holds is the merge: remember it before writing, so a failed or
     // conflicting write never makes received items look like new local changes.
@@ -133,7 +182,9 @@ async function round(start: Saved): Promise<Saved> {
     await set(KEY, saved);
     if (!plan.push) return { ...saved, at: now };
     try {
-      const next = await push(id, v, await seal({ v: 1, ...plan.merged } satisfies Doc, aes));
+      const data = await seal({ v: 1, ...plan.merged } satisfies Doc, aes);
+      if (data.length > MAX_DATA) throw new SyncProblem('tooBig');
+      const next = await push(id, v, data);
       return { ...saved, v: next, at: now };
     } catch (e) {
       if (e instanceof Conflict && attempt < 3) continue;
@@ -167,20 +218,25 @@ const exclusive = (f: () => Promise<void>) =>
   navigator.locks ? navigator.locks.request('srr-sync', f) : f();
 
 async function once() {
-  const saved = await get<Saved>(KEY);
-  if (!saved || !syncAvailable()) return;
+  if (!syncAvailable()) return;
   if (!useTours.getState().loaded || !useTrips.getState().loaded) return;
-  useSync.setState({ status: 'syncing' });
   await exclusive(async () => {
+    // Read inside the lock: another tab may just have synced and saved newer stamps.
+    const saved = await get<Saved>(KEY);
+    if (!saved) return;
+    useSync.setState({ status: 'syncing' });
     try {
       const next = await round(saved);
       // Turned off or given a new key meanwhile: keep what that did.
       if ((await get<Saved>(KEY))?.key !== saved.key) return;
-      await set(KEY, next);
+      await set(KEY, { ...next, status: 'ok' });
       useSync.setState({ status: 'ok', at: next.at ?? null });
     } catch (e) {
-      if ((await get<Saved>(KEY))?.key !== saved.key) return;
-      useSync.setState({ status: e instanceof SyncProblem ? e.status : 'error' });
+      const now = await get<Saved>(KEY);
+      if (now?.key !== saved.key) return;
+      const status = e instanceof SyncProblem ? e.status : 'error';
+      await set(KEY, { ...now, status });
+      useSync.setState({ status });
     }
   });
 }
@@ -190,7 +246,7 @@ export async function loadSync() {
   useSync.setState({
     loaded: true,
     key: saved?.key ?? null,
-    status: saved ? 'ok' : 'off',
+    status: saved ? (saved.status ?? 'ok') : 'off',
     at: saved?.at ?? null,
   });
 }
@@ -205,19 +261,30 @@ export async function startSync(key = newKey()) {
   if (!bytes) return false;
   await running;
   const clean = formatKey(bytes);
-  const stamps = {
-    tours: joinStamps(useTours.getState().tours),
-    trips: joinStamps(useTrips.getState().trips),
-  };
+  // The same key again (sync turned off and on here): its stamps, so edits made meanwhile
+  // count as the newer changes they are. Otherwise what this device has counts as older.
+  const last = await get<{ key: string; stamps: Saved['stamps'] }>(LAST);
+  const stamps =
+    last?.key === clean
+      ? last.stamps
+      : {
+          tours: joinStamps(useTours.getState().tours),
+          trips: joinStamps(useTrips.getState().trips.map(compactTrip)),
+        };
+  await del(LAST);
   await set(KEY, { key: clean, v: 0, stamps } satisfies Saved);
   useSync.setState({ key: clean, status: 'syncing', at: null });
   await syncNow();
   return true;
 }
 
-/** This device stops syncing; its routes and trips stay. */
+/**
+ * This device stops syncing; its routes and trips stay. Never waits for a round (a stalled one
+ * must not keep it on): a round that ends later sees the key gone and keeps nothing.
+ */
 export async function stopSync() {
-  await running;
+  const saved = await get<Saved>(KEY);
+  if (saved) await set(LAST, { key: saved.key, stamps: saved.stamps });
   await del(KEY);
   useSync.setState({ key: null, status: 'off', at: null });
 }
@@ -233,9 +300,16 @@ export async function renewKey() {
   const bytes = saved && parseKey(saved.key);
   if (bytes) {
     const { id } = await deriveKeys(bytes);
-    await request(`${base()}/sync/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    // The old copy must really be closed (a leaked key is the reason for a new one): if the
+    // Worker did not confirm it, nothing changes and it says so.
+    const res = await request(`${base()}/sync/${id}`, { method: 'DELETE' }).catch(() => null);
+    if (!res?.ok) {
+      useSync.setState({ status: res ? problemOf(res.status) : 'offline' });
+      return false;
+    }
   }
   await startSync();
+  return true;
 }
 
 const MINUTE = 60_000;

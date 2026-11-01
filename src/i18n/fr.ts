@@ -208,4 +208,6 @@ export const fr = {
   lateBy: '{n} min de retard',
   screenFailed: 'Un problème est survenu sur cet écran. Vos itinéraires et voyages sont conservés.',
   toStart: 'Retour à l’accueil',
+  syncOtherKey:
+    'Cet appareil se synchronise déjà avec une autre clé. Pour utiliser celle du lien, désactivez d’abord la synchro ici, puis rejoignez.',
 } satisfies Catalogue;

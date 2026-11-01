@@ -32,8 +32,17 @@ export async function answerWorker(page: Page) {
       const json = (status: number, body: unknown) =>
         route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
       const cur = boxes.get(id);
-      if (req.method() === 'GET') return json(200, cur ?? { v: 0 });
-      if (req.method() === 'DELETE') return (void boxes.delete(id), route.fulfill({ status: 204 }));
+      // As the Worker: a key replaced by a new one is closed for good (410).
+      if (cur?.revoked) return json(410, { revoked: true });
+      if (req.method() === 'GET') {
+        const known = Number(new URL(req.url()).searchParams.get('v'));
+        if (cur && known && known === cur.v) return json(200, { v: cur.v, same: true });
+        return json(200, cur ?? { v: 0 });
+      }
+      if (req.method() === 'DELETE') {
+        boxes.set(id, { v: (cur?.v ?? 0) + 1, data: '', revoked: true });
+        return route.fulfill({ status: 204 });
+      }
       const { v, data } = req.postDataJSON() as { v: number; data: string };
       if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });
       boxes.set(id, { v: v + 1, data });

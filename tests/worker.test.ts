@@ -188,6 +188,29 @@ describe('sync mailbox', () => {
     expect(big.status).toBe(413);
   });
 
+  it('answers a device that has the current version without the data, and keeps the box', async () => {
+    const touched: string[] = [];
+    const box = new Map<string, SyncRecord>();
+    const store = {
+      get: async () => box.get('x'),
+      put: async (r: SyncRecord) => void box.set('x', r),
+      delete: async () => void box.delete('x'),
+      touch: async () => void touched.push('t'),
+    };
+    const call = (q = '') => syncHandle(new Request(`https://w/sync/x${q}`), store);
+    await syncHandle(
+      new Request('https://w/sync/x', {
+        method: 'PUT',
+        body: JSON.stringify({ v: 0, data: 'abc' }),
+      }),
+      store,
+    );
+    expect(await (await call('?v=1')).json()).toEqual({ v: 1, same: true });
+    expect(await (await call('?v=0')).json()).toEqual({ v: 1, data: 'abc' });
+    expect(await (await call()).json()).toEqual({ v: 1, data: 'abc' });
+    expect(touched.length).toBe(3); // every read keeps an existing box from expiring
+  });
+
   it('answers the preflight for PUT', async () => {
     const res = await setup().call(`/sync/${ID}`, { method: 'OPTIONS', body: undefined });
     expect(res.headers.get('Access-Control-Allow-Methods')).toContain('PUT');

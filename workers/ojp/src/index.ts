@@ -25,6 +25,11 @@ export class SyncBox extends DurableObject<Env> {
         await s.setAlarm(Date.now() + KEEP_MS);
       },
       delete: () => s.deleteAll(),
+      // Read daily by its devices: keep it (moved on at most once a day).
+      touch: async () => {
+        const due = await s.getAlarm();
+        if (!due || due < Date.now() + KEEP_MS - 86_400_000) await s.setAlarm(Date.now() + KEEP_MS);
+      },
     });
   }
 

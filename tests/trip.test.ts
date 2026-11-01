@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { newTour } from '../src/core/edit';
 import type { PlannedChain } from '../src/core/planner/plan';
-import { liveTrip, newTrip, revise, sortTrips, tripStatus, undo } from '../src/core/trip';
+import {
+  compactTrip,
+  liveTrip,
+  newTrip,
+  revise,
+  sortTrips,
+  tripStatus,
+  undo,
+  type Trip,
+} from '../src/core/trip';
 
 const chain = (dep: string, arr: string): PlannedChain => ({
   connections: [],
@@ -55,5 +64,50 @@ describe('versions', () => {
     expect(u.chain.arr).toContain('18:00');
     expect(u.previous).toBeUndefined();
     expect(undo(u)).toBe(u);
+  });
+});
+
+describe('compact trips', () => {
+  it('simplifies tracks once; a compact trip stays the same object (its hash does not move)', () => {
+    const track: [number, number][] = Array.from({ length: 50 }, (_, i) => [
+      8 + i * 0.001,
+      47 + 0.00001 * (i % 2),
+    ]);
+    const loose = {
+      ...newTrip(
+        't',
+        newTour('r', '2026-11-14'),
+        [],
+        { connections: [], warnings: [], score: 0, dep: '', arr: '' },
+        new Date(0),
+      ),
+    };
+    const withTrack = compactTrip({
+      ...loose,
+      compact: undefined,
+      chain: {
+        ...loose.chain,
+        connections: [
+          {
+            legIndex: 0,
+            dep: '',
+            arr: '',
+            transfers: 0,
+            sections: [
+              {
+                mode: 'rail',
+                from: { stopRef: 'a', name: 'A' },
+                to: { stopRef: 'b', name: 'B' },
+                intermediate: [],
+                geometry: track,
+              },
+            ],
+          },
+        ],
+      },
+    } as Trip);
+    expect(withTrack.compact).toBe(true);
+    expect(withTrack.chain.connections[0]!.sections[0]!.geometry!.length).toBe(2);
+    expect(compactTrip(withTrack)).toBe(withTrack);
   });
 });
