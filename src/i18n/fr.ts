@@ -124,7 +124,7 @@ export const fr = {
   liveTimetable: 'Horaires',
   youAreHere: 'Vous êtes ici',
   replanFrom: 'Depuis {stop}',
-  replanHint: 'La suite du voyage dès {time}. Ajoutez un arrêt, changez une pause, puis cherchez.',
+  replanHint: 'Modifiez la suite du voyage : ajoutez un arrêt, changez une pause, puis cherchez.',
   findConnections: 'Chercher des liaisons',
   updateTrip: 'Mettre à jour le voyage',
   replanHere: 'Replanifier d’ici',
@@ -134,4 +134,6 @@ export const fr = {
   shareTrip: 'Partager le voyage',
   change: 'Changer',
   changeTo: 'Au lieu de {name}',
+  travelled: 'Parcouru',
+  fromHere: 'D’ici · {time}',
 } satisfies Catalogue;

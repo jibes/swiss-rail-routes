@@ -122,8 +122,7 @@ export const en = {
   liveTimetable: 'Timetable times',
   youAreHere: 'You are here',
   replanFrom: 'From {stop}',
-  replanHint:
-    'The rest of your trip from {time}. Add a stop, change a stay, then find connections.',
+  replanHint: 'Change the rest of your trip: add a stop, change a stay, then find connections.',
   findConnections: 'Find connections',
   updateTrip: 'Update trip',
   replanHere: 'Replan from here',
@@ -133,6 +132,8 @@ export const en = {
   shareTrip: 'Share trip',
   change: 'Change',
   changeTo: 'Instead of {name}',
+  travelled: 'Travelled',
+  fromHere: 'From here · {time}',
 };
 
 export type Catalogue = typeof en;

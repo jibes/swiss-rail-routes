@@ -125,7 +125,7 @@ export const de = {
   youAreHere: 'Du bist hier',
   replanFrom: 'Ab {stop}',
   replanHint:
-    'Der Rest deiner Reise ab {time}. Halt hinzufügen, Aufenthalt ändern, dann Verbindungen suchen.',
+    'Ändere den Rest deiner Reise: Halt hinzufügen, Aufenthalt ändern, dann Verbindungen suchen.',
   findConnections: 'Verbindungen suchen',
   updateTrip: 'Reise aktualisieren',
   replanHere: 'Ab hier neu planen',
@@ -135,4 +135,6 @@ export const de = {
   shareTrip: 'Reise teilen',
   change: 'Ändern',
   changeTo: 'Statt {name}',
+  travelled: 'Gefahren',
+  fromHere: 'Ab hier · {time}',
 } satisfies Catalogue;

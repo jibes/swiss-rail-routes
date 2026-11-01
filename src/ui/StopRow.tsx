@@ -24,6 +24,8 @@ interface Props {
   onDwell: (min: number) => void;
   onMove: (to: number) => void;
   onRemove: () => void;
+  /** Where you are: no options, no grip (the replan start). */
+  fixed?: boolean;
   /** Swap the station; absent where it cannot change (the replan start). */
   onReplace?: (stop: { stopRef: string; name: string }) => void;
   style?: CSSProperties;
@@ -47,7 +49,7 @@ export function StopRow(p: Props) {
   const id = `stop-${p.index}`;
   return (
     <li
-      className={`stop ${w.kind === 'via' ? 'via' : ''} ${p.last ? 'last' : ''} ${p.dragging ? 'dragging' : ''}`}
+      className={`stop ${p.fixed ? 'fixed' : ''} ${w.kind === 'via' ? 'via' : ''} ${p.last ? 'last' : ''} ${p.dragging ? 'dragging' : ''}`}
       style={p.style}
     >
       <span className="dot" aria-hidden="true" />
@@ -65,18 +67,20 @@ export function StopRow(p: Props) {
           </span>
           {off && w.dwellMin > 0 && <span className="dwell-tag">{dwellLabel(w.dwellMin)}</span>}
         </button>
-        <button
-          type="button"
-          className="grip"
-          aria-label={t('drag', { name: w.name })}
-          aria-keyshortcuts="ArrowUp ArrowDown"
-          data-grip={p.index}
-          {...p.grip}
-        >
-          <Icon name="grip" size={20} />
-        </button>
+        {!p.fixed && (
+          <button
+            type="button"
+            className="grip"
+            aria-label={t('drag', { name: w.name })}
+            aria-keyshortcuts="ArrowUp ArrowDown"
+            data-grip={p.index}
+            {...p.grip}
+          >
+            <Icon name="grip" size={20} />
+          </button>
+        )}
       </div>
-      {p.open && changing && p.onReplace && (
+      {!p.fixed && p.open && changing && p.onReplace && (
         <div className="stop-change">
           <StopPicker
             label={t('changeTo', { name: w.name })}
@@ -88,7 +92,7 @@ export function StopRow(p: Props) {
           />
         </div>
       )}
-      {p.open && (
+      {!p.fixed && p.open && (
         <div id={id} className="stop-tools">
           {inner && (
             <label className="pill toggle-pill">

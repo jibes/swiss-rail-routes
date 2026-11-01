@@ -65,6 +65,17 @@ export function ReplanView({ id }: { id: string }) {
       </main>
     );
 
+  // Where the trip has been: the stations of the kept part, in order, with their times.
+  const travelled = point.keep
+    .flatMap((c) =>
+      c.sections
+        .filter((x) => x.mode !== 'walk')
+        .flatMap((x) => [
+          { name: x.from.name, at: Date.parse(x.from.dep ?? x.from.arr ?? '') },
+          { name: x.to.name, at: Date.parse(x.to.arr ?? x.to.dep ?? '') },
+        ]),
+    )
+    .filter((x, i, all) => x.name !== point.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
   const options = result?.options ?? [];
   const chain = options.find((c) => c.dep === picked) ?? result?.recommended;
   const wps = draft.waypoints;
@@ -104,9 +115,26 @@ export function ReplanView({ id }: { id: string }) {
         <h1>{t('replanFrom', { stop: point.stop.name })}</h1>
       </header>
 
-      <p className="muted">{t('replanHint', { time: hhmm(point.at) })}</p>
+      <p className="muted">{t('replanHint')}</p>
 
       <div>
+        {travelled.length > 0 && (
+          <ol className="line past" aria-label={t('travelled')}>
+            {travelled.map((x, i) => (
+              <li key={i} className="stop via">
+                <span className="dot" aria-hidden="true" />
+                <div className="stop-top">
+                  <span className="stop-head">
+                    <span className="stop-name">
+                      <span>{x.name}</span>
+                      <small className="num">{hhmm(x.at)}</small>
+                    </span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
         <ol className="line" aria-label={t('stops')} ref={listRef}>
           {wps.map((w, i) => (
             <StopRow
@@ -115,6 +143,8 @@ export function ReplanView({ id }: { id: string }) {
               index={i}
               count={wps.length}
               last={i === wps.length - 1}
+              fixed={i === 0}
+              caption={i === 0 ? t('fromHere', { time: hhmm(point.at) }) : undefined}
               open={open === i}
               onToggle={() => setOpen(open === i ? null : i)}
               onStop={(on) => edit((x) => setStop(x, i, on))}
@@ -143,16 +173,6 @@ export function ReplanView({ id }: { id: string }) {
         </div>
       </div>
 
-      {!result && (
-        <button
-          type="button"
-          className="secondary"
-          disabled={status === 'planning' || wps.length < 2}
-          onClick={() => void run()}
-        >
-          {status === 'planning' ? t('planning') : t('findConnections')}
-        </button>
-      )}
       {status === 'error' && (
         <p role="alert" className="notice red">
           {t('planFailed')} {detail && <code className="muted">{detail}</code>}
@@ -166,6 +186,21 @@ export function ReplanView({ id }: { id: string }) {
             to: result.legs?.[result.failedLeg]?.to.name ?? '',
           })}
         </p>
+      )}
+
+      {!result && (
+        <div className="dock">
+          <div className="dock-inner">
+            <button
+              type="button"
+              className="primary wide"
+              disabled={status === 'planning' || wps.length < 2}
+              onClick={() => void run()}
+            >
+              {status === 'planning' ? t('planning') : t('findConnections')}
+            </button>
+          </div>
+        </div>
       )}
 
       {result && chain && (

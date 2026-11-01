@@ -39,6 +39,10 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('link', { name: 'Show live' }).click();
     await page.locator('.row.ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
+    await page.getByRole('link', { name: 'Replan from here' }).click();
+    await page.locator('.line.past').waitFor();
+    await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
+    await page.goBack();
     await page.goto('./#/trips');
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${dir}/${scheme}-5-trips.png` });

@@ -125,8 +125,7 @@ export const it = {
   liveTimetable: 'Orario',
   youAreHere: 'Sei qui',
   replanFrom: 'Da {stop}',
-  replanHint:
-    'Il resto del viaggio dalle {time}. Aggiungi una fermata, cambia una sosta, poi cerca.',
+  replanHint: 'Modifica il resto del viaggio: aggiungi una fermata, cambia una sosta, poi cerca.',
   findConnections: 'Cerca collegamenti',
   updateTrip: 'Aggiorna viaggio',
   replanHere: 'Ripianifica da qui',
@@ -136,4 +135,6 @@ export const it = {
   shareTrip: 'Condividi viaggio',
   change: 'Cambia',
   changeTo: 'Invece di {name}',
+  travelled: 'Percorso',
+  fromHere: 'Da qui · {time}',
 } satisfies Catalogue;
