@@ -78,7 +78,15 @@ export function QrScanner({
       if (stopped || !video.current) return stream.getTracks().forEach((x) => x.stop());
       video.current.srcObject = stream;
       await video.current.play().catch(() => undefined);
-      const read = await reader();
+      let read: Read;
+      try {
+        read = await reader();
+      } catch {
+        // The decoder did not load (offline before it was ever used): stop the camera.
+        stream.getTracks().forEach((x) => x.stop());
+        setProblem('other');
+        return;
+      }
       const tick = async () => {
         if (stopped || !video.current) return;
         const text =

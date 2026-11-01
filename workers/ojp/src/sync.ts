@@ -5,11 +5,15 @@
 //   GET    /sync/<id>  → 200 {v, data}, or 200 {v: 0} while empty (not 404: browsers log
 //                         every 404 as an error, and an empty mailbox is normal)
 //   PUT    /sync/<id>  {v: version it read (0 for none), data} → 200 {v} | 409 {v, data}
-//   DELETE /sync/<id>  → 204 (sync turned off everywhere, or a new key)
+//   DELETE /sync/<id>  → 204 (a new key): the blob goes, a marker stays, and from then on
+//                         GET and PUT answer 410, so devices still on that key stop and say so
+//                         instead of filling it again. Unused boxes expire (SyncBox alarm).
 
 export interface SyncRecord {
   v: number;
   data: string;
+  /** Closed by a new key. */
+  revoked?: boolean;
 }
 
 /** Storage for one id: a Durable Object's own storage in production, a Map in tests. */
@@ -31,15 +35,17 @@ const json = (status: number, body: unknown) =>
   });
 
 export async function syncHandle(req: Request, store: SyncStore): Promise<Response> {
-  if (req.method === 'GET') {
-    const r = await store.get();
-    return json(200, r ?? { v: 0 });
-  }
+  const cur = await store.get();
+  if (cur?.revoked) return json(410, { revoked: true });
+  if (req.method === 'GET') return json(200, cur ?? { v: 0 });
   if (req.method === 'DELETE') {
-    await store.delete();
+    await store.put({ v: (cur?.v ?? 0) + 1, data: '', revoked: true });
     return new Response(null, { status: 204 });
   }
   if (req.method !== 'PUT') return json(405, { error: 'method' });
+  // Refuse a body too large before reading it.
+  if (Number(req.headers.get('Content-Length') ?? 0) > MAX_DATA + 100)
+    return json(413, { error: 'size' });
   let body: unknown;
   try {
     body = await req.json();
@@ -51,7 +57,6 @@ export async function syncHandle(req: Request, store: SyncStore): Promise<Respon
     return json(400, { error: 'shape' });
   if (data.length > MAX_DATA) return json(413, { error: 'size' });
   if (!/^[\w-]+$/.test(data)) return json(400, { error: 'data' });
-  const cur = await store.get();
   if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });
   const next = { v: (v as number) + 1, data };
   await store.put(next);

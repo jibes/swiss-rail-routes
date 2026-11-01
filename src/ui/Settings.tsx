@@ -11,6 +11,7 @@ import {
   useSync,
   type SyncStatus,
 } from '../io/sync';
+import { publicUrl } from '../native';
 import { usePrefs, useT } from '../store';
 import { hhmm } from './format';
 import { Icon } from './icons';
@@ -18,7 +19,7 @@ import { canScan, QrScanner } from './QrScanner';
 import { Select } from './Select';
 import { go } from './useHash';
 
-const linkOf = (key: string) => `${location.origin}${location.pathname}#/sync/${key}`;
+const linkOf = (key: string) => `${publicUrl()}#/sync/${key}`;
 
 /** Sync turned on: its state, adding a device (QR code and key), a new key, turning it off. */
 function SyncOn({
@@ -39,20 +40,28 @@ function SyncOn({
       ? t('syncing')
       : status === 'offline'
         ? t('syncOffline')
-        : status === 'error'
-          ? t('syncFailed')
-          : at
-            ? t('syncedAt', { time: hhmm(at) })
-            : t('syncOn');
+        : status === 'replaced'
+          ? t('syncReplaced')
+          : status === 'tooBig'
+            ? t('syncTooBig')
+            : status === 'busy'
+              ? t('syncBusy')
+              : status === 'error'
+                ? t('syncFailed')
+                : at
+                  ? t('syncedAt', { time: hhmm(at) })
+                  : t('syncOn');
   return (
     <>
-      <p className="sync-state" role="status">
+      <div className="sync-state">
         <span className={`sync-dot ${status}`} aria-hidden="true" />
-        {state}
-        <button type="button" className="text-button" onClick={() => void syncNow()}>
-          {t('syncNow')}
-        </button>
-      </p>
+        <span role="status">{state}</span>
+        {status !== 'replaced' && (
+          <button type="button" className="text-button" onClick={() => void syncNow()}>
+            {t('syncNow')}
+          </button>
+        )}
+      </div>
       <button
         type="button"
         className="secondary"
@@ -78,8 +87,13 @@ function SyncOn({
             type="button"
             className="text-button"
             onClick={async () => {
-              await navigator.clipboard.writeText(syncKey);
-              setCopied(true);
+              try {
+                await navigator.clipboard.writeText(syncKey);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch {
+                // No clipboard here (insecure context, refused): the key stays selectable.
+              }
             }}
           >
             {copied ? t('copied') : t('copyKey')}

@@ -1,6 +1,8 @@
+import { publicUrl } from '../native';
+
 /** The system share sheet where there is one, else the clipboard. */
 export async function shareLink(hash: string, title: string): Promise<'shared' | 'copied'> {
-  const url = `${location.origin}${location.pathname}${hash}`;
+  const url = `${publicUrl()}${hash}`;
   if (navigator.share) {
     try {
       await navigator.share({ title, url });

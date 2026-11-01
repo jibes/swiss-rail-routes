@@ -197,4 +197,8 @@ export const it = {
   scanClose: 'Chiudi fotocamera',
   saveAsRoute: 'Salva come percorso',
   openRoute: 'Apri percorso',
+  syncReplaced:
+    'Questa chiave è stata sostituita su un altro dispositivo. Disattiva qui la sincronizzazione e unisciti con la nuova chiave.',
+  syncTooBig: 'Sincronizzazione non riuscita: troppi dati. Elimina vecchi viaggi.',
+  syncBusy: 'Il server è occupato. La sincronizzazione riprova a breve.',
 } satisfies Catalogue;

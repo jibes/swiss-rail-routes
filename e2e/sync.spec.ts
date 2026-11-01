@@ -42,6 +42,27 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.reload();
   await expect(page.getByRole('link', { name: /From the laptop/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /From the phone/ })).toBeVisible();
+
+  // An edit and a deletion of things both already have (the reported bug: neither went up).
+  await page.getByRole('link', { name: /From the phone/ }).click();
+  await page.getByLabel('Tour name').fill('Renamed on the phone');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('link', { name: /From the laptop/ }).click();
+  await page.getByRole('button', { name: 'Delete tour' }).click();
+  await page.getByRole('button', { name: 'Tap again to delete' }).click();
+  await page.waitForTimeout(3500);
+  await laptop.goto('./');
+  await laptop.reload();
+  await expect(laptop.getByRole('link', { name: /Renamed on the phone/ })).toBeVisible();
+  await expect(laptop.getByRole('link', { name: /From the laptop/ })).toHaveCount(0);
+
+  // A new key closes the old copy: the laptop, still on it, says so instead of refilling it.
+  await page.goto('./#/settings');
+  await page.getByRole('button', { name: 'New key' }).click();
+  await page.getByRole('button', { name: /New key\?/ }).click();
+  await expect(page.getByRole('status')).toContainText(/Synced/);
+  await laptop.goto('./#/settings');
+  await expect(laptop.getByRole('status')).toContainText(/replaced on another device/);
   await laptop.close();
 
   // The key from a link: opens settings to confirm, and does not stay in the address bar.

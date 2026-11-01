@@ -197,4 +197,8 @@ export const fr = {
   scanClose: 'Fermer la caméra',
   saveAsRoute: 'Enregistrer comme itinéraire',
   openRoute: 'Ouvrir l’itinéraire',
+  syncReplaced:
+    'Cette clé a été remplacée sur un autre appareil. Désactivez la synchro ici et rejoignez avec la nouvelle clé.',
+  syncTooBig: 'Échec de la synchro : trop de données. Supprimez d’anciens voyages.',
+  syncBusy: 'Le serveur est occupé. La synchro réessaie bientôt.',
 } satisfies Catalogue;

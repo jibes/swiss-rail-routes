@@ -133,9 +133,10 @@ Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start
 
 - From the key each device derives (HKDF-SHA-256) an id and an AES-GCM key. The Worker stores one blob per id in a Durable Object: the routes and trips, deflated and encrypted. It never sees the key, names, stops or times.
 - Writes are compare-and-swap on a version: a device that read an old version gets the current one back (409), merges and tries again.
-- Merge per route and trip: the newer change wins; deletions travel as tombstones for 90 days. Changes are noticed by hashing each item, so the stores need no timestamps.
-- Sync runs on opening, when the app comes back into view and 3 s after a change.
-- **New key** moves everything to a new key and deletes the old blob (for a key that got out); other devices join again. **Turn off on this device** keeps its data.
+- Merge per route and trip (`planRound`, pure): the newer change wins (a local edit always gets a time after the one it replaces, so a device whose clock runs behind still wins with its own edit; ties pick the same winner everywhere); deletions travel as tombstones for 90 days, and a device away longer drops items it did not change that the shared copy no longer has. Changes are noticed by hashing each item, so the stores need no timestamps. Joining counts what the device had as older than the shared copy.
+- Each round reads the lists only after the server answered (edits made meanwhile are part of it) and remembers the merge before writing, so a failed write never turns received items into local changes. Rounds of several tabs run one at a time; other tabs reload when one applied a sync.
+- Sync runs on opening, when the app comes back into view, every minute while it is in view, and 3 s after a change.
+- **New key** moves everything to a new key and closes the old copy: the Worker keeps a marker and answers 410, so devices still on the old key say "replaced" instead of refilling it; they join again. **Turn off on this device** keeps its data. Boxes nobody wrote to for 180 days are deleted (Durable Object alarm).
 - Without the key nothing can be recovered; every device keeps its own copy either way.
 
 ## 4. Data sources

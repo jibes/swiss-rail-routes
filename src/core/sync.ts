@@ -151,8 +151,9 @@ export function hashOf(value: unknown): string {
 }
 
 /**
- * This device's items as entries: unchanged ones keep their time, changed or new ones get
- * `now`, and ones gone since the last sync become tombstones.
+ * This device's items as entries: unchanged ones keep their time, changed or new ones get a
+ * time after both now and their last one (a device whose clock runs behind still wins with
+ * its own newer edit), and ones gone since the last sync become tombstones.
  */
 export function stampLocal<T extends { id: string }>(
   prev: Stamps,
@@ -160,30 +161,44 @@ export function stampLocal<T extends { id: string }>(
   now: number,
 ): Entry<T>[] {
   const seen = new Set<string>();
+  const later = (p?: Stamp) => Math.max(now, (p?.at ?? 0) + 1);
   const out: Entry<T>[] = items.map((value) => {
     seen.add(value.id);
     const p = prev[value.id];
-    return { id: value.id, at: p && p.h === hashOf(value) ? p.at : now, value };
+    return { id: value.id, at: p && p.h === hashOf(value) ? p.at : later(p), value };
   });
   for (const [id, p] of Object.entries(prev))
-    if (!seen.has(id)) out.push({ id, at: p.h === '' ? p.at : now });
+    if (!seen.has(id)) out.push({ id, at: p.h === '' ? p.at : later(p) });
   return out;
 }
 
-/** Per item the newer entry wins (ties: the one that keeps the item); old tombstones go. */
+const keyOf = <T>(e: Entry<T>) => `${e.id}|${e.at}|${e.value ? hashOf(e.value) : ''}`;
+
+/**
+ * Per item the newer entry wins; on a tie the deletion, then the larger hash, so every device
+ * picks the same one. Tombstones older than TOMBSTONE_DAYS go.
+ */
 export function mergeEntries<T>(a: Entry<T>[], b: Entry<T>[], now: number): Entry<T>[] {
   const by = new Map<string, Entry<T>>();
   for (const e of [...a, ...b]) {
     const o = by.get(e.id);
-    if (!o || e.at > o.at || (e.at === o.at && e.value && !o.value)) by.set(e.id, e);
+    if (!o || e.at > o.at || (e.at === o.at && keyOf(e) !== keyOf(o) && tieWins(e, o)))
+      by.set(e.id, e);
   }
   return [...by.values()].filter((e) => e.value || now - e.at < TOMBSTONE_DAYS * DAY);
 }
 
+const tieWins = <T>(e: Entry<T>, o: Entry<T>) =>
+  !e.value ? true : !o.value ? false : hashOf(e.value) > hashOf(o.value);
+
 export const stampsOf = <T>(entries: Entry<T>[]): Stamps =>
   Object.fromEntries(entries.map((e) => [e.id, { h: e.value ? hashOf(e.value) : '', at: e.at }]));
 
-/** The items to keep: this device's order first, then new ones in the order they came. */
+/** Stamps for a device joining: what it has counts as older than anything shared. */
+export const joinStamps = <T extends { id: string }>(items: T[]): Stamps =>
+  Object.fromEntries(items.map((v) => [v.id, { h: hashOf(v), at: 0 }]));
+
+/** The items to keep: new ones first, then this device's order. */
 export function itemsOf<T extends { id: string }>(entries: Entry<T>[], order: T[]): T[] {
   const live = new Map(entries.filter((e) => e.value).map((e) => [e.id, e.value!]));
   const known = order.filter((x) => live.has(x.id)).map((x) => live.get(x.id)!);
@@ -191,10 +206,73 @@ export function itemsOf<T extends { id: string }>(entries: Entry<T>[], order: T[
   return [...fresh, ...known];
 }
 
-/** True when two sets of entries hold the same items at the same times. */
-export const sameEntries = <T>(a: Entry<T>[], b: Entry<T>[]) =>
-  JSON.stringify(stampsOf(a), Object.keys(stampsOf(a)).sort()) ===
-  JSON.stringify(stampsOf(b), Object.keys(stampsOf(b)).sort());
+/** True when two sets of entries hold the same items, values and times. */
+export function sameEntries<T>(a: Entry<T>[], b: Entry<T>[]): boolean {
+  if (a.length !== b.length) return false;
+  const x = a.map(keyOf).sort();
+  const y = b.map(keyOf).sort();
+  return x.every((k, i) => k === y[i]);
+}
+
+const sameList = <X extends { id: string }>(a: X[], b: X[]) =>
+  a.length === b.length && a.every((x, i) => x === b[i] || hashOf(x) === hashOf(b[i]));
+
+export interface Local<R, T> {
+  tours: R[];
+  trips: T[];
+}
+
+export interface RoundPlan<R, T> {
+  merged: { tours: Entry<R>[]; trips: Entry<T>[] };
+  /** New lists for this device, where they differ from what it has. */
+  apply: Partial<Local<R, T>>;
+  /** Whether the shared copy lacks something this device has. */
+  push: boolean;
+  stamps: { tours: Stamps; trips: Stamps };
+}
+
+/**
+ * One sync round, decided without I/O: this device's lists against the shared document.
+ * `lastSync`: when this device last synced; after longer than TOMBSTONE_DAYS the deletions it
+ * missed may have expired, so items it did not change and the shared copy no longer has are
+ * taken as deleted instead of being brought back.
+ */
+export function planRound<R extends { id: string }, T extends { id: string }>(input: {
+  stamps: { tours: Stamps; trips: Stamps };
+  local: Local<R, T>;
+  remote: SyncDoc<R, T> | null;
+  now: number;
+  lastSync?: number;
+}): RoundPlan<R, T> {
+  const { stamps, local, remote, now, lastSync } = input;
+  const stale = lastSync !== undefined && now - lastSync >= TOMBSTONE_DAYS * DAY;
+  const side = <X extends { id: string }>(prev: Stamps, items: X[], theirs: Entry<X>[]) => {
+    let mine = stampLocal(prev, items, now);
+    if (stale && remote) {
+      const there = new Set(theirs.map((e) => e.id));
+      mine = mine.filter((e) => there.has(e.id) || !prev[e.id] || prev[e.id]!.at !== e.at);
+    }
+    const merged = mergeEntries(mine, theirs, now);
+    return { mine, merged };
+  };
+  const t = side(stamps.tours, local.tours, remote?.tours ?? []);
+  const r = side(stamps.trips, local.trips, remote?.trips ?? []);
+  const apply: Partial<Local<R, T>> = {};
+  const nextTours = itemsOf(t.merged, local.tours);
+  const nextTrips = itemsOf(r.merged, local.trips);
+  if (!sameList(nextTours, local.tours)) apply.tours = nextTours;
+  if (!sameList(nextTrips, local.trips)) apply.trips = nextTrips;
+  const push =
+    !remote ||
+    !sameEntries(t.merged, remote.tours ?? []) ||
+    !sameEntries(r.merged, remote.trips ?? []);
+  return {
+    merged: { tours: t.merged, trips: r.merged },
+    apply,
+    push,
+    stamps: { tours: stampsOf(t.merged), trips: stampsOf(r.merged) },
+  };
+}
 
 /** The key from a scanned code: the app's `#/sync/<key>` link, or a bare key. */
 export function keyFromScan(text: string): string | null {

@@ -198,4 +198,9 @@ export const de = {
   scanClose: 'Kamera schliessen',
   saveAsRoute: 'Als Route speichern',
   openRoute: 'Route öffnen',
+  syncReplaced:
+    'Dieser Schlüssel wurde auf einem anderen Gerät ersetzt. Schalte die Synchronisierung hier aus und tritt mit dem neuen Schlüssel bei.',
+  syncTooBig:
+    'Synchronisierung fehlgeschlagen: zu viele Daten. Lösche alte Reisen, um Platz zu schaffen.',
+  syncBusy: 'Der Server ist ausgelastet. Die Synchronisierung versucht es gleich wieder.',
 } satisfies Catalogue;

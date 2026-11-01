@@ -194,6 +194,10 @@ export const en = {
   scanClose: 'Close camera',
   saveAsRoute: 'Save as route',
   openRoute: 'Open route',
+  syncReplaced:
+    'This key was replaced on another device. Turn sync off here and join with the new key.',
+  syncTooBig: 'Sync failed: too much data. Delete old trips to make room.',
+  syncBusy: 'The server is busy. Sync tries again shortly.',
 };
 
 export type Catalogue = typeof en;

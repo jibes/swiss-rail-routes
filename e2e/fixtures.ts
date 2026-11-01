@@ -19,7 +19,7 @@ export function recordedAnswer(body: string): string | null {
 }
 
 /** The Worker's sync mailbox, shared by every page of a run (ids are random per key). */
-const boxes = new Map<string, { v: number; data: string }>();
+const boxes = new Map<string, { v: number; data: string; revoked?: boolean }>();
 
 /** Answers the Worker as the build expects it: recorded OJP answers and a sync mailbox. */
 export async function answerWorker(page: Page) {

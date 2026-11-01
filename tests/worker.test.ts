@@ -168,15 +168,24 @@ describe('sync mailbox', () => {
     expect(await stale.json()).toEqual({ v: 1, data: 'abc' });
     expect((await sync('PUT', { v: 1, data: 'def' })).status).toBe(200);
     expect(await (await sync('GET')).json()).toEqual({ v: 2, data: 'def' });
+    // A new key closes the old box: devices still on it are told, and cannot fill it again.
     expect((await sync('DELETE')).status).toBe(204);
-    expect(await (await sync('GET')).json()).toEqual({ v: 0 });
+    expect((await sync('GET')).status).toBe(410);
+    expect((await sync('PUT', { v: 0, data: 'again' })).status).toBe(410);
   });
 
   it('rejects odd ids, shapes and sizes', async () => {
     expect((await sync('GET', undefined, 'short')).status).toBe(404);
-    expect((await sync('PUT', { v: -1, data: 'x' })).status).toBe(400);
-    expect((await sync('PUT', { v: 0, data: 'not base64url!' })).status).toBe(400);
-    expect((await sync('PUT', { v: 0, data: 'x'.repeat(MAX_DATA + 1) })).status).toBe(413);
+    const other = 'c'.repeat(43);
+    expect((await sync('PUT', { v: -1, data: 'x' }, other)).status).toBe(400);
+    expect((await sync('PUT', { v: 0, data: 'not base64url!' }, other)).status).toBe(400);
+    expect((await sync('PUT', { v: 0, data: 'x'.repeat(MAX_DATA + 1) }, other)).status).toBe(413);
+    const big = await setup().call(`/sync/${'b'.repeat(43)}`, {
+      method: 'PUT',
+      headers: { Origin: ORIGIN, 'Content-Length': String(MAX_DATA * 2) },
+      body: '{}',
+    });
+    expect(big.status).toBe(413);
   });
 
   it('answers the preflight for PUT', async () => {

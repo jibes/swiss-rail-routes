@@ -4,15 +4,19 @@ import {
   formatKey,
   keyFromScan,
   itemsOf,
+  joinStamps,
   mergeEntries,
   newKey,
   open,
   parseKey,
+  planRound,
   sameEntries,
   seal,
   stampLocal,
   stampsOf,
   TOMBSTONE_DAYS,
+  type Entry,
+  type SyncDoc,
 } from '../src/core/sync';
 
 const item = (id: string, name: string) => ({ id, name });
@@ -94,5 +98,107 @@ describe('merging', () => {
     const day = 86_400_000;
     expect(mergeEntries([{ id: 'x', at: 0 }], [], TOMBSTONE_DAYS * day - 1)).toHaveLength(1);
     expect(mergeEntries([{ id: 'x', at: 0 }], [], TOMBSTONE_DAYS * day)).toHaveLength(0);
+  });
+});
+
+describe('planRound: one sync round', () => {
+  type R = { id: string; name: string };
+  const none = { tours: {}, trips: {} };
+  const doc = (tours: Entry<R>[]): SyncDoc<R, R> => ({ v: 1, tours, trips: [] });
+  const local = (tours: R[]) => ({ tours, trips: [] as R[] });
+  const day = 86_400_000;
+
+  it('uploads a deletion and an edit of something the other side already has', () => {
+    const shared = [
+      { id: 'a', at: 100, value: item('a', 'A') },
+      { id: 'b', at: 100, value: item('b', 'B') },
+    ];
+    const stamps = { tours: stampsOf(shared), trips: {} };
+    const plan = planRound({
+      stamps,
+      local: local([item('a', 'A, renamed')]),
+      remote: doc(shared),
+      now: 200,
+    });
+    expect(plan.push).toBe(true);
+    expect(itemsOf(plan.merged.tours, [])).toEqual([item('a', 'A, renamed')]);
+    expect(plan.merged.tours.find((e) => e.id === 'b')).toEqual({ id: 'b', at: 200 });
+  });
+
+  it('applies a deletion from the other side and pushes nothing back', () => {
+    const before = [{ id: 'a', at: 100, value: item('a', 'A') }];
+    const plan = planRound({
+      stamps: { tours: stampsOf(before), trips: {} },
+      local: local([item('a', 'A')]),
+      remote: doc([{ id: 'a', at: 150 }]),
+      now: 200,
+    });
+    expect(plan.apply.tours).toEqual([]);
+    expect(plan.push).toBe(false);
+  });
+
+  it('changes nothing when both sides agree (no endless rounds)', () => {
+    const shared = [
+      { id: 'a', at: 100, value: item('a', 'A') },
+      { id: 'x', at: 90 },
+    ];
+    const plan = planRound({
+      stamps: { tours: stampsOf(shared), trips: {} },
+      local: local([item('a', 'A')]),
+      remote: doc(shared),
+      now: 200,
+    });
+    expect(plan.apply).toEqual({});
+    expect(plan.push).toBe(false);
+  });
+
+  it('joining: the shared copy wins over what the device had; its own items are added', () => {
+    const mine = [item('a', 'old copy'), item('n', 'only here')];
+    const plan = planRound({
+      stamps: { tours: joinStamps(mine), trips: {} },
+      local: local(mine),
+      remote: doc([
+        { id: 'a', at: 100, value: item('a', 'newer elsewhere') },
+        { id: 'd', at: 120 },
+      ]),
+      now: 200,
+    });
+    expect(plan.apply.tours).toEqual([item('a', 'newer elsewhere'), item('n', 'only here')]);
+    expect(plan.push).toBe(true);
+  });
+
+  it('an edit beats a newer stamp from a device whose clock runs ahead', () => {
+    const ahead = [{ id: 'a', at: 5_000, value: item('a', 'A') }];
+    const plan = planRound({
+      stamps: { tours: stampsOf(ahead), trips: {} },
+      local: local([item('a', 'edited here')]),
+      remote: doc(ahead),
+      now: 1_000,
+    });
+    expect(plan.merged.tours[0]).toEqual({ id: 'a', at: 5_001, value: item('a', 'edited here') });
+  });
+
+  it('after more than 90 days away, what the others deleted is not brought back', () => {
+    const before = [{ id: 'old', at: 100, value: item('old', 'Old') }];
+    const plan = planRound({
+      stamps: { tours: stampsOf(before), trips: {} },
+      local: local([item('old', 'Old'), item('new', 'made offline')]),
+      remote: doc([]),
+      now: 100 + 100 * day,
+      lastSync: 100,
+    });
+    expect(itemsOf(plan.merged.tours, [])).toEqual([item('new', 'made offline')]);
+  });
+
+  it('first round with nothing shared yet uploads everything', () => {
+    const plan = planRound({ stamps: none, local: local([item('a', 'A')]), remote: null, now: 1 });
+    expect(plan.push).toBe(true);
+    expect(plan.apply).toEqual({});
+  });
+
+  it('equal times pick the same winner on every device', () => {
+    const x = { id: 'a', at: 7, value: item('a', 'X') };
+    const y = { id: 'a', at: 7, value: item('a', 'Y') };
+    expect(mergeEntries([x], [y], 8)).toEqual(mergeEntries([y], [x], 8));
   });
 });
