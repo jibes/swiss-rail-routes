@@ -115,7 +115,7 @@ The trip screen follows the trip's time:
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Before (until 30 min before departure)                      | Date, departure–arrival, the timetable                                              | **Edit trip**: stations, stays, date, time, ticket, all of it  |
 | Under way (30 min before departure to 15 min after arrival) | Progress, the next step, connections at risk, the timetable live with where you are | **Replan from here**: the rest; the travelled part fixed, grey |
-| After                                                       | The record                                                                          | **Plan again**: the route as a new route                       |
+| After                                                       | The record                                                                          | **Save as route** (or **Open route**)                          |
 
 - **Save as route** (any time; the main action afterwards): the trip's stations and stays become a route, without date, time or ticket, the general from the specific (planning is the other way). If the route it came from still exists unchanged, it says **Open route** and opens that instead of making a copy.
 - Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.
