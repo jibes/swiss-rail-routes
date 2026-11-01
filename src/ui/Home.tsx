@@ -2,6 +2,7 @@ import type { Tour } from '../core/model';
 import { isRoundTrip } from '../core/tour';
 import { LANGS, type Lang } from '../i18n';
 import { usePrefs, useT } from '../store';
+import { Select } from './Select';
 import { useTours } from '../tours';
 import { longDate } from './format';
 import { Icon } from './icons';
@@ -90,16 +91,13 @@ export function Home() {
       )}
 
       <footer className="home-foot">
-        <label>
-          <span className="sr-only">{t('language')}</span>
-          <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-            {LANGS.map((l) => (
-              <option key={l} value={l}>
-                {l.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          className="quiet"
+          label={t('language')}
+          value={lang}
+          options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))}
+          onChange={(l) => setLang(l as Lang)}
+        />
         <span>{t('build', { sha: __BUILD__.sha })}</span>
       </footer>
 

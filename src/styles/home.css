@@ -1,0 +1,212 @@
+/* ─── Home ─── */
+
+.hero {
+  padding: 32px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero h1 {
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.hero p {
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+.tours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tour-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+}
+
+.tour-card strong {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.tour-card .meta {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* The mini line on a card: one dot per stop */
+.mini-line {
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+
+.mini-line i {
+  flex: 1;
+  height: 2px;
+  background: var(--rail);
+}
+
+.mini-line b {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rail);
+}
+
+.mini-line b.via {
+  width: 6px;
+  height: 6px;
+  background: var(--surface);
+  border: 2px solid var(--rail);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 40px 12px;
+  color: var(--ink-2);
+}
+
+.empty svg {
+  color: var(--rail);
+}
+
+.home-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* ─── Builder: settings strip ─── */
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: 15px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.pill input {
+  border: 0;
+  background: none;
+  padding: 0;
+  min-height: 38px;
+  font-variant-numeric: tabular-nums;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Text shown, native picker on top (invisible): compact and still the system's own picker. */
+.picker-pill {
+  position: relative;
+  cursor: pointer;
+}
+
+.picker-pill input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.time-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.toggle-pill {
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-pill input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.toggle-pill:has(input:checked) {
+  background: var(--rail);
+  color: var(--on-rail);
+  box-shadow: none;
+}
+
+.toggle-pill:has(input:focus-visible) {
+  outline: 2px solid var(--rail);
+  outline-offset: 2px;
+}
+
+.toggle-pill:has(input:disabled) {
+  opacity: 0.45;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  margin-left: -10px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.seg button {
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}

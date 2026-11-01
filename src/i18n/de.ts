@@ -146,4 +146,9 @@ export const de = {
   nSideRight: 'Rechts sitzen',
   nSideLeft: 'Links sitzen',
   nSunset: 'Sonnenuntergang {time}',
+  clear: 'Leeren',
+  rideThrough: 'Durchfahren',
+  stayLength: 'Aufenthalt in {name}',
+  editHint: 'Antippen zum Ändern oder Entfernen',
+  legs1: '1 Abschnitt',
 } satisfies Catalogue;

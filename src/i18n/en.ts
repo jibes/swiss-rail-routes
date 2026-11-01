@@ -143,6 +143,11 @@ export const en = {
   nSideRight: 'Sit on the right',
   nSideLeft: 'Sit on the left',
   nSunset: 'Sunset {time}',
+  clear: 'Clear',
+  rideThrough: 'Ride through',
+  stayLength: 'Stay at {name}',
+  editHint: 'Tap to change or remove',
+  legs1: '1 leg',
 };
 
 export type Catalogue = typeof en;

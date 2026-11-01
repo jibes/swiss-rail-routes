@@ -147,3 +147,11 @@ export function replaceWaypoint(
   }
   return withWaypoints(tour, list);
 }
+
+/** One control for a station's stay: 0 rides through, anything else gets off for that long. */
+export function setStay(tour: Tour, index: number, min: number): Tour {
+  const w = tour.waypoints[index];
+  if (!w || w.kind === 'start' || w.kind === 'end') return tour;
+  if (min <= 0) return setStop(tour, index, false);
+  return w.kind === 'via' ? setStop(tour, index, true, min) : setDwell(tour, index, min);
+}

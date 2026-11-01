@@ -5,9 +5,8 @@ import {
   moveWaypoint,
   removeWaypoint,
   replaceWaypoint,
-  setDwell,
+  setStay,
   setRoundTrip,
-  setStop,
 } from '../core/edit';
 import type { Tour } from '../core/model';
 import type { StopSearch } from '../core/stops';
@@ -31,7 +30,6 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
   const tour = useTours((s) => s.tours.find((x) => x.id === id));
   const update = useTours((s) => s.update);
   const remove = useTours((s) => s.remove);
-  const [open, setOpen] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [index, setIndex] = useState<StopSearch | null>(null);
   // A new object per move, so moving to the same index twice still refocuses.
@@ -44,7 +42,6 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
     dragging,
   } = useDragList((from, to) => {
     update(id, (x) => moveWaypoint(x, from, to));
-    setOpen(null);
     setFocusGrip({ i: to });
   });
 
@@ -127,20 +124,11 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
                 key={`${i}-${w.stopRef}`}
                 w={w}
                 index={i}
-                count={wps.length}
                 last={i === wps.length - 1}
                 caption={runStart ? TEMPLATES.find((x) => x.id === w.templateId)?.name : undefined}
-                open={open === i}
-                onToggle={() => setOpen(open === i ? null : i)}
-                onStop={(on) => edit((x) => setStop(x, i, on))}
-                onDwell={(m) => edit((x) => setDwell(x, i, m))}
-                onMove={(to) => {
-                  edit((x) => moveWaypoint(x, i, to));
-                  setOpen(to);
-                }}
+                onStay={(m) => edit((x) => setStay(x, i, m))}
                 onRemove={() => {
                   edit((x) => removeWaypoint(x, i));
-                  setOpen(null);
                 }}
                 onReplace={(stop) => edit((x) => replaceWaypoint(x, i, stop))}
                 grip={grip(i)}
@@ -179,7 +167,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
       <div className="dock">
         <div className="dock-inner">
           <span className="note">
-            {legs > 0 && t('legsCount', { n: legs })}
+            {legs > 0 && (legs === 1 ? t('legs1') : t('legsCount', { n: legs }))}
             {dwell > 0 && ` · ${dwellLabel(dwell)}`}
           </span>
           <button

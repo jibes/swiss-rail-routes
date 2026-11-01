@@ -145,4 +145,9 @@ export const fr = {
   nSideRight: 'Asseyez-vous à droite',
   nSideLeft: 'Asseyez-vous à gauche',
   nSunset: 'Coucher du soleil {time}',
+  clear: 'Effacer',
+  rideThrough: 'Sans arrêt',
+  stayLength: 'Arrêt à {name}',
+  editHint: 'Toucher pour modifier ou retirer',
+  legs1: '1 tronçon',
 } satisfies Catalogue;

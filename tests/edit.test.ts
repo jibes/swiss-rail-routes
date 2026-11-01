@@ -3,6 +3,7 @@ import {
   addWaypoint,
   moveWaypoint,
   newTour,
+  setStay,
   removeWaypoint,
   setDwell,
   setRoundTrip,
@@ -114,5 +115,24 @@ describe('replaceWaypoint', () => {
     const t = setRoundTrip(addWaypoint(newTour('t', '2026-11-07', s('Zurich')), s('Luzern')), true);
     const r = replaceWaypoint(t, 0, s('Winterthur'));
     expect(kinds(r)).toEqual(['Winterthur:start', 'Luzern:via', 'Winterthur:end']);
+  });
+});
+
+describe('setStay', () => {
+  const base = () => {
+    let t = newTour('s', '2026-11-14', { stopRef: 'a', name: 'A' });
+    t = addWaypoint(t, { stopRef: 'b', name: 'B' });
+    return addWaypoint(t, { stopRef: 'c', name: 'C' });
+  };
+  it('gets off for a stay, rides through at 0, changes a stay in place', () => {
+    const off = setStay(base(), 1, 60);
+    expect(off.waypoints[1]).toMatchObject({ kind: 'stop', dwellMin: 60 });
+    expect(setStay(off, 1, 90).waypoints[1]).toMatchObject({ kind: 'stop', dwellMin: 90 });
+    expect(setStay(off, 1, 0).waypoints[1]).toMatchObject({ kind: 'via', dwellMin: 0 });
+  });
+  it('leaves start and end alone', () => {
+    const t = base();
+    expect(setStay(t, 0, 30)).toBe(t);
+    expect(setStay(t, 2, 30)).toBe(t);
   });
 });

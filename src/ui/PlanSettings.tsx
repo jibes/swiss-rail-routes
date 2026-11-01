@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import type { TicketType, Tour } from '../core/model';
 import { usePrefs, useT } from '../store';
 import { shortDate } from './format';
@@ -62,19 +63,13 @@ export function PlanSettings({ tour, edit }: { tour: Tour; edit: (f: (x: Tour) =
           />
         </label>
       </span>
-      <label className="pill">
-        <span className="sr-only">{t('ticket')}</span>
-        <select
-          value={tour.ticket}
-          onChange={(e) => edit((x) => ({ ...x, ticket: e.target.value as TicketType }))}
-        >
-          {TICKETS.map(([v, k]) => (
-            <option key={v} value={v}>
-              {t(k)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        className="pill"
+        label={t('ticket')}
+        value={tour.ticket}
+        options={TICKETS.map(([v, k]) => ({ value: v, label: t(k) }))}
+        onChange={(v) => edit((x) => ({ ...x, ticket: v as TicketType }))}
+      />
     </div>
   );
 }

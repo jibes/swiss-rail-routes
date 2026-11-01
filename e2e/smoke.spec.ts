@@ -13,7 +13,8 @@ test('loads, works offline after first visit', async ({ page, context }) => {
 
 test('switches language and keeps it', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('combobox').selectOption('de');
+  await page.getByRole('combobox', { name: 'Language' }).click();
+  await page.getByRole('option', { name: 'DE' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routen');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');

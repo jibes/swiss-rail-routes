@@ -146,4 +146,9 @@ export const it = {
   nSideRight: 'Siediti a destra',
   nSideLeft: 'Siediti a sinistra',
   nSunset: 'Tramonto {time}',
+  clear: 'Cancella',
+  rideThrough: 'Senza fermata',
+  stayLength: 'Sosta a {name}',
+  editHint: 'Tocca per cambiare o togliere',
+  legs1: '1 tratta',
 } satisfies Catalogue;

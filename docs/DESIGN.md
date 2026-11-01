@@ -10,7 +10,7 @@ A day trip is one rail line. Every screen draws it the same way, so nothing has 
 2. **Hairlines, not boxes.** Surfaces only where something is tapped as a whole (tour cards, route chips, the options control).
 3. **Numbers first.** Times are tabular and bold; departure–arrival is the largest type on the timeline.
 4. **Thumb zone.** Each screen has one main action in the bottom dock (New tour, Plan, Share). Navigation sits top left, the map top right.
-5. **Disclose in place.** A station opens its few options under itself (get off, stay, move, remove). No dialogs, no settings screen.
+5. **Edit in place.** Tap a station's name and it becomes its own search field: type another, × and leave to remove it, the stay as a chip beside it. The grip moves it. Selects are the app's own (a chip and a list), never the system's. No dialogs, no settings screen.
 6. **Smart defaults.** A route template runs in the direction that continues from your last station; next Saturday, 08:00 and GA are preset.
 7. **Calm warnings.** A coloured dot and one line of text under the ride it concerns: red for disruptions, amber for things to check, blue for information.
 

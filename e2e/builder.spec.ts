@@ -22,22 +22,40 @@ test('builds a round trip from stations and a template, keeps it after reload', 
   await expect(rows.last()).toContainText('Zürich HB');
   await expect(rows.filter({ hasText: 'Meiringen' })).toHaveCount(1);
 
-  // Tap a station to open its options in place.
-  const luzern = rows.filter({ hasText: /^Luzern/ }).first();
-  await luzern.getByRole('button', { name: /^Luzern/ }).click();
-  await luzern.getByRole('checkbox', { name: 'Get off' }).check();
-  await luzern.getByRole('button', { name: '1h', exact: true }).click();
-  await expect(luzern).toContainText('1h');
-  // Change a station in place: the stay stays.
-  await luzern.getByRole('button', { name: 'Change' }).click();
-  await page.getByRole('combobox', { name: 'Instead of Luzern' }).fill('Zug');
-  await page.getByRole('combobox', { name: 'Instead of Luzern' }).press('Enter');
+  // Tap a station's name to edit it in place: the stay beside it, a styled list.
+  await rows
+    .filter({ hasText: /^Luzern/ })
+    .first()
+    .getByRole('button', { name: /^Luzern/ })
+    .click();
+  const field = page.getByRole('combobox', { name: 'Instead of Luzern' });
+  await expect(field).toBeFocused();
+  await page.getByRole('combobox', { name: 'Stay at Luzern' }).click();
+  await page.getByRole('option', { name: '1h', exact: true }).click();
+  await expect(field).toBeVisible(); // still editing: the list is part of the field
+  // Another station in the same field: the stay stays.
+  await field.fill('Zug');
+  await field.press('Enter');
   const zug = rows.filter({ hasText: /^Zug/ }).first();
   await expect(zug).toContainText('1h');
-  await zug.getByRole('button', { name: 'Change' }).click();
+  await zug.getByRole('button', { name: /^Zug/ }).click();
   await page.getByRole('combobox', { name: 'Instead of Zug' }).fill('Luzern');
   await page.getByRole('combobox', { name: 'Instead of Zug' }).press('Enter');
   await expect(rows.filter({ hasText: /^Luzern/ }).first()).toContainText('1h');
+  // Escape leaves it unchanged; cleared and left, the station goes.
+  await rows
+    .filter({ hasText: 'Sarnen' })
+    .getByRole('button', { name: /^Sarnen/ })
+    .click();
+  await page.getByRole('combobox', { name: 'Instead of Sarnen' }).press('Escape');
+  await expect(rows.filter({ hasText: 'Sarnen' })).toHaveCount(1);
+  await rows
+    .filter({ hasText: 'Sarnen' })
+    .getByRole('button', { name: /^Sarnen/ })
+    .click();
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await page.getByLabel('Tour name').click();
+  await expect(rows.filter({ hasText: 'Sarnen' })).toHaveCount(0);
   await page.getByLabel('Tour name').fill('Brünig loop');
 
   const results = new AxeBuilder({ page }).analyze();

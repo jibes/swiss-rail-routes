@@ -1,8 +1,9 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Stop, StopMode, StopSearch } from '../core/stops';
 import type { MessageKey } from '../i18n';
 import { stopSearch } from '../io/stops';
 import { useT } from '../store';
+import { Icon } from './icons';
 
 const MODE_KEY: Partial<Record<StopMode, MessageKey>> = {
   RACK_RAILWAY: 'modeRack',
@@ -16,28 +17,48 @@ const MODE_KEY: Partial<Record<StopMode, MessageKey>> = {
   ELEVATOR: 'modeLift',
 };
 
-/** Station search as an ARIA combobox over the bundled stop index. */
+/**
+ * Station search as an ARIA combobox over the bundled stop index. As an edit field
+ * (`initial` given) it starts with the station's name selected, has a clear button, and reports
+ * the text left when focus leaves it and anything in `trailing` (`onLeave`).
+ */
 export function StopPicker({
   onPick,
   label,
   autoFocus,
+  initial,
+  onLeave,
+  onCancel,
+  trailing,
 }: {
   onPick: (s: Stop) => void;
   label: string;
   autoFocus?: boolean;
+  initial?: string;
+  onLeave?: (text: string) => void;
+  onCancel?: () => void;
+  trailing?: ReactNode;
 }) {
   const t = useT();
   const id = useId();
   const [index, setIndex] = useState<StopSearch | null>(null);
   const [failed, setFailed] = useState(false);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initial ?? '');
   const [active, setActive] = useState(0);
+
+  const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     stopSearch().then(setIndex, () => setFailed(true));
   }, []);
+  // The field is disabled until the index is there, so focus it then (autoFocus alone misses).
+  useEffect(() => {
+    if (autoFocus && index) input.current?.focus();
+  }, [autoFocus, index]);
 
-  const hits = index && text.trim().length >= 2 ? index.search(text, 8) : [];
+  // An unchanged name searches nothing: the list opens once you type.
+  const query = text === initial ? '' : text.trim();
+  const hits = index && query.length >= 2 ? index.search(query, 8) : [];
   const pick = (s: Stop) => {
     onPick(s);
     setText('');
@@ -45,11 +66,18 @@ export function StopPicker({
   };
 
   return (
-    <div className="picker">
+    <div
+      className={`picker ${initial !== undefined ? 'editing' : ''}`}
+      onBlur={(e) => {
+        if (!onLeave || e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        onLeave(text.trim());
+      }}
+    >
       <label htmlFor={`${id}-in`} className="sr-only">
         {label}
       </label>
       <input
+        ref={input}
         id={`${id}-in`}
         role="combobox"
         aria-expanded={hits.length > 0}
@@ -57,7 +85,7 @@ export function StopPicker({
         aria-activedescendant={hits.length ? `${id}-${active}` : undefined}
         aria-autocomplete="list"
         autoComplete="off"
-        autoFocus={autoFocus}
+        onFocus={(e) => initial !== undefined && e.target.select()}
         value={text}
         placeholder={index ? label : failed ? t('stopsFailed') : t('stopsLoading')}
         disabled={!index}
@@ -66,6 +94,14 @@ export function StopPicker({
           setActive(0);
         }}
         onKeyDown={(e) => {
+          if (e.key === 'Escape' && onCancel) {
+            e.preventDefault();
+            return onCancel();
+          }
+          if (e.key === 'Enter' && onLeave && !hits.length) {
+            e.preventDefault();
+            return onLeave(text.trim());
+          }
           if (!hits.length) return;
           if (e.key === 'ArrowDown') setActive((a) => Math.min(a + 1, hits.length - 1));
           else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, 0));
@@ -75,7 +111,22 @@ export function StopPicker({
           e.preventDefault();
         }}
       />
-      {text.trim().length >= 2 && index && (
+      {initial !== undefined && text && (
+        <button
+          type="button"
+          className="icon clear"
+          aria-label={t('clear')}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setText('');
+            setActive(0);
+          }}
+        >
+          <Icon name="close" size={18} />
+        </button>
+      )}
+      {trailing}
+      {query.length >= 2 && index && (
         <ul id={`${id}-list`} role="listbox" className="options">
           {hits.length === 0 && <li className="muted">{t('noStops')}</li>}
           {hits.map((s, i) => (

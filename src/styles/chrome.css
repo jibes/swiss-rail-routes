@@ -1,0 +1,224 @@
+/* ─── Map ─── */
+
+.mapview {
+  position: fixed;
+  inset: 0;
+}
+
+.mapview .map {
+  position: absolute;
+  inset: 0;
+}
+
+.map-bar {
+  position: absolute;
+  z-index: 2;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.map-bar > * {
+  pointer-events: auto;
+}
+
+.map-bar .icon,
+.map-bar .secondary {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.map-bar .secondary {
+  min-height: var(--tap);
+  font-size: 15px;
+  padding: 0 16px;
+}
+
+.map-note {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* ─── Update banner ─── */
+
+.banner {
+  position: fixed;
+  z-index: 10;
+  left: 12px;
+  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: var(--shadow);
+  font-size: 15px;
+}
+
+.banner span {
+  flex: 1;
+}
+
+.banner button {
+  border: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+}
+
+.banner button.primary {
+  min-height: 36px;
+  font-size: 15px;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stop-tools,
+  .options,
+  .tabs button,
+  .toggle-pill {
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+}
+
+.icon.secondary {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Drag to reorder */
+.stop {
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stop {
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+.stop.dragging {
+  box-shadow: var(--shadow);
+  border-radius: var(--r);
+}
+
+.stop.dragging::before {
+  opacity: 0.3;
+}
+
+.grip {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  margin-right: -10px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-2);
+  cursor: grab;
+  touch-action: none;
+}
+
+/* Six dots large enough to read as a handle at a glance. */
+.grip svg {
+  stroke-width: 3.5;
+}
+
+.grip:hover,
+.grip:focus-visible {
+  background: var(--hair);
+  color: var(--ink);
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+/* ─── Tabs: Routes · Trips ─── */
+
+.tabbar {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--hair);
+}
+
+.tabbar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+  min-height: var(--tap);
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.tabbar a[aria-current='page'] {
+  color: var(--rail);
+}
+
+/* Lists with tabs: the dock sits above the tab bar. */
+.with-tabs {
+  padding-bottom: calc(176px + env(safe-area-inset-bottom));
+}
+
+.with-tabs .dock {
+  bottom: calc(57px + env(safe-area-inset-bottom));
+  padding-bottom: 12px;
+}
+
+.tours.past .tour-card {
+  opacity: 0.72;
+}
+
+.live-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--rail);
+  color: var(--on-rail);
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+a.primary,
+a.secondary {
+  text-decoration: none;
+}
+
+a.secondary {
+  color: var(--ink);
+}

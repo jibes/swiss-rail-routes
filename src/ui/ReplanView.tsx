@@ -1,12 +1,5 @@
 import { useState } from 'react';
-import {
-  addWaypoint,
-  moveWaypoint,
-  removeWaypoint,
-  replaceWaypoint,
-  setDwell,
-  setStop,
-} from '../core/edit';
+import { addWaypoint, moveWaypoint, removeWaypoint, replaceWaypoint, setStay } from '../core/edit';
 import type { Tour } from '../core/model';
 import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
@@ -40,7 +33,6 @@ export function ReplanView({ id }: { id: string }) {
   const [draft, setDraft] = useState<Tour | null>(() =>
     trip && point ? remainingRoute(trip, point) : null,
   );
-  const [open, setOpen] = useState<number | null>(null);
   const [result, setResult] = useState<PlanResult | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'planning' | 'error'>('idle');
@@ -141,21 +133,15 @@ export function ReplanView({ id }: { id: string }) {
               key={`${i}-${w.stopRef}`}
               w={w}
               index={i}
-              count={wps.length}
               last={i === wps.length - 1}
               fixed={i === 0}
               caption={i === 0 ? t('fromHere', { time: hhmm(point.at) }) : undefined}
-              open={open === i}
-              onToggle={() => setOpen(open === i ? null : i)}
-              onStop={(on) => edit((x) => setStop(x, i, on))}
-              onDwell={(m) => edit((x) => setDwell(x, i, m))}
-              onMove={(to) => to > 0 && i > 0 && edit((x) => moveWaypoint(x, i, to))}
+              onStay={(m) => edit((x) => setStay(x, i, m))}
               onRemove={() => {
                 if (i === 0) return;
                 edit((x) => removeWaypoint(x, i));
-                setOpen(null);
               }}
-              onReplace={i === 0 ? undefined : (stop) => edit((x) => replaceWaypoint(x, i, stop))}
+              onReplace={(stop) => i > 0 && edit((x) => replaceWaypoint(x, i, stop))}
               grip={grip(i)}
               style={rowStyle(i)}
               dragging={dragging === i}
