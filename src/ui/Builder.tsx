@@ -222,6 +222,9 @@ export function useAddress(tour: Tour | undefined, sub: string) {
     if (location.hash === next) return;
     // After typing stops (Safari refuses ~100 replaceState calls in a short time).
     const timer = setTimeout(() => {
+      // Checked again when it fires: a tap on Plan within the 300 ms already moved on, and
+      // replacing then would put the idea's address back (the app stayed on the idea).
+      if (location.hash.split('?')[0] !== path) return;
       try {
         history.replaceState(history.state, '', next);
       } catch {
