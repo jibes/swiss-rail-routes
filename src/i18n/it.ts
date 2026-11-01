@@ -125,4 +125,10 @@ export const it = {
   liveOffline: 'Nessun dato in tempo reale: orario',
   liveTimetable: 'Orario',
   youAreHere: 'Sei qui',
+  replanFrom: 'Da {stop}',
+  replanHint:
+    'Il resto del viaggio dalle {time}. Aggiungi una fermata, cambia una sosta, poi cerca.',
+  findConnections: 'Cerca collegamenti',
+  updateTrip: 'Aggiorna viaggio',
+  replanHere: 'Ripianifica da qui',
 } satisfies Catalogue;

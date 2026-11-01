@@ -11,6 +11,7 @@ import { useTrips } from '../trips';
 import { newTrip } from '../core/trip';
 import { NotFound } from './Builder';
 import { ChainView } from './ChainView';
+import { OptionTabs } from './OptionTabs';
 import { PlanSettings } from './PlanSettings';
 import { duration, hhmm, minutesBetween } from './format';
 import { TEMPLATES } from './TemplatePicker';
@@ -172,28 +173,12 @@ export function Timeline({ id }: { id: string }) {
                 >
                   <Icon name="back" />
                 </button>
-                {options.length > 1 ? (
-                  <div role="tablist" className="tabs" aria-label={t('alternatives')}>
-                    {options.map((c) => (
-                      <button
-                        key={c.dep}
-                        role="tab"
-                        type="button"
-                        aria-selected={c === chain}
-                        onClick={() => setPicked(c.dep)}
-                      >
-                        <span className="times">{hhmm(c.dep)}</span>
-                        <span className={`sub ${c === result.recommended ? 'rec' : ''}`}>
-                          {c === result.recommended
-                            ? t('recommended')
-                            : duration(minutesBetween(c.dep, c.arr))}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="single muted">{t('onlyOne')}</p>
-                )}
+                <OptionTabs
+                  options={options}
+                  recommended={result.recommended}
+                  shown={chain}
+                  onPick={setPicked}
+                />
                 <button
                   type="button"
                   className="icon"

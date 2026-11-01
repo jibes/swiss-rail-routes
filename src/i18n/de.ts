@@ -124,4 +124,10 @@ export const de = {
   liveOffline: 'Keine Live-Daten: Fahrplanzeiten',
   liveTimetable: 'Fahrplanzeiten',
   youAreHere: 'Du bist hier',
+  replanFrom: 'Ab {stop}',
+  replanHint:
+    'Der Rest deiner Reise ab {time}. Halt hinzufügen, Aufenthalt ändern, dann Verbindungen suchen.',
+  findConnections: 'Verbindungen suchen',
+  updateTrip: 'Reise aktualisieren',
+  replanHere: 'Ab hier neu planen',
 } satisfies Catalogue;

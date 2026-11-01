@@ -37,3 +37,35 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.goto('./');
   await expect(page).toHaveURL(/\/now$/);
 });
+
+test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15, on the R62
+  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
+  await page.getByRole('button', { name: 'Save to my tours' }).click();
+  await page.getByRole('button', { name: 'Plan' }).click();
+  await page.getByRole('button', { name: 'Save trip' }).click();
+  await page.getByRole('link', { name: 'Show live' }).click();
+
+  await page.getByRole('link', { name: 'Replan from here' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
+  const search = page.locator('.picker input');
+  await search.fill('Wengen');
+  await search.press('Enter'); // the first match: Wengen station
+
+  const rows = page.getByRole('list', { name: 'Stops' }).getByRole('listitem');
+  await expect(rows.nth(1)).toContainText('Wengen');
+  await rows
+    .nth(1)
+    .getByRole('button', { name: /^Wengen/ })
+    .click();
+  await rows.nth(1).getByRole('checkbox', { name: 'Get off' }).check();
+  await page.getByRole('button', { name: 'Find connections' }).click();
+  await page.getByRole('button', { name: 'Update trip' }).click();
+
+  // Back on Now: the new plan (via Wengen), undo available.
+  await expect(page).toHaveURL(/\/now$/);
+  await expect(page.locator('.chain .leg')).toHaveCount(3);
+  await expect(page.locator('.chain')).toContainText('Wengen');
+  await page.getByRole('button', { name: 'Undo last replan' }).click();
+  await expect(page.locator('.chain .leg')).toHaveCount(1);
+});

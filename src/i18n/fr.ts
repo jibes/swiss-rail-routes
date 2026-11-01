@@ -124,4 +124,9 @@ export const fr = {
   liveOffline: 'Pas de données en direct : horaires',
   liveTimetable: 'Horaires',
   youAreHere: 'Vous êtes ici',
+  replanFrom: 'Depuis {stop}',
+  replanHint: 'La suite du voyage dès {time}. Ajoutez un arrêt, changez une pause, puis cherchez.',
+  findConnections: 'Chercher des liaisons',
+  updateTrip: 'Mettre à jour le voyage',
+  replanHere: 'Replanifier d’ici',
 } satisfies Catalogue;

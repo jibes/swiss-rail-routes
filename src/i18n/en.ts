@@ -122,6 +122,12 @@ export const en = {
   liveOffline: 'No live data: timetable times',
   liveTimetable: 'Timetable times',
   youAreHere: 'You are here',
+  replanFrom: 'From {stop}',
+  replanHint:
+    'The rest of your trip from {time}. Add a stop, change a stay, then find connections.',
+  findConnections: 'Find connections',
+  updateTrip: 'Update trip',
+  replanHere: 'Replan from here',
 };
 
 export type Catalogue = typeof en;

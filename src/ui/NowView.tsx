@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { LiveState } from '../core/live';
 import { useT } from '../store';
+import { undo } from '../core/trip';
 import { useTrips } from '../trips';
 import { badge, ChainView } from './ChainView';
 import { hhmm } from './format';
@@ -49,6 +50,7 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
 export function NowView({ id }: { id: string }) {
   const t = useT();
   const trip = useTrips((s) => s.trips.find((x) => x.id === id));
+  const update = useTrips((s) => s.update);
   const { state, now, fetchedAt, failed } = useLive(trip);
   if (!trip || !state)
     return (
@@ -99,6 +101,17 @@ export function NowView({ id }: { id: string }) {
           </div>
         );
       })}
+
+      {state.phase !== 'done' && (
+        <a className={state.risks.length ? 'primary' : 'secondary'} href={`#/trip/${id}/replan`}>
+          {t('replanHere')}
+        </a>
+      )}
+      {trip.previous && (
+        <button type="button" className="text-button" onClick={() => update(id, undo)}>
+          {t('undoReplan')}
+        </button>
+      )}
 
       <ChainView
         chain={trip.chain}

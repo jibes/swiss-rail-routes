@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { calls } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
 import { usesSegment } from '../src/core/segments';
+import { addWaypoint, setStop } from '../src/core/edit';
+import { liveState } from '../src/core/live';
+import { zurichDateTime } from '../src/core/ojp/request';
+import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';
+import { newTrip } from '../src/core/trip';
 import { FIXTURE_DATE, LIVE_URL, RECORD, ojpFor } from './acceptance/ojp';
 import { acceptanceTours } from './acceptance/tours';
 import { ga, index, ref, segments, templates } from './helpers/timetable';
@@ -111,6 +116,35 @@ suite('acceptance tours', { timeout }, () => {
   it('T5 an hour later starts later', async () => {
     const [a, b] = await Promise.all([planned('T5'), planned('T5L')]);
     expect(Date.parse(b.options![0]!.dep)).toBeGreaterThan(Date.parse(a.options![0]!.dep));
+  });
+
+  it('T5 replanned on the train: from the next stop, a spontaneous stay in Wengen', async () => {
+    if (!onFixtureDate) return; // the point depends on the recorded timetable
+    const r = await planned('T5');
+    const trip = newTrip('t5', tours.T5!, r.legs!, r.recommended!, new Date(0));
+    const now = Date.parse(zurichDateTime(`${DATE}T09:15`));
+    const point = replanPoint(trip, liveState(trip.chain.connections, now), now)!;
+    expect(point.stop.name).toBe('Zweilütschinen');
+    const wengen = index.search('Wengen', 1)[0]!;
+    let draft = remainingRoute(trip, point);
+    draft = addWaypoint(
+      draft,
+      { stopRef: wengen.ref, name: wengen.name },
+      draft.waypoints.length - 1,
+    );
+    draft = setStop(draft, 1, true); // 30 min, as the UI's "Get off"
+    const again = await plan(draft, {
+      ...ojpFor('T5R'),
+      templates,
+      segments,
+      ga,
+      stop: (x) => index.byRef(x),
+    });
+    expect(again.relaxed).toEqual([]);
+    const v = mergeReplan(trip, point, again.legs!, again.recommended!);
+    expect(v.chain.connections).toHaveLength(3); // travelled, to Wengen, on to Kleine Scheidegg
+    const [, toWengen, onward] = v.chain.connections;
+    expect(Date.parse(onward!.dep) - Date.parse(toWengen!.arr)).toBeGreaterThanOrEqual(30 * 60_000);
   });
 
   it('T6 base tunnel: every chain over the mountain line', async () => {
