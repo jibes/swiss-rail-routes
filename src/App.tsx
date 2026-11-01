@@ -4,6 +4,7 @@ import { useTours } from './tours';
 import { Builder } from './ui/Builder';
 import { Home } from './ui/Home';
 import { SharedTour } from './ui/SharedTour';
+import { SharedTrip } from './ui/SharedTrip';
 import { Timeline } from './ui/Timeline';
 import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
@@ -18,6 +19,7 @@ const MapView = lazy(() => import('./ui/MapView'));
 
 function Route({ hash }: { hash: string }) {
   if (hash.startsWith('/t/')) return <SharedTour hash={hash} />;
+  if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips') return <Trips />;
   const tr = /^\/trip\/([\w-]+)(\/(map|now|replan))?$/.exec(hash);
   if (tr?.[3] === 'now') return <NowView id={tr[1]!} />;

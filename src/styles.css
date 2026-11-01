@@ -1306,8 +1306,13 @@ button {
   vertical-align: 2px;
 }
 
-a.primary {
+a.primary,
+a.secondary {
   text-decoration: none;
+}
+
+a.secondary {
+  color: var(--ink);
 }
 
 /* ─── Intermediate stops (tap "N stops") ─── */

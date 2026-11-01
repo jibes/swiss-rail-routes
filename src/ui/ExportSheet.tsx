@@ -7,6 +7,7 @@ import type { PlannedChain } from '../core/planner/plan';
 import { useT } from '../store';
 import { hhmm } from './format';
 import { Icon } from './icons';
+import { shareLink } from './share';
 
 function download(name: string, type: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -86,21 +87,11 @@ export function ExportSheet({
             type="button"
             className="primary wide"
             onClick={async () => {
-              const url = `${location.origin}${location.pathname}${await shareHash()}`;
-              if (navigator.share) {
-                try {
-                  await navigator.share({ title: name, url });
-                  return;
-                } catch {
-                  // Cancelled or unavailable: fall back to copying.
-                }
-              }
-              await navigator.clipboard.writeText(url);
-              setCopied(true);
+              if ((await shareLink(await shareHash(), name)) === 'copied') setCopied(true);
             }}
           >
             <Icon name="share" />
-            {copied ? t('copied') : t('shareTour')}
+            {copied ? t('copied') : t('shareTrip')}
           </button>
         </div>
       </div>

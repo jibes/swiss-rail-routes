@@ -100,6 +100,23 @@ Must = MVP; Should = v1.1; Could = later.
 - [Should] One-page printout via print CSS (instead of a PDF library).
 - [Could] Notifications before each transfer and before a sunset-critical leg. Needs the Capacitor shell (local notifications); not possible reliably in a PWA.
 
+## 3a. Routes, Trips, Now (added 1 Nov 2026)
+
+Three questions, one kind of thing each (MECE):
+
+| Question  | Thing     | Holds                                                                                          | Screens                                                               |
+| --------- | --------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Where?    | **Route** | Stations, stays, templates, round trip; date, time and ticket only as the values last used     | Routes tab, builder, planning (date/time/ticket, options)             |
+| When?     | **Trip**  | A route frozen with its date, ticket and the chosen connections; one previous version for undo | Trips tab, trip screen (timetable, tickets, calendar, GPX, share)     |
+| What now? | **Now**   | Not stored: a trip whose window (30 min before departure to 15 min after arrival) includes now | Now screen; a live bar on the lists; launching during a trip opens it |
+
+- **Position** comes from the timetable plus live delays, never GPS (owner's decision).
+- **Live delays**: OJP TripInfo for the current and next train, every 60 s while the screen is visible, through the Worker (`/journey`, cached 30 s).
+- **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
+- **Replan from here**: from the next stop the train calls at (or the station you are at), the rest of the route editable (spontaneous stop, longer stay, reorder, remove); the travelled part is kept; the result is a new version of the trip, undo restores the previous one.
+- **Sharing**: a route as `#/t/…` (the recipient plans); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
+- **Intermediate stops** expand on every ride (plan, trip, Now); on Now the ride being travelled shows them, with a marker between the last stop passed and the next.
+
 ## 4. Data sources
 
 Timetable and realtime from opentransportdata.swiss; one API key per service, held only as Worker secrets.

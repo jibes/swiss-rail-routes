@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { encodeTour } from '../core/export/share';
+import { encodeTrip } from '../core/export/tripShare';
 import { tripStatus, undo } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
@@ -82,7 +82,7 @@ export function TripView({ id }: { id: string }) {
         tour={trip.route}
         chain={trip.chain}
         legs={trip.legs}
-        shareHash={() => encodeTour(trip.route)}
+        shareHash={() => encodeTrip(trip)}
       />
 
       <button

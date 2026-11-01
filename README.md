@@ -2,7 +2,7 @@
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** tour builder (station search, route templates, stops with dwell, round trip, depart/arrive-by), planner and warnings, timeline with up to 3 departures and Earlier/Later, exports (share link, .ics, GPX, sbb.ch per leg), OJP Worker, monthly stop index. Map of the tour (OpenFreeMap). Acceptance tours T1–T6 pass on recorded OJP answers. See [`docs/SPEC.md`](docs/SPEC.md).
+**Status:** Routes (builder with drag and drop, route templates), planning with options and Earlier/Later, Trips (saved timetables, tickets, calendar, GPX, exact share links), Now (live delays, connections at risk, position on the line, replan from here with undo), map, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 
@@ -41,7 +41,7 @@ Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a cu
 
 ## Privacy
 
-Tours stay on the device. Leg queries and stop searches (stop names and ids, date, time) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking.
+Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking.
 
 ## Third-party data and code
 

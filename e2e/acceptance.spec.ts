@@ -9,7 +9,7 @@ const tours = acceptanceTours(FIXTURE_DATE);
 for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
   test(`${id} plans in the app`, async ({ page }) => {
     await page.goto(`./${encodeTour({ ...tour, name: id })}`);
-    await page.getByRole('button', { name: 'Save to my tours' }).click();
+    await page.getByRole('button', { name: 'Save to my routes' }).click();
     await page.getByRole('button', { name: 'Plan' }).click();
 
     // 2–3 options with different times as tabs, or one with a note.
@@ -46,7 +46,7 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
 
 test('Later moves the departure an hour and replans', async ({ page }) => {
   await page.goto(`./${encodeTour({ ...tours.T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my tours' }).click();
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   const first = page.getByRole('tab').first();
   await expect(first).toBeVisible();

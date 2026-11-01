@@ -8,7 +8,7 @@ import { expect, test } from './fixtures';
 test('a trip under way: next step, progress, the marker on the line', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // 08:50 in Zürich
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my tours' }).click();
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
   await page.getByRole('link', { name: 'Show live' }).click();
@@ -41,7 +41,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15, on the R62
   await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save to my tours' }).click();
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
   await page.getByRole('link', { name: 'Show live' }).click();

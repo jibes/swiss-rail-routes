@@ -71,7 +71,7 @@ export const en = {
   openSbb: 'Open {from} → {to} on sbb.ch',
   sharedTour: 'Someone shared this tour with you.',
   sharedBroken: 'This share link is broken.',
-  importTour: 'Save to my tours',
+  importTour: 'Save to my routes',
   modeRack: 'rack railway',
   modeFunicular: 'funicular',
   modeCableCar: 'cable car',
@@ -91,7 +91,6 @@ export const en = {
   onlyOne: 'Only one connection works for this tour at this time.',
   planned: '{min} planned',
   tickets: 'Tickets & timetable',
-  shareTour: 'Share tour',
   stop1: '1 stop',
   drag: 'Move {name} (drag, or arrow keys)',
   routes: 'Routes',
@@ -128,6 +127,10 @@ export const en = {
   findConnections: 'Find connections',
   updateTrip: 'Update trip',
   replanHere: 'Replan from here',
+  sharedTrip: 'Someone shared this trip with you, as they planned it.',
+  saveToTrips: 'Save to my trips',
+  shareRoute: 'Share route',
+  shareTrip: 'Share trip',
 };
 
 export type Catalogue = typeof en;

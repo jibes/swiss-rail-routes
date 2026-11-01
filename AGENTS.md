@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: complete MVP path (builder, planner on real OJP answers, timeline, map, exports, Worker, stop index, curated data). Next: see docs/SPEC.md §3 Should/Could items.
+Status: Routes · Trips · Now complete (SPEC §3a). Next: SPEC §3 Should/Could items (notifications need the Capacitor shell).
 
 ## Stack
 
@@ -25,6 +25,8 @@ Status: complete MVP path (builder, planner on real OJP answers, timeline, map, 
   - Cog railways come as PtMode `telecabin`/`funicular` with category `CC`; replacement buses as `EV`.
 - Acceptance tests (`tests/acceptance.test.ts`) replay the planner's own OJP requests from `tests/fixtures/ojp/<tour>/<sha1>.xml.gz` (tracks thinned to every 20th point). A planner change that alters its requests needs a re-record: `NODE_USE_ENV_PROXY=1 npm run record:ojp` with `OJP_API_KEY` set.
 - e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (every option, export, map), so planner changes that break a screen fail before release.
+- Routes, Trips, Now (SPEC §3a): `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (`srr.tours.v1`) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
+- Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 

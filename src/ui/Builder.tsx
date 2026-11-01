@@ -21,6 +21,8 @@ import { dwellLabel, StopRow } from './StopRow';
 import { directionFrom, TEMPLATES, TemplatePicker } from './TemplatePicker';
 import { useDragList } from './useDragList';
 import { go } from './useHash';
+import { shareLink } from './share';
+import { encodeTour } from '../core/export/share';
 
 export function Builder({ id, showTemplates }: { id: string; showTemplates?: boolean }) {
   const t = useT();
@@ -79,6 +81,15 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
           value={tour.name}
           onChange={(e) => edit((x) => ({ ...x, name: e.target.value }))}
         />
+        <button
+          type="button"
+          className="icon"
+          aria-label={t('shareRoute')}
+          disabled={wps.length < 2}
+          onClick={() => void shareLink(encodeTour(tour), tour.name || t('untitled'))}
+        >
+          <Icon name="share" />
+        </button>
         <button
           type="button"
           className="icon"
