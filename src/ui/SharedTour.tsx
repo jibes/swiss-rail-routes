@@ -12,7 +12,7 @@ export function SharedTour({ hash }: { hash: string }) {
     return (
       <main className="page">
         <p role="alert">{t('sharedBroken')}</p>
-        <button type="button" onClick={() => go('/')}>
+        <button type="button" className="secondary" onClick={() => go('/')}>
           {t('back')}
         </button>
       </main>
@@ -20,18 +20,36 @@ export function SharedTour({ hash }: { hash: string }) {
   const { id: _id, ...rest } = tour;
   return (
     <main className="page">
-      <h1>{tour.name || t('untitled')}</h1>
-      <p className="muted">{t('sharedTour')}</p>
-      <ol className="waypoints">
+      <header className="hero">
+        <h1>{tour.name || t('untitled')}</h1>
+        <p>{t('sharedTour')}</p>
+      </header>
+      <ol className="line">
         {tour.waypoints.map((w, i) => (
-          <li key={i} className={`wp wp-${w.kind}`}>
-            <span className="wp-name">{w.name}</span>
+          <li
+            key={i}
+            className={`stop ${w.kind === 'via' ? 'via' : ''} ${i === tour.waypoints.length - 1 ? 'last' : ''}`}
+          >
+            <span className="dot" aria-hidden="true" />
+            <div className="stop-head">
+              <span className="stop-name">
+                <span>{w.name}</span>
+              </span>
+            </div>
           </li>
         ))}
       </ol>
-      <button type="button" className="primary" onClick={() => go(`/tour/${create(rest)}`)}>
-        {t('importTour')}
-      </button>
+      <div className="dock">
+        <div className="dock-inner">
+          <button
+            type="button"
+            className="primary wide"
+            onClick={() => go(`/tour/${create(rest)}`)}
+          >
+            {t('importTour')}
+          </button>
+        </div>
+      </div>
     </main>
   );
 }

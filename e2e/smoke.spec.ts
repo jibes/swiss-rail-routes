@@ -25,6 +25,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.goto('./');
     const { violations } = await new AxeBuilder({ page }).analyze();
     const blocking = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-    expect(blocking.map((v) => v.id)).toEqual([]);
+    expect(
+      blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+    ).toEqual([]);
   });
 }

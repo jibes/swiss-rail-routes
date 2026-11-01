@@ -26,7 +26,17 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
   const blocking = (await new AxeBuilder({ page }).analyze()).violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
   );
-  expect(blocking.map((v) => v.id)).toEqual([]);
+  expect(
+    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+  ).toEqual([]);
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const dark = (await new AxeBuilder({ page }).analyze()).violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical',
+  );
+  expect(dark.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual(
+    [],
+  );
 
   // The plan is kept: offline, the timeline still shows it.
   await page.context().setOffline(true);

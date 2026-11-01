@@ -38,7 +38,9 @@ export function StopPicker({ onPick, label }: { onPick: (s: Stop) => void; label
 
   return (
     <div className="picker">
-      <label htmlFor={`${id}-in`}>{label}</label>
+      <label htmlFor={`${id}-in`} className="sr-only">
+        {label}
+      </label>
       <input
         id={`${id}-in`}
         role="combobox"
@@ -48,7 +50,7 @@ export function StopPicker({ onPick, label }: { onPick: (s: Stop) => void; label
         aria-autocomplete="list"
         autoComplete="off"
         value={text}
-        placeholder={index ? t('searchStop') : failed ? t('stopsFailed') : t('stopsLoading')}
+        placeholder={index ? label : failed ? t('stopsFailed') : t('stopsLoading')}
         disabled={!index}
         onChange={(e) => {
           setText(e.target.value);

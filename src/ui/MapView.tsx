@@ -11,6 +11,7 @@ import { useT } from '../store';
 import { useTours } from '../tours';
 import { NotFound } from './Builder';
 import { TEMPLATES } from './TemplatePicker';
+import { Icon } from './icons';
 import { go } from './useHash';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -105,17 +106,21 @@ export default function MapView({ id }: { id: string }) {
   if (!tour) return <NotFound />;
   return (
     <main className="mapview">
-      <header className="bar overlay">
-        <button type="button" onClick={() => history.back()}>
-          ← {t('back')}
+      <div className="map-bar">
+        <button
+          type="button"
+          className="icon"
+          aria-label={t('back')}
+          onClick={() => history.back()}
+        >
+          <Icon name="back" />
         </button>
-        <h1>{tour.name || t('untitled')}</h1>
-        <button type="button" onClick={() => go(`/tour/${id}/plan`)}>
+        <button type="button" className="secondary" onClick={() => go(`/tour/${id}/plan`)}>
           {t('timeline')}
         </button>
-      </header>
+      </div>
       {failed && (
-        <p role="status" className="chip amber map-note">
+        <p role="status" className="notice map-note">
           {t('mapOffline')}
         </p>
       )}

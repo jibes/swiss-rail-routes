@@ -12,6 +12,7 @@ import { ChainView } from './ChainView';
 import { ExportSheet } from './ExportSheet';
 import { duration, hhmm, minutesBetween } from './format';
 import { TEMPLATES } from './TemplatePicker';
+import { Icon } from './icons';
 import { go } from './useHash';
 
 type Status = 'planning' | 'done' | 'unavailable' | 'error';
@@ -93,33 +94,56 @@ export function Timeline({ id }: { id: string }) {
     }));
   };
 
+  const total = chain ? minutesBetween(chain.dep, chain.arr) : 0;
+  const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
+
   return (
     <main className="page timeline">
       <header className="bar">
-        <button type="button" onClick={() => go(`/tour/${id}`)}>
-          ← {t('edit')}
+        <button
+          type="button"
+          className="icon"
+          aria-label={t('edit')}
+          onClick={() => go(`/tour/${id}`)}
+        >
+          <Icon name="back" />
         </button>
         <h1>{tour.name || t('untitled')}</h1>
-        <button type="button" onClick={() => go(`/tour/${id}/map`)}>
-          {t('map')}
+        <button
+          type="button"
+          className="icon"
+          aria-label={t('map')}
+          onClick={() => go(`/tour/${id}/map`)}
+        >
+          <Icon name="map" />
         </button>
       </header>
 
-      {status === 'planning' && <p role="status">{t('planning')}</p>}
-      {status === 'unavailable' && <p role="status">{t('planUnavailable')}</p>}
-      {status === 'error' && (
-        <p role="alert">
-          {t('planFailed')} {detail && <code className="muted">{detail}</code>}{' '}
-          <button type="button" onClick={() => setAttempt((a) => a + 1)}>
-            {t('retry')}
-          </button>
+      {status === 'planning' && (
+        <p role="status" className="muted">
+          {t('planning')}
         </p>
+      )}
+      {status === 'unavailable' && (
+        <p role="status" className="notice">
+          {t('planUnavailable')}
+        </p>
+      )}
+      {status === 'error' && (
+        <div role="alert" className="notice red">
+          <span>
+            {t('planFailed')} {detail && <code className="muted">{detail}</code>}{' '}
+            <button type="button" className="text-button" onClick={() => setAttempt((a) => a + 1)}>
+              {t('retry')}
+            </button>
+          </span>
+        </div>
       )}
 
       {status === 'done' && result && (
         <>
           {result.failedLeg !== undefined && (
-            <p role="alert" className="chip red">
+            <p role="alert" className="notice red">
               {t('legFailed', {
                 n: result.failedLeg + 1,
                 from: legs[result.failedLeg]?.from.name ?? '',
@@ -128,43 +152,63 @@ export function Timeline({ id }: { id: string }) {
             </p>
           )}
           {result.relaxed.map((r, i) => (
-            <p key={i} className="chip amber">
+            <p key={i} className="notice">
               {t(r.rule === 'mustPass' ? 'relaxedMustPass' : 'relaxedAvoid', { n: r.legIndex + 1 })}
             </p>
           ))}
           {chain && (
             <>
-              {options.length > 1 ? (
-                <div role="tablist" className="tabs" aria-label={t('alternatives')}>
-                  {options.map((c) => (
-                    <button
-                      key={c.dep}
-                      role="tab"
-                      type="button"
-                      aria-selected={c === chain}
-                      onClick={() => setPicked(c.dep)}
-                    >
-                      <span>
-                        {hhmm(c.dep)}–{hhmm(c.arr)}
-                      </span>
-                      <span className="muted">
-                        {duration(minutesBetween(c.dep, c.arr))}
-                        {c === result.recommended && <> · {t('recommended')}</>}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">{t('onlyOne')}</p>
-              )}
-              <div className="row shift">
-                <button type="button" onClick={() => shift(-60)}>
-                  ← {t('earlier')}
+              <div className="options-bar">
+                <button
+                  type="button"
+                  className="icon"
+                  aria-label={t('earlier')}
+                  onClick={() => shift(-60)}
+                >
+                  <Icon name="back" />
                 </button>
-                <button type="button" onClick={() => shift(60)}>
-                  {t('later')} →
+                {options.length > 1 ? (
+                  <div role="tablist" className="tabs" aria-label={t('alternatives')}>
+                    {options.map((c) => (
+                      <button
+                        key={c.dep}
+                        role="tab"
+                        type="button"
+                        aria-selected={c === chain}
+                        onClick={() => setPicked(c.dep)}
+                      >
+                        <span className="times">{hhmm(c.dep)}</span>
+                        <span className={`sub ${c === result.recommended ? 'rec' : ''}`}>
+                          {c === result.recommended
+                            ? t('recommended')
+                            : duration(minutesBetween(c.dep, c.arr))}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="single muted">{t('onlyOne')}</p>
+                )}
+                <button
+                  type="button"
+                  className="icon"
+                  aria-label={t('later')}
+                  onClick={() => shift(60)}
+                >
+                  <Icon name="next" />
                 </button>
               </div>
+
+              <div className="summary">
+                <span className="big">
+                  {hhmm(chain.dep)} – {hhmm(chain.arr)}
+                </span>
+                <span className="muted">
+                  {duration(total)} ·{' '}
+                  {changes === 1 ? t('transfer1') : t('transfers', { n: changes })}
+                </span>
+              </div>
+
               <div role={options.length > 1 ? 'tabpanel' : undefined}>
                 <ChainView chain={chain} dwell={legs.map((l) => l.to.dwellMin)} />
               </div>

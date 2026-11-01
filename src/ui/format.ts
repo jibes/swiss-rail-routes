@@ -20,3 +20,13 @@ export function longDate(date: string, locale: string) {
     timeZone: 'UTC',
   }).format(new Date(`${date}T12:00:00Z`));
 }
+
+/** "Sa., 7. Nov." / "Sat, 7 Nov". */
+export function shortDate(date: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${date}T12:00:00Z`));
+}
