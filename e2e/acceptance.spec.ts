@@ -49,9 +49,10 @@ test('Later moves the departure an hour and replans', async ({ page }) => {
   await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   const first = page.getByRole('tab').first();
-  await expect(first).toBeVisible();
+  // Planning is the slow step, slower still on CI with workers in parallel (as for T1–T6 above).
+  await expect(first).toBeVisible({ timeout: 30_000 });
   const before = (await first.innerText()).slice(0, 5);
   await page.getByRole('button', { name: /Later/ }).click();
-  await expect(first).not.toContainText(before);
+  await expect(first).not.toContainText(before, { timeout: 30_000 });
   await expect(page.getByLabel('Time', { exact: true })).toHaveValue('10:00');
 });
