@@ -154,7 +154,6 @@ export const fr = {
   editTrip: 'Modifier le voyage',
   editTripHint:
     'Gares, arrêts, date et heure ; le voyage est replanifié. Annuler rétablit l’ancien plan.',
-  planAgain: 'Planifier à nouveau',
   settings: 'Réglages',
   syncTitle: 'Synchroniser entre vos appareils',
   syncIntro:
@@ -196,4 +195,6 @@ export const fr = {
   scanNoCamera: 'Aucune caméra trouvée. Saisissez plutôt la clé.',
   scanFailed: 'La caméra n’a pas pu démarrer. Saisissez plutôt la clé.',
   scanClose: 'Fermer la caméra',
+  saveAsRoute: 'Enregistrer comme itinéraire',
+  openRoute: 'Ouvrir l’itinéraire',
 } satisfies Catalogue;

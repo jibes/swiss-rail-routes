@@ -110,9 +110,20 @@ test('one trip screen: edit all of it before departure, plan it again afterwards
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   await expect(page.getByText('Replanned', { exact: false })).toBeVisible();
 
-  // Afterwards: the record, and the route planned again as a new route.
+  // Afterwards: the record; its route still exists unchanged, so the trip opens it.
   await page.clock.runFor('10:00:00');
-  await page.getByRole('button', { name: 'Plan again' }).click();
+  const tripUrl = page.url();
+  await page.getByRole('button', { name: 'Open route' }).click();
   await expect(page).toHaveURL(/#\/tour\//);
   await expect(page.getByLabel('Tour name')).toHaveValue('T5');
+
+  // With the route deleted, the trip saves itself as a new route (no date: a route is where).
+  await page.getByRole('button', { name: 'Delete tour' }).click();
+  await page.getByRole('button', { name: 'Tap again to delete' }).click();
+  await page.goto(tripUrl);
+  await page.getByRole('button', { name: 'Save as route' }).click();
+  await expect(page.getByLabel('Tour name')).toHaveValue('T5');
+  await expect(
+    page.getByRole('list', { name: 'Stops' }).getByRole('listitem').first(),
+  ).toContainText('Interlaken Ost');
 });

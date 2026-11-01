@@ -53,7 +53,7 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
 /**
  * A saved trip, one screen for its whole life: before departure its timetable (edit all of
  * it), under way the same timetable live (next step, risks, where you are; change from here),
- * afterwards the record (plan the route again).
+ * afterwards the record. Any time: save it as a route (or open the route it came from).
  */
 export function TripView({ id }: { id: string }) {
   const t = useT();
@@ -62,6 +62,16 @@ export function TripView({ id }: { id: string }) {
   const remove = useTrips((s) => s.remove);
   const update = useTrips((s) => s.update);
   const createRoute = useTours((s) => s.create);
+  // The route this trip came from, if it still exists with the same stations and stays.
+  const route = useTours((s) =>
+    trip
+      ? s.tours.find(
+          (x) =>
+            x.id === trip.routeId &&
+            JSON.stringify(x.waypoints) === JSON.stringify(trip.route.waypoints),
+        )
+      : undefined,
+  );
   const [confirm, setConfirm] = useState(false);
   const now = useNow();
   const status = trip ? tripStatus(trip, now) : 'past';
@@ -78,6 +88,13 @@ export function TripView({ id }: { id: string }) {
       </main>
     );
   const state = live.state;
+  // From the specific to the general: the trip's stations and stays as a route (no date).
+  const toRoute = () => {
+    if (route) return go(`/tour/${route.id}`);
+    const { id: _id, ...r } = trip.route;
+    go(`/tour/${createRoute({ ...r, name: trip.name })}`);
+  };
+  const routeLabel = route ? t('openRoute') : t('saveAsRoute');
   const changes = trip.chain.connections.reduce((n, c) => n + c.transfers, 0);
 
   return (
@@ -174,6 +191,12 @@ export function TripView({ id }: { id: string }) {
 
       <Tickets tour={trip.route} chain={trip.chain} legs={trip.legs} />
 
+      {status !== 'past' && (
+        <button type="button" className="text-button" onClick={toRoute}>
+          {routeLabel}
+        </button>
+      )}
+
       <button
         type="button"
         className={`text-button ${confirm ? 'danger' : ''}`}
@@ -190,16 +213,9 @@ export function TripView({ id }: { id: string }) {
         <div className="dock-inner">
           <ExportButtons tour={trip.route} chain={trip.chain} />
           {status === 'past' ? (
-            <button
-              type="button"
-              className="secondary wide"
-              onClick={() => {
-                const { id: _id, ...route } = trip.route;
-                go(`/tour/${createRoute({ ...route, name: trip.name })}`);
-              }}
-            >
+            <button type="button" className="secondary wide" onClick={toRoute}>
               <Icon name="loop" />
-              {t('planAgain')}
+              {routeLabel}
             </button>
           ) : (
             <a

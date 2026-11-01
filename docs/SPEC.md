@@ -117,6 +117,7 @@ The trip screen follows the trip's time:
 | Under way (30 min before departure to 15 min after arrival) | Progress, the next step, connections at risk, the timetable live with where you are | **Replan from here**: the rest; the travelled part fixed, grey |
 | After                                                       | The record                                                                          | **Plan again**: the route as a new route                       |
 
+- **Save as route** (any time; the main action afterwards): the trip's stations and stays become a route, without date, time or ticket, the general from the specific (planning is the other way). If the route it came from still exists unchanged, it says **Open route** and opens that instead of making a copy.
 - Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.
 - **Position** comes from the timetable plus live delays, never GPS (owner's decision).
 - **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min, when its delay or cancellation can break the connection (`journeysToWatch`). About a quarter of the requests of polling both every minute.

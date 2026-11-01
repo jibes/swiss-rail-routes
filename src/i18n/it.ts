@@ -155,7 +155,6 @@ export const it = {
   editTrip: 'Modifica viaggio',
   editTripHint:
     'Stazioni, soste, data e ora; il viaggio viene ripianificato. Annulla ripristina il piano precedente.',
-  planAgain: 'Pianifica di nuovo',
   settings: 'Impostazioni',
   syncTitle: 'Sincronizza tra i tuoi dispositivi',
   syncIntro:
@@ -196,4 +195,6 @@ export const it = {
   scanNoCamera: 'Nessuna fotocamera trovata. Inserisci la chiave.',
   scanFailed: 'La fotocamera non si è avviata. Inserisci la chiave.',
   scanClose: 'Chiudi fotocamera',
+  saveAsRoute: 'Salva come percorso',
+  openRoute: 'Apri percorso',
 } satisfies Catalogue;

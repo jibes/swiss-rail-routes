@@ -155,7 +155,6 @@ export const de = {
   editTrip: 'Reise bearbeiten',
   editTripHint:
     'Stationen, Aufenthalte, Datum und Zeit; die Reise wird neu geplant. Rückgängig holt den alten Plan zurück.',
-  planAgain: 'Nochmals planen',
   settings: 'Einstellungen',
   syncTitle: 'Zwischen deinen Geräten synchronisieren',
   syncIntro:
@@ -197,4 +196,6 @@ export const de = {
   scanNoCamera: 'Keine Kamera gefunden. Tippe den Schlüssel stattdessen ein.',
   scanFailed: 'Die Kamera liess sich nicht starten. Tippe den Schlüssel stattdessen ein.',
   scanClose: 'Kamera schliessen',
+  saveAsRoute: 'Als Route speichern',
+  openRoute: 'Route öffnen',
 } satisfies Catalogue;

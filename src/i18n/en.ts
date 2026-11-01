@@ -152,7 +152,6 @@ export const en = {
   editTrip: 'Edit trip',
   editTripHint:
     'Stations, stays, date and time; the trip is planned anew. Undo brings back the old plan.',
-  planAgain: 'Plan again',
   settings: 'Settings',
   syncTitle: 'Sync between your devices',
   syncIntro:
@@ -193,6 +192,8 @@ export const en = {
   scanNoCamera: 'No camera found. Type the key instead.',
   scanFailed: 'The camera could not start. Type the key instead.',
   scanClose: 'Close camera',
+  saveAsRoute: 'Save as route',
+  openRoute: 'Open route',
 };
 
 export type Catalogue = typeof en;
