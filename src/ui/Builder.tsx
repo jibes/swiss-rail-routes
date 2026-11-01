@@ -20,6 +20,7 @@ import { Icon } from './icons';
 import { StopPicker } from './StopPicker';
 import { dwellLabel, StopRow } from './StopRow';
 import { directionFrom, TEMPLATES, TemplatePicker } from './TemplatePicker';
+import { useDragList } from './useDragList';
 import { go } from './useHash';
 
 const TICKETS: [TicketType, 'ticketGA' | 'ticketDay' | 'ticketHalf' | 'ticketNone'][] = [
@@ -38,10 +39,28 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
   const [open, setOpen] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [index, setIndex] = useState<StopSearch | null>(null);
+  // A new object per move, so moving to the same index twice still refocuses.
+  const [focusGrip, setFocusGrip] = useState<{ i: number } | null>(null);
+  const {
+    listRef,
+    list: listEl,
+    grip,
+    rowStyle,
+    dragging,
+  } = useDragList((from, to) => {
+    update(id, (x) => moveWaypoint(x, from, to));
+    setOpen(null);
+    setFocusGrip({ i: to });
+  });
 
   useEffect(() => {
     stopSearch().then(setIndex, () => undefined);
   }, []);
+  // Keyboard moves keep the focus on the moved station's grip.
+  useEffect(() => {
+    if (focusGrip === null) return;
+    listEl?.querySelector<HTMLElement>(`[data-grip="${focusGrip.i}"]`)?.focus();
+  }, [focusGrip, listEl]);
   useEffect(() => {
     if (showTemplates) document.getElementById('routes')?.scrollIntoView({ block: 'center' });
   }, [showTemplates]);
@@ -153,7 +172,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
       </div>
 
       <div>
-        <ol className="line" aria-label={t('stops')}>
+        <ol className="line" aria-label={t('stops')} ref={listRef}>
           {wps.map((w, i) => {
             const runStart = w.templateId && wps[i - 1]?.templateId !== w.templateId;
             return (
@@ -176,6 +195,9 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
                   edit((x) => removeWaypoint(x, i));
                   setOpen(null);
                 }}
+                grip={grip(i)}
+                style={rowStyle(i)}
+                dragging={dragging === i}
               />
             );
           })}

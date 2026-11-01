@@ -95,4 +95,5 @@ export const fr = {
   tickets: 'Billets & horaire',
   shareTour: 'Partager',
   stop1: '1 arrêt',
+  drag: 'Déplacer {name} (glisser ou flèches)',
 } satisfies Catalogue;

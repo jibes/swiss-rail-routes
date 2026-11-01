@@ -1,3 +1,4 @@
+import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
 import type { Waypoint } from '../core/model';
 import { useT } from '../store';
 import { Icon } from './icons';
@@ -22,6 +23,15 @@ interface Props {
   onDwell: (min: number) => void;
   onMove: (to: number) => void;
   onRemove: () => void;
+  style?: CSSProperties;
+  dragging?: boolean;
+  grip: {
+    onPointerDown: (e: PointerEvent<HTMLElement>) => void;
+    onPointerMove: (e: PointerEvent<HTMLElement>) => void;
+    onPointerUp: () => void;
+    onPointerCancel: () => void;
+    onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
+  };
 }
 
 /** A station on the line. Tap to open its few options in place. */
@@ -32,21 +42,36 @@ export function StopRow(p: Props) {
   const off = w.kind === 'stop' || w.kind === 'turnaround';
   const id = `stop-${p.index}`;
   return (
-    <li className={`stop ${w.kind === 'via' ? 'via' : ''} ${p.last ? 'last' : ''}`}>
+    <li
+      className={`stop ${w.kind === 'via' ? 'via' : ''} ${p.last ? 'last' : ''} ${p.dragging ? 'dragging' : ''}`}
+      style={p.style}
+    >
       <span className="dot" aria-hidden="true" />
-      <button
-        type="button"
-        className="stop-head"
-        aria-expanded={p.open}
-        aria-controls={id}
-        onClick={p.onToggle}
-      >
-        <span className="stop-name">
-          <span>{w.name}</span>
-          {p.caption && <small>{p.caption}</small>}
-        </span>
-        {off && w.dwellMin > 0 && <span className="dwell-tag">{dwellLabel(w.dwellMin)}</span>}
-      </button>
+      <div className="stop-top">
+        <button
+          type="button"
+          className="stop-head"
+          aria-expanded={p.open}
+          aria-controls={id}
+          onClick={p.onToggle}
+        >
+          <span className="stop-name">
+            <span>{w.name}</span>
+            {p.caption && <small>{p.caption}</small>}
+          </span>
+          {off && w.dwellMin > 0 && <span className="dwell-tag">{dwellLabel(w.dwellMin)}</span>}
+        </button>
+        <button
+          type="button"
+          className="grip"
+          aria-label={t('drag', { name: w.name })}
+          aria-keyshortcuts="ArrowUp ArrowDown"
+          data-grip={p.index}
+          {...p.grip}
+        >
+          <Icon name="grip" size={20} />
+        </button>
+      </div>
       {p.open && (
         <div id={id} className="stop-tools">
           {inner && (

@@ -96,4 +96,5 @@ export const it = {
   tickets: 'Biglietti & orario',
   shareTour: 'Condividi',
   stop1: '1 fermata',
+  drag: 'Sposta {name} (trascina o frecce)',
 } satisfies Catalogue;

@@ -93,6 +93,7 @@ export const en = {
   tickets: 'Tickets & timetable',
   shareTour: 'Share tour',
   stop1: '1 stop',
+  drag: 'Move {name} (drag, or arrow keys)',
 };
 
 export type Catalogue = typeof en;

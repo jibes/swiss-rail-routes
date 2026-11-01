@@ -95,4 +95,5 @@ export const de = {
   tickets: 'Billette & Fahrplan',
   shareTour: 'Tour teilen',
   stop1: '1 Halt',
+  drag: '{name} verschieben (ziehen oder Pfeiltasten)',
 } satisfies Catalogue;

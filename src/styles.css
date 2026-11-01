@@ -538,8 +538,14 @@ button {
   box-shadow: none;
 }
 
+.stop-top {
+  display: flex;
+  align-items: center;
+}
+
 .stop-head {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 52px;
   display: flex;
   align-items: center;
@@ -1199,4 +1205,43 @@ button {
   height: 52px;
   padding: 0;
   border-radius: 50%;
+}
+
+/* Drag to reorder */
+.stop {
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stop {
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+.stop.dragging {
+  box-shadow: var(--shadow);
+  border-radius: var(--r);
+}
+
+.stop.dragging::before {
+  opacity: 0.3;
+}
+
+.grip {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  margin-right: -10px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-3);
+  cursor: grab;
+  touch-action: none;
+}
+
+.grip:active {
+  cursor: grabbing;
 }
