@@ -33,3 +33,23 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
     return parseTrips(await res.text());
   }
 }
+
+/** Live calls of one vehicle (OJP TripInfo via the Worker, cached there 30 s). */
+export async function fetchJourney(
+  q: import('../core/ojp/request').JourneyQuery,
+  signal?: AbortSignal,
+): Promise<import('../core/ojp/journey').JourneyStatus> {
+  const url = import.meta.env.VITE_OJP_URL;
+  if (!url) throw new PlanningUnavailable();
+  const [res, { parseJourney }] = await Promise.all([
+    fetch(`${url.replace(/[/]$/, '')}/journey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(q),
+      signal,
+    }),
+    import('../core/ojp/journey'),
+  ]);
+  if (!res.ok) throw new WorkerError(`${res.status} ${(await res.text()).slice(0, 80)}`);
+  return parseJourney(await res.text());
+}

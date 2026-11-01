@@ -5,6 +5,7 @@ import { usePrefs, useT } from '../store';
 import { useTours } from '../tours';
 import { longDate } from './format';
 import { Icon } from './icons';
+import { LiveBar } from './LiveBar';
 import { TabBar } from './TabBar';
 import { go } from './useHash';
 
@@ -44,6 +45,7 @@ export function Home() {
 
   return (
     <main className="page home with-tabs">
+      <LiveBar />
       <header className="hero">
         <h1>{t('routes')}</h1>
         <p>{t('tagline')}</p>

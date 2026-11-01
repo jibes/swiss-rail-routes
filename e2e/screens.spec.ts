@@ -26,6 +26,22 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.goto('./');
     await page.waitForTimeout(300);
     await shot('1-home');
+  });
+
+  test(`now ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15 Zürich
+    const t5 = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Kleine Scheidegg' };
+    await page.goto(`./${encodeTour(t5)}`);
+    await page.getByRole('button', { name: 'Save to my tours' }).click();
+    await page.getByRole('button', { name: 'Plan' }).click();
+    await page.getByRole('button', { name: 'Save trip' }).click();
+    await page.getByRole('link', { name: 'Show live' }).click();
+    await page.locator('.row.ride.here').waitFor();
+    await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
+    await page.goto('./#/trips');
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${dir}/${scheme}-5-trips.png` });
     expect(true).toBe(true);
   });
 }

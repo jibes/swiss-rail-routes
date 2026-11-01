@@ -107,6 +107,21 @@ export const en = {
   undoReplan: 'Undo last replan',
   deleteTrip: 'Delete trip',
   confirmDeleteTrip: 'Tap again to delete',
+  arrived: 'Trip complete',
+  nowAlight: 'Get off at {stop}',
+  nowDepart: 'Departure',
+  nowChange: 'Next train',
+  nowNow: 'now',
+  inMin: 'in {n} min',
+  toward: 'to {to}',
+  progress: 'Trip progress',
+  riskCancelled: '{line} is cancelled',
+  riskMissed: 'Connection in {at} will be missed',
+  riskTight: 'Connection in {at} at risk ({n} min)',
+  liveAt: 'Live data · {time}',
+  liveOffline: 'No live data: timetable times',
+  liveTimetable: 'Timetable times',
+  youAreHere: 'You are here',
 };
 
 export type Catalogue = typeof en;

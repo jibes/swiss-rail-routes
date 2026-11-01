@@ -1309,3 +1309,225 @@ button {
 a.primary {
   text-decoration: none;
 }
+
+/* ─── Intermediate stops (tap "N stops") ─── */
+
+.mids-toggle {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  min-height: 32px;
+}
+
+.mids {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.mids li {
+  display: flex;
+  gap: 10px;
+  color: var(--ink-2);
+}
+
+.mids time {
+  min-width: 3.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.late {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ─── Live: travelled parts grey, a marker where you are ─── */
+
+.chain.live .row.passed .rail::before {
+  background: var(--ink-3);
+}
+
+.chain.live .row.passed .times-col,
+.chain.live .row.passed .what,
+.mids li.passed {
+  opacity: 0.55;
+}
+
+.chain.live .row.station.passed .rail::after {
+  border-color: var(--ink-3);
+  background: var(--ink-3);
+}
+
+.row.ride.here .rail::before {
+  background: linear-gradient(var(--ink-3) 0 var(--f), var(--rail) var(--f) 100%);
+}
+
+.row.ride.here .rail::after,
+.row.station.here .rail::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+  background: var(--rail);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--rail) 50%, transparent);
+}
+
+.row.ride.here .rail::after {
+  top: calc(var(--f) - 10px);
+}
+
+.row.station.here .rail::after {
+  top: 4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row.ride.here .rail::after,
+  .row.station.here .rail::after {
+    animation: here 2s ease-out infinite;
+  }
+}
+
+@keyframes here {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--rail) 50%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+/* ─── Now ─── */
+
+.trip-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hair);
+  overflow: hidden;
+}
+
+.trip-progress span {
+  display: block;
+  height: 100%;
+  width: var(--p);
+  background: var(--rail);
+  border-radius: 2px;
+}
+
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.next-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.next-time {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.next-time .num {
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.next-time .late {
+  font-size: 22px;
+}
+
+.next-in {
+  margin-left: auto;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--rail);
+}
+
+.next-what {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+
+.live-source {
+  font-size: 13px;
+  text-align: center;
+}
+
+.livebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.livebar .live-tag {
+  margin: 0;
+}
+
+.livebar-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* With the stops open, the marker sits between the last stop passed and the next. */
+.row.ride.here-in-mids .rail::after {
+  display: none;
+}
+
+.mids .here-mid {
+  position: relative;
+  height: 0;
+}
+
+/* The rail's centre is 24 px left of the content column (see .row grid). */
+.mids .here-mid::before {
+  content: '';
+  position: absolute;
+  left: -34px;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+  background: var(--rail);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mids .here-mid::before {
+    animation: here 2s ease-out infinite;
+  }
+}

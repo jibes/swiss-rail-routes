@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { usePrefs } from './store';
 import { useTours } from './tours';
 import { Builder } from './ui/Builder';
@@ -7,6 +7,8 @@ import { SharedTour } from './ui/SharedTour';
 import { Timeline } from './ui/Timeline';
 import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
+import { NowView } from './ui/NowView';
+import { liveTrip } from './core/trip';
 import { useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
@@ -16,7 +18,8 @@ const MapView = lazy(() => import('./ui/MapView'));
 function Route({ hash }: { hash: string }) {
   if (hash.startsWith('/t/')) return <SharedTour hash={hash} />;
   if (hash === '/trips') return <Trips />;
-  const tr = /^\/trip\/([\w-]+)(\/(map))?$/.exec(hash);
+  const tr = /^\/trip\/([\w-]+)(\/(map|now))?$/.exec(hash);
+  if (tr?.[3] === 'now') return <NowView id={tr[1]!} />;
   if (tr?.[3] === 'map')
     return (
       <Suspense fallback={null}>
@@ -43,6 +46,7 @@ export function App() {
   const loadTrips = useTrips((s) => s.load);
   const tripsLoaded = useTrips((s) => s.loaded);
   const hash = useHash();
+  const opened = useRef(false);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -51,6 +55,14 @@ export function App() {
     void load();
     void loadTrips();
   }, [load, loadTrips]);
+  // Opening the app during a trip goes straight to "Now" (once, from the start screen).
+  useEffect(() => {
+    if (!tripsLoaded || opened.current) return;
+    opened.current = true;
+    if (location.hash && location.hash !== '#/') return;
+    const live = liveTrip(useTrips.getState().trips, Date.now());
+    if (live) location.hash = `/trip/${live.id}/now`;
+  }, [tripsLoaded]);
 
   return (
     <>

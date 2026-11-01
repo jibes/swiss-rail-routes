@@ -3,6 +3,7 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { hhmm, longDate } from './format';
 import { MiniLine } from './Home';
+import { LiveBar } from './LiveBar';
 import { TabBar } from './TabBar';
 import { useNow } from './useNow';
 
@@ -36,6 +37,7 @@ export function Trips() {
   const { current, past } = sortTrips(trips, now);
   return (
     <main className="page with-tabs">
+      <LiveBar />
       <header className="hero">
         <h1>{t('trips')}</h1>
       </header>

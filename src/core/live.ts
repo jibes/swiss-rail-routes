@@ -1,0 +1,168 @@
+// Where a trip stands at a moment: from its connections, the time, and live calls (OJP TripInfo)
+// when known. Position comes from the timetable only (no GPS, SPEC "Now").
+import type { Connection, Section, StopCall } from './model';
+import type { JourneyStatus, LiveCall } from './ojp/journey';
+import { stopKey } from './stops';
+
+export const MIN_TRANSFER_MIN = 2;
+
+export interface LiveStop {
+  key: string;
+  name: string;
+  /** Planned and expected (live, else planned) times, ms. */
+  arr?: number;
+  dep?: number;
+  arrPlan?: number;
+  depPlan?: number;
+  platform?: string;
+  cancelled: boolean;
+}
+
+export interface LiveRide {
+  leg: number;
+  section: number;
+  s: Section;
+  stops: LiveStop[];
+  cancelled: boolean;
+}
+
+export type Phase = 'before' | 'riding' | 'waiting' | 'done';
+
+export interface Risk {
+  /** Index into `rides` of the ride whose connection is at risk (the one to catch). */
+  ride: number;
+  marginMin: number;
+  reason: 'tight' | 'missed' | 'cancelled';
+}
+
+export interface LiveState {
+  phase: Phase;
+  rides: LiveRide[];
+  /** The ride being travelled (riding) or the next one (before/waiting). */
+  current: number;
+  /** Riding: between stops[i] and stops[i+1] of the current ride, `fraction` of the way. */
+  between?: { i: number; fraction: number };
+  /** The whole trip, 0…1 by time. */
+  progress: number;
+  next?: { kind: 'board' | 'alight'; ride: number; stop: LiveStop; at: number; delayMin: number };
+  risks: Risk[];
+}
+
+const ms = (iso?: string) => (iso ? Date.parse(iso) : undefined);
+
+function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveStop {
+  const arrPlan = ms(c.arr);
+  const depPlan = ms(c.dep);
+  return {
+    key: stopKey(c.stopRef),
+    name: c.name,
+    arrPlan,
+    depPlan,
+    arr: ms(live?.arrEst) ?? arrPlan,
+    dep: ms(live?.depEst) ?? depPlan,
+    platform: live?.platform ?? c.platform,
+    cancelled: live?.cancelled ?? false,
+  };
+}
+
+/** Every ride of the trip with its stops, live times merged in where the vehicle reported them. */
+export function liveRides(chain: Connection[], status: Map<string, JourneyStatus>): LiveRide[] {
+  return chain.flatMap((c, leg) =>
+    c.sections.flatMap((s, section): LiveRide[] => {
+      if (s.mode === 'walk') return [];
+      const st = s.journey ? status.get(s.journey) : undefined;
+      const byKey = new Map(st?.calls.map((x) => [x.key, x]) ?? []);
+      const calls = [s.from, ...s.intermediate, s.to];
+      return [
+        {
+          leg,
+          section,
+          s,
+          stops: calls.map((x) => liveStop(x, byKey.get(stopKey(x.stopRef)))),
+          cancelled: st?.cancelled ?? false,
+        },
+      ];
+    }),
+  );
+}
+
+const depOf = (r: LiveRide) => r.stops[0]!.dep ?? r.stops[0]!.depPlan ?? 0;
+const arrOf = (r: LiveRide) => r.stops.at(-1)!.arr ?? r.stops.at(-1)!.arrPlan ?? 0;
+const delay = (expected?: number, plan?: number) =>
+  expected !== undefined && plan !== undefined ? Math.round((expected - plan) / 60_000) : 0;
+
+export function liveState(
+  chain: Connection[],
+  now: number,
+  status: Map<string, JourneyStatus> = new Map(),
+): LiveState {
+  const rides = liveRides(chain, status);
+  const risks: Risk[] = [];
+  for (let i = 0; i + 1 < rides.length; i++) {
+    const a = rides[i]!;
+    const b = rides[i + 1]!;
+    if (b.cancelled) risks.push({ ride: i + 1, marginMin: 0, reason: 'cancelled' });
+    if (a.s.journey && a.s.journey === b.s.journey) continue;
+    const margin = (depOf(b) - arrOf(a)) / 60_000;
+    if (margin < 0) risks.push({ ride: i + 1, marginMin: Math.round(margin), reason: 'missed' });
+    else if (margin < MIN_TRANSFER_MIN)
+      risks.push({ ride: i + 1, marginMin: Math.round(margin), reason: 'tight' });
+  }
+  if (!rides.length) return { phase: 'done', rides, current: 0, progress: 1, risks };
+
+  const start = depOf(rides[0]!);
+  const end = arrOf(rides.at(-1)!);
+  const progress = Math.min(1, Math.max(0, (now - start) / Math.max(1, end - start)));
+  const board = (i: number) => {
+    const stop = rides[i]!.stops[0]!;
+    return {
+      kind: 'board' as const,
+      ride: i,
+      stop,
+      at: depOf(rides[i]!),
+      delayMin: delay(stop.dep, stop.depPlan),
+    };
+  };
+  const alight = (i: number) => {
+    const stop = rides[i]!.stops.at(-1)!;
+    return {
+      kind: 'alight' as const,
+      ride: i,
+      stop,
+      at: arrOf(rides[i]!),
+      delayMin: delay(stop.arr, stop.arrPlan),
+    };
+  };
+
+  if (now < start) return { phase: 'before', rides, current: 0, progress, next: board(0), risks };
+  for (let i = 0; i < rides.length; i++) {
+    const r = rides[i]!;
+    if (now < depOf(r))
+      return { phase: 'waiting', rides, current: i, progress, next: board(i), risks };
+    if (now < arrOf(r)) {
+      const times = r.stops.map((x) => x.dep ?? x.arr ?? 0);
+      let j = 0;
+      while (j + 1 < times.length - 1 && now >= (r.stops[j + 1]!.arr ?? times[j + 1]!)) j++;
+      const from = r.stops[j]!.dep ?? r.stops[j]!.arr ?? times[j]!;
+      const to = r.stops[j + 1]!.arr ?? r.stops[j + 1]!.dep ?? times[j + 1]!;
+      const fraction = Math.min(1, Math.max(0, (now - from) / Math.max(1, to - from)));
+      return {
+        phase: 'riding',
+        rides,
+        current: i,
+        between: { i: j, fraction },
+        progress,
+        next: alight(i),
+        risks,
+      };
+    }
+  }
+  return { phase: 'done', rides, current: rides.length - 1, progress: 1, risks };
+}
+
+/** Journeys worth asking OJP about now: the current ride and the next one. */
+export function journeysToWatch(state: LiveState): string[] {
+  return [state.rides[state.current], state.rides[state.current + 1]]
+    .map((r) => r?.s.journey)
+    .filter((j): j is string => !!j);
+}
