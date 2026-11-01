@@ -37,7 +37,7 @@ Install and update with [Obtainium](https://github.com/ImranR98/Obtainium): add 
 
 Signing (one-time): environment `release` (Settings → Environments, deployment branches: `main`) with secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Without them the APK is built and tested but not published. The release job refuses a signer other than:
 
-SHA-256 (release certificate): not set yet
+SHA-256 (release certificate): FA:B7:AC:4C:B6:4F:D1:BE:7A:AC:EC:7B:F6:46:E5:CE:4B:01:9F:B6:5D:10:56:02:CD:24:83:74:50:68:4C:FB
 
 ## OJP Worker
 
