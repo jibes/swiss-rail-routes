@@ -16,7 +16,7 @@ A day trip is one rail line. Every screen draws it the same way, so nothing has 
 
 ## Tokens
 
-All colours, radii and spacing are CSS custom properties in `src/styles.css` (`:root`, with a dark set under `prefers-color-scheme`). Text tokens `--ink`, `--ink-2` and `--ink-3` meet WCAG AA on `--bg` and `--surface` in both themes; the e2e axe checks enforce it.
+All colours, radii and spacing are CSS custom properties in `src/styles/base.css` (`:root`, with a dark set under `prefers-color-scheme`). Text tokens `--ink`, `--ink-2` and `--ink-3` meet WCAG AA on `--bg` and `--surface` in both themes; the e2e axe checks enforce it.
 
 ## Navigation
 
@@ -34,4 +34,4 @@ Two tabs, **Routes** (where) and **Trips** (when). Under way a trip shows itself
 
 ## Reviewing a change
 
-`SCREENSHOTS=/tmp/shots npx playwright test e2e/screens.spec.ts --project=phone` (after a build with `VITE_OJP_URL=https://ojp.invalid`) renders routes, builder, planning, Now and Trips in light and dark from recorded data.
+`SCREENSHOTS=/tmp/shots npx playwright test e2e/screens.spec.ts --project=phone` (after a build with `VITE_OJP_URL=https://ojp.invalid`) renders routes, builder, planning, a trip under way and Trips in light and dark from recorded data.

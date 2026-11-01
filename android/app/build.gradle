@@ -5,6 +5,7 @@ apply plugin: 'com.android.application'
 // package.json is the single source of truth for the version (apps-data STANDARD.md §8).
 def pkg = new JsonSlurper().parse(file('../../package.json'))
 def (major, minor, patch) = pkg.version.tokenize('.').collect { it.replaceAll(/\D.*/, '') as int }
+if (minor > 99 || patch > 99) throw new GradleException("versionCode: minor and patch must stay below 100 (${pkg.version})")
 def appVersionCode = major * 10_000_000 + minor * 100_000 + patch * 1_000
 
 android {

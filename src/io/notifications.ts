@@ -9,7 +9,6 @@ import { stopSearch } from './stops';
 import { stopKey } from '../core/stops';
 
 const CHANNEL = 'trip';
-let asked = false;
 
 function text(n: Notice, lang: Lang) {
   const t = (k: Parameters<typeof translate>[1], p: Record<string, string> = {}) =>
@@ -29,20 +28,25 @@ function text(n: Notice, lang: Lang) {
   return { title: t('nHighlightTitle', p), body: [side, sun].filter(Boolean).join(' · ') };
 }
 
-/** Replaces all scheduled trip notifications with those of `trips` still to come. */
-export async function scheduleTrips(trips: Trip[], lang: Lang, now = Date.now()) {
-  if (!isNative) return;
+let queue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Replaces all scheduled trip notifications with those of `trips` still to come: also with none
+ * (the last upcoming trip deleted, here or through sync). Calls run one after another, so an
+ * older one never schedules after a newer one cancelled. Never asks for permission itself.
+ */
+export function scheduleTrips(trips: Trip[], lang: Lang, now = Date.now()): Promise<unknown> {
+  if (!isNative) return Promise.resolve();
+  queue = queue.then(() => reschedule(trips, lang, now)).catch(() => undefined);
+  return queue;
+}
+
+async function reschedule(trips: Trip[], lang: Lang, now: number) {
+  if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
   const index = await stopSearch();
   const notices = trips.flatMap((t) =>
     noticesFor(t, now, TEMPLATES, (r) => index.byRef(stopKey(r))),
   );
-  if (!notices.length && !asked) return;
-  let perm = await LocalNotifications.checkPermissions();
-  if (perm.display === 'prompt' && !asked) {
-    asked = true;
-    perm = await LocalNotifications.requestPermissions();
-  }
-  if (perm.display !== 'granted') return;
   await LocalNotifications.createChannel({
     id: CHANNEL,
     name: translate(lang, 'nChannel'),
@@ -64,6 +68,13 @@ export async function scheduleTrips(trips: Trip[], lang: Lang, now = Date.now())
       extra: { tripId: n.tripId },
     })),
   });
+}
+
+/** Asks for notifications once, when a trip is saved (the moment they make sense). */
+export async function askNotifications(): Promise<void> {
+  if (!isNative) return;
+  const perm = await LocalNotifications.checkPermissions().catch(() => null);
+  if (perm?.display === 'prompt') await LocalNotifications.requestPermissions().catch(() => null);
 }
 
 /** Tapping a notification opens "Now" for its trip. */

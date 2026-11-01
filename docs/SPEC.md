@@ -157,7 +157,7 @@ Timetable and realtime from opentransportdata.swiss; one API key per service, he
 | Basemap                                             | OpenFreeMap vector tiles (as kOSMos); swisstopo WMTS optional; OpenRailwayMap overlay Could | Runtime                | Map                                                                                                                                                        |
 
 Reference to study: the open-source `swiss-transport-mcp` for OJP 2.0 request shapes and parsing.
-Constraints: OJP is XML-only; respect the per-key quota; cache identical leg requests 10 min.
+Constraints: OJP is XML-only; respect the per-key quota; cache identical leg requests 10 min (live train data 30 s).
 
 ## 5. Routing algorithm
 
@@ -206,17 +206,17 @@ src/
   i18n/                 en.ts (source), de.ts, fr.ts, it.ts
   store.ts              zustand
 workers/ojp/            Cloudflare Worker
-scripts/                build-stops.ts, build-sequences.ts (DIDOK, GTFS)
+scripts/                build-stops.ts (DIDOK), build-ga.ts (OSDM fares), logo-sets.py, icons.mjs
 tests/                  unit + fixtures/ojp/*.xml
 e2e/                    Playwright, canned Worker answers
 ```
 
 - **App:** TypeScript strict, React 19, Vite, vite-plugin-pwa (prompt update), zustand, MapLibre GL, idb-keyval, fast-xml-parser. Node pinned by `.nvmrc`.
-- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
+- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, `POST /journey` (live calls of one train), `GET/PUT/DELETE /sync/<id>` (§3b), typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
 - **CSP:** `connect-src` = the Worker, OpenFreeMap; nothing else.
-- **Native (later):** Capacitor shell for Android (Obtainium), `android.yml` per standard, when notifications are built.
+- **Native:** Capacitor shell for Android (`android/`, Obtainium), `android.yml` per standard; local trip notifications.
 
-**Workflows:** `ci.yml`, `deploy.yml` (Pages), `deploy-worker-ojp.yml` (path-filtered), `data.yml` (monthly DIDOK + GTFS; deploy only when the hash changes), `live.yml` (nightly T1–T6 against live OJP through the Worker; never gates deploy; opens or updates one issue on failure).
+**Workflows:** `ci.yml`, `deploy.yml` (Pages), `deploy-worker-ojp.yml` (path-filtered), `data.yml` (monthly DIDOK stop index + OSDM GA exceptions; deploy only when they change), `live.yml` (nightly T1–T6 against live OJP through the Worker; never gates deploy; opens or updates one issue on failure).
 
 **Non-functional**
 

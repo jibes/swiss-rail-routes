@@ -7,6 +7,7 @@ import { stopSearch } from '../io/stops';
 import { loadPlans, savePlans } from '../io/tours';
 import { useT } from '../store';
 import { useTours } from '../tours';
+import { askNotifications } from '../io/notifications';
 import { useTrips } from '../trips';
 import { newTrip } from '../core/trip';
 import { NotFound, useAddress } from './Builder';
@@ -214,6 +215,7 @@ export function Timeline({ id }: { id: string }) {
                     type="button"
                     className="primary wide"
                     onClick={() => {
+                      void askNotifications();
                       const tripId = crypto.randomUUID();
                       addTrip(
                         newTrip(

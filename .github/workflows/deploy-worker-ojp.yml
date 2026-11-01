@@ -25,11 +25,11 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Check secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           missing=0
           for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
@@ -48,5 +48,9 @@ jobs:
 
       - run: npm ci
 
-      # wrangler comes from the lockfile; no third-party action to pin.
+      # wrangler comes from the lockfile; no third-party action to pin. The token is set on this
+      # step only, so npm ci's install scripts never see it.
       - run: npx wrangler deploy -c workers/ojp/wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

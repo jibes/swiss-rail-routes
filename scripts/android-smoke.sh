@@ -13,7 +13,13 @@ mkdir -p "$OUT"
 adb install -r "$APK"
 adb logcat -c
 adb shell am start -W -n "$PKG/.MainActivity"
-sleep 15
+# The app logs 'srr:ready' once its lists have loaded (release builds forward the console).
+for _ in $(seq 1 30); do
+  # Not grep -q: quitting early breaks the pipe, and pipefail would never let the loop end.
+  adb logcat -d | grep "srr:ready" > /dev/null && break
+  sleep 2
+done
+sleep 3
 
 adb exec-out screencap -p > "$OUT/screen.png"
 adb logcat -d > "$OUT/logcat.txt"
@@ -33,7 +39,11 @@ if ! grep -E "mCurrentFocus=.*$PKG" "$OUT/window.txt"; then
   grep -E "mCurrentFocus|mFocusedApp" "$OUT/window.txt" || true
   fail=1
 fi
-# Release builds forward no console lines (loggingBehavior 'debug'); checked in case that changes.
+if ! grep -q "srr:ready" "$OUT/logcat.txt"; then
+  echo "::error::the web app never said it was ready (no srr:ready in logcat)"
+  fail=1
+fi
+# Console errors of the page (forwarded in release builds, loggingBehavior 'production').
 if grep -E " E Capacitor/Console" "$OUT/logcat.txt" | grep -v "Error injecting safe area CSS"; then
   echo "::error::the web app logged errors"
   fail=1

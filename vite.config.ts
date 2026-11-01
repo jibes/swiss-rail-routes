@@ -41,8 +41,8 @@ export default defineConfig({
         start_url: './',
         scope: './',
         display: 'standalone',
-        theme_color: '#14161a',
-        background_color: '#14161a',
+        theme_color: '#f7f7f5',
+        background_color: '#f7f7f5',
         icons: [
           { src: 'icons/192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/512.png', sizes: '512x512', type: 'image/png' },
@@ -56,7 +56,8 @@ export default defineConfig({
       },
       workbox: {
         clientsClaim: true,
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm,json}'],
+        // mjs: MapLibre's worker; without it the map breaks offline and after a deploy.
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,wasm,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // stops.v1.json
         navigateFallback: 'index.html',
       },

@@ -80,6 +80,10 @@ export function App() {
   }, [trips, tripsLoaded, lang]);
   // Sync once both lists are loaded; then on return to the app and after changes.
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
+  // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.
+  useEffect(() => {
+    if (loaded && tripsLoaded) console.info('srr:ready');
+  }, [loaded, tripsLoaded]);
   useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}`)), []);
   // Opening the app during a trip goes straight to "Now" (once, from the start screen).
   useEffect(() => {

@@ -18,7 +18,10 @@ Planning needs `VITE_OJP_URL` (the Worker). For the e2e tests build with `VITE_O
 | `dev` / `build` / `preview` | Vite                                                  |
 | `check`                     | typecheck, lint, format:check, unit tests             |
 | `e2e`                       | Playwright smoke against `vite preview` (build first) |
-| `icons`                     | Renders `public/icons/icon.svg` to the manifest PNGs  |
+| `icons`                     | Renders `public/icons/{icon,maskable}.svg` to PNGs    |
+| `worker:dev`                | The OJP Worker locally (wrangler)                     |
+| `record:ojp`                | Re-records the acceptance fixtures (`OJP_API_KEY`)    |
+| `data:stops` / `data:ga`    | Rebuilds the stop index / GA exceptions               |
 | `android:sync`              | Builds the web app and copies it into `android/`      |
 
 Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
@@ -41,7 +44,7 @@ SHA-256 (release certificate): FA:B7:AC:4C:B6:4F:D1:BE:7A:AC:EC:7B:F6:46:E5:CE:4
 
 ## OJP Worker
 
-`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers 10 min and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
+`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
 
 One-time setup:
 
@@ -58,7 +61,7 @@ A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d
 
 ## Privacy
 
-Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. With sync on (Settings), routes and trips are encrypted on the device with a key only your devices hold and stored as ciphertext by the Worker (one blob per key, in a Cloudflare Durable Object); see [`docs/SPEC.md`](docs/SPEC.md) §3b. The Android app schedules its notifications on the phone. The camera is used only while scanning a sync code; frames are read on the device and never sent.
+Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the train you are on (and of the next one shortly before it leaves) (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers (trips and stop searches 10 min, live train data 30 s), keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. With sync on (Settings), routes and trips are encrypted on the device with a key only your devices hold and stored as ciphertext by the Worker (one blob per key, in a Cloudflare Durable Object); see [`docs/SPEC.md`](docs/SPEC.md) §3b. The Android app schedules its notifications on the phone. The camera is used only while scanning a sync code; frames are read on the device and never sent.
 
 ## Third-party data and code
 

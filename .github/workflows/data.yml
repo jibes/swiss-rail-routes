@@ -23,6 +23,8 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -36,6 +38,8 @@ jobs:
 
       - name: Commit if changed
         id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet public/data src/data/ga.json; then
             echo "No change"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
@@ -43,7 +47,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -am "Data: stops $(jq -r .date public/data/stops.v1.json), GA $(jq -r .version src/data/ga.json)"
-          git push
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - if: steps.commit.outputs.changed == 'true'
