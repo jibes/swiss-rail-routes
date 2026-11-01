@@ -44,7 +44,12 @@ if ! grep -q "srr:ready" "$OUT/logcat.txt"; then
   fail=1
 fi
 # Console errors of the page (forwarded in release builds, loggingBehavior 'production').
-if grep -E " E Capacitor/Console" "$OUT/logcat.txt" | grep -v "Error injecting safe area CSS"; then
+# Known start-up noise of Capacitor's own bridge, before the page's code runs (window.Capacitor
+# not there yet): its safe-area CSS, and a native event at line 1 of the bridge itself. The app's
+# 'srr:ready' above shows it came up regardless.
+if grep -E " E Capacitor/Console" "$OUT/logcat.txt" \
+  | grep -v "Error injecting safe area CSS" \
+  | grep -v "File: https://localhost/ - Line 1 - Msg: Uncaught TypeError: Cannot read properties of undefined (reading 'triggerEvent')"; then
   echo "::error::the web app logged errors"
   fail=1
 fi
