@@ -99,7 +99,8 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
         key: 'wReservation',
         params: where,
       });
-    if (ctx.ticket === 'GA') {
+    // A day pass (Tageskarte) is valid where the GA is: the same stretches are not covered.
+    if (ctx.ticket === 'GA' || ctx.ticket === 'Tageskarte') {
       const rule = gaRuleOf(s, ctx.ga);
       if (rule)
         w.push({

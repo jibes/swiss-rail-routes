@@ -53,6 +53,11 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.locator('.livebar')).toBeVisible();
   await page.goto('./');
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
+  // A reload stays where it was (only opening the app goes to the trip under way).
+  await page.goto('./#/trips');
+  await page.goto('./#/');
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routes');
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {

@@ -207,6 +207,12 @@ describe('warnings', () => {
         x.recommended!.warnings.map((w) => w.key),
       ),
     ).not.toContain('wGaHalf');
+    // A day pass is valid where the GA is: the same stretch is not covered. Half Fare: no such
+    // question (every ticket is bought).
+    const keysWith = async (ticket: Parameters<typeof plan>[0]['ticket']) =>
+      (await plan({ ...t, ticket }, deps([c]).deps)).recommended!.warnings.map((w) => w.key);
+    expect(await keysWith('Tageskarte')).toContain('wGaHalf');
+    expect(await keysWith('Halbtax')).not.toContain('wGaHalf');
   });
 
   it('warns when a highlight is passed after sunset, and scores it', async () => {

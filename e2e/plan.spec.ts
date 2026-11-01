@@ -10,13 +10,26 @@ test('plans T5 and shows the GA warning, alternatives and exports', async ({ pag
   await search.fill('Kleine Scheidegg');
   await search.press('Enter');
   await page.getByRole('button', { name: 'Plan' }).click();
+  // A click anywhere on the date or time pill opens the browser's picker (not just its icon).
+  await page.evaluate(() => {
+    (window as unknown as { picked: string[] }).picked = [];
+    HTMLInputElement.prototype.showPicker = function () {
+      (window as unknown as { picked: string[] }).picked.push(this.type);
+    };
+  });
+  await page.getByLabel('Date').click({ position: { x: 12, y: 12 } });
+  await page.getByLabel('Time', { exact: true }).click({ position: { x: 8, y: 12 } });
+  expect(await page.evaluate(() => (window as unknown as { picked: string[] }).picked)).toEqual([
+    'date',
+    'time',
+  ]);
   // When is set on the planning screen.
   await page.getByLabel('Date').fill('2026-11-07');
   await page.getByLabel('Time', { exact: true }).fill('09:00');
 
   await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
   await expect(
-    page.getByText(/Not covered by GA .*Kleine Scheidegg: 50 % with GA/).first(),
+    page.getByText(/Not covered by GA or day pass .*Kleine Scheidegg: 50 % with them/).first(),
   ).toBeVisible();
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('CC 63', { exact: true }).first()).toBeVisible();

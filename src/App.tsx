@@ -18,6 +18,9 @@ import { useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
 
+/** Set once the app opened in this tab (srr.<name>.v<N>). */
+const OPENED = 'srr.opened.v1';
+
 const MapView = lazy(() => import('./ui/MapView'));
 
 function Route({ hash: full }: { hash: string }) {
@@ -85,11 +88,15 @@ export function App() {
     if (loaded && tripsLoaded) console.info('srr:ready');
   }, [loaded, tripsLoaded]);
   useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}`)), []);
-  // Opening the app during a trip goes straight to "Now" (once, from the start screen).
+  // Opening the app during a trip goes straight to it (once, from the start screen). A reload
+  // stays where it was: it is not an opening.
   useEffect(() => {
     if (!tripsLoaded || opened.current) return;
     opened.current = true;
     if (location.hash && location.hash !== '#/') return;
+    // Once per tab (or app start): sessionStorage outlives a reload, not a closed tab.
+    if (sessionStorage.getItem(OPENED)) return;
+    sessionStorage.setItem(OPENED, '1');
     const live = liveTrip(useTrips.getState().trips, Date.now());
     if (live) location.hash = `/trip/${live.id}`;
   }, [tripsLoaded]);

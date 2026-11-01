@@ -44,7 +44,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 
 ## Invariants
 
-- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.sync.v1`; localStorage: `srr.prefs.v1`). Never rename an existing key: bump the version and migrate.
+- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.sync.v1`; localStorage: `srr.prefs.v1`; sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
 - Leg queries (stops, date, time) go to the Worker; nothing else leaves the device, except with sync on: routes and trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
 - API keys exist only as Worker secrets.
 - Curated data in `src/data/` is schema-checked by a test; a template change needs a fixture run of T1–T6.

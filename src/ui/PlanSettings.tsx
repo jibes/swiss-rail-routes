@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { Select } from './Select';
 import type { TicketType, Tour } from '../core/model';
 import { usePrefs, useT } from '../store';
@@ -12,6 +13,18 @@ const TICKETS: [TicketType, 'ticketGA' | 'ticketDay' | 'ticketHalf' | 'ticketNon
 
 /** When and with which ticket: date, depart at / back by + time, ticket. Kept on the route as
  * the values last used, so the next plan starts from them. */
+/**
+ * The native picker on a click anywhere on the pill (desktop browsers open it only from the
+ * small icon at the field's right edge; the field lies invisible over the pill).
+ */
+const openPicker = (e: MouseEvent<HTMLInputElement>) => {
+  try {
+    e.currentTarget.showPicker();
+  } catch {
+    // Not supported, or not from a user gesture: the browser's own behaviour stays.
+  }
+};
+
 export function PlanSettings({ tour, edit }: { tour: Tour; edit: (f: (x: Tour) => Tour) => void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -24,6 +37,7 @@ export function PlanSettings({ tour, edit }: { tour: Tour; edit: (f: (x: Tour) =
         <input
           aria-label={t('date')}
           type="date"
+          onClick={openPicker}
           value={tour.date}
           onChange={(e) => e.target.value && edit((x) => ({ ...x, date: e.target.value }))}
         />
@@ -52,6 +66,7 @@ export function PlanSettings({ tour, edit }: { tour: Tour; edit: (f: (x: Tour) =
           <input
             aria-label={t('time')}
             type="time"
+            onClick={openPicker}
             value={time}
             onChange={(e) =>
               e.target.value &&
