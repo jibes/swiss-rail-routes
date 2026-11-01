@@ -13,10 +13,7 @@ function TripCard({ trip, now }: { trip: Trip; now: number }) {
   const live = tripStatus(trip, now) === 'live';
   return (
     <li>
-      <a
-        href={`#/trip/${trip.id}${live ? '/now' : ''}`}
-        className={`tour-card ${live ? 'is-live' : ''}`}
-      >
+      <a href={`#/trip/${trip.id}`} className={`tour-card ${live ? 'is-live' : ''}`}>
         <strong>
           {trip.name || t('untitled')}
           {live && <span className="live-tag">{t('liveNow')}</span>}

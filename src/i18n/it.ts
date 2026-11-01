@@ -151,4 +151,9 @@ export const it = {
   stayLength: 'Sosta a {name}',
   editHint: 'Tocca per cambiare o togliere',
   legs1: '1 tratta',
+  staysFor: '{d} di soste',
+  editTrip: 'Modifica viaggio',
+  editTripHint:
+    'Stazioni, soste, data e ora; il viaggio viene ripianificato. Annulla ripristina il piano precedente.',
+  planAgain: 'Pianifica di nuovo',
 } satisfies Catalogue;

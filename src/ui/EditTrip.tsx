@@ -3,7 +3,7 @@ import { addWaypoint, moveWaypoint, removeWaypoint, replaceWaypoint, setStay } f
 import type { Tour } from '../core/model';
 import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
-import { revise } from '../core/trip';
+import { revise, tripStatus } from '../core/trip';
 import { GA, SEGMENTS } from '../data';
 import { fetchTrips, WorkerError } from '../io/ojp';
 import { stopSearch } from '../io/stops';
@@ -13,6 +13,7 @@ import { ChainView } from './ChainView';
 import { hhmm } from './format';
 import { Icon } from './icons';
 import { OptionTabs } from './OptionTabs';
+import { PlanSettings } from './PlanSettings';
 import { StopPicker } from './StopPicker';
 import { StopRow } from './StopRow';
 import { TEMPLATES } from './TemplatePicker';
@@ -20,18 +21,23 @@ import { useDragList } from './useDragList';
 import { go } from './useHash';
 import { useLive } from './useLive';
 
-/** "Replan from here": the rest of the trip, editable, planned anew from the next point. */
-export function ReplanView({ id }: { id: string }) {
+/**
+ * Editing a saved trip, the one place for it. Before departure all of it: stations, stays, date,
+ * time, ticket. Under way the rest from the next point, the travelled part grey and fixed.
+ * Either way the new plan becomes a new version (undo keeps the last).
+ */
+export function EditTrip({ id }: { id: string }) {
   const t = useT();
   const trip = useTrips((s) => s.trips.find((x) => x.id === id));
   const update = useTrips((s) => s.update);
   const { state, now } = useLive(trip);
-  // The point is fixed when the screen opens, so the plan matches what was shown.
+  // Decided when the screen opens, so the plan matches what was shown.
+  const [whole] = useState(() => !!trip && tripStatus(trip, now) === 'upcoming');
   const [point] = useState<ReplanPoint | null>(() =>
-    trip && state ? replanPoint(trip, state, now) : null,
+    trip && state && !whole ? replanPoint(trip, state, now) : null,
   );
   const [draft, setDraft] = useState<Tour | null>(() =>
-    trip && point ? remainingRoute(trip, point) : null,
+    !trip ? null : whole ? structuredClone(trip.route) : point ? remainingRoute(trip, point) : null,
   );
   const [result, setResult] = useState<PlanResult | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -42,12 +48,12 @@ export function ReplanView({ id }: { id: string }) {
     setResult(null);
   };
   const { listRef, grip, rowStyle, dragging } = useDragList((from, to) => {
-    // The start is where you are: it stays first.
-    if (from === 0 || to === 0) return;
+    // Under way the start is where you are: it stays first.
+    if (!whole && (from === 0 || to === 0)) return;
     edit((x) => moveWaypoint(x, from, to));
   });
 
-  if (!trip || !point || !draft)
+  if (!trip || (!point && !whole) || !draft)
     return (
       <main className="page">
         <p>{t('notFound')}</p>
@@ -58,7 +64,7 @@ export function ReplanView({ id }: { id: string }) {
     );
 
   // Where the trip has been: the stations of the kept part, in order, with their times.
-  const travelled = point.keep
+  const travelled = (point?.keep ?? [])
     .flatMap((c) =>
       c.sections
         .filter((x) => x.mode !== 'walk')
@@ -67,7 +73,7 @@ export function ReplanView({ id }: { id: string }) {
           { name: x.to.name, at: Date.parse(x.to.arr ?? x.to.dep ?? '') },
         ]),
     )
-    .filter((x, i, all) => x.name !== point.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
+    .filter((x, i, all) => x.name !== point?.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
   const options = result?.options ?? [];
   const chain = options.find((c) => c.dep === picked) ?? result?.recommended;
   const wps = draft.waypoints;
@@ -100,14 +106,15 @@ export function ReplanView({ id }: { id: string }) {
           type="button"
           className="icon"
           aria-label={t('back')}
-          onClick={() => go(`/trip/${id}/now`)}
+          onClick={() => go(`/trip/${id}`)}
         >
           <Icon name="back" />
         </button>
-        <h1>{t('replanFrom', { stop: point.stop.name })}</h1>
+        <h1>{point ? t('replanFrom', { stop: point.stop.name }) : t('editTrip')}</h1>
       </header>
 
-      <p className="muted">{t('replanHint')}</p>
+      <p className="muted">{point ? t('replanHint') : t('editTripHint')}</p>
+      {whole && <PlanSettings tour={draft} edit={edit} />}
 
       <div>
         {travelled.length > 0 && (
@@ -134,14 +141,14 @@ export function ReplanView({ id }: { id: string }) {
               w={w}
               index={i}
               last={i === wps.length - 1}
-              fixed={i === 0}
-              caption={i === 0 ? t('fromHere', { time: hhmm(point.at) }) : undefined}
+              fixed={!!point && i === 0}
+              caption={point && i === 0 ? t('fromHere', { time: hhmm(point.at) }) : undefined}
               onStay={(m) => edit((x) => setStay(x, i, m))}
               onRemove={() => {
-                if (i === 0) return;
+                if (point && i === 0) return;
                 edit((x) => removeWaypoint(x, i));
               }}
-              onReplace={(stop) => i > 0 && edit((x) => replaceWaypoint(x, i, stop))}
+              onReplace={(stop) => (!point || i > 0) && edit((x) => replaceWaypoint(x, i, stop))}
               grip={grip(i)}
               style={rowStyle(i)}
               dragging={dragging === i}
@@ -205,9 +212,15 @@ export function ReplanView({ id }: { id: string }) {
                 className="primary wide"
                 onClick={() => {
                   update(id, (x) =>
-                    revise(x, mergeReplan(x, point, result.legs ?? [], chain), new Date()),
+                    revise(
+                      x,
+                      point
+                        ? mergeReplan(x, point, result.legs ?? [], chain)
+                        : { route: draft, legs: result.legs ?? [], chain },
+                      new Date(),
+                    ),
                   );
-                  go(`/trip/${id}/now`);
+                  go(`/trip/${id}`);
                 }}
               >
                 {t('updateTrip')}

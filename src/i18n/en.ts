@@ -148,6 +148,11 @@ export const en = {
   stayLength: 'Stay at {name}',
   editHint: 'Tap to change or remove',
   legs1: '1 leg',
+  staysFor: '{d} of stays',
+  editTrip: 'Edit trip',
+  editTripHint:
+    'Stations, stays, date and time; the trip is planned anew. Undo brings back the old plan.',
+  planAgain: 'Plan again',
 };
 
 export type Catalogue = typeof en;

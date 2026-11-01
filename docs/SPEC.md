@@ -100,23 +100,31 @@ Must = MVP; Should = v1.1; Could = later.
 - [Should] One-page printout via print CSS (instead of a PDF library).
 - [Could] Notifications before each transfer and before a sunset-critical leg. Needs the Capacitor shell (local notifications); not possible reliably in a PWA.
 
-## 3a. Routes, Trips, Now (added 1 Nov 2026)
+## 3a. Routes and Trips (added 1 Nov 2026, merged Trip and Now the same day)
 
-Three questions, one kind of thing each (MECE):
+Two questions, one kind of thing each (MECE). "Now" is not a thing of its own: it is a trip at a certain time.
 
-| Question  | Thing     | Holds                                                                                          | Screens                                                               |
-| --------- | --------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Where?    | **Route** | Stations, stays, templates, round trip; date, time and ticket only as the values last used     | Routes tab, builder, planning (date/time/ticket, options)             |
-| When?     | **Trip**  | A route frozen with its date, ticket and the chosen connections; one previous version for undo | Trips tab, trip screen (timetable, tickets, calendar, GPX, share)     |
-| What now? | **Now**   | Not stored: a trip whose window (30 min before departure to 15 min after arrival) includes now | Now screen; a live bar on the lists; launching during a trip opens it |
+| Question | Thing     | Holds                                                                                                          | Screens                                     |
+| -------- | --------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Where?   | **Route** | Stations, stays, templates, round trip. No date: planning presets date, time, ticket from the values last used | Routes tab, builder; planning picks when    |
+| When?    | **Trip**  | A route frozen with its date, time, ticket and the chosen connections; one previous version for undo           | Trips tab, one trip screen, one edit screen |
 
+The trip screen follows the trip's time:
+
+| State                                                       | Shows                                                                               | Its one action                                                 |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Before (until 30 min before departure)                      | Date, departure–arrival, the timetable                                              | **Edit trip**: stations, stays, date, time, ticket, all of it  |
+| Under way (30 min before departure to 15 min after arrival) | Progress, the next step, connections at risk, the timetable live with where you are | **Replan from here**: the rest; the travelled part fixed, grey |
+| After                                                       | The record                                                                          | **Plan again**: the route as a new route                       |
+
+- Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.
 - **Position** comes from the timetable plus live delays, never GPS (owner's decision).
-- **Live delays**: OJP TripInfo for the current and next train, every 60 s while the screen is visible, through the Worker (`/journey`, cached 30 s).
+- **Live delays**: OJP TripInfo for the current and next train, every 60 s while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s).
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
-- **Replan from here**: from the next stop the train calls at (or the station you are at), the rest of the route editable (spontaneous stop, longer stay, reorder, remove); the travelled part is kept; the result is a new version of the trip, undo restores the previous one.
-- **Sharing**: a route as `#/t/…` (the recipient plans); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
+- **Replan from here** starts at the next stop the train calls at (or the station you are at).
+- **Sharing**: a route as `#/r/…` (stops only; the recipient plans when); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
 - **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip). The two: where you get off, longest stay first; then spread out (farthest from the start and from the one picked). Shown as the placeholder; a saved trip keeps it as its name.
-- **Intermediate stops** expand on every ride (plan, trip, Now); on Now the ride being travelled shows them, with a marker between the last stop passed and the next.
+- **Intermediate stops** expand on every ride; under way the ride being travelled shows them, the marker between the last stop passed and the next.
 
 ## 4. Data sources
 

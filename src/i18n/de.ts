@@ -151,4 +151,9 @@ export const de = {
   stayLength: 'Aufenthalt in {name}',
   editHint: 'Antippen zum Ändern oder Entfernen',
   legs1: '1 Abschnitt',
+  staysFor: '{d} Aufenthalt',
+  editTrip: 'Reise bearbeiten',
+  editTripHint:
+    'Stationen, Aufenthalte, Datum und Zeit; die Reise wird neu geplant. Rückgängig holt den alten Plan zurück.',
+  planAgain: 'Nochmals planen',
 } satisfies Catalogue;

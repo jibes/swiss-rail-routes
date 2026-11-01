@@ -1,10 +1,10 @@
 import type { Tour } from '../core/model';
-import { isRoundTrip } from '../core/tour';
+import { isRoundTrip, totalDwellMin } from '../core/tour';
 import { LANGS, type Lang } from '../i18n';
 import { usePrefs, useT } from '../store';
 import { Select } from './Select';
 import { useTours } from '../tours';
-import { longDate } from './format';
+import { dwellLabel } from './StopRow';
 import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
 import { TabBar } from './TabBar';
@@ -80,8 +80,9 @@ export function Home() {
                   <strong>{tour.name || autoName(tour, stop) || t('untitled')}</strong>
                   {tour.waypoints.length > 1 && <MiniLine tour={tour} />}
                   <span className="meta">
-                    {longDate(tour.date, lang)}
-                    {route && ` · ${route}`}
+                    {route}
+                    {totalDwellMin(tour) > 0 &&
+                      ` · ${t('staysFor', { d: dwellLabel(totalDwellMin(tour)) })}`}
                   </span>
                 </a>
               </li>

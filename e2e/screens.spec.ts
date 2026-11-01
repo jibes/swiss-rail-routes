@@ -36,7 +36,6 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Save to my routes' }).click();
     await page.getByRole('button', { name: 'Plan' }).click();
     await page.getByRole('button', { name: 'Save trip' }).click();
-    await page.getByRole('link', { name: 'Show live' }).click();
     await page.locator('.row.ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
     await page.getByRole('link', { name: 'Replan from here' }).click();

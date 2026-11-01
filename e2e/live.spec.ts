@@ -11,7 +11,6 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
-  await page.getByRole('link', { name: 'Show live' }).click();
 
   // Before departure.
   await expect(page.getByText('Departure', { exact: true })).toBeVisible();
@@ -53,7 +52,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.goto('./#/trips');
   await expect(page.locator('.livebar')).toBeVisible();
   await page.goto('./');
-  await expect(page).toHaveURL(/\/now$/);
+  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
@@ -62,7 +61,6 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await page.getByRole('button', { name: 'Save to my routes' }).click();
   await page.getByRole('button', { name: 'Plan' }).click();
   await page.getByRole('button', { name: 'Save trip' }).click();
-  await page.getByRole('link', { name: 'Show live' }).click();
 
   await page.getByRole('link', { name: 'Replan from here' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
@@ -83,9 +81,38 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await page.getByRole('button', { name: 'Update trip' }).click();
 
   // Back on Now: the new plan (via Wengen), undo available.
-  await expect(page).toHaveURL(/\/now$/);
+  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   await expect(page.locator('.chain .leg')).toHaveCount(3);
   await expect(page.locator('.chain')).toContainText('Wengen');
   await page.getByRole('button', { name: 'Undo last replan' }).click();
   await expect(page.locator('.chain .leg')).toHaveCount(1);
+});
+
+test('one trip screen: edit all of it before departure, plan it again afterwards', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) }); // 06:00, hours before
+  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Plan' }).click();
+  await page.getByRole('button', { name: 'Save trip' }).click();
+
+  // Before departure: the timetable, and editing covers everything (start, date, time).
+  await expect(page.locator('.summary .big')).toContainText('09:04');
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Edit trip' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit trip');
+  const rows = page.getByRole('list', { name: 'Stops' }).getByRole('listitem');
+  await expect(rows.first().getByRole('button', { name: /^Move/ })).toBeVisible();
+  await expect(page.getByLabel('Date')).toBeVisible();
+  await page.getByRole('button', { name: 'Find connections' }).click();
+  await page.getByRole('button', { name: 'Update trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
+  await expect(page.getByText('Replanned', { exact: false })).toBeVisible();
+
+  // Afterwards: the record, and the route planned again as a new route.
+  await page.clock.runFor('10:00:00');
+  await page.getByRole('button', { name: 'Plan again' }).click();
+  await expect(page).toHaveURL(/#\/tour\//);
+  await expect(page.getByLabel('Tour name')).toHaveValue('T5');
 });

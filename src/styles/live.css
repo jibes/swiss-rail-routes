@@ -205,7 +205,7 @@
   content: '';
   position: absolute;
   /* Centred on the rail, 24 px left of the content column (12 px gap + half the rail column). */
-  left: -30px;
+  left: -28px;
   top: calc(50% - 4px);
   width: 8px;
   height: 8px;

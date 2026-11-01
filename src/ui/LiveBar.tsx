@@ -16,7 +16,7 @@ export function LiveBar() {
   const n = s.next;
   const ride = n ? s.rides[n.ride] : undefined;
   return (
-    <a className="livebar" href={`#/trip/${trip.id}/now`}>
+    <a className="livebar" href={`#/trip/${trip.id}`}>
       <span className="live-tag">{t('liveNow')}</span>
       <span className="livebar-text">
         {n && ride

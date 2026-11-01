@@ -150,4 +150,9 @@ export const fr = {
   stayLength: 'Arrêt à {name}',
   editHint: 'Toucher pour modifier ou retirer',
   legs1: '1 tronçon',
+  staysFor: '{d} d’arrêts',
+  editTrip: 'Modifier le voyage',
+  editTripHint:
+    'Gares, arrêts, date et heure ; le voyage est replanifié. Annuler rétablit l’ancien plan.',
+  planAgain: 'Planifier à nouveau',
 } satisfies Catalogue;

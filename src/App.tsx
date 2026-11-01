@@ -8,8 +8,7 @@ import { SharedTrip } from './ui/SharedTrip';
 import { Timeline } from './ui/Timeline';
 import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
-import { NowView } from './ui/NowView';
-import { ReplanView } from './ui/ReplanView';
+import { EditTrip } from './ui/EditTrip';
 import { liveTrip } from './core/trip';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
@@ -30,9 +29,9 @@ function Route({ hash: full }: { hash: string }) {
   if (foreign) return <SharedTour stops={foreign} query={q} />;
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips') return <Trips />;
-  const tr = /^\/trip\/([\w-]+)(\/(map|now|replan))?$/.exec(hash);
-  if (tr?.[3] === 'now') return <NowView id={tr[1]!} />;
-  if (tr?.[3] === 'replan') return <ReplanView id={tr[1]!} />;
+  // `now` and `replan` are older addresses of the same two screens.
+  const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
+  if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditTrip id={tr[1]!} />;
   if (tr?.[3] === 'map')
     return (
       <Suspense fallback={null}>
@@ -75,14 +74,14 @@ export function App() {
     const timer = setTimeout(() => void scheduleTrips(trips, lang).catch(() => undefined), 500);
     return () => clearTimeout(timer);
   }, [trips, tripsLoaded, lang]);
-  useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}/now`)), []);
+  useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}`)), []);
   // Opening the app during a trip goes straight to "Now" (once, from the start screen).
   useEffect(() => {
     if (!tripsLoaded || opened.current) return;
     opened.current = true;
     if (location.hash && location.hash !== '#/') return;
     const live = liveTrip(useTrips.getState().trips, Date.now());
-    if (live) location.hash = `/trip/${live.id}/now`;
+    if (live) location.hash = `/trip/${live.id}`;
   }, [tripsLoaded]);
 
   return (

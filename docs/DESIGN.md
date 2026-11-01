@@ -20,16 +20,15 @@ All colours, radii and spacing are CSS custom properties in `src/styles.css` (`:
 
 ## Navigation
 
-Two tabs, **Routes** (where) and **Trips** (when). **Now** is not a tab: it exists only during a trip, as a live bar on the lists and as the screen the app opens to.
+Two tabs, **Routes** (where) and **Trips** (when). Under way a trip shows itself live: a live bar on the lists, and the app opens to it.
 
 ## Screens
 
 - **Home:** large title, tour cards with their mini line, dock: From template · New tour.
 - **Builder (route):** the name is the title; share and map top right; the round-trip pill; the line with a grip per station (drag or arrow keys); an "add a station" row continuing the line; route chips. Dock: legs and stays, Plan.
 - **Planning:** pills for date, depart/back by + time, ticket; options as a segmented control with Earlier/Later chevrons; departure–arrival summary; the rail with times. Dock: Save trip.
-- **Trip:** date, departure–arrival, the rail; tickets per leg; dock: calendar, GPX, Share trip. During the trip: Show live.
-- **Now:** a progress bar for the whole trip; the next step as a card (what, big time with "+N" late, "in N min", line and platform); connections at risk in red; Replan from here; the rail with the travelled part grey and a pulsing marker where you are.
-- **Replan:** the rest of the route as a line (start fixed), add/stay/reorder/remove, Find connections, options, Update trip.
+- **Trip** (one screen, following the time): before, date, departure–arrival and the rail, dock "Edit trip"; under way, a progress bar, the next step as a card (what, big time with "+N" late, "in N min", line and platform), connections at risk in red, the rail with the travelled part grey and a pulsing marker where you are, dock "Replan from here" (red when at risk); after, the record, dock "Plan again". Tickets, calendar, GPX and share below.
+- **Edit trip:** the builder's line. Before departure all of it plus date, time and ticket; under way the travelled part grey, the start fixed ("From here · hh:mm"). Find connections, options, Update trip.
 - **Rides:** "N stops" expands the intermediate stops in place, everywhere.
 - **Map:** full screen, floating back and "Timetable" controls.
 

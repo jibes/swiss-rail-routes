@@ -35,13 +35,16 @@ describe('route links', () => {
   it('reads back what it writes', () => {
     const t = sample();
     const { id: _id, ...rest } = t;
-    expect(read(routeHash(t))).toEqual(rest);
+    expect(read(routeHash(t, true))).toEqual(rest);
+    // Without `when` only the route comes back; date and time are the reader's defaults.
+    expect(read(routeHash(t))).toMatchObject({ waypoints: rest.waypoints, date: '2026-11-14' });
   });
 
   it('is readable: slugs and SLOID numbers, defaults left out', () => {
     let t = newTour('x', '2026-11-14', { stopRef: 'ch:1:sloid:3000', name: 'Zürich HB' });
     t = addWaypoint(t, { stopRef: 'ch:1:sloid:9000', name: 'Chur' });
-    expect(routeHash(t)).toBe('#/r/zurich-hb.3000~chur.9000?d=2026-11-14');
+    expect(routeHash(t)).toBe('#/r/zurich-hb.3000~chur.9000');
+    expect(routeHash(t, true)).toBe('#/r/zurich-hb.3000~chur.9000?d=2026-11-14');
   });
 
   it('a route address carries the route for other devices', () => {
