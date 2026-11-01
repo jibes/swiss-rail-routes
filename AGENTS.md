@@ -27,7 +27,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 - e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (every option, export, map), so planner changes that break a screen fail before release.
 - Routes and Trips (SPEC §3a): `src/ui/TripView.tsx` (before / under way / after), `src/ui/EditTrip.tsx` (whole trip before departure, from here under way), `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (`srr.tours.v1`) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
 - Links (`src/core/export/routeLink.ts`): `#/r/<stops>?<settings>` is a route anywhere (`slug.<SLOID number>` plus modifiers, `@<template>` inserts one); a route's own address `#/tour/<id>[/plan]?s=<stops>&…` follows edits (`useAddress`, replaceState) and opens as that route on a device that lacks the id. `#/t/<base64>` stays readable (older links). Trips share as `#/j/` snapshots; their address stays local.
-- Sync (SPEC §3b): `src/core/sync.ts` (pure: key, HKDF, AES-GCM, stamps, merge), `src/io/sync.ts` (engine; `srr.sync.v1`), `src/ui/Settings.tsx`; Worker `workers/ojp/src/sync.ts` + Durable Object `SyncBox`. e2e answers `/sync/` from a shared in-memory mailbox (`answerWorker` in `e2e/fixtures.ts`).
+- Sync (SPEC §3b): `src/core/sync.ts` (pure: key, HKDF, AES-GCM, stamps, merge), `src/io/sync.ts` (engine; `srr.sync.v1`), `src/ui/Settings.tsx`, `src/ui/QrScanner.tsx` (BarcodeDetector, else lazy jsQR; e2e feeds a fake camera from an MJPEG, `e2e/scan.spec.ts`); Worker `workers/ojp/src/sync.ts` + Durable Object `SyncBox`. e2e answers `/sync/` from a shared in-memory mailbox (`answerWorker` in `e2e/fixtures.ts`).
 - Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
@@ -39,7 +39,7 @@ Status: Routes and Trips (one time-aware trip screen, one edit screen; SPEC §3a
 
 - Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only.
 - Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight) and `src/io/notifications.ts` (cancels and reschedules all on every trips change; no-op on the web). Texts in i18n (`n*`).
-- Logo C2 (`docs/design/logos/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
+- Logo C1 (`docs/design/logos/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.
 
 ## Invariants

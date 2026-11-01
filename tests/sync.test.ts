@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveKeys,
   formatKey,
+  keyFromScan,
   itemsOf,
   mergeEntries,
   newKey,
@@ -45,6 +46,16 @@ describe('sync key', () => {
     expect(await open(data, aes)).toEqual(doc);
     const other = (await deriveKeys(parseKey(newKey())!)).aes;
     await expect(open(data, other)).rejects.toThrow();
+  });
+});
+
+describe('scanned codes', () => {
+  it('reads the key from the app link or as a bare key, nothing else', () => {
+    const key = newKey();
+    expect(keyFromScan(`https://jibes.github.io/swiss-rail-routes/#/sync/${key}`)).toBe(key);
+    expect(keyFromScan(`  ${key.toLowerCase()} `)).toBe(key);
+    expect(keyFromScan('https://example.com/#/sync/nope')).toBeNull();
+    expect(keyFromScan('WIFI:S:home;T:WPA;P:secret;;')).toBeNull();
   });
 });
 

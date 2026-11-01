@@ -58,7 +58,7 @@ A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d
 
 ## Privacy
 
-Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. With sync on (Settings), routes and trips are encrypted on the device with a key only your devices hold and stored as ciphertext by the Worker (one blob per key, in a Cloudflare Durable Object); see [`docs/SPEC.md`](docs/SPEC.md) §3b. The Android app schedules its notifications on the phone.
+Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the current and next train (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers 10 min, keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. With sync on (Settings), routes and trips are encrypted on the device with a key only your devices hold and stored as ciphertext by the Worker (one blob per key, in a Cloudflare Durable Object); see [`docs/SPEC.md`](docs/SPEC.md) §3b. The Android app schedules its notifications on the phone. The camera is used only while scanning a sync code; frames are read on the device and never sent.
 
 ## Third-party data and code
 

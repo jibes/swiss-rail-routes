@@ -187,4 +187,13 @@ export const it = {
   lang_de: 'Deutsch',
   lang_fr: 'Français',
   lang_it: 'Italiano',
+  scanCode: 'Scansiona codice',
+  scanHint: 'Inquadra il codice sull’altro dispositivo.',
+  scanWrong:
+    'Questo codice non contiene una chiave. Sull’altro dispositivo: Impostazioni → Aggiungi un dispositivo.',
+  scanDenied:
+    'La fotocamera non è consentita. Consentila nelle impostazioni del telefono o del browser, o inserisci la chiave.',
+  scanNoCamera: 'Nessuna fotocamera trovata. Inserisci la chiave.',
+  scanFailed: 'La fotocamera non si è avviata. Inserisci la chiave.',
+  scanClose: 'Chiudi fotocamera',
 } satisfies Catalogue;

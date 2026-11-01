@@ -119,7 +119,7 @@ The trip screen follows the trip's time:
 
 - Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.
 - **Position** comes from the timetable plus live delays, never GPS (owner's decision).
-- **Live delays**: OJP TripInfo for the current and next train, every 60 s while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s).
+- **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min, when its delay or cancellation can break the connection (`journeysToWatch`). About a quarter of the requests of polling both every minute.
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
 - **Replan from here** starts at the next stop the train calls at (or the station you are at).
 - **Sharing**: a route as `#/r/…` (stops only; the recipient plans when); a trip as `#/j/…`, the exact timetable (deflated, no tracks; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
@@ -128,7 +128,7 @@ The trip screen follows the trip's time:
 
 ## 3b. Sync between one's own devices (added 1 Nov 2026)
 
-Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start sync** makes a random 256-bit key, shown as 13 groups of four characters and as a QR code (a link `#/sync/<key>` that opens Settings to confirm); **I have a key** joins (typed in any case, with spaces or dashes; O/0 and I/L/1 read alike).
+Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start sync** makes a random 256-bit key, shown as 13 groups of four characters and as a QR code (a link `#/sync/<key>` that opens Settings to confirm); **I have a key** joins: **Scan code** reads the QR code with the camera (asked for only then; the browser's BarcodeDetector where it reads QR codes, else jsQR on the device; frames never leave it), or the key is typed (any case, spaces or dashes; O/0 and I/L/1 read alike). The phone's own camera app opens the link in the browser, not the Android app (no verified app links on github.io).
 
 - From the key each device derives (HKDF-SHA-256) an id and an AES-GCM key. The Worker stores one blob per id in a Durable Object: the routes and trips, deflated and encrypted. It never sees the key, names, stops or times.
 - Writes are compare-and-swap on a version: a device that read an old version gets the current one back (409), merges and tries again.

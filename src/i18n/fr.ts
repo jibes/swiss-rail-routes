@@ -187,4 +187,13 @@ export const fr = {
   lang_de: 'Deutsch',
   lang_fr: 'Français',
   lang_it: 'Italiano',
+  scanCode: 'Scanner le code',
+  scanHint: 'Visez le code sur votre autre appareil.',
+  scanWrong:
+    'Ce code ne contient pas de clé. Sur l’autre appareil : Réglages → Ajouter un appareil.',
+  scanDenied:
+    'La caméra n’est pas autorisée. Autorisez-la dans les réglages du téléphone ou du navigateur, ou saisissez la clé.',
+  scanNoCamera: 'Aucune caméra trouvée. Saisissez plutôt la clé.',
+  scanFailed: 'La caméra n’a pas pu démarrer. Saisissez plutôt la clé.',
+  scanClose: 'Fermer la caméra',
 } satisfies Catalogue;

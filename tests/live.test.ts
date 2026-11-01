@@ -55,7 +55,13 @@ describe('liveState', () => {
     const s = liveState(chain, at('08:47'));
     expect(s.phase).toBe('waiting');
     expect(s.next).toMatchObject({ kind: 'board', ride: 1 });
-    expect(journeysToWatch(s)).toEqual(['j2']);
+    expect(journeysToWatch(s, at('08:47'))).toEqual(['j2']);
+  });
+
+  it('watches the train you are on; the next one only shortly before it leaves', () => {
+    expect(journeysToWatch(liveState(chain, at('08:10')), at('08:10'))).toEqual(['j1']);
+    expect(journeysToWatch(liveState(chain, at('08:40')), at('08:40'))).toEqual(['j1', 'j2']);
+    expect(journeysToWatch(liveState(chain, at('10:42')), at('10:42'))).toEqual([]);
   });
 
   it('done after the last arrival', () => {

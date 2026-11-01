@@ -1,5 +1,5 @@
-// The live state of a trip, ticking with the clock; live calls for the current and next train
-// fetched every 60 s while the page is visible (SPEC "Now").
+// The live state of a trip, ticking with the clock. Live calls for the train you are on (and
+// the next one shortly before it leaves: journeysToWatch) every 2 min while the page is visible.
 import { useEffect, useMemo, useState } from 'react';
 import { journeysToWatch, liveState } from '../core/live';
 import type { JourneyStatus } from '../core/ojp/journey';
@@ -8,7 +8,7 @@ import type { Trip } from '../core/trip';
 import { fetchJourney, ojpConfigured } from '../io/ojp';
 import { refreshNow, useNow } from './useNow';
 
-const POLL_MS = 60_000;
+const POLL_MS = 120_000;
 
 export function useLive(trip: Trip | undefined) {
   const now = useNow();
@@ -19,7 +19,7 @@ export function useLive(trip: Trip | undefined) {
     () => (trip ? liveState(trip.chain.connections, now, status) : undefined),
     [trip, now, status],
   );
-  const watch = state ? journeysToWatch(state).join('|') : '';
+  const watch = state ? journeysToWatch(state, now).join('|') : '';
 
   useEffect(() => {
     if (!watch || !ojpConfigured()) return;

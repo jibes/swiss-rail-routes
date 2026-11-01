@@ -184,6 +184,15 @@ export const en = {
   lang_de: 'Deutsch',
   lang_fr: 'Français',
   lang_it: 'Italiano',
+  scanCode: 'Scan code',
+  scanHint: 'Point the camera at the code on your other device.',
+  scanWrong:
+    'That code holds no sync key. Settings → Add a device on the other device shows the right one.',
+  scanDenied:
+    'The camera is not allowed. Allow it in the settings of your phone or browser, or type the key.',
+  scanNoCamera: 'No camera found. Type the key instead.',
+  scanFailed: 'The camera could not start. Type the key instead.',
+  scanClose: 'Close camera',
 };
 
 export type Catalogue = typeof en;

@@ -188,4 +188,13 @@ export const de = {
   lang_de: 'Deutsch',
   lang_fr: 'Français',
   lang_it: 'Italiano',
+  scanCode: 'Code scannen',
+  scanHint: 'Richte die Kamera auf den Code auf deinem anderen Gerät.',
+  scanWrong:
+    'Dieser Code enthält keinen Schlüssel. Auf dem anderen Gerät: Einstellungen → Gerät hinzufügen.',
+  scanDenied:
+    'Die Kamera ist nicht erlaubt. Erlaube sie in den Einstellungen von Telefon oder Browser, oder tippe den Schlüssel ein.',
+  scanNoCamera: 'Keine Kamera gefunden. Tippe den Schlüssel stattdessen ein.',
+  scanFailed: 'Die Kamera liess sich nicht starten. Tippe den Schlüssel stattdessen ein.',
+  scanClose: 'Kamera schliessen',
 } satisfies Catalogue;

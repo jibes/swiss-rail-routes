@@ -160,9 +160,20 @@ export function liveState(
   return { phase: 'done', rides, current: rides.length - 1, progress: 1, risks };
 }
 
-/** Journeys worth asking OJP about now: the current ride and the next one. */
-export function journeysToWatch(state: LiveState): string[] {
-  return [state.rides[state.current], state.rides[state.current + 1]]
-    .map((r) => r?.s.journey)
-    .filter((j): j is string => !!j);
+/** On board, the next train is watched too once its departure is this close (minutes). */
+export const WATCH_NEXT_MIN = 20;
+
+/**
+ * Journeys worth asking OJP about now: the train you are on or about to board, and, on board,
+ * the next one only when it leaves within WATCH_NEXT_MIN (when its delay or cancellation can
+ * break the connection). Each is a request every poll, so no more than that.
+ */
+export function journeysToWatch(state: LiveState, now: number): string[] {
+  if (state.phase === 'done') return [];
+  const rides = [state.rides[state.current]];
+  const next = state.rides[state.current + 1];
+  const dep = next?.stops[0]?.dep;
+  if (state.phase === 'riding' && dep !== undefined && dep - now <= WATCH_NEXT_MIN * 60_000)
+    rides.push(next);
+  return rides.map((r) => r?.s.journey).filter((j): j is string => !!j);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { renderSVG } from 'uqr';
 import { parseKey } from '../core/sync';
 import { LANGS, type Lang } from '../i18n';
@@ -14,6 +14,7 @@ import {
 import { usePrefs, useT } from '../store';
 import { hhmm } from './format';
 import { Icon } from './icons';
+import { canScan, QrScanner } from './QrScanner';
 import { Select } from './Select';
 import { go } from './useHash';
 
@@ -119,7 +120,12 @@ function SyncOff({ offered }: { offered?: string }) {
   const t = useT();
   const [joining, setJoining] = useState(offered !== undefined);
   const [text, setText] = useState(offered ?? '');
+  const [scanning, setScanning] = useState(false);
   const valid = parseKey(text) !== null;
+  const scanned = useCallback((key: string) => {
+    setText(key);
+    setScanning(false);
+  }, []);
   return (
     <>
       <p className="muted">{t('syncIntro')}</p>
@@ -151,7 +157,14 @@ function SyncOff({ offered }: { offered?: string }) {
               onChange={(e) => setText(e.target.value)}
             />
           </label>
-          {offered !== undefined && <p className="muted">{t('syncJoinHint')}</p>}
+          {canScan() && !scanning && (
+            <button type="button" className="secondary" onClick={() => setScanning(true)}>
+              <Icon name="scan" />
+              {t('scanCode')}
+            </button>
+          )}
+          {scanning && <QrScanner onKey={scanned} onClose={() => setScanning(false)} />}
+          {(offered !== undefined || valid) && <p className="muted">{t('syncJoinHint')}</p>}
           <button type="submit" className="primary" disabled={!valid}>
             {t('syncJoinButton')}
           </button>

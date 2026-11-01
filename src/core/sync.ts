@@ -195,3 +195,10 @@ export function itemsOf<T extends { id: string }>(entries: Entry<T>[], order: T[
 export const sameEntries = <T>(a: Entry<T>[], b: Entry<T>[]) =>
   JSON.stringify(stampsOf(a), Object.keys(stampsOf(a)).sort()) ===
   JSON.stringify(stampsOf(b), Object.keys(stampsOf(b)).sort());
+
+/** The key from a scanned code: the app's `#/sync/<key>` link, or a bare key. */
+export function keyFromScan(text: string): string | null {
+  const link = /#\/sync\/([^?#\s]+)/.exec(text);
+  const bytes = parseKey(link ? decodeURIComponent(link[1]!) : text.trim());
+  return bytes ? formatKey(bytes) : null;
+}
