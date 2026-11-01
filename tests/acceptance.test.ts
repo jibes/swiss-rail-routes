@@ -38,7 +38,10 @@ const stopsOf = (c: PlannedChain, leg?: number) =>
       .flatMap((x) => calls(x).map((k) => k.key)),
   );
 
-describe.concurrent('acceptance tours', { timeout }, () => {
+// Live runs go one tour at a time: the Worker allows 30 uncached requests a minute per IP.
+const suite = LIVE_URL ? describe : describe.concurrent;
+
+suite('acceptance tours', { timeout }, () => {
   it('T1 Graubünden loop: Albula out (or the closure said), Vereina back', async () => {
     const r = await planned('T1');
     expect(chains(r).length).toBeGreaterThan(0);

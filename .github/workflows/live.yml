@@ -1,0 +1,72 @@
+name: Live check
+
+# Nightly T1–T6 against the live OJP Worker for the next Saturday. Never gates a deploy.
+# Keeps one open issue (label live-check) while failing and closes it when green again.
+on:
+  schedule:
+    - cron: '43 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    env:
+      OJP_LIVE_URL: ${{ vars.OJP_WORKER_URL }}
+    steps:
+      - name: Needs the Worker
+        if: env.OJP_LIVE_URL == ''
+        run: echo "::notice::Repo variable OJP_WORKER_URL is not set; skipping."
+
+      - if: env.OJP_LIVE_URL != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - if: env.OJP_LIVE_URL != ''
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - if: env.OJP_LIVE_URL != ''
+        run: npm ci
+
+      - name: Run T1–T6 live
+        id: run
+        if: env.OJP_LIVE_URL != ''
+        continue-on-error: true
+        run: |
+          export OJP_DATE=$(date -d 'next saturday' +%F)
+          echo "date=$OJP_DATE" >> "$GITHUB_OUTPUT"
+          npx vitest run tests/acceptance.test.ts --reporter=verbose 2>&1 | tee live.log
+          exit "${PIPESTATUS[0]}"
+
+      - name: Report
+        if: env.OJP_LIVE_URL != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.run.outcome }}
+          DATE: ${{ steps.run.outputs.date }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create live-check --color B60205 --description 'Nightly live check' 2>/dev/null || true
+          open=$(gh issue list --label live-check --state open --json number -q '.[0].number')
+          if [ "$OUTCOME" = success ]; then
+            [ -n "$open" ] && gh issue close "$open" --comment "Green again for $DATE: $RUN"
+            exit 0
+          fi
+          body=$(printf 'Live check failed for %s.\n\n%s\n\n```\n%s\n```\n' "$DATE" "$RUN" "$(grep -E '×|FAIL|Error' live.log | head -40)")
+          if [ -n "$open" ]; then gh issue comment "$open" --body "$body"
+          else gh issue create --title 'Live check failing' --label live-check --body "$body"; fi
+          exit 1

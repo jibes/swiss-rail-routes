@@ -35,7 +35,7 @@ One-time setup:
 1. Cloudflare: create an API token from the template "Edit Cloudflare Workers". Add repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 2. Run "Deploy OJP Worker" (Actions → Run workflow). It deploys `srr-ojp` to `https://srr-ojp.<your-subdomain>.workers.dev`.
 3. Add the OJP 2.0 key as a Worker secret: Cloudflare dashboard → Workers → `srr-ojp` → Settings → Variables and Secrets → `OJP_API_KEY` (type Secret). Or `npx wrangler secret put OJP_API_KEY -c workers/ojp/wrangler.toml`.
-4. Add repo variable `OJP_WORKER_URL` with the Worker's URL and rerun "Deploy to GitHub Pages". The build adds its origin to the CSP.
+4. Add repo variable `OJP_WORKER_URL` with the Worker's URL and rerun "Deploy to GitHub Pages". The build adds its origin to the CSP, and `live.yml` runs T1–T6 against it nightly for the next Saturday (one open issue labelled `live-check` while it fails).
 
 Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a custom domain there.
 

@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md).
 
-Status: complete MVP path (builder, planner on real OJP answers, timeline, map, exports, Worker, stop index, curated data). Next: `live.yml`, GA list review.
+Status: complete MVP path (builder, planner on real OJP answers, timeline, map, exports, Worker, stop index, curated data). Next: GA list review against the official list.
 
 ## Stack
 
