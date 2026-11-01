@@ -75,20 +75,21 @@ def scaled(body, k=1.25):
     return f'<g transform="translate(54 54) scale({k}) translate(-54 -54)">{body}</g>'
 
 
-for key, motif, bg, fg, accent, _ in SETS:
-    d = os.path.join(OUT, key)
-    os.makedirs(d, exist_ok=True)
-    rect = f'<rect width="108" height="108" fill="{bg}"/>'
-    files = {
-        'icon': rect + motif(fg, accent, bg),
-        'maskable': rect + motif(fg, accent, bg),
-        'adaptive-foreground': motif(fg, accent, bg),
-        'adaptive-background': rect,
-        'monochrome': motif('#000000', '#000000', 'none', mono=True),
-        'favicon': f'<rect width="108" height="108" rx="24" fill="{bg}"/>'
-        + scaled(motif(fg, accent, bg).replace('stroke-width="5"', 'stroke-width="7"').replace('stroke-width="6"', 'stroke-width="8"')),
-    }
-    for name, body in files.items():
-        with open(os.path.join(d, f'{name}.svg'), 'w') as f:
-            f.write(SVG.format(body))
-print('ok')
+if __name__ == '__main__':
+    for key, motif, bg, fg, accent, _ in SETS:
+        d = os.path.join(OUT, key)
+        os.makedirs(d, exist_ok=True)
+        rect = f'<rect width="108" height="108" fill="{bg}"/>'
+        files = {
+            'icon': rect + motif(fg, accent, bg),
+            'maskable': rect + motif(fg, accent, bg),
+            'adaptive-foreground': motif(fg, accent, bg),
+            'adaptive-background': rect,
+            'monochrome': motif('#000000', '#000000', 'none', mono=True),
+            'favicon': f'<rect width="108" height="108" rx="24" fill="{bg}"/>'
+            + scaled(motif(fg, accent, bg).replace('stroke-width="5"', 'stroke-width="7"').replace('stroke-width="6"', 'stroke-width="8"')),
+        }
+        for name, body in files.items():
+            with open(os.path.join(d, f'{name}.svg'), 'w') as f:
+                f.write(SVG.format(body))
+    print('ok')
