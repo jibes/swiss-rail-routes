@@ -27,6 +27,12 @@ function Chips({ list }: { list: Warning[] }) {
   );
 }
 
+/** "R62", "IC3"; numeric lines with their category: "CC 63" (cog), "PB 2461" (cable car). */
+const badge = (s: Section) =>
+  s.line && /[A-Za-z]/.test(s.line)
+    ? s.line
+    : [s.category, s.line ?? s.number].filter(Boolean).join(' ');
+
 function SectionRow({ s, warnings }: { s: Section; warnings: Warning[] }) {
   const t = useT();
   if (s.mode === 'walk')
@@ -43,7 +49,7 @@ function SectionRow({ s, warnings }: { s: Section; warnings: Warning[] }) {
         {s.from.platform && <span className="muted">{t('platform', { p: s.from.platform })}</span>}
       </div>
       <div className="sec-line">
-        <span className="badge">{[s.category, s.number].filter(Boolean).join(' ') || s.line}</span>
+        <span className="badge">{badge(s)}</span>
         {s.operator && <span className="muted">{s.operator}</span>}
         {s.intermediate.length > 0 && (
           <span className="muted">{t('stopsBetween', { n: s.intermediate.length })}</span>
@@ -71,7 +77,8 @@ export function ChainView({ chain, dwell }: { chain: PlannedChain; dwell: number
             <h3>
               {c.sections[0]!.from.name} → {c.sections.at(-1)!.to.name}{' '}
               <span className="muted">
-                {duration(minutesBetween(c.dep, c.arr))} · {t('transfers', { n: c.transfers })}
+                {duration(minutesBetween(c.dep, c.arr))} ·{' '}
+                {c.transfers === 1 ? t('transfer1') : t('transfers', { n: c.transfers })}
               </span>
             </h3>
             <ol>

@@ -40,15 +40,3 @@ test('builds a round trip from stations and a template, keeps it after reload', 
   await page.getByRole('button', { name: /Back/ }).click();
   await expect(page.getByRole('link', { name: /Brünig loop/ })).toBeVisible();
 });
-
-test('planning says it is unavailable without a Worker', async ({ page }) => {
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New tour' }).click();
-  const search = page.locator('.picker input');
-  await search.fill('Bern');
-  await search.press('Enter');
-  await search.fill('Thun');
-  await search.press('Enter');
-  await page.getByRole('button', { name: 'Plan' }).click();
-  await expect(page.getByRole('status')).toHaveText('Planning is not available yet.');
-});

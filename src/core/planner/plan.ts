@@ -1,7 +1,7 @@
 // Planner (SPEC §5): one OJP request per leg, filter by must-pass stops and avoided segments,
 // score, chain legs with a beam, relax constraints when a leg has no survivor.
 import type { GaData, RouteTemplate, Segment } from '../data';
-import type { Connection, LatLon, Leg, Tour } from '../model';
+import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
 import { zurichDateTime } from '../ojp/request';
 import { usesSegment } from '../segments';
@@ -9,6 +9,7 @@ import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
 import { MIN, ms, rides, stopSeq } from './connection';
+import { passesVias, stitched, type Query } from './stitch';
 
 export interface PlanDeps {
   fetchTrips: (q: TripQuery) => Promise<Connection[]>;
@@ -76,6 +77,22 @@ export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates' | 'segment
   });
 }
 
+/**
+ * OJP cannot plan a leg that ends where it starts. Such a loop (a round trip without a stop)
+ * turns at its middle via: that via becomes a stop of 0 min.
+ */
+export function splitLoops(tour: Tour): Tour {
+  const turn = new Set<Waypoint>();
+  for (const leg of expandLegs(tour))
+    if (stopKey(leg.from.stopRef) === stopKey(leg.to.stopRef) && leg.vias.length)
+      turn.add(leg.vias[Math.floor((leg.vias.length - 1) / 2)]!);
+  if (!turn.size) return tour;
+  return {
+    ...tour,
+    waypoints: tour.waypoints.map((w) => (turn.has(w) ? { ...w, kind: 'stop', dwellMin: 0 } : w)),
+  };
+}
+
 /** Why a connection fails the leg's rules, or null when it passes. */
 export function rejectReason(
   c: Connection,
@@ -130,7 +147,8 @@ const firstDep = (b: Beam) => ms(b.conns[0]!.dep);
 const lastArr = (b: Beam) => ms(b.conns.at(-1)!.arr);
 const total = (b: Beam) => (lastArr(b) - firstDep(b)) / MIN + b.penalty;
 
-async function planFrom(start: number, tour: Tour, deps: PlanDeps): Promise<PlanResult> {
+async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<PlanResult> {
+  const tour = splitLoops(input);
   const wt = { ...DEFAULT_WEIGHTS, ...deps.weights };
   const width = deps.beamWidth ?? 6;
   const minTransfer = deps.minTransferMin ?? 3;
@@ -138,11 +156,11 @@ async function planFrom(start: number, tour: Tour, deps: PlanDeps): Promise<Plan
   const relaxedOut: PlanResult['relaxed'] = [];
   const cache = new Map<string, Connection[]>();
 
-  const fetchAt = async (rules: LegRules, at: number) => {
+  const query: Query = async (from, to, via, at) => {
     const q: TripQuery = {
-      origin: { ref: rules.leg.from.stopRef, name: rules.leg.from.name },
-      destination: { ref: rules.leg.to.stopRef, name: rules.leg.to.name },
-      vias: rules.leg.vias.map((w) => ({ ref: w.stopRef, name: w.name })),
+      origin: { ref: from.stopRef, name: from.name },
+      destination: { ref: to.stopRef, name: to.name },
+      vias: via.map((w) => ({ ref: w.stopRef, name: w.name })),
       notVias: [],
       time: zurichLocal(at),
       arriveBy: false,
@@ -151,6 +169,15 @@ async function planFrom(start: number, tour: Tour, deps: PlanDeps): Promise<Plan
     const key = JSON.stringify(q);
     if (!cache.has(key)) cache.set(key, await deps.fetchTrips(q));
     return cache.get(key)!;
+  };
+
+  /** One request with all vias; split at the vias when no answer passes them all. */
+  const fetchAt = async (rules: LegRules, at: number) => {
+    const { from, vias, to } = rules.leg;
+    const direct = await query(from, to, vias, at);
+    if (vias.length < 2 || direct.some((c) => passesVias(c, vias))) return direct;
+    const parts = await stitched(from, vias, to, at, query, minTransfer);
+    return parts.length ? parts : direct;
   };
 
   let beams: Beam[] = [{ conns: [], warnings: [], penalty: 0, ready: start }];

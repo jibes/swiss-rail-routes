@@ -79,6 +79,12 @@ export interface Section {
   reservationRequired?: boolean;
   supplement?: boolean;
   situationIds?: string[];
+  /** Situation summaries, in the order of `situationIds` (operator's language). */
+  notices?: string[];
+  /** Product name as OJP gives it, e.g. "Luzern-Interlaken Express", "BERNINA EXPRESS". */
+  product?: string;
+  /** Dated journey (`<OperatingDay>:<JourneyRef>`): same value = same vehicle. */
+  journey?: string;
 }
 
 export interface Connection {

@@ -43,6 +43,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # e2e answers this host from recorded OJP answers (e2e/plan.spec.ts).
+          VITE_OJP_URL: https://ojp.invalid
 
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e

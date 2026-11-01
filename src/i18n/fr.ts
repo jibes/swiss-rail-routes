@@ -96,4 +96,6 @@ export const fr = {
   map: 'Carte',
   timeline: 'Horaire',
   mapOffline: 'Impossible de charger la carte.',
+  wNotice: '{from}–{to}: {text}',
+  transfer1: '1 changement',
 } satisfies Catalogue;

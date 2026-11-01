@@ -1,20 +1,17 @@
 // Hand-built connections for planner tests. Not OJP output: the parser has its own fixtures.
 import { readFileSync } from 'node:fs';
-import type { GaData, RouteTemplate, Segment } from '../../src/core/data';
 import type { Connection, Section } from '../../src/core/model';
 import type { TripQuery } from '../../src/core/ojp/request';
 import { zurichDateTime } from '../../src/core/ojp/request';
 import { createStopSearch, stopKey, type StopIndexFile } from '../../src/core/stops';
-import gaJson from '../../src/data/ga.json';
-import segmentsJson from '../../src/data/segments.json';
-import templatesJson from '../../src/data/templates.json';
+import { GA, SEGMENTS, TEMPLATES } from '../../src/data';
 
 export const index = createStopSearch(
   JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
 );
-export const templates = templatesJson.templates as RouteTemplate[];
-export const segments = segmentsJson.segments as Segment[];
-export const ga = gaJson as GaData;
+export const templates = TEMPLATES;
+export const segments = SEGMENTS;
+export const ga = GA;
 
 export const ref = (name: string) => {
   const s = index.search(name, 1)[0];

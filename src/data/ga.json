@@ -58,7 +58,7 @@
     }
   ],
   "supplementTrains": {
-    "categories": ["GEX", "BEX", "PE", "GPX"],
+    "categories": [],
     "names": [
       "Glacier Express",
       "Bernina Express",

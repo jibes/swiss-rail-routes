@@ -1,0 +1,50 @@
+{
+  "ea7e35bce293": {
+    "from": "Zürich HB",
+    "to": "Lugano",
+    "via": ["Arth-Goldau", "Göschenen", "Airolo", "Bellinzona"],
+    "time": "2026-11-07T08:00"
+  },
+  "ecdaa04f3b0e": {
+    "from": "Zürich HB",
+    "to": "Göschenen",
+    "via": ["Arth-Goldau"],
+    "time": "2026-11-07T08:00"
+  },
+  "975893e03402": {
+    "from": "Göschenen",
+    "to": "Bellinzona",
+    "via": ["Airolo"],
+    "time": "2026-11-07T09:50"
+  },
+  "d358506efa9c": {
+    "from": "Bellinzona",
+    "to": "Lugano",
+    "via": [],
+    "time": "2026-11-07T11:09"
+  },
+  "c1a10b179d40": {
+    "from": "Bellinzona",
+    "to": "Lugano",
+    "via": [],
+    "time": "2026-11-07T13:09"
+  },
+  "c7f888f8aa8f": {
+    "from": "Bellinzona",
+    "to": "Lugano",
+    "via": [],
+    "time": "2026-11-07T14:09"
+  },
+  "a01b67fa15b5": {
+    "from": "Bellinzona",
+    "to": "Lugano",
+    "via": [],
+    "time": "2026-11-07T15:09"
+  },
+  "063371fe11b5": {
+    "from": "Bellinzona",
+    "to": "Lugano",
+    "via": [],
+    "time": "2026-11-07T16:09"
+  }
+}

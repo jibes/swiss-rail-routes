@@ -20,10 +20,11 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "icons": "node scripts/icons.mjs",
     "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
-    "record:ojp": "node --experimental-strip-types scripts/record-ojp.ts",
+    "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
     "data:stops": "node --experimental-strip-types scripts/build-stops.ts"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.2",
     "idb-keyval": "^6.3.0",
     "maplibre-gl": "^6.16.0",
     "react": "^19.3.1",

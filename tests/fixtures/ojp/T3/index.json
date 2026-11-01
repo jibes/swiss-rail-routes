@@ -1,0 +1,32 @@
+{
+  "0e3cf89281fc": {
+    "from": "Zürich HB",
+    "to": "Luzern",
+    "via": ["St. Gallen", "Wattwil", "Biberbrugg"],
+    "time": "2026-11-07T07:00"
+  },
+  "7314d2284af1": {
+    "from": "Luzern",
+    "to": "Mürren BLM",
+    "via": ["Sarnen", "Meiringen", "Brienz", "Interlaken Ost", "Lauterbrunnen", "Grütschalp"],
+    "time": "2026-11-07T11:21"
+  },
+  "e11ab07170b9": {
+    "from": "Mürren BLM",
+    "to": "Zürich HB",
+    "via": ["Interlaken Ost", "Bern"],
+    "time": "2026-11-07T15:54"
+  },
+  "ac5c678e39ef": {
+    "from": "Mürren BLM",
+    "to": "Zürich HB",
+    "via": ["Interlaken Ost", "Bern"],
+    "time": "2026-11-07T17:54"
+  },
+  "ef584ec03e82": {
+    "from": "Mürren BLM",
+    "to": "Zürich HB",
+    "via": ["Interlaken Ost", "Bern"],
+    "time": "2026-11-07T18:54"
+  }
+}

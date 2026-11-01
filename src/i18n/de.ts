@@ -96,4 +96,6 @@ export const de = {
   map: 'Karte',
   timeline: 'Fahrplan',
   mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
+  wNotice: '{from}–{to}: {text}',
+  transfer1: '1 Umstieg',
 } satisfies Catalogue;

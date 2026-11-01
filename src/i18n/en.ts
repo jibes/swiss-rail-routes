@@ -94,6 +94,8 @@ export const en = {
   map: 'Map',
   timeline: 'Timetable',
   mapOffline: 'Map tiles could not be loaded.',
+  wNotice: '{from}–{to}: {text}',
+  transfer1: '1 change',
 };
 
 export type Catalogue = typeof en;

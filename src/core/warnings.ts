@@ -33,7 +33,7 @@ const HIGHLIGHT_KM = 15;
 export function isSupplement(s: Section, ga: GaData): boolean {
   if (s.reservationRequired || s.supplement) return true;
   if (s.category && ga.supplementTrains.categories.includes(s.category)) return true;
-  const text = `${s.line ?? ''} ${s.number ?? ''}`.toLowerCase();
+  const text = `${s.product ?? ''} ${s.line ?? ''}`.toLowerCase();
   return ga.supplementTrains.names.some((n) => text.includes(n.toLowerCase()));
 }
 

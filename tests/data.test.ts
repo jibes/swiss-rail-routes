@@ -1,15 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { GaData, RouteTemplate, Segment } from '../src/core/data';
 import { LANGS } from '../src/i18n';
 import { createStopSearch, type StopIndexFile } from '../src/core/stops';
-import gaJson from '../src/data/ga.json';
-import segmentsJson from '../src/data/segments.json';
-import templatesJson from '../src/data/templates.json';
+import { GA, SEGMENTS, TEMPLATES } from '../src/data';
 
-const templates = templatesJson.templates as RouteTemplate[];
-const segments = segmentsJson.segments as Segment[];
-const ga = gaJson as GaData;
+const templates = TEMPLATES;
+const segments = SEGMENTS;
+const ga = GA;
 const index = createStopSearch(
   JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
 );

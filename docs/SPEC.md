@@ -215,10 +215,15 @@ Plus the standard e2e smoke: load at base path, plan T3 from canned answers, go 
 | OJP quota under many replans                                                   | Throttling                    | Debounce, per-leg cache in the Worker and on the device, one request per leg for all beams                                         |
 | OJP terms on proxying/caching                                                  | Key revoked                   | Check the terms before launch. Fallback: the user's own key on the device; OJP allows browser calls (CORS `*`, checked 2026-11-01) |
 
+**Findings from recorded answers (1 Nov 2026)**
+
+- OJP enforces only the first `Via`: legs with more vias are split and stitched (one request per two vias).
+- Albula Thusis–Preda closure: OJP answers with a replacement bus (`EV`) once the leg is split at Filisur; the T1 outbound otherwise routes via Vereina.
+- `PE` is not a supplement marker (LIX is `PE`); `A__PR` is.
+
 **Open questions**
 
-- [ ] Does OJP 2.0 `Via` honour a dwell time natively, or must legs always be split?
-- [ ] How many `Via` elements does the Swiss OJP 2.0 service accept per request?
+- [x] How many `Via` elements does the Swiss OJP 2.0 service enforce? One (the first). Legs are split at stops anyway.
 - [ ] Do TripResult situations cover planned closures such as Albula 29.10.–13.11.2026? If not, add SIRI-SX through the Worker.
 - [ ] Exact quota per key; whether a commercial tier is needed; terms on caching through a proxy.
 - [ ] Source for cable-car revision dates (operator sites only?).

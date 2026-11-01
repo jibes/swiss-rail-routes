@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { GaData, Segment } from '../core/data';
 import { plan, type PlanResult, type PlannedChain } from '../core/planner/plan';
 import { expandLegs } from '../core/tour';
-import gaJson from '../data/ga.json';
-import segmentsJson from '../data/segments.json';
+import { GA, SEGMENTS } from '../data';
 import { PlanningUnavailable, fetchTrips } from '../io/ojp';
 import { stopSearch } from '../io/stops';
 import { loadPlans, savePlans } from '../io/tours';
@@ -45,8 +43,8 @@ export function Timeline({ id }: { id: string }) {
         const r = await plan(current, {
           fetchTrips: (q) => fetchTrips(q, ctrl.signal),
           templates: TEMPLATES,
-          segments: segmentsJson.segments as Segment[],
-          ga: gaJson as GaData,
+          segments: SEGMENTS,
+          ga: GA,
           stop: (ref) => index.byRef(ref),
         });
         if (ctrl.signal.aborted) return;

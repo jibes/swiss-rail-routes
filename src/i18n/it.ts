@@ -97,4 +97,6 @@ export const it = {
   map: 'Mappa',
   timeline: 'Orario',
   mapOffline: 'Impossibile caricare la mappa.',
+  wNotice: '{from}–{to}: {text}',
+  transfer1: '1 cambio',
 } satisfies Catalogue;

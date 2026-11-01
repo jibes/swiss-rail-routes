@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { RouteTemplate } from '../core/data';
+import { TEMPLATES } from '../data';
 import { usePrefs, useT } from '../store';
-import templatesJson from '../data/templates.json';
 
-export const TEMPLATES = templatesJson.templates as RouteTemplate[];
+export { TEMPLATES };
 
 export function TemplatePicker({
   onPick,

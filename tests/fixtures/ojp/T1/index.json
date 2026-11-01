@@ -1,0 +1,38 @@
+{
+  "5a3be93a78fa": {
+    "from": "Zürich HB",
+    "to": "Alp Grüm",
+    "via": ["Chur", "Thusis", "Filisur", "Bergün/Bravuogn", "Preda", "St. Moritz", "Pontresina"],
+    "time": "2026-11-07T07:00"
+  },
+  "1fee9d91ccf0": {
+    "from": "Zürich HB",
+    "to": "Thusis",
+    "via": ["Chur"],
+    "time": "2026-11-07T07:00"
+  },
+  "229ff10bdf30": {
+    "from": "Thusis",
+    "to": "Bergün/Bravuogn",
+    "via": ["Filisur"],
+    "time": "2026-11-07T08:58"
+  },
+  "7bce97140286": {
+    "from": "Bergün/Bravuogn",
+    "to": "St. Moritz",
+    "via": ["Preda"],
+    "time": "2026-11-07T12:17"
+  },
+  "212c8a6bc9e5": {
+    "from": "St. Moritz",
+    "to": "Alp Grüm",
+    "via": ["Pontresina"],
+    "time": "2026-11-07T13:55"
+  },
+  "b865ad45f13a": {
+    "from": "Alp Grüm",
+    "to": "Zürich HB",
+    "via": ["Pontresina", "Zernez", "Sagliains", "Klosters Platz", "Landquart"],
+    "time": "2026-11-07T16:12"
+  }
+}
