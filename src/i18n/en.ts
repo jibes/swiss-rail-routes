@@ -131,6 +131,8 @@ export const en = {
   saveToTrips: 'Save to my trips',
   shareRoute: 'Share route',
   shareTrip: 'Share trip',
+  change: 'Change',
+  changeTo: 'Instead of {name}',
 };
 
 export type Catalogue = typeof en;

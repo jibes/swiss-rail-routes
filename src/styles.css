@@ -1536,3 +1536,7 @@ a.secondary {
     animation: here 2s ease-out infinite;
   }
 }
+
+.stop-change {
+  padding: 0 0 8px;
+}

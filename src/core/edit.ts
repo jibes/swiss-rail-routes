@@ -127,3 +127,23 @@ export function insertTemplate(
   list.splice(at, 0, ...add);
   return withWaypoints(tour, list);
 }
+
+/** Swaps the station at `index` for another, keeping whether you get off there and how long. */
+export function replaceWaypoint(
+  tour: Tour,
+  index: number,
+  stop: Pick<Waypoint, 'stopRef' | 'name'>,
+): Tour {
+  const w = tour.waypoints[index];
+  if (!w) return tour;
+  const closed = isClosed(tour);
+  const list = tour.waypoints.map((x, i) =>
+    i === index ? { ...x, ...stop, templateId: undefined } : x,
+  );
+  // In a round trip the start and the return are the same station: change both.
+  if (closed && (index === 0 || index === list.length - 1)) {
+    const other = index === 0 ? list.length - 1 : 0;
+    list[other] = { ...list[other]!, ...stop };
+  }
+  return withWaypoints(tour, list);
+}

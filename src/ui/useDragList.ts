@@ -13,6 +13,8 @@ interface Drag {
 export function useDragList(onMove: (from: number, to: number) => void) {
   const [list, setList] = useState<HTMLOListElement | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // Right after a drop the rows take their new places at once: no slide back from the gap.
+  const [settling, setSettling] = useState(false);
 
   const rows = () => [...(list?.children ?? [])] as HTMLElement[];
 
@@ -31,6 +33,7 @@ export function useDragList(onMove: (from: number, to: number) => void) {
   const grip = (i: number) => ({
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
+      e.preventDefault(); // no text selection while dragging with a mouse
       e.currentTarget.setPointerCapture(e.pointerId);
       setDrag({
         from: i,
@@ -46,7 +49,11 @@ export function useDragList(onMove: (from: number, to: number) => void) {
       setDrag({ ...drag, dy, over: overFor(drag, dy) });
     },
     onPointerUp: () => {
-      if (drag && drag.from === i && drag.over !== drag.from) onMove(drag.from, drag.over);
+      if (drag && drag.from === i && drag.over !== drag.from) {
+        setSettling(true);
+        onMove(drag.from, drag.over);
+        requestAnimationFrame(() => requestAnimationFrame(() => setSettling(false)));
+      }
       setDrag(null);
     },
     onPointerCancel: () => setDrag(null),
@@ -60,7 +67,7 @@ export function useDragList(onMove: (from: number, to: number) => void) {
 
   /** Style for row i while a drag is on: the dragged row follows, the others make room. */
   const rowStyle = (i: number): CSSProperties | undefined => {
-    if (!drag) return undefined;
+    if (!drag) return settling ? { transition: 'none' } : undefined;
     const h = drag.rects[drag.from]!.height;
     if (i === drag.from)
       return { transform: `translateY(${drag.dy}px)`, zIndex: 2, transition: 'none' };

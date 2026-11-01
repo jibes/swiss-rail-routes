@@ -8,6 +8,7 @@ import {
   setRoundTrip,
   setStop,
   insertTemplate,
+  replaceWaypoint,
 } from '../src/core/edit';
 import { isRoundTrip } from '../src/core/tour';
 
@@ -94,5 +95,24 @@ describe('insertTemplate', () => {
       'Thusis:via',
       'Chur:end',
     ]);
+  });
+});
+
+describe('replaceWaypoint', () => {
+  it('swaps a station in place, keeping its stay', () => {
+    const t = setStop(
+      addWaypoint(addWaypoint(newTour('t', '2026-11-07', s('Zurich')), s('Luzern')), s('Bern')),
+      1,
+      true,
+      60,
+    );
+    const r = replaceWaypoint(t, 1, s('Zug'));
+    expect(r.waypoints[1]).toMatchObject({ name: 'Zug', kind: 'stop', dwellMin: 60 });
+  });
+
+  it('changes start and return together in a round trip', () => {
+    const t = setRoundTrip(addWaypoint(newTour('t', '2026-11-07', s('Zurich')), s('Luzern')), true);
+    const r = replaceWaypoint(t, 0, s('Winterthur'));
+    expect(kinds(r)).toEqual(['Winterthur:start', 'Luzern:via', 'Winterthur:end']);
   });
 });

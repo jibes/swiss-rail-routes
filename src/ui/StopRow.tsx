@@ -1,4 +1,5 @@
-import type { CSSProperties, KeyboardEvent, PointerEvent } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { StopPicker } from './StopPicker';
 import type { Waypoint } from '../core/model';
 import { useT } from '../store';
 import { Icon } from './icons';
@@ -23,6 +24,8 @@ interface Props {
   onDwell: (min: number) => void;
   onMove: (to: number) => void;
   onRemove: () => void;
+  /** Swap the station; absent where it cannot change (the replan start). */
+  onReplace?: (stop: { stopRef: string; name: string }) => void;
   style?: CSSProperties;
   dragging?: boolean;
   grip: {
@@ -37,6 +40,7 @@ interface Props {
 /** A station on the line. Tap to open its few options in place. */
 export function StopRow(p: Props) {
   const t = useT();
+  const [changing, setChanging] = useState(false);
   const { w } = p;
   const inner = w.kind !== 'start' && w.kind !== 'end';
   const off = w.kind === 'stop' || w.kind === 'turnaround';
@@ -72,6 +76,18 @@ export function StopRow(p: Props) {
           <Icon name="grip" size={20} />
         </button>
       </div>
+      {p.open && changing && p.onReplace && (
+        <div className="stop-change">
+          <StopPicker
+            label={t('changeTo', { name: w.name })}
+            autoFocus
+            onPick={(s) => {
+              p.onReplace!({ stopRef: s.ref, name: s.name });
+              setChanging(false);
+            }}
+          />
+        </div>
+      )}
       {p.open && (
         <div id={id} className="stop-tools">
           {inner && (
@@ -93,6 +109,16 @@ export function StopRow(p: Props) {
               </button>
             ))}
           <span className="spacer" />
+          {p.onReplace && (
+            <button
+              type="button"
+              className="chip"
+              aria-expanded={changing}
+              onClick={() => setChanging((c) => !c)}
+            >
+              {t('change')}
+            </button>
+          )}
           <button
             type="button"
             className="icon"

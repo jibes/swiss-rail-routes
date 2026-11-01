@@ -4,6 +4,7 @@ import {
   insertTemplate,
   moveWaypoint,
   removeWaypoint,
+  replaceWaypoint,
   setDwell,
   setRoundTrip,
   setStop,
@@ -138,6 +139,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
                   edit((x) => removeWaypoint(x, i));
                   setOpen(null);
                 }}
+                onReplace={(stop) => edit((x) => replaceWaypoint(x, i, stop))}
                 grip={grip(i)}
                 style={rowStyle(i)}
                 dragging={dragging === i}

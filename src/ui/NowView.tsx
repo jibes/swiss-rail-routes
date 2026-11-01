@@ -102,11 +102,6 @@ export function NowView({ id }: { id: string }) {
         );
       })}
 
-      {state.phase !== 'done' && (
-        <a className={state.risks.length ? 'primary' : 'secondary'} href={`#/trip/${id}/replan`}>
-          {t('replanHere')}
-        </a>
-      )}
       {trip.previous && (
         <button type="button" className="text-button" onClick={() => update(id, undo)}>
           {t('undoReplan')}
@@ -118,6 +113,20 @@ export function NowView({ id }: { id: string }) {
         dwell={trip.legs.map((l) => l.to.dwellMin)}
         live={{ state, now }}
       />
+
+      {state.phase !== 'done' && (
+        <div className="dock">
+          <div className="dock-inner">
+            <a
+              className={`${state.risks.length ? 'primary' : 'secondary'} wide`}
+              href={`#/trip/${id}/replan`}
+            >
+              <Icon name="route" />
+              {t('replanHere')}
+            </a>
+          </div>
+        </div>
+      )}
 
       <p className="muted live-source">
         {fetchedAt

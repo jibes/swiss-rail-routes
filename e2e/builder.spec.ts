@@ -28,6 +28,16 @@ test('builds a round trip from stations and a template, keeps it after reload', 
   await luzern.getByRole('checkbox', { name: 'Get off' }).check();
   await luzern.getByRole('button', { name: '1h', exact: true }).click();
   await expect(luzern).toContainText('1h');
+  // Change a station in place: the stay stays.
+  await luzern.getByRole('button', { name: 'Change' }).click();
+  await page.getByRole('combobox', { name: 'Instead of Luzern' }).fill('Zug');
+  await page.getByRole('combobox', { name: 'Instead of Luzern' }).press('Enter');
+  const zug = rows.filter({ hasText: /^Zug/ }).first();
+  await expect(zug).toContainText('1h');
+  await zug.getByRole('button', { name: 'Change' }).click();
+  await page.getByRole('combobox', { name: 'Instead of Zug' }).fill('Luzern');
+  await page.getByRole('combobox', { name: 'Instead of Zug' }).press('Enter');
+  await expect(rows.filter({ hasText: /^Luzern/ }).first()).toContainText('1h');
   await page.getByLabel('Tour name').fill('Brünig loop');
 
   const results = new AxeBuilder({ page }).analyze();

@@ -17,7 +17,15 @@ const MODE_KEY: Partial<Record<StopMode, MessageKey>> = {
 };
 
 /** Station search as an ARIA combobox over the bundled stop index. */
-export function StopPicker({ onPick, label }: { onPick: (s: Stop) => void; label: string }) {
+export function StopPicker({
+  onPick,
+  label,
+  autoFocus,
+}: {
+  onPick: (s: Stop) => void;
+  label: string;
+  autoFocus?: boolean;
+}) {
   const t = useT();
   const id = useId();
   const [index, setIndex] = useState<StopSearch | null>(null);
@@ -49,6 +57,7 @@ export function StopPicker({ onPick, label }: { onPick: (s: Stop) => void; label
         aria-activedescendant={hits.length ? `${id}-${active}` : undefined}
         aria-autocomplete="list"
         autoComplete="off"
+        autoFocus={autoFocus}
         value={text}
         placeholder={index ? label : failed ? t('stopsFailed') : t('stopsLoading')}
         disabled={!index}

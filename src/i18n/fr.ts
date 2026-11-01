@@ -132,4 +132,6 @@ export const fr = {
   saveToTrips: 'Ajouter à mes voyages',
   shareRoute: 'Partager l’itinéraire',
   shareTrip: 'Partager le voyage',
+  change: 'Changer',
+  changeTo: 'Au lieu de {name}',
 } satisfies Catalogue;

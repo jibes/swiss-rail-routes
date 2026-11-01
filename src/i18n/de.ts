@@ -133,4 +133,6 @@ export const de = {
   saveToTrips: 'Zu meinen Reisen',
   shareRoute: 'Route teilen',
   shareTrip: 'Reise teilen',
+  change: 'Ändern',
+  changeTo: 'Statt {name}',
 } satisfies Catalogue;
