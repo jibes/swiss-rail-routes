@@ -17,6 +17,9 @@ interface ToursState {
 
 const newId = () => crypto.randomUUID();
 
+/** Empty routes made on this device in this session (New tour): the only ones tidied away. */
+export const madeHere = new Set<string>();
+
 /** Next Saturday, or today when it is one: day trips are mostly planned for the weekend. */
 export function defaultDate(now = new Date()): string {
   const d = new Date(now);
@@ -58,6 +61,7 @@ export const useTours = create<ToursState>()((set, get) => ({
   },
   create: (tour) => {
     const id = newId();
+    if (!tour) madeHere.add(id);
     const t: Tour = tour ? { ...tour, id } : newTour(id, defaultDate());
     const tours = [t, ...get().tours];
     set({ tours });

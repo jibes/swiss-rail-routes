@@ -203,6 +203,8 @@ export const en = {
   tripChangedMeanwhile:
     'This trip was changed meanwhile (on another device or in another window). Open it again and replan from there.',
   lateBy: '{n} min late',
+  screenFailed: 'Something went wrong on this screen. Your routes and trips are kept.',
+  toStart: 'Back to the start',
 };
 
 export type Catalogue = typeof en;

@@ -206,4 +206,6 @@ export const fr = {
   tripChangedMeanwhile:
     'Ce voyage a été modifié entre-temps (sur un autre appareil ou dans une autre fenêtre). Rouvrez-le et replanifiez.',
   lateBy: '{n} min de retard',
+  screenFailed: 'Un problème est survenu sur cet écran. Vos itinéraires et voyages sont conservés.',
+  toStart: 'Retour à l’accueil',
 } satisfies Catalogue;

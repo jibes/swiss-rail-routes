@@ -10,6 +10,7 @@ import { Trips } from './ui/Trips';
 import { TripView } from './ui/TripView';
 import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
@@ -95,15 +96,23 @@ export function App() {
     opened.current = true;
     if (location.hash && location.hash !== '#/') return;
     // Once per tab (or app start): sessionStorage outlives a reload, not a closed tab.
-    if (sessionStorage.getItem(OPENED)) return;
-    sessionStorage.setItem(OPENED, '1');
+    try {
+      if (sessionStorage.getItem(OPENED)) return;
+      sessionStorage.setItem(OPENED, '1');
+    } catch {
+      // No session storage (some private modes): go to the trip as on any opening.
+    }
     const live = liveTrip(useTrips.getState().trips, Date.now());
     if (live) location.hash = `/trip/${live.id}`;
   }, [tripsLoaded]);
 
   return (
     <>
-      {loaded && tripsLoaded ? <Route hash={hash} /> : null}
+      {loaded && tripsLoaded ? (
+        <ErrorBoundary resetKey={hash.split('?')[0]!}>
+          <Route hash={hash} />
+        </ErrorBoundary>
+      ) : null}
       {!isNative && <UpdateBanner />}
     </>
   );

@@ -105,8 +105,15 @@ export function StopPicker({
             e.preventDefault();
             return onCancel();
           }
+          if (e.key === 'ArrowDown' && closed) {
+            e.preventDefault();
+            return setClosed(false);
+          }
+          // Enter with no station found keeps the field and its text (nothing to pick yet);
+          // on the unchanged name or an empty field it leaves.
           if (e.key === 'Enter' && onLeave && !hits.length) {
             e.preventDefault();
+            if (text.trim() && text !== initial && listOpen) return;
             return onLeave(text.trim());
           }
           if (!hits.length) return;

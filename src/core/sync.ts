@@ -142,13 +142,32 @@ export async function open<T>(data: string, aes: CryptoKey): Promise<T> {
 
 // ── Changes and merging ─────────────────────────────────────────────────────────────────────
 
-/** FNV-1a over the JSON: enough to notice a change, not a security property. */
-export function hashOf(value: unknown): string {
-  const s = JSON.stringify(value);
+const fnv = (s: string) => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(36) + s.length.toString(36);
+};
+
+/** JSON with object keys sorted: the same value gives the same text, whatever made it. */
+function stable(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`;
+  if (v && typeof v === 'object')
+    return `{${Object.keys(v)
+      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  return JSON.stringify(v) ?? 'null';
 }
+
+/**
+ * FNV-1a over key-sorted JSON: enough to notice a change, not a security property. Key order
+ * does not count (a route rebuilt on loading is the same route).
+ */
+export const hashOf = (value: unknown): string => fnv(stable(value));
+
+/** The hash before key order stopped counting: stamps saved with it still match once. */
+const legacyHashOf = (value: unknown): string => fnv(JSON.stringify(value));
 
 /**
  * This device's items as entries: unchanged ones keep their time, changed or new ones get a
@@ -165,7 +184,8 @@ export function stampLocal<T extends { id: string }>(
   const out: Entry<T>[] = items.map((value) => {
     seen.add(value.id);
     const p = prev[value.id];
-    return { id: value.id, at: p && p.h === hashOf(value) ? p.at : later(p), value };
+    const same = p && (p.h === hashOf(value) || p.h === legacyHashOf(value));
+    return { id: value.id, at: same ? p.at : later(p), value };
   });
   for (const [id, p] of Object.entries(prev))
     if (!seen.has(id)) out.push({ id, at: p.h === '' ? p.at : later(p) });

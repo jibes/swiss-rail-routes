@@ -11,8 +11,6 @@ const TICKETS: [TicketType, 'ticketGA' | 'ticketDay' | 'ticketHalf' | 'ticketNon
   ['none', 'ticketNone'],
 ];
 
-/** When and with which ticket: date, depart at / back by + time, ticket. Kept on the route as
- * the values last used, so the next plan starts from them. */
 /**
  * The native picker on a click anywhere on the pill (desktop browsers open it only from the
  * small icon at the field's right edge; the field lies invisible over the pill).
@@ -25,6 +23,8 @@ const openPicker = (e: MouseEvent<HTMLInputElement>) => {
   }
 };
 
+/** When and with which ticket: date, depart at / back by + time, ticket. Kept on the route as
+ * the values last used, so the next plan starts from them. */
 export function PlanSettings({ tour, edit }: { tour: Tour; edit: (f: (x: Tour) => Tour) => void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);

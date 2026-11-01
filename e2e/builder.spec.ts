@@ -102,3 +102,57 @@ test('reorders stations by dragging the grip, and with arrow keys', async ({ pag
   // Start and end follow the order.
   await expect(page.locator('.line > li').last()).toHaveClass(/last/);
 });
+
+test('dragging while another station is being edited cancels the edit, deletes nothing', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New tour' }).click();
+  const search = page.locator('.stop.add .picker input');
+  for (const name of ['Zürich HB', 'Luzern', 'Zug', 'Arth-Goldau', 'Bern']) {
+    await search.fill(name);
+    await page.getByRole('option', { name, exact: true }).click();
+  }
+  const names = () => page.locator('.line > li .stop-name > span:first-child').allInnerTexts();
+  await expect.poll(names).toEqual(['Zürich HB', 'Luzern', 'Zug', 'Arth-Goldau', 'Bern']);
+
+  // Edit Arth-Goldau and clear it, then drag Luzern to the end instead of leaving the field.
+  await page.getByRole('button', { name: /^Arth-Goldau/ }).click();
+  await page.getByRole('button', { name: 'Clear' }).click();
+  const grip = page.getByRole('button', { name: /Move Luzern/ });
+  const box = (await grip.boundingBox())!;
+  const bern = (await page.getByRole('button', { name: /Move Bern/ }).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, bern.y + bern.height, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(names).toEqual(['Zürich HB', 'Zug', 'Arth-Goldau', 'Bern', 'Luzern']);
+
+  // Leaving an edit by tapping another field keeps the focus there (the phone's keyboard opens).
+  await page.getByRole('button', { name: /^Zug/ }).click();
+  await page.getByLabel('Tour name').click();
+  await expect(page.getByLabel('Tour name')).toBeFocused();
+});
+
+test('a crafted old #/t/ link cannot put a broken route into the app', async ({ page }) => {
+  const bad = Buffer.from(JSON.stringify({ schema: 1, name: 5, waypoints: [] })).toString(
+    'base64url',
+  );
+  await page.goto(`./#/t/${bad}`);
+  await expect(page.getByRole('alert')).toBeVisible(); // "this link is broken"
+  const odd = Buffer.from(
+    JSON.stringify({
+      schema: 1,
+      name: { x: 1 },
+      waypoints: [
+        { stopRef: 'ch:1:sloid:3000', name: 'Zürich HB' },
+        { stopRef: 'ch:1:sloid:9000', name: 'Chur' },
+      ],
+    }),
+  ).toString('base64url');
+  await page.goto(`./#/t/${odd}`);
+  await page.getByRole('button', { name: 'Save to my routes' }).click();
+  await page.getByRole('button', { name: 'Plan' }).waitFor();
+  await page.goto('./');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Routes');
+});

@@ -206,4 +206,6 @@ export const it = {
   tripChangedMeanwhile:
     'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Riaprilo e ripianifica.',
   lateBy: '{n} min di ritardo',
+  screenFailed: 'Qualcosa è andato storto in questa schermata. Percorsi e viaggi sono conservati.',
+  toStart: 'Torna all’inizio',
 } satisfies Catalogue;

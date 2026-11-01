@@ -35,6 +35,7 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
   // A new object per move, so moving to the same index twice still refocuses.
   const [focusGrip, setFocusGrip] = useState<{ i: number } | null>(null);
   const [focusRow, setFocusRow] = useState<{ i: number } | null>(null);
+  const [editingRow, setEditingRow] = useState<number | null>(null);
   const {
     listRef,
     list: listEl,
@@ -144,7 +145,16 @@ export function Builder({ id, showTemplates }: { id: string; showTemplates?: boo
                   setFocusRow({ i });
                 }}
                 onReplace={(stop) => edit((x) => replaceWaypoint(x, i, stop))}
-                grip={grip(i)}
+                editing={editingRow === i}
+                onEditing={(on) => setEditingRow(on ? i : null)}
+                // A drag closes an open field without applying it (rows move under it).
+                grip={{
+                  ...grip(i),
+                  onPointerDown: (e) => {
+                    setEditingRow(null);
+                    grip(i).onPointerDown(e);
+                  },
+                }}
                 style={rowStyle(i)}
                 dragging={dragging === i}
               />

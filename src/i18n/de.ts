@@ -209,4 +209,7 @@ export const de = {
   tripChangedMeanwhile:
     'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Öffne sie neu und plane von dort aus.',
   lateBy: '{n} Min. verspätet',
+  screenFailed:
+    'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Routen und Reisen bleiben erhalten.',
+  toStart: 'Zurück zum Start',
 } satisfies Catalogue;

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Tour } from '../core/model';
 import { isRoundTrip, totalDwellMin } from '../core/tour';
 import { useT } from '../store';
-import { useTours } from '../tours';
+import { madeHere, useTours } from '../tours';
 import { dwellLabel } from './StopRow';
 import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
@@ -46,8 +46,9 @@ export function Home() {
   // "New tour" and then Back leaves an empty route: tidy it away on coming back (only when it
   // has neither a station nor a name: a named one was meant).
   useEffect(() => {
+    // Only routes this device made itself: an empty one from another device may be filled there.
     for (const x of useTours.getState().tours)
-      if (!x.waypoints.length && !x.name.trim()) removeTour(x.id);
+      if (madeHere.has(x.id) && !x.waypoints.length && !x.name.trim()) removeTour(x.id);
   }, [removeTour]);
   const create = useTours((s) => s.create);
   const index = useStopIndex();

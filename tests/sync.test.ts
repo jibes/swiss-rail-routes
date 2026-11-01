@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveKeys,
   formatKey,
+  hashOf,
   keyFromScan,
   itemsOf,
   joinStamps,
@@ -98,6 +99,17 @@ describe('merging', () => {
     const day = 86_400_000;
     expect(mergeEntries([{ id: 'x', at: 0 }], [], TOMBSTONE_DAYS * day - 1)).toHaveLength(1);
     expect(mergeEntries([{ id: 'x', at: 0 }], [], TOMBSTONE_DAYS * day)).toHaveLength(0);
+  });
+});
+
+describe('hashing', () => {
+  it('ignores key order: a route rebuilt on loading is not a change', () => {
+    expect(hashOf({ a: 1, b: [{ x: 1, y: 2 }] })).toBe(hashOf({ b: [{ y: 2, x: 1 }], a: 1 }));
+    expect(hashOf({ a: 1 })).not.toBe(hashOf({ a: 2 }));
+    // Same item, keys reordered, stamped with an old (order-sensitive) hash: still unchanged.
+    const before = [{ id: 'r', at: 100, value: { id: 'r', name: 'A', n: 1 } }];
+    const reordered = [{ n: 1, name: 'A', id: 'r' }];
+    expect(stampLocal(stampsOf(before), reordered, 500)[0]!.at).toBe(100);
   });
 });
 

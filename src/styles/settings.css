@@ -42,7 +42,7 @@
 }
 
 .sync-dot.ok {
-  background: #1f9d55;
+  background: var(--ok);
 }
 
 .sync-dot.syncing {
@@ -57,7 +57,7 @@
 
 .sync-dot.busy,
 .sync-dot.offline {
-  background: var(--late, #c98a00);
+  background: var(--amber);
 }
 
 .sync-actions {

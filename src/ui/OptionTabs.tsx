@@ -17,13 +17,36 @@ export function OptionTabs({
   const t = useT();
   if (options.length < 2) return <p className="single muted">{t('onlyOne')}</p>;
   return (
-    <div role="tablist" className="tabs" aria-label={t('alternatives')}>
+    <div
+      role="tablist"
+      className="tabs"
+      aria-label={t('alternatives')}
+      // Arrow keys, Home and End move between the options (one Tab stop for the group).
+      onKeyDown={(e) => {
+        const i = options.findIndex((c) => c === shown);
+        const to =
+          e.key === 'ArrowRight' || e.key === 'ArrowDown'
+            ? Math.min(i + 1, options.length - 1)
+            : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+              ? Math.max(i - 1, 0)
+              : e.key === 'Home'
+                ? 0
+                : e.key === 'End'
+                  ? options.length - 1
+                  : -1;
+        if (to < 0) return;
+        e.preventDefault();
+        onPick(options[to]!.dep);
+        e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[to]?.focus();
+      }}
+    >
       {options.map((c) => (
         <button
           key={c.dep}
           role="tab"
           type="button"
           aria-selected={c === shown}
+          tabIndex={c === shown ? 0 : -1}
           onClick={() => onPick(c.dep)}
         >
           <span className="times">{hhmm(c.dep)}</span>

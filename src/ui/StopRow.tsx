@@ -33,6 +33,9 @@ interface Props {
   fixed?: boolean;
   /** A round trip's start or return: editable, but it does not move. */
   noGrip?: boolean;
+  /** Whether this row is being edited, when the list decides (one at a time). */
+  editing?: boolean;
+  onEditing?: (on: boolean) => void;
   style?: CSSProperties;
   dragging?: boolean;
   grip: {
@@ -50,7 +53,10 @@ interface Props {
  */
 export function StopRow(p: Props) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
+  // Controlled by the list when it passes `editing` (so a drag elsewhere can close it).
+  const [own, setOwn] = useState(false);
+  const editing = p.editing ?? own;
+  const setEditing = (on: boolean) => (p.onEditing ? p.onEditing(on) : setOwn(on));
   const head = useRef<HTMLButtonElement>(null);
   const wasEditing = useRef(false);
   const { w } = p;
@@ -61,8 +67,16 @@ export function StopRow(p: Props) {
 
   // Back on the name after editing, so keyboard users keep their place.
   useEffect(() => {
-    if (!editing && wasEditing.current) head.current?.focus();
+    // Back on the name only when the focus would be lost (not when the user tapped elsewhere).
+    // Checked a tick later: this runs inside the blur, before the browser moves the focus on.
+    const ended = !editing && wasEditing.current;
     wasEditing.current = editing;
+    if (!ended) return;
+    const timer = setTimeout(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body) head.current?.focus();
+    });
+    return () => clearTimeout(timer);
   }, [editing]);
 
   return (
