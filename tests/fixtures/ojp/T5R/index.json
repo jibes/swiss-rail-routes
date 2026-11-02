@@ -10,5 +10,19 @@
     "to": "Kleine Scheidegg",
     "via": [],
     "time": "2026-11-07T10:11"
+  },
+  "ffe176ba5aac": {
+    "from": "Zweilütschinen",
+    "to": "Kleine Scheidegg",
+    "via": [],
+    "time": "2026-11-07T09:16"
+  },
+  "8ff070e1ba6d": {
+    "from": "Zweilütschinen",
+    "to": "Kleine Scheidegg",
+    "via": [
+      "Wengen"
+    ],
+    "time": "2026-11-07T09:16"
   }
 }

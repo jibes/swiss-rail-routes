@@ -42,7 +42,7 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
     await page.locator('.menu-scrim').click({ position: { x: 5, y: 400 } });
     await page.getByRole('button', { name: 'Map' }).click();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
-    await page.getByRole('button', { name: 'Timetable' }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(page).toHaveURL(/#\/trip\//);
     await expect(page.locator('.trip-line .ride').first()).toBeVisible();
   });

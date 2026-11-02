@@ -8,7 +8,6 @@ import type { Connection } from '../core/model';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { useT } from '../store';
-import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { NotFound } from './NotFound';
 import { TEMPLATES } from './TemplatePicker';
@@ -20,12 +19,11 @@ maplibregl.setWorkerUrl(workerUrl);
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 const ACCENT = '#c0261b';
 
-/** A route's map (with its last plan) or a trip's (with its saved connections). */
-export default function MapView({ id, trip: tripId }: { id: string; trip?: boolean }) {
+/** A trip's map: its saved connections, or its last plan while it has none. */
+export default function MapView({ id }: { id: string }) {
   const t = useT();
-  const route = useTours((s) => s.tours.find((x) => x.id === id));
-  const trip = useTrips((s) => (tripId ? s.trips.find((x) => x.id === id) : undefined));
-  const tour = tripId ? trip?.route : route;
+  const trip = useTrips((s) => s.trips.find((x) => x.id === id));
+  const tour = trip?.route;
   const tripChain = trip?.chain?.connections;
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -45,7 +43,7 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
     (async () => {
       const [index, plans] = await Promise.all([stopSearch(), loadPlans()]);
       if (gone || !box.current) return;
-      const saved = plans[current.id];
+      const saved = plans[id];
       const chain: Connection[] | undefined =
         savedChain ??
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
@@ -114,7 +112,7 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
       gone = true;
       map?.remove();
     };
-  }, [json]);
+  }, [json, id]);
 
   if (!tour) return <NotFound />;
   return (
@@ -125,16 +123,9 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
           className="icon"
           aria-label={t('back')}
           // Up to the trip, as on every screen: the map may have been opened from a link.
-          onClick={() => go(tripId ? `/trip/${id}` : '/')}
+          onClick={() => go(`/trip/${id}`)}
         >
           <Icon name="back" />
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => go(tripId ? `/trip/${id}` : `/tour/${id}/plan`)}
-        >
-          {t('timeline')}
         </button>
       </div>
       {failed && (

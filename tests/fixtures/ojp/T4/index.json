@@ -141,47 +141,11 @@
     "via": [],
     "time": "2026-11-08T11:41"
   },
-  "e17fdeda2f79": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T14:54"
-  },
   "a316aff6cb0d": {
     "from": "Luzern",
     "to": "Zürich HB",
     "via": [],
     "time": "2026-11-07T15:53"
-  },
-  "52cdd1e9e94f": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T17:54"
-  },
-  "1e2995ecc2d9": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T16:51"
-  },
-  "ae5b1801f363": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T18:45"
-  },
-  "15b1b331641f": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T17:51"
-  },
-  "1c6e6ad1a408": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-08T11:45"
   },
   "5c9d0b78546b": {
     "from": "Rigi Kulm",
@@ -199,18 +163,6 @@
       "Vitznau"
     ],
     "time": "2026-11-07T11:19"
-  },
-  "801a6550bb14": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T13:53"
-  },
-  "2bad6d4ad789": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T15:54"
   },
   "b20aae4a7c3b": {
     "from": "Rigi Kulm",
@@ -234,12 +186,6 @@
     "to": "Zürich HB",
     "via": [],
     "time": "2026-11-07T16:53"
-  },
-  "8e85a641f507": {
-    "from": "Luzern",
-    "to": "Zürich HB",
-    "via": [],
-    "time": "2026-11-07T16:54"
   },
   "4fee8228b2d0": {
     "from": "Luzern",

@@ -509,6 +509,17 @@
   box-shadow: none;
 }
 
+/* While the next plan comes the line keeps the last one, its times shimmering (no fading: the
+   names keep their contrast): a station just added is not "missed", it waits for its times. */
+.trip-line.planning .station.missed .n {
+  text-decoration: none;
+  color: inherit;
+}
+
+.trip-line.planning .missed-note {
+  display: none;
+}
+
 .trip-line .missed-note {
   grid-column: 3 / -1;
   display: flex;

@@ -85,16 +85,6 @@
   box-shadow: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .options,
-  .tabs button {
-    transition:
-      background-color 160ms ease,
-      color 160ms ease,
-      opacity 160ms ease;
-  }
-}
-
 .icon.secondary {
   width: 52px;
   height: 52px;

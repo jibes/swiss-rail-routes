@@ -16,7 +16,6 @@ export const de = {
   wTightTransfer: 'Knapper Umstieg in {at}: {min} Min.',
   wAfterSunset: '{name} nach Sonnenuntergang ({time})',
   wSeasonal: 'Saisonale Einschränkungen',
-  untitled: 'Ohne Namen',
   back: 'Zurück',
   tourName: 'Name',
   date: 'Datum',
@@ -55,7 +54,6 @@ export const de = {
   modeBus: 'Bus',
   modeLift: 'Lift',
   map: 'Karte',
-  timeline: 'Fahrplan',
   mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
   transfer1: '1 Umstieg',
   planned: '{min} geplant',
@@ -149,7 +147,7 @@ export const de = {
   mapStraight:
     'Gestrichelt: Dort ist der Gleisverlauf nicht bekannt, die Strecke ist gerade gezeichnet.',
   tripChangedMeanwhile:
-    'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Öffne sie neu und plane von dort aus.',
+    'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Beginne neu mit ihr, wie sie jetzt ist.',
   lateBy: '{n} Min. verspätet',
   screenFailed: 'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Reisen bleiben erhalten.',
   toStart: 'Zurück zum Start',
@@ -247,4 +245,5 @@ export const de = {
   syncUpdate: 'Aktualisiere die App zum Abgleichen: Ein anderes Gerät hat eine neuere Version.',
   relaxedLeg:
     '{from} → {to}: Keine Verbindung fährt über alle gewählten Stationen oder Linien; die nächstbeste ist gezeigt.',
+  startAgain: 'Neu beginnen',
 } satisfies Catalogue;

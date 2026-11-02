@@ -6,6 +6,8 @@ export default defineConfig({
   testDir: 'e2e',
   // A stray test.only must not turn CI green with one test.
   forbidOnly: !!process.env.CI,
+  // Planning a whole trip through the UI takes up to ~25 s on a slow runner (sync, T4).
+  timeout: 60_000,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
   use: {
     baseURL: `http://localhost:4173${base}`,

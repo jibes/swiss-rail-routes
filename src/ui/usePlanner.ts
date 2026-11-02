@@ -18,11 +18,16 @@ const QUIET_MS = 400;
 
 export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const update = useTrips((s) => s.update);
-  const [status, setStatus] = useState<PlanStatus>('idle');
+  // The status with the route it is about: after an edit an old error or "done" never shows
+  // for the new route (it is planning until said otherwise).
+  const [st, setSt] = useState<{ json: string; status: PlanStatus; detail: string }>({
+    json: '',
+    status: 'idle',
+    detail: '',
+  });
   // The result with the route it was planned for: options of an older route never show or pick.
   const [planned_, setPlanned] = useState<{ json: string; result: PlanResult } | null>(null);
   const setResult = (result: PlanResult, forJson: string) => setPlanned({ json: forJson, result });
-  const [detail, setDetail] = useState('');
   const [attempt, setAttempt] = useState(0);
   const id = trip?.id;
   const json = trip ? routeJson(trip) : '';
@@ -40,16 +45,16 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
         if (saved?.tourJson === json && saved.result.legs && saved.result.options) {
           log('planner.cached', { trip: id, at: saved.at });
           setResult(saved.result, json);
-          setStatus('done');
+          setSt({ json, status: 'done', detail: '' });
           if (!planned) keep(saved.result);
           return;
         }
         if (planned) {
           // A timetable from before plans were kept with the trip: keep it, nothing to ask.
-          setStatus('done');
+          setSt({ json, status: 'done', detail: '' });
           return;
         }
-        setStatus('planning');
+        setSt({ json, status: 'planning', detail: '' });
         log('planner.plan', { trip: id });
         try {
           const current = useTrips.getState().trips.find((t) => t.id === id);
@@ -58,19 +63,21 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
           const r = await planRoute(current, ctrl.signal);
           if (ctrl.signal.aborted) return;
           setResult(r, json);
-          setStatus('done');
+          setSt({ json, status: 'done', detail: '' });
           keep(r);
         } catch (e) {
           if (ctrl.signal.aborted) return;
           log('planner.error', { trip: id, e });
-          setDetail(
-            e instanceof WorkerError
-              ? e.detail
-              : e instanceof Error
-                ? `${e.name}: ${e.message}`
-                : '',
-          );
-          setStatus(e instanceof PlanningUnavailable ? 'unavailable' : 'error');
+          setSt({
+            json,
+            status: e instanceof PlanningUnavailable ? 'unavailable' : 'error',
+            detail:
+              e instanceof WorkerError
+                ? e.detail
+                : e instanceof Error
+                  ? `${e.name}: ${e.message}`
+                  : '',
+          });
         }
       },
       planned ? 0 : QUIET_MS,
@@ -96,10 +103,13 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     );
   };
 
+  const status: PlanStatus = !needs ? 'idle' : st.json === json ? st.status : 'planning';
   return {
-    status: needs ? status : 'idle',
+    status,
     result: needs ? result : null,
-    detail,
+    /** The last plan of this screen, for whatever route: shown dimmed while the next comes. */
+    previous: needs ? (planned_?.result ?? null) : null,
+    detail: st.json === json ? st.detail : '',
     retry: () => setAttempt((a) => a + 1),
     pick,
   };

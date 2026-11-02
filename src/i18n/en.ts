@@ -14,7 +14,6 @@ export const en = {
   wTightTransfer: 'Tight transfer in {at}: {min} min',
   wAfterSunset: '{name} passed after sunset ({time})',
   wSeasonal: 'Seasonal restrictions apply',
-  untitled: 'Untitled',
   back: 'Back',
   tourName: 'Name',
   date: 'Date',
@@ -53,7 +52,6 @@ export const en = {
   modeBus: 'bus',
   modeLift: 'lift',
   map: 'Map',
-  timeline: 'Timetable',
   mapOffline: 'Map tiles could not be loaded.',
   transfer1: '1 change',
   planned: '{min} planned',
@@ -143,7 +141,7 @@ export const en = {
   liveStale: 'Live data from {time}; not updated right now',
   mapStraight: 'Dashed: the track is not known there, so it is drawn straight.',
   tripChangedMeanwhile:
-    'This trip was changed meanwhile (on another device or in another window). Open it again and replan from there.',
+    'This trip was changed meanwhile (on another device or in another window). Start again from it as it is now.',
   lateBy: '{n} min late',
   screenFailed: 'Something went wrong on this screen. Your trips are kept.',
   toStart: 'Back to the start',
@@ -238,6 +236,7 @@ export const en = {
   syncUpdate: 'Update the app to sync: another device has a newer version.',
   relaxedLeg:
     '{from} → {to}: no connection takes every station or line you chose; the closest is shown.',
+  startAgain: 'Start again',
 };
 
 export type Catalogue = typeof en;

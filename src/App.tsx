@@ -62,7 +62,7 @@ function Route({ hash: full }: { hash: string }) {
   if (tr?.[3] === 'map')
     return (
       <Suspense fallback={null}>
-        <MapView id={tr[1]!} trip />
+        <MapView id={tr[1]!} />
       </Suspense>
     );
   if (tr) return <TripScreen key={tr[1]} id={tr[1]!} />;

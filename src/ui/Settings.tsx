@@ -18,6 +18,7 @@ import { hhmm } from './format';
 import { Icon } from './icons';
 import { canScan, QrScanner } from './QrScanner';
 import { Select } from './Select';
+import { useLayer } from './layers';
 import { go } from './useHash';
 
 const linkOf = (key: string) => `${publicUrl()}#/sync/${key}`;
@@ -138,6 +139,9 @@ function SyncOff({ offered }: { offered?: string }) {
   const [joining, setJoining] = useState(offered !== undefined);
   const [text, setText] = useState(offered ?? '');
   const [scanning, setScanning] = useState(false);
+  const stopScan = useCallback(() => setScanning(false), []);
+  // Back and Escape close the camera first, as any layer on top.
+  useLayer(scanning, stopScan);
   const valid = parseKey(text) !== null;
   const scanned = useCallback((key: string) => {
     setText(key);

@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useLayer } from './layers';
 import { Icon } from './icons';
 
 export interface Option<V extends string> {
@@ -41,6 +42,9 @@ export function Select<V extends string>({
   // Near the bottom of the screen the list opens upwards, clear of the dock.
   const [up, setUp] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  // Android's Back closes the open list first, as any layer on top.
+  useLayer(open, close);
 
   useEffect(() => {
     if (!open) return;

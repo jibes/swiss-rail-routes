@@ -260,3 +260,22 @@ button {
   text-transform: uppercase;
   color: var(--ink-2);
 }
+
+/* Touch targets: 44 px at least, also where the look is smaller (the box grows, not the icon). */
+.trip-line button.m,
+.trip-screen h1 .title,
+.select > button,
+.trip-line .warn.more {
+  min-height: 44px;
+}
+
+.picker .clear {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.panel .via-line button {
+  width: 44px;
+  height: 44px;
+  margin: -10px -16px -10px -8px;
+}

@@ -8,6 +8,7 @@ import { useT } from '../store';
 import { useTrips } from '../trips';
 import { dayOf, defaultDate, newTrip } from '../core/trip';
 import { markRings } from '../core/line';
+import { autoName } from '../core/naming';
 import { go } from './useHash';
 import { Icon } from './icons';
 
@@ -59,7 +60,7 @@ export function SharedTour({
         </button>
       </header>
       <header className="hero">
-        <h1>{tour.name || t('untitled')}</h1>
+        <h1>{tour.name || autoName(tour, (r) => index?.byRef(stopKey(r))) || t('newTour')}</h1>
         <p>{t('sharedTour')}</p>
       </header>
       <ol className="line">

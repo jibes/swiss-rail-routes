@@ -110,27 +110,6 @@
   box-shadow: none;
 }
 
-/* Add-a-station row: a dashed continuation of the line */
-.stop.add::before {
-  background: repeating-linear-gradient(var(--rail) 0 4px, transparent 4px 9px);
-  top: 0;
-  bottom: calc(100% - 26px);
-}
-
-.stop.add .dot {
-  left: 6px;
-  top: 20px;
-  width: 12px;
-  height: 12px;
-  background: var(--bg);
-  border: 2px dashed var(--ink-3);
-  box-shadow: none;
-}
-
-.stop.add.first::before {
-  display: none;
-}
-
 /* Station search */
 .picker {
   position: relative;

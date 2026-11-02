@@ -96,13 +96,16 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
         </>
       )}
       <div className="live-actions">
-        <a
-          className={`${state?.risks.length ? 'primary' : 'secondary'} wide`}
-          href={`#/trip/${trip.id}/edit`}
-        >
-          <Icon name="route" />
-          {t('replanHere')}
-        </a>
+        {/* Arrived: there is nothing left to replan from here. */}
+        {state?.phase !== 'done' && (
+          <a
+            className={`${state?.risks.length ? 'primary' : 'secondary'} wide`}
+            href={`#/trip/${trip.id}/edit`}
+          >
+            <Icon name="route" />
+            {t('replanHere')}
+          </a>
+        )}
         {trip.previous && (
           <button type="button" className="text-button" onClick={() => update(trip.id, undo)}>
             {t('undoChange')}

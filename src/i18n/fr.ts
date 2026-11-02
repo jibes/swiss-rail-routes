@@ -16,7 +16,6 @@ export const fr = {
   wTightTransfer: 'Correspondance serrée à {at} : {min} min',
   wAfterSunset: '{name} après le coucher du soleil ({time})',
   wSeasonal: 'Restrictions saisonnières',
-  untitled: 'Sans nom',
   back: 'Retour',
   tourName: 'Nom',
   date: 'Date',
@@ -55,7 +54,6 @@ export const fr = {
   modeBus: 'bus',
   modeLift: 'ascenseur',
   map: 'Carte',
-  timeline: 'Horaire',
   mapOffline: 'Impossible de charger la carte.',
   transfer1: '1 changement',
   planned: '{min} prévu',
@@ -147,7 +145,7 @@ export const fr = {
   liveStale: 'Données en direct de {time} ; pas de mise à jour pour l’instant',
   mapStraight: 'En pointillé : le tracé n’est pas connu, la ligne est tracée droite.',
   tripChangedMeanwhile:
-    'Ce voyage a été modifié entre-temps (sur un autre appareil ou dans une autre fenêtre). Rouvrez-le et replanifiez.',
+    'Ce voyage a été modifié entre-temps (sur un autre appareil ou dans une autre fenêtre). Recommencez à partir de son état actuel.',
   lateBy: '{n} min de retard',
   screenFailed: 'Un problème est survenu sur cet écran. Vos voyages sont conservés.',
   toStart: 'Retour à l’accueil',
@@ -245,4 +243,5 @@ export const fr = {
     'Mettez l’app à jour pour synchroniser : un autre appareil a une version plus récente.',
   relaxedLeg:
     '{from} → {to} : aucune liaison ne passe par toutes les gares ou lignes choisies ; la plus proche est affichée.',
+  startAgain: 'Recommencer',
 } satisfies Catalogue;

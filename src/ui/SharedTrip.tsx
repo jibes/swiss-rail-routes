@@ -8,6 +8,7 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { ChainView } from './ChainView';
 import { hhmm, longDate } from './format';
+import { autoName } from '../core/naming';
 import { go } from './useHash';
 import { Icon } from './icons';
 import { RailLoader } from './RailLoader';
@@ -56,7 +57,7 @@ export function SharedTrip({ hash }: { hash: string }) {
         </button>
       </header>
       <header className="hero">
-        <h1>{trip.name || t('untitled')}</h1>
+        <h1>{trip.name || autoName(trip.route) || t('newTour')}</h1>
         <p>{t('sharedTrip')}</p>
       </header>
       <div className="summary">

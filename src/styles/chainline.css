@@ -174,7 +174,10 @@
 /* Planning: the loader where departure and arrival will be */
 .hero-loading {
   display: grid;
+  align-content: center;
   gap: 8px;
+  /* About the height of departure → arrival and the facts below them: nothing jumps. */
+  min-height: 84px;
   margin-top: 14px;
   max-width: 260px;
   font-size: 14px;

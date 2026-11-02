@@ -46,8 +46,38 @@ export function AddSheet({
   const removeMine = useTours((s) => s.remove);
   const [q, setQ] = useState('');
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
+  const sheet = useRef<HTMLDivElement>(null);
+  // Focus goes into the sheet, and back to where it was when the sheet closes.
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    input.current?.focus();
+    return () => {
+      // After the key that closed it is done: Enter on a result must not also press the
+      // button focus goes back to (it would open the sheet again).
+      setTimeout(() => {
+        if (before?.isConnected) before.focus();
+      }, 0);
+    };
+  }, []);
   useLayer(true, onClose);
+  /** Tab stays inside the sheet (it is modal). */
+  const trap = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !sheet.current) return;
+    const all = [
+      ...sheet.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input, [href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ];
+    const first = all[0];
+    const last = all.at(-1);
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last?.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first?.focus();
+    }
+  };
 
   const f = fold(q.trim());
   const stop = (r: string) => index?.byRef(stopKey(r));
@@ -74,7 +104,14 @@ export function AddSheet({
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet add-sheet" role="dialog" aria-modal="true" aria-labelledby={`${id}-h`}>
+      <div
+        ref={sheet}
+        className="sheet add-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-h`}
+        onKeyDown={trap}
+      >
         <div className="grab" aria-hidden="true" />
         <div className="sheet-head">
           <h2 id={`${id}-h`}>{title}</h2>

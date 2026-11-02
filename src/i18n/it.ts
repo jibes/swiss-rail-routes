@@ -16,7 +16,6 @@ export const it = {
   wTightTransfer: 'Coincidenza stretta a {at}: {min} min',
   wAfterSunset: '{name} dopo il tramonto ({time})',
   wSeasonal: 'Limitazioni stagionali',
-  untitled: 'Senza nome',
   back: 'Indietro',
   tourName: 'Nome',
   date: 'Data',
@@ -55,7 +54,6 @@ export const it = {
   modeBus: 'bus',
   modeLift: 'ascensore',
   map: 'Mappa',
-  timeline: 'Orario',
   mapOffline: 'Impossibile caricare la mappa.',
   transfer1: '1 cambio',
   planned: '{min} previsti',
@@ -147,7 +145,7 @@ export const it = {
   liveStale: 'Dati in tempo reale delle {time}; al momento non aggiornati',
   mapStraight: 'Tratteggiato: lì il tracciato non è noto, la linea è disegnata dritta.',
   tripChangedMeanwhile:
-    'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Riaprilo e ripianifica.',
+    'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Ricomincia da com’è ora.',
   lateBy: '{n} min di ritardo',
   screenFailed: 'Qualcosa è andato storto in questa schermata. I viaggi sono conservati.',
   toStart: 'Torna all’inizio',
@@ -243,4 +241,5 @@ export const it = {
   syncUpdate: 'Aggiorna l’app per sincronizzare: un altro dispositivo ha una versione più recente.',
   relaxedLeg:
     '{from} → {to}: nessun collegamento passa per tutte le stazioni o linee scelte; è mostrato il più vicino.',
+  startAgain: 'Ricomincia',
 } satisfies Catalogue;

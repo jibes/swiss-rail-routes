@@ -31,8 +31,9 @@ import {
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
+import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
-import { RailLoader } from './RailLoader';
+import { PlanNotices } from './PlanNotices';
 import { ChainView } from './ChainView';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
@@ -132,26 +133,21 @@ export function TripScreen({ id }: { id: string }) {
         ?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }, [dates]);
 
-  if (!trip)
-    return (
-      <main className="page">
-        <p>{t('notFound')}</p>
-        <button type="button" className="secondary" onClick={() => go('/')}>
-          {t('back')}
-        </button>
-      </main>
-    );
+  if (!trip) return <NotFound />;
 
   const route = trip.route;
   const name = trip.name || autoName(route, stop) || t('newTour');
   const entries = entriesOf(route);
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
   const chain = trip.chain;
-  const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
   // Planning from the first moment after an edit (the planner waits for edits to settle):
   // no flash of "nothing found" and no jump while it waits.
   const failed = planner.status === 'error' || planner.status === 'unavailable';
-  const planning = !chain && route.waypoints.length >= 2 && !planner.result && !failed;
+  const planning = !chain && route.waypoints.length >= 2 && planner.status === 'planning';
+  // While the next plan comes, the last one stays on the line, dimmed: an edit never collapses
+  // the line and jumps the page (the new station sits where it belongs, without times).
+  const shown = chain ?? (planning ? planner.previous?.recommended : undefined);
+  const rows = shown ? plannedRows(route, shown.connections) : routeRows(route);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
   // Disruptions are on the rides they concern; their number is said at the top.
@@ -375,56 +371,17 @@ export function TripScreen({ id }: { id: string }) {
               </p>
             </>
           )}
-          {!chain && route.waypoints.length >= 2 && planning && (
-            <div className="hero-loading" role="status">
-              <RailLoader />
-              <span className="muted">{t('planning')}</span>
-            </div>
-          )}
+          <PlanNotices
+            state={
+              planning ? 'planning' : failed ? (planner.status as 'error' | 'unavailable') : 'done'
+            }
+            detail={planner.detail}
+            result={planner.result}
+            retry={planner.retry}
+          />
 
-          {planner.status === 'unavailable' && (
-            <p role="status" className="notice">
-              {t('planUnavailable')}
-            </p>
-          )}
-          {planner.status === 'error' && (
-            <div role="alert" className="notice red">
-              <span>
-                {
-                  // Plain words, not the error's text: offline, the server, or anything else.
-                  /fetch|network|TypeError/i.test(planner.detail)
-                    ? t('planOffline')
-                    : /^5\d\d/.test(planner.detail)
-                      ? t('planServer')
-                      : t('planFailed')
-                }
-              </span>
-              <button type="button" className="secondary small" onClick={planner.retry}>
-                {t('retry')}
-              </button>
-            </div>
-          )}
-          {planner.result?.failedLeg !== undefined && (
-            <p role="alert" className="notice red">
-              {t('legFailed', {
-                n: planner.result.failedLeg + 1,
-                from: planner.result.legs?.[planner.result.failedLeg]?.from.name ?? '',
-                to: planner.result.legs?.[planner.result.failedLeg]?.to.name ?? '',
-              })}
-            </p>
-          )}
-          {/* Stations not reached show on the line itself (struck, with Try later); a leg
-              planned without its stations or line is said once here. */}
-          {planner.result?.relaxed.map((r, i) => (
-            <p key={i} className="notice">
-              {t('relaxedLeg', {
-                from: planner.result?.legs?.[r.legIndex]?.from.name ?? '',
-                to: planner.result?.legs?.[r.legIndex]?.to.name ?? '',
-              })}
-            </p>
-          ))}
-
-          {route.waypoints.length >= 2 && (
+          {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
+          {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
             <OptionsBar
               trip={trip}
               result={planner.result}

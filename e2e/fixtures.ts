@@ -5,6 +5,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { expect, test as base, type Page } from '@playwright/test';
+import { handle } from '../workers/ojp/src/handler';
+import { syncHandle, type SyncRecord } from '../workers/ojp/src/sync';
 
 const DIR = 'tests/fixtures/ojp';
 const tours = readdirSync(DIR).filter((d) => /^T\d/.test(d));
@@ -18,40 +20,62 @@ export function recordedAnswer(body: string): string | null {
   return null;
 }
 
-/** The Worker's sync mailbox, shared by every page of a run (ids are random per key). */
-const boxes = new Map<string, { v: number; data: string; revoked?: boolean }>();
+/** The sync mailbox, shared by every page of a run (ids are random per key). */
+const boxes = new Map<string, SyncRecord>();
 
-/** Answers the Worker as the build expects it: recorded OJP answers and a sync mailbox. */
-export async function answerWorker(page: Page) {
+/**
+ * Answers the Worker with the Worker itself (`handle`, the same code that runs on Cloudflare):
+ * its checks, its sync mailbox (in memory), and recorded OJP answers in place of OJP. A trip
+ * request the real Worker would refuse (400) is reported to `problems`, so the test fails.
+ */
+export async function answerWorker(page: Page, problems: string[] = []) {
   await page.route('https://tiles.openfreemap.org/**', (r) => r.abort());
   await page.route('https://ojp.invalid/**', async (route) => {
     const req = route.request();
-    const sync = /\/sync\/([\w-]{43})$/.exec(new URL(req.url()).pathname);
-    if (sync) {
-      const id = sync[1]!;
-      const json = (status: number, body: unknown) =>
-        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-      const cur = boxes.get(id);
-      // As the Worker: a key replaced by a new one is closed for good (410).
-      if (cur?.revoked) return json(410, { revoked: true });
-      if (req.method() === 'GET') {
-        const known = Number(new URL(req.url()).searchParams.get('v'));
-        if (cur && known && known === cur.v) return json(200, { v: cur.v, same: true });
-        return json(200, cur ?? { v: 0 });
-      }
-      if (req.method() === 'DELETE') {
-        boxes.set(id, { v: (cur?.v ?? 0) + 1, data: '', revoked: true });
-        return route.fulfill({ status: 204 });
-      }
-      const { v, data } = req.postDataJSON() as { v: number; data: string };
-      if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });
-      boxes.set(id, { v: v + 1, data });
-      return json(200, { v: v + 1 });
-    }
-    const xml = recordedAnswer(req.postData() ?? '');
-    await (xml
-      ? route.fulfill({ status: 200, contentType: 'application/xml', body: xml })
-      : route.fulfill({ status: 500, body: 'no recorded answer' }));
+    const body = req.postData() ?? undefined;
+    const recorded = body ? recordedAnswer(body) : null;
+    const res = await handle(
+      new Request(req.url(), {
+        method: req.method(),
+        headers: {
+          ...req.headers(),
+          ...(body ? { 'Content-Length': String(Buffer.byteLength(body)) } : {}),
+        },
+        body,
+      }),
+      {
+        apiKey: 'e2e',
+        upstream: 'https://ojp.example/',
+        allowedOrigins: [
+          new URL(page.url() || 'http://localhost:4173').origin,
+          'http://localhost:4173',
+        ],
+        // OJP: the recorded answer to this very query, else a failure the app must show.
+        fetch: (async () =>
+          recorded
+            ? new Response(recorded, { status: 200 })
+            : new Response('no recorded answer', { status: 500 })) as typeof fetch,
+        cache: { match: async () => undefined, put: async () => undefined },
+        limit: async () => true,
+        limitWrite: async () => true,
+        now: () => new Date(),
+        defer: () => undefined,
+        sync: (id, r) =>
+          syncHandle(r, {
+            get: async () => boxes.get(id),
+            put: async (x) => void boxes.set(id, x),
+          }),
+      },
+    );
+    if (res.status === 400)
+      problems.push(
+        `Worker refused ${new URL(req.url()).pathname}: ${await res.clone().text()} ${body ?? ''}`,
+      );
+    await route.fulfill({
+      status: res.status,
+      headers: Object.fromEntries(res.headers),
+      body: Buffer.from(await res.arrayBuffer()),
+    });
   });
 }
 
@@ -72,10 +96,12 @@ export async function guard(page: Page) {
       failedLoad &&
       (/openfreemap|ojp\.invalid\/(journey|trip)/.test(url + m.text()) ||
         // Sync's own answers: a write that lost the race (409), a replaced key (410).
-        (/ojp\.invalid\/sync\//.test(url) && /\b(409|410)\b/.test(m.text())));
+        (/ojp\.invalid\/sync\//.test(url) && /\b(409|410)\b/.test(m.text())) ||
+        // OJP had no recorded answer: the Worker passes on the upstream failure (502).
+        (/ojp\.invalid\/(trip|journey)/.test(url) && /\b502\b/.test(m.text())));
     if (!meant) errors.push(`console.error: ${m.text()} ${url}`);
   });
-  await answerWorker(page);
+  await answerWorker(page, errors);
   return { errors, check: () => expect(errors, 'page errors').toEqual([]) };
 }
 

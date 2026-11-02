@@ -63,6 +63,9 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
 
   await page.getByRole('link', { name: 'Replan from here' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
+  // The rest from here is planned at once, without a failure first.
+  await expect(page.getByRole('button', { name: 'Update trip' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('alert')).toHaveCount(0);
   // The same line as the trip screen; where you are is fixed: only "Add after".
   const line = page.getByRole('list', { name: 'The trip', exact: true });
   await line.locator('.station.entry').first().getByRole('button').first().click();

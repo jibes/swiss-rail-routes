@@ -71,7 +71,8 @@ export function TripLine({
   const n = entries.length;
   const box = useRef<HTMLOListElement>(null);
   // A station the timetable added (grey): a tap says why it cannot be edited.
-  const [hint, setHint] = useState<number | null>(null);
+  // Keyed by the station, not its place: an edit moves rows.
+  const [hint, setHint] = useState<string | null>(null);
   const [more, setMore] = useState<string | null>(null);
   const [drag, setDrag] = useState<{
     from: number;
@@ -114,12 +115,11 @@ export function TripLine({
         const b = el.getBoundingClientRect();
         return ev.clientY > b.top + b.height / 2;
       }).length;
-      to = below;
+      // Nothing moves above the fixed station (replan: where you are).
+      to = Math.max(fixedFirst ? 1 : 0, below);
       const top = list.getBoundingClientRect().top;
       const at =
-        rest[below]?.getBoundingClientRect().top ??
-        rest.at(-1)?.getBoundingClientRect().bottom ??
-        top;
+        rest[to]?.getBoundingClientRect().top ?? rest.at(-1)?.getBoundingClientRect().bottom ?? top;
       setDrag({ from: k, dy, to, lost: linesLostByMove(route, k, to), markY: at - top });
     };
     const up = () => {
@@ -169,7 +169,7 @@ export function TripLine({
                       : t(w.key, w.params);
                   // A disruption opens the operator's own message on a tap.
                   const detail = w.type === 'disruption' && s.notices?.length ? s.notices : null;
-                  const id = `${i}-${j}`;
+                  const id = `${r.leg}-${r.sectionIndex}-${j}`;
                   return detail ? (
                     <span key={j} className="warn-wrap">
                       <button
@@ -240,8 +240,8 @@ export function TripLine({
               <button
                 type="button"
                 className="m locked"
-                aria-expanded={hint === i}
-                onClick={() => setHint(hint === i ? null : i)}
+                aria-expanded={hint === `${r.key}@${i}`}
+                onClick={() => setHint(hint === `${r.key}@${i}` ? null : `${r.key}@${i}`)}
               >
                 <span className="n">{r.name}</span>
                 {label && <span className="chip quiet">{label}</span>}
@@ -257,7 +257,7 @@ export function TripLine({
                 {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
               </button>
             )}
-            {hint === i && (
+            {hint === `${r.key}@${i}` && (
               <span className="why" role="status">
                 {r.ring && lineName(r.line)
                   ? t('partOfLine', { line: lineName(r.line) })
@@ -350,6 +350,8 @@ function Panel({
   return (
     <div className="panel">
       <StopPicker
+        // Another station picked: the field shows its name (the panel stays open).
+        key={name}
         label={t('replaceStation')}
         initial={name}
         onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}

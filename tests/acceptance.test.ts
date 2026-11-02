@@ -126,20 +126,19 @@ suite('acceptance tours', { timeout }, () => {
     const now = Date.parse(zurichDateTime(`${DATE}T09:15`));
     const point = replanPoint(trip, liveState(trip.chain.connections, now), now)!;
     expect(point.stop.name).toBe('Zweilütschinen');
+    const deps = { ...ojpFor('T5R'), templates, ga, stop: (x: string) => index.byRef(x) };
     const wengen = index.search('Wengen', 1)[0]!;
     let draft = remainingRoute(trip, point);
+    // As the screen asks while you edit: the rest as it is, then with Wengen, then the stay.
+    expect((await plan(draft, deps)).recommended).toBeDefined();
     draft = addWaypoint(
       draft,
       { stopRef: wengen.ref, name: wengen.name },
       draft.waypoints.length - 1,
     );
-    draft = setStop(draft, 1, true); // 30 min, as the UI's "Get off"
-    const again = await plan(draft, {
-      ...ojpFor('T5R'),
-      templates,
-      ga,
-      stop: (x) => index.byRef(x),
-    });
+    expect((await plan(draft, deps)).recommended).toBeDefined();
+    draft = setStop(draft, 1, true); // 30 min, as the panel's Stay
+    const again = await plan(draft, deps);
     expect(again.relaxed).toEqual([]);
     const v = mergeReplan(trip, point, again.legs!, again.recommended!);
     expect(v.chain!.connections).toHaveLength(3); // travelled, to Wengen, on to Kleine Scheidegg
