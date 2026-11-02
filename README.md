@@ -44,6 +44,10 @@ Signing (one-time): environment `release` (Settings → Environments, deployment
 
 SHA-256 (release certificate): FA:B7:AC:4C:B6:4F:D1:BE:7A:AC:EC:7B:F6:46:E5:CE:4B:01:9F:B6:5D:10:56:02:CD:24:83:74:50:68:4C:FB
 
+## MCP server
+
+`mcp/` is a read-only MCP server with the app's planner, for an AI assistant on the phone: see [`mcp/README.md`](mcp/README.md). It runs on a VPS and takes timetables through the Worker below.
+
 ## OJP Worker
 
 `workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.

@@ -7,6 +7,7 @@ export default ts.config(
   {
     ignores: [
       'dist/',
+      'mcp/dist/',
       'android/',
       '.wrangler/',
       'coverage/',

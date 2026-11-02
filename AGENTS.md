@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: 0.13.0. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. Next: the MCP (remote, for the phone), then SPEC §3 Should/Could items.
+Status: 0.13.1. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. MCP server in `mcp/`. Next: SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -51,6 +51,11 @@ Status: 0.13.0. One object, one screen, one line (SPEC §3a): every trip dated (
 - Logo V13 (`docs/design/logos/v13/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.
 - Owner's rule: every push to `main` releases. Bump `package.json` `version` in the same push (`npm version X.Y.Z --no-git-tag-version`): patch for fixes, minor for features. A push without a bump does not release.
+
+## MCP
+
+- `mcp/` (see its README): the app's core in a Node server on the VPS, no fork: `src/worker.ts` is the adapter (`src/io/` is browser-only), `src/route.ts` a request as a route, `src/tools.ts` the five tools. `npm run mcp:bundle` makes the VPS's bundle. `mcp/package.json`'s versions stay in step with the root's. Tests: `tests/mcp.test.ts`.
+- A planner change reaches it only with a new bundle, deployed by the vps-management session.
 
 ## Invariants
 

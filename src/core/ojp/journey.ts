@@ -13,6 +13,8 @@ export interface LiveCall {
   arrEst?: string;
   depEst?: string;
   platform?: string;
+  /** The platform in the timetable, when `platform` is a later one. */
+  platformPlanned?: string;
   passed: boolean;
   cancelled: boolean;
 }
@@ -20,13 +22,15 @@ export interface LiveCall {
 export interface JourneyStatus {
   calls: LiveCall[];
   cancelled: boolean;
+  /** The operator's notices about this train. */
+  notices?: string[];
 }
 
 const parser = new XMLParser({
   ignoreAttributes: true,
   removeNSPrefix: true,
   parseTagValue: false,
-  isArray: (n) => n === 'PreviousCall' || n === 'OnwardCall' || n === 'Text',
+  isArray: (n) => n === 'PreviousCall' || n === 'OnwardCall' || n === 'Text' || n === 'PtSituation',
 });
 
 type X = Record<string, unknown> | undefined;
@@ -50,6 +54,7 @@ function call(c: X, passed: boolean): LiveCall {
     arrEst: str(a?.EstimatedTime),
     depEst: str(d?.EstimatedTime),
     platform: text(c?.EstimatedQuay) ?? text(c?.PlannedQuay),
+    platformPlanned: text(c?.PlannedQuay),
     passed,
     cancelled: str(c?.NotServicedStop) === 'true',
   };
@@ -64,12 +69,25 @@ export function parseJourney(xml: string): JourneyStatus {
   const err = obj(d.ErrorCondition);
   if (err) throw new OjpError(str(err.TripInfoProblemType) ?? 'OJP error');
   const r = obj(d.TripInfoResult);
+  const notices = arr(obj(obj(d.TripInfoResponseContext)?.Situations)?.PtSituation).flatMap((s) =>
+    arr(
+      obj(obj(obj(s?.PublishingActions)?.PublishingAction)?.PassengerInformationAction)
+        ?.TextualContent,
+    )
+      .map(
+        (c) =>
+          text(obj(c?.SummaryContent)?.SummaryText) ?? str(obj(c?.SummaryContent)?.SummaryText),
+      )
+      .filter((x): x is string => !!x)
+      .slice(0, 1),
+  );
   return {
     calls: [
       ...arr(r?.PreviousCall).map((c) => call(c, true)),
       ...arr(r?.OnwardCall).map((c) => call(c, false)),
     ],
     cancelled: str(obj(r?.Service)?.Cancelled) === 'true',
+    ...(notices.length ? { notices } : {}),
   };
 }
 
