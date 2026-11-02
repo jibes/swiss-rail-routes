@@ -1,5 +1,5 @@
 // Planner (SPEC §5): one OJP request per leg, filter by must-pass stops (and lines' modes),
-// score, chain legs with a beam, relax constraints when a leg has no survivor.
+// score, chain legs with a beam, relax constraints step by step when a leg has no survivor.
 import type { GaData, RouteTemplate } from '../data';
 import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
@@ -249,6 +249,26 @@ async function planFrom(
     return parts.length ? parts : direct;
   };
 
+  /**
+   * A leg's rules without the stations no connection leads to from the one before (a line closed
+   * that day), and without the lines' modes: the rest of what you chose still counts.
+   */
+  const reachableRules = async (rules: LegRules, at: number): Promise<LegRules> => {
+    const vias: Waypoint[] = [];
+    let here = rules.leg.from;
+    for (const v of rules.leg.vias) {
+      if (!(await query(here, v, [], at)).length) continue;
+      vias.push(v);
+      here = v;
+    }
+    trace('plan.reachable', { vias: vias.map((v) => v.name) });
+    return {
+      leg: { ...rules.leg, vias },
+      mustPass: vias.map((w) => stopKey(w.stopRef)),
+      templates: [],
+    };
+  };
+
   let beams: Beam[] = [{ conns: [], warnings: [], penalty: 0, ready: start }];
   for (const [i, rules] of rulesList.entries()) {
     const ctx = {
@@ -259,16 +279,20 @@ async function planFrom(
       ga: deps.ga,
       stop: deps.stop,
     };
-    const ladder: Relaxed[][] = [[], ['mustPass']];
+    // Every station and line; else the stations the timetable reaches at all (one closed line
+    // does not cost the others); else whatever connects the leg's ends.
+    const ladder = ['all', 'reachable', 'none'] as const;
     const next: Beam[] = [];
     for (const step of ladder) {
-      const relaxed = new Set(step);
       const ready = Math.min(...beams.map((b) => b.ready));
-      const all = await fetchAt(rules, ready, relaxed);
-      let pool = all.filter((c) => !rejectReason(c, rules, relaxed));
+      const asked = step === 'reachable' ? await reachableRules(rules, ready) : rules;
+      if (step === 'reachable' && !asked.mustPass.length) continue;
+      const relaxed = new Set<Relaxed>(step === 'none' ? ['mustPass'] : []);
+      const all = await fetchAt(asked, ready, relaxed);
+      let pool = all.filter((c) => !rejectReason(c, asked, relaxed));
       const why: Record<string, number> = {};
       for (const c of all) {
-        const r = rejectReason(c, rules, relaxed);
+        const r = rejectReason(c, asked, relaxed);
         if (r) why[r] = (why[r] ?? 0) + 1;
       }
       trace('plan.leg', {
@@ -278,7 +302,7 @@ async function planFrom(
         answers: all.length,
         kept: pool.length,
         rejected: why,
-        mustPass: rules.leg.vias.map((v) => v.name),
+        mustPass: asked.leg.vias.map((v) => v.name),
       });
       // Regular trains over panorama/supplement trains when both run.
       const regular = pool.filter((c) => !rides(c).some(([s]) => isSupplement(s, deps.ga)));
@@ -286,8 +310,8 @@ async function planFrom(
       for (const b of beams) {
         let opts = pool.filter((c) => ms(c.dep) >= b.ready);
         if (!opts.length && b.ready > ready) {
-          opts = (await fetchAt(rules, b.ready, relaxed)).filter(
-            (c) => !rejectReason(c, rules, relaxed) && ms(c.dep) >= b.ready,
+          opts = (await fetchAt(asked, b.ready, relaxed)).filter(
+            (c) => !rejectReason(c, asked, relaxed) && ms(c.dep) >= b.ready,
           );
         }
         for (const c of opts) {
@@ -303,7 +327,7 @@ async function planFrom(
       }
       if (next.length) {
         // Said only when a kept connection really misses a station.
-        if (step.length && next.some((b) => rejectReason(b.conns.at(-1)!, rules, new Set())))
+        if (step !== 'all' && next.some((b) => rejectReason(b.conns.at(-1)!, rules, new Set())))
           relaxedOut.push({ legIndex: i, rule: 'mustPass' });
         break;
       }

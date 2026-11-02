@@ -209,7 +209,6 @@ export const fr = {
   doneTodaySection: 'Fait aujourd’hui',
   saveToYourTrips: 'Enregistrer dans tes voyages',
   sharedPast: 'Le jour de ce voyage est passé : tu peux le garder pour le refaire.',
-  changeHere: 'Changement',
   noStop: 'Sans arrêt',
   fromTime: 'dès',
   departFrom: 'Départ dès (heure)',

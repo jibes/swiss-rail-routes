@@ -225,7 +225,7 @@ export function replaceEntry<T extends Pick<Tour, 'waypoints'>>(
   return fromEntries(tour, e);
 }
 
-/** Pass through (null), change trains (0) or stay that many minutes at entry `k`. */
+/** Pass through (null), or get off at entry `k` and stay that many minutes. */
 export function setEntryStay<T extends Pick<Tour, 'waypoints'>>(
   tour: T,
   k: number,

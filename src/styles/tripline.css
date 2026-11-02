@@ -504,9 +504,10 @@
   color: var(--ink-3);
 }
 
+/* Solid: dashes on a dot this small read as a broken rail. */
 .trip-line .station.missed .dot {
   background: var(--bg);
-  border: 2px dashed var(--amber);
+  border: 2px solid var(--amber);
   box-shadow: none;
 }
 
@@ -767,6 +768,48 @@
   border-color: var(--ink-3);
 }
 
+/* A route station on the ride: in the list like any stop, in white, tap for the panel. */
+.trip-line .ride .mids li.via {
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+}
+
+.trip-line .ride .mids li.via.open {
+  grid-template-columns: 3.2em minmax(0, 1fr) 44px;
+}
+
+.trip-line .ride.with-mids .mids li.via::before {
+  top: 17px;
+}
+
+.trip-line .ride .mids li.via.entry {
+  color: var(--ink);
+}
+
+.trip-line .ride .mids .via .t {
+  padding: 0;
+}
+
+.trip-line .ride .mids .via .m {
+  display: block;
+  grid-column: 2;
+  padding: 6px 0;
+  font-size: 14px;
+  color: inherit;
+}
+
+.trip-line .ride .mids .via .n {
+  font-size: 14px;
+}
+
+.trip-line .ride .mids .via .panel,
+.trip-line .ride .mids .via .why {
+  grid-column: 1 / -1;
+  margin-left: 0;
+}
+
 .trip-line .ride .mids-toggle {
   min-height: 0;
   padding: 0;
@@ -827,5 +870,6 @@
 
 /* A station not reached: the rail runs on past its note. */
 .trip-line .station:has(.missed-note) .rail {
+  grid-column: 2;
   grid-row: 1 / span 2;
 }
