@@ -1,6 +1,6 @@
 // Share a trip as its exact timetable (`#/j/<data>`): the trip with its tracks simplified to
 // ~100 m and polyline-encoded, deflated, base64url. Opening it never replans (decision
-// 2026-11-01: an exact snapshot).
+// 2026-11-01: an exact snapshot). New links hold only the trains (tripLink.ts); these still open.
 import { decodePolyline, encodePolyline, simplify } from '../polyline';
 import { fromB64Url, toB64Url } from '../b64';
 import { mergeRepeats, splitLoops } from '../planner/plan';
@@ -14,7 +14,7 @@ const TRACK_TOL = 0.001;
 
 const PREFIX = '#/j/';
 
-async function pipe(
+export async function pipe(
   bytes: Uint8Array<ArrayBuffer>,
   stream: CompressionStream | DecompressionStream,
 ) {
@@ -71,7 +71,16 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
       fromB64Url(hash.slice(PREFIX.length)),
       new DecompressionStream('deflate-raw'),
     );
-    const data = JSON.parse(new TextDecoder().decode(bytes));
+    return tripFromData(JSON.parse(new TextDecoder().decode(bytes)), id);
+  } catch {
+    return null;
+  }
+}
+
+/** A trip from a link's data, checked: a link is someone else's data. Throws if it is odd. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function tripFromData(data: any, id: string): Trip | null {
+  {
     if (
       data?.schema !== 1 ||
       !data.chain?.connections?.length ||
@@ -126,7 +135,5 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
         arr: f.chain.arr,
       },
     } as Trip;
-  } catch {
-    return null;
   }
 }

@@ -117,7 +117,8 @@ There is one kind of thing, the **trip**, and it always has a date. It is one li
 - **Position** comes from the timetable plus live delays, never GPS (owner's decision).
 - **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min (`journeysToWatch`).
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
-- **Sharing a trip**: `#/j/…`, the exact timetable with its tracks simplified to ~100 m (polyline-encoded, deflated; the recipient never replans).
+- **Sharing a trip** (changed 2 Nov 2026, from an exact snapshot): `#/s/…`, the route and each ride's train, boarding and alighting stop and times, deflated; ~600 characters for 10 rides, as messengers cut off the full timetable (`#/j/…`, ~5,600, which still opens). Stored nowhere. Everything else is asked again by train when it opens: never replanned, so both people have the same trains with current stops, platforms, tracks and notices. No answer: the trains and times still show, said so, with Try again. A train gone from the timetable is said on its ride.
+- **Reload** (pull down at the top of a trip, or the menu): the same asking again, for any planned trip. It does not make an undo step.
 - **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip): where you get off first, longest stay first; then spread out.
 
 Removed in 0.4.0: ideas as a state, the ticket choice, GPX and the sbb.ch links. Sync (§3b), removed in 0.4.0 by a misread choice, is back in 0.5.0: trips and your past trips sync.

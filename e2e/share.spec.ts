@@ -8,7 +8,17 @@ import { FIXTURE_DATE, ojpFor } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { addWaypoint, newTour } from '../tests/helpers/edit';
 import { conn, DATE, ga, index, ref, ride, templates } from '../tests/helpers/timetable';
+import type { Page } from '@playwright/test';
 import { BEFORE, expect, guard, planShared, test } from './fixtures';
+
+/** The last timetable answer `page` got, to answer the rides of the same trip with. */
+function recordAnswers(page: Page) {
+  let xml = '';
+  page.on('response', (r) => {
+    if (r.url().endsWith('/trip') && r.ok()) void r.text().then((t) => (xml = t || xml));
+  });
+  return () => xml;
+}
 
 test('a shared trip opens as planned, without replanning, and saves to Trips', async ({ page }) => {
   const tour = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Shared T5' };
@@ -53,6 +63,7 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.addInitScript(() => Object.defineProperty(navigator, 'share', { value: undefined }));
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) });
+  const answer = recordAnswers(page);
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 shared' }));
 
   // Share is in the header, visible, not under the dock.
@@ -61,19 +72,145 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   await share.click();
   await expect(page.getByRole('button', { name: 'Link copied' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
-  expect(url).toMatch(/#\/j\//);
+  expect(url).toMatch(/#\/s\//);
+  expect(url.length, 'short enough for any messenger').toBeLessThan(800);
 
   const other = await browser.newPage({ baseURL: new URL('./', url).href });
   const otherErrors = await guard(other);
   await other.clock.install({ time: BEFORE });
-  let asked = 0;
-  other.on('request', (q) => q.url().startsWith('https://ojp.invalid/') && asked++);
+  // The link holds the trains; each is asked for again, on its own: not planned anew.
+  const asked: { vias: unknown[] }[] = [];
+  await other.route(/\/trip$/, (r) => {
+    asked.push(r.request().postDataJSON() as { vias: unknown[] });
+    return r.fulfill({ contentType: 'application/xml', body: answer() });
+  });
   await other.goto(url);
   await expect(other.getByRole('heading', { level: 1 })).toHaveText('T5 shared');
   await expect(other.locator('.hero-times')).toContainText('09:04');
-  expect(asked, 'the shared trip is the timetable itself, not replanned').toBe(0);
+  await expect(other.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
+  expect(asked.length).toBeGreaterThan(0);
+  expect(asked.every((q) => q.vias.length === 0)).toBe(true);
+  await expect(other.locator('main')).toContainText(/\d+ stops?/);
   otherErrors.check();
   await other.close();
+});
+
+test('the trains still show when the rest cannot be loaded; try again gets it', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => Object.defineProperty(navigator, 'share', { value: undefined }));
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) });
+  const answer = recordAnswers(page);
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 bare' }));
+  await page.getByRole('button', { name: 'Share trip' }).click();
+  await expect(page.getByRole('button', { name: 'Link copied' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+
+  await page.route(/\/trip$/, (r) => r.abort());
+  await page.goto('about:blank');
+  await page.goto(url);
+  await expect(page.locator('.hero-times')).toContainText('09:04');
+  await expect(page.getByText('Showing the trains and times')).toBeVisible();
+
+  await page.unroute(/\/trip$/);
+  await page.route(/\/trip$/, (r) => r.fulfill({ contentType: 'application/xml', body: answer() }));
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByText('Showing the trains and times')).toBeHidden();
+  await expect(page.locator('main')).toContainText(/\d+ stops?/);
+});
+
+test('a link cut off by a messenger says so', async ({ page }) => {
+  await page.goto('./#/s/abc');
+  await expect(page.getByRole('alert')).toContainText('a messenger cut it off');
+  await page.goto('./#/j/AAAA');
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('a messenger cut it off');
+});
+
+test('reload from the menu: up to date; a train gone is said, and failing changes nothing', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  const answer = recordAnswers(page);
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 reload' }));
+  const reload = async () => {
+    await page.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Reload trip' }).click();
+  };
+
+  await page.route(/\/trip$/, (r) => r.fulfill({ contentType: 'application/xml', body: answer() }));
+  await reload();
+  await expect(page.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
+
+  await page.unroute(/\/trip$/);
+  await page.route(/\/trip$/, (r) => r.abort());
+  await reload();
+  await expect(page.getByRole('status').filter({ hasText: 'Could not update' })).toBeAttached();
+  await expect(page.locator('.hero-times')).toContainText('09:04');
+
+  await page.unroute(/\/trip$/);
+  await page.route(/\/trip$/, (r) =>
+    r.fulfill({
+      contentType: 'application/xml',
+      body: '<OJP><OJPResponse><ServiceDelivery><OJPTripDelivery><ErrorCondition><TripProblemType>TRIP_NOTRIPFOUND</TripProblemType></ErrorCondition></OJPTripDelivery></ServiceDelivery></OJPResponse></OJP>',
+    }),
+  );
+  await reload();
+  await expect(page.getByText('is no longer in the timetable').first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('is no longer in the timetable').first()).toBeVisible();
+});
+
+test('pull down from the top reloads the trip; from further down it does not', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'touch');
+  await page.clock.install({ time: BEFORE });
+  const answer = recordAnswers(page);
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 pull' }));
+  let asked = 0;
+  await page.route(/\/trip$/, (r) => {
+    asked++;
+    return r.fulfill({ contentType: 'application/xml', body: answer() });
+  });
+  const pull = (from: number, to: number, x = 180) =>
+    page.evaluate(
+      ({ from, to, x }) => {
+        const el = document.querySelector('main')!;
+        const at = (y: number) => new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+        const fire = (type: string, list: Touch[]) =>
+          el.dispatchEvent(
+            new TouchEvent(type, { bubbles: true, touches: list, changedTouches: [at(to)] }),
+          );
+        fire('touchstart', [at(from)]);
+        for (let y = from; y <= to; y += 20) fire('touchmove', [at(y)]);
+        fire('touchend', []);
+      },
+      { from, to, x },
+    );
+
+  await pull(200, 260);
+  await page.waitForTimeout(100);
+  expect(asked, 'a short pull does nothing').toBe(0);
+
+  await pull(200, 400);
+  await expect(page.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
+  expect(asked).toBeGreaterThan(0);
+  expect(
+    await page.evaluate(() => document.documentElement.classList.contains('pull-reload')),
+  ).toBe(true);
+
+  const before = asked;
+  await page.evaluate(() => {
+    document.body.style.minHeight = '3000px';
+    window.scrollTo(0, 300);
+  });
+  await pull(200, 400);
+  await page.waitForTimeout(100);
+  expect(asked, 'scrolled down, a pull is a scroll').toBe(before);
 });
 
 test('a via on the ride is one of its stops, in white; a station missed keeps the rail straight', async ({

@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { decodeTripLink } from '../core/export/tripLink';
 import { decodeTrip } from '../core/export/tripShare';
-import { dayOf, isPlanned, type PlannedTrip } from '../core/trip';
+import { linkWarnings, reloadTrip, stopNames } from '../io/refresh';
+import { PullReload, saidOf, useReload } from './PullReload';
+import { compactTrip, dayOf, isPlanned, type PlannedTrip } from '../core/trip';
 import { markRings, routeKey } from '../core/line';
 import { lineName } from './TemplatePicker';
 import { useTours } from '../tours';
@@ -16,23 +19,66 @@ import { go } from './useHash';
 import { Icon } from './icons';
 import { RailLoader } from './RailLoader';
 
-/** `#/j/<data>`: a trip someone shared, as they planned it. Saving copies it to this device. */
+/**
+ * `#/s/<data>` (its trains; the rest comes fresh) or `#/j/<data>` (older: all of it): a trip
+ * someone shared. Saving copies it to this device, and what arrives after that goes with it.
+ */
 export function SharedTrip({ hash }: { hash: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const add = useTrips((s) => s.add);
   const now = useNow();
   const [trip, setTrip] = useState<PlannedTrip | null | undefined>(undefined);
+  const [bare, setBare] = useState(false);
+  const shown = useRef<PlannedTrip | null>(null);
+  const saved = useRef<string | null>(null);
+  const update = useTrips((s) => s.update);
+
+  const { busy, said, reload } = useReload(async () => {
+    const was = shown.current;
+    if (!was) return null;
+    const r = await reloadTrip(was);
+    if (r.found || r.gone) {
+      const chain = compactTrip({ ...was, chain: r.chain, compact: undefined });
+      shown.current = chain;
+      setTrip(chain);
+      if (!r.failed) setBare(false);
+      // Saved while this was on its way: the saved trip gets it too.
+      if (saved.current)
+        update(saved.current, (x) =>
+          x.version === was.version ? { ...x, chain: chain.chain } : x,
+        );
+    }
+    return saidOf(r, was.route.date < dayOf(Date.now()));
+  });
 
   useEffect(() => {
     let gone = false;
-    decodeTrip(`#${hash}`, crypto.randomUUID()).then(
-      (x) => !gone && setTrip(x && isPlanned(x) ? x : null),
-    );
+    const short = hash.startsWith('/s/');
+    const load = async () => {
+      const id = crypto.randomUUID();
+      if (!short) return decodeTrip(`#${hash}`, id);
+      const x = await decodeTripLink(`#${hash}`, id, await stopNames());
+      if (!x || !isPlanned(x)) return null;
+      return { ...x, chain: { ...x.chain, warnings: await linkWarnings(x) } };
+    };
+    void load()
+      .catch(() => null)
+      .then((x) => {
+        if (gone) return;
+        const planned = x && isPlanned(x) ? x : null;
+        shown.current = planned;
+        setTrip(planned);
+        // All it holds is the trains: the rest now, and said if it does not come.
+        if (planned && short) {
+          setBare(true);
+          void reload();
+        }
+      });
     return () => {
       gone = true;
     };
-  }, [hash]);
+  }, [hash, reload]);
 
   if (trip === undefined)
     return (
@@ -54,6 +100,7 @@ export function SharedTrip({ hash }: { hash: string }) {
   const past = trip.route.date < dayOf(now);
   return (
     <main className="page trip-screen">
+      <PullReload busy={busy} said={said} reload={reload} />
       <header className="bar">
         <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
@@ -72,6 +119,14 @@ export function SharedTrip({ hash }: { hash: string }) {
         planning={false}
       />
       {past && <p className="notice">{t('sharedPast')}</p>}
+      {bare && !busy && (
+        <div className="notice">
+          <p>{t('sharedBare')}</p>
+          <button type="button" className="secondary" onClick={() => void reload()}>
+            {t('retry')}
+          </button>
+        </div>
+      )}
       <div className="dock">
         <div className="dock-inner">
           {past ? (
@@ -112,6 +167,7 @@ export function SharedTrip({ hash }: { hash: string }) {
                   );
                 if (same) return location.replace(`#/trip/${same.id}`);
                 add(trip);
+                saved.current = trip.id;
                 location.replace(`#/trip/${trip.id}`);
               }}
             >

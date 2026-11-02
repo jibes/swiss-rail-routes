@@ -83,7 +83,7 @@ function Route({ hash: full }: { hash: string }) {
   // A route's address from another device (0.3 and earlier): the route, to plan as a trip.
   const stops = /^\/tour\//.test(hash) && new URLSearchParams(q).get('s');
   if (stops) return <SharedTour stops={stops} query={q} />;
-  if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
+  if (hash.startsWith('/j/') || hash.startsWith('/s/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips' || hash === '/') return <Home />;
   if (hash === '/settings') return <Settings />;
   if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;

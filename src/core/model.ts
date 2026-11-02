@@ -55,6 +55,8 @@ export type WarningType =
   | 'not-ga'
   | 'reservation'
   | 'tight-transfer'
+  /** Asked again, the timetable no longer has this train. */
+  | 'train-gone'
   | 'seasonal';
 
 export interface LatLon {

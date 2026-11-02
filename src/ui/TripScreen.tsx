@@ -13,7 +13,6 @@ import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
 import { plannedRows, routeRows, type LineRow } from '../core/rows';
 import { stopKey } from '../core/stops';
-import { encodeTrip } from '../core/export/tripShare';
 import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { acceptDate, acceptTime, timeOnDate } from '../core/when';
 import { usePrefs, useT } from '../store';
@@ -21,6 +20,8 @@ import { lineName } from './TemplatePicker';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
+import { reloadTrip, shareHash } from '../io/refresh';
+import { PullReload, saidOf, useReload } from './PullReload';
 import { longDate, nextFive, shiftHm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
@@ -111,6 +112,28 @@ export function TripScreen({ id }: { id: string }) {
     trip && !trip.route.waypoints.length ? { after: -1 } : null,
   );
   const [menu, setMenu] = useState(false);
+  const {
+    busy: reloading,
+    said: reloadSaid,
+    reload,
+  } = useReload(async () => {
+    if (!trip || !isPlanned(trip)) return null;
+    const before = trip.chain;
+    const r = await reloadTrip(trip);
+    // Changed meanwhile (edited, replanned): that is the newer trip.
+    if (r.found || r.gone)
+      update(trip.id, (x) =>
+        x.chain === before
+          ? compactTrip({
+              ...x,
+              chain: r.chain,
+              savedAt: new Date().toISOString(),
+              compact: undefined,
+            })
+          : x,
+      );
+    return saidOf(r, trip.route.date < dayOf(Date.now()));
+  });
   const [renaming, setRenaming] = useState(false);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
@@ -235,6 +258,7 @@ export function TripScreen({ id }: { id: string }) {
 
   return (
     <main className={`page trip-screen ${liveTrip ? 'now' : ''}`}>
+      {isPlanned(trip) && <PullReload busy={reloading} said={reloadSaid} reload={reload} />}
       <header className="bar">
         <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
@@ -250,7 +274,7 @@ export function TripScreen({ id }: { id: string }) {
           <Icon name="map" />
         </button>
         {isPlanned(trip) ? (
-          <ShareButton label={t('shareTrip')} title={name} hash={() => encodeTrip(trip)} />
+          <ShareButton label={t('shareTrip')} title={name} hash={() => shareHash(trip)} />
         ) : (
           // Its place kept until the trip has a timetable: the icons do not move.
           <button type="button" className="icon" aria-label={t('shareTrip')} disabled>
@@ -273,6 +297,19 @@ export function TripScreen({ id }: { id: string }) {
         <div className="menu-scrim" onClick={() => setMenu(false)}>
           {/* A disclosure of plain buttons, not an ARIA menu (no arrow-key menu behaviour). */}
           <div className="menu" onClick={(e) => e.stopPropagation()}>
+            {isPlanned(trip) && (
+              <button
+                type="button"
+                disabled={reloading}
+                onClick={() => {
+                  setMenu(false);
+                  void reload();
+                }}
+              >
+                <Icon name="refresh" size={18} />
+                {t('reloadTrip')}
+              </button>
+            )}
             {isPlanned(trip) && (
               <button
                 type="button"

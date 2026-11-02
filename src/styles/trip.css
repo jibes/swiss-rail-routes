@@ -604,3 +604,41 @@
   outline: 2px solid var(--rail);
   outline-offset: 2px;
 }
+
+/* Pull down to reload (PullReload.tsx). */
+html.pull-reload {
+  overscroll-behavior-y: contain;
+}
+
+.pull-mark {
+  position: fixed;
+  top: 12px;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--ink-2);
+  pointer-events: none;
+}
+
+.pull-said {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 5;
+  max-width: calc(100% - 32px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--hair);
+  pointer-events: none;
+}
+
+.pull-said.bad {
+  color: var(--rail-ink);
+}
