@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
   dropLine,
@@ -15,12 +15,13 @@ import { plannedRows, routeRows, type LineRow } from '../core/rows';
 import { stopKey } from '../core/stops';
 import { encodeTrip } from '../core/export/tripShare';
 import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
+import { acceptDate, acceptTime, timeOnDate } from '../core/when';
 import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import { longDate, nextFive, shiftHm, zurichHm } from './format';
+import { longDate, nextFive, shiftHm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
@@ -33,6 +34,7 @@ import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { usePlanner } from './usePlanner';
 import { useLayer } from './layers';
+import { WhenField } from './WhenField';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
@@ -110,24 +112,12 @@ export function TripScreen({ id }: { id: string }) {
   );
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [dates, setDates] = useState(false);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeMenu = useCallback(() => setMenu(false), []);
-  const closeDates = useCallback(() => setDates(false), []);
   useLayer(open !== null, closePanel);
-  useLayer(dates, closeDates);
   useLayer(menu, closeMenu);
-  const strip = useRef<HTMLDivElement>(null);
-  // The date strip opens at the trip's day, not at today.
-  useEffect(() => {
-    if (dates)
-      strip.current
-        ?.querySelector('[aria-pressed="true"]')
-        ?.scrollIntoView({ inline: 'center', block: 'nearest' });
-  }, [dates]);
-
   if (!trip) return <NotFound />;
 
   const route = trip.route;
@@ -163,72 +153,48 @@ export function TripScreen({ id }: { id: string }) {
   // When: the date and the time it leaves from, at the top (before it is under way).
   const when = (
     <div className="when">
-      <button
-        type="button"
-        className="eyebrow"
-        aria-expanded={dates}
-        onClick={() => setDates(!dates)}
+      <WhenField
+        type="date"
+        label={t('date')}
+        value={route.date}
+        min={today}
+        accept={(d) => acceptDate(d, today)}
+        commit={(d) => {
+          log('when.date', { trip: id, date: d });
+          const hm = timeOnDate(d, today, nextFive(now), anchor);
+          edit((r) => ({
+            ...r,
+            date: d,
+            ...(hm !== anchor ? { anchor: { departAt: hm } } : {}),
+          }));
+        }}
       >
-        {longDate(route.date, lang)}
-        <Icon name="chevron" size={16} />
-      </button>
+        {(d) => (
+          <>
+            <Icon name="calendar" size={18} />
+            {d.slice(0, 4) === today.slice(0, 4) ? shortDate(d, lang) : longDate(d, lang)}
+          </>
+        )}
+      </WhenField>
       {/* The first connection after this time is the trip (today: now at the earliest). */}
-      <label className="eyebrow when-time">
-        <span aria-hidden="true">{t('fromTime')}</span>
-        <input
-          type="time"
-          aria-label={t('departFrom')}
-          value={anchor}
-          min={route.date === today ? nowHm : undefined}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (!/^\d\d:\d\d$/.test(v) || v === anchor) return;
-            log('when.time', { trip: id, time: v });
-            edit((r) => ({ ...r, anchor: { departAt: notBefore(v) } }));
-          }}
-        />
-      </label>
-      {dates && (
-        <div className="dates" role="group" aria-label={t('date')} ref={strip}>
-          {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d, i) => (
-            <button
-              key={d}
-              type="button"
-              className={`pill ${d === route.date ? 'on' : ''}`}
-              aria-pressed={d === route.date}
-              onClick={() => {
-                // Today: from the next few minutes, not from a time already gone.
-                const soon = d === today ? nextFive(now) : '';
-                edit((r) => ({
-                  ...r,
-                  date: d,
-                  ...(soon && soon > anchor ? { anchor: { departAt: soon } } : {}),
-                }));
-                setDates(false);
-              }}
-            >
-              {i === 0
-                ? t('today')
-                : i === 1
-                  ? t('tomorrow')
-                  : longDate(d, lang).replace(/,? \d{4}$/, '')}
-            </button>
-          ))}
-          <label className="pill other-date">
-            {t('otherDay')}
-            <input
-              type="date"
-              min={today}
-              value={route.date}
-              onChange={(e) => {
-                if (!e.target.value) return;
-                edit((r) => ({ ...r, date: e.target.value }));
-                setDates(false);
-              }}
-            />
-          </label>
-        </div>
-      )}
+      <WhenField
+        type="time"
+        label={t('departFrom')}
+        value={anchor}
+        min={route.date === today ? nowHm : undefined}
+        accept={(hm) => acceptTime(hm, route.date, today, nowHm)}
+        commit={(hm) => {
+          log('when.time', { trip: id, time: hm });
+          edit((r) => ({ ...r, anchor: { departAt: hm } }));
+        }}
+      >
+        {(hm) => (
+          <>
+            <Icon name="clock" size={18} />
+            {t('fromTime')} {hm}
+          </>
+        )}
+      </WhenField>
     </div>
   );
 

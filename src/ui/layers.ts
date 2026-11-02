@@ -1,4 +1,4 @@
-// What is open on top of a screen (a sheet, a menu, a panel, the date strip), newest last.
+// What is open on top of a screen (a sheet, a menu, a panel), newest last.
 // Escape and Android's Back close the top one before they leave the screen.
 import { useEffect } from 'react';
 

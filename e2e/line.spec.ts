@@ -123,7 +123,7 @@ test('a trip whose day is over leaves the list and waits in search', async ({ pa
   await page.getByRole('button', { name: /^Chur → Arosa/ }).click();
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Chur/, /^Arosa/]);
   // A new trip, today.
-  await expect(page.getByRole('button', { name: /Sun, Nov 8, 2026/ })).toBeVisible();
+  await expect(page.getByLabel('Date')).toHaveValue('2026-11-08');
 
   // Forgotten, it is gone from search.
   await page.getByRole('button', { name: 'Add a station' }).click();
