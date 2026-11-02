@@ -4,8 +4,7 @@
 import { writeFile } from 'node:fs/promises';
 import { MODES, modeMask, type StopIndexFile, type StopRow } from '../src/core/stops.ts';
 
-const URL_ =
-  'https://data.opentransportdata.swiss/dataset/39e5f264-257a-4f3f-bccc-5322c37058c5/resource/2b87a821-5cd8-46dd-80c6-2c8fc0e2116e/download/actual-date-swiss-service-point.csv';
+const DATASET = 'https://data.opentransportdata.swiss/en/dataset/service-point-v2';
 const OUT = 'public/data/stops.v1.json';
 const ABROAD = new Set(['TRAIN', 'RACK_RAILWAY', 'CABLE_RAILWAY', 'CABLE_CAR', 'BOAT', 'METRO']);
 
@@ -37,7 +36,15 @@ function* parse(text: string): Generator<string[]> {
   if (field || row.length) yield [...row, field];
 }
 
-const res = await fetch(URL_);
+// The download link changes when the file is republished: read it from the dataset page.
+const pageRes = await fetch(DATASET);
+if (!pageRes.ok) throw new Error(`DIDOK dataset page ${pageRes.status}`);
+const csvUrl =
+  /href="(https:\/\/data\.opentransportdata\.swiss\/[^"]+\/download\/actual-date-swiss-service-point\.csv)"/.exec(
+    await pageRes.text(),
+  )?.[1];
+if (!csvUrl) throw new Error('DIDOK download link not found');
+const res = await fetch(csvUrl);
 if (!res.ok) throw new Error(`DIDOK ${res.status}`);
 const text = (await res.text()).replace(/^\uFEFF/, '');
 const it = parse(text);

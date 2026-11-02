@@ -23,7 +23,7 @@
     "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
     "record:ojp:missing": "vitest run tests/acceptance.test.ts",
     "data:stops": "node --experimental-strip-types scripts/build-stops.ts",
-    "data:ga": "node --experimental-strip-types scripts/build-ga.ts",
+    "data:ga": "node --experimental-strip-types scripts/build-ga.ts && prettier --write src/data/ga.json",
     "android:sync": "npm run build && cap sync android"
   },
   "dependencies": {
