@@ -127,10 +127,10 @@ export async function readLog(): Promise<string> {
 }
 
 const fileName = () =>
-  `rail-day-trip-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
+  `viadukt-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
 
 /** In the app the file goes through the cache under one name: each export replaces the last. */
-const APP_FILE = 'rail-day-trip-log.txt';
+const APP_FILE = 'viadukt-log.txt';
 
 /** Hands the log over as a file: the share sheet in the app, a download in the browser. */
 export async function saveLog(): Promise<void> {

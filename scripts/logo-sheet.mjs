@@ -16,9 +16,9 @@ const col = ([k, title]) => `
     <img class="sq" src="${read(k, 'icon')}"><img class="circle" src="${read(k, 'icon')}">
     <span class="mono"><img src="${read(k, 'monochrome')}"></span>
   </div>
-  <div class="home light"><img src="${read(k, 'icon')}"><span>Rail Day Trip</span></div>
-  <div class="home dark"><img src="${read(k, 'icon')}"><span>Rail Day Trip</span></div>
-  <div class="tab"><img width="16" height="16" src="${read(k, 'favicon')}"><span>Swiss Rail Day-Trip</span><img width="32" height="32" src="${read(k, 'favicon')}"></div>
+  <div class="home light"><img src="${read(k, 'icon')}"><span>Viadukt</span></div>
+  <div class="home dark"><img src="${read(k, 'icon')}"><span>Viadukt</span></div>
+  <div class="tab"><img width="16" height="16" src="${read(k, 'favicon')}"><span>Viadukt</span><img width="32" height="32" src="${read(k, 'favicon')}"></div>
 </section>`;
 const html = `<!doctype html><meta charset="utf-8"><style>
 body{margin:0;padding:40px;background:#ececE8;font-family:system-ui,sans-serif;color:#121314;display:flex;flex-wrap:wrap;gap:32px;width:${width}px}

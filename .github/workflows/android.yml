@@ -270,6 +270,6 @@ jobs:
         run: |
           gh release create "v$VERSION" "$FILE" \
             --target "$GITHUB_SHA" \
-            --title "Rail Day Trip $VERSION" \
+            --title "Viadukt $VERSION" \
             --generate-notes \
             --notes "Install or update with Obtainium: add https://github.com/${{ github.repository }}"

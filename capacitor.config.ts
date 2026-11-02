@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   // Permanent: changing it breaks updates for installed apps.
   appId: 'ch.brunodev.swissrailroutes',
-  appName: 'Rail Day Trip',
+  appName: 'Viadukt',
   webDir: 'dist',
   // The WebView's console reaches the system log in release builds too: the app logs little,
   // and the smoke test needs its 'srr:ready' line and any error.

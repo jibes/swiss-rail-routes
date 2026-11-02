@@ -1,4 +1,6 @@
-# Swiss Rail Day-Trip Planner
+# Viadukt
+
+Swiss rail day-trip planner (repository `swiss-rail-routes`).
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 

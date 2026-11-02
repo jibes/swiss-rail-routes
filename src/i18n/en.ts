@@ -1,5 +1,5 @@
 export const en = {
-  appName: 'Swiss Rail Day-Trip Planner',
+  appName: 'Viadukt',
   newTour: 'New trip',
   language: 'Language',
   updateReady: 'A new version is ready.',

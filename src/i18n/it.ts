@@ -1,7 +1,7 @@
 import type { Catalogue } from './en';
 
 export const it = {
-  appName: 'Gite in treno in Svizzera',
+  appName: 'Viadukt',
   newTour: 'Nuovo viaggio',
   language: 'Lingua',
   updateReady: 'È pronta una nuova versione.',

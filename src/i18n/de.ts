@@ -1,7 +1,7 @@
 import type { Catalogue } from './en';
 
 export const de = {
-  appName: 'Bahn-Tagesausflug Schweiz',
+  appName: 'Viadukt',
   newTour: 'Neue Reise',
   language: 'Sprache',
   updateReady: 'Eine neue Version ist bereit.',

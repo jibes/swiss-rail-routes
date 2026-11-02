@@ -37,8 +37,8 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: false, // registerSW() in App drives the update banner
       manifest: {
-        name: 'Swiss Rail Day-Trip Planner',
-        short_name: 'Rail Day Trip',
+        name: 'Viadukt – Swiss rail day trips',
+        short_name: 'Viadukt',
         lang: 'en',
         start_url: './',
         scope: './',

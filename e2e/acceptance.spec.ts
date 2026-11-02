@@ -65,10 +65,33 @@ test('more options that fail to load change nothing; a tap chooses one', async (
   });
   await page.getByRole('button', { name: 'Later connections' }).click();
   await expect(page.locator('.opt.loading')).toBeVisible();
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    'no sideways page scroll',
-  ).toBe(true);
+  // As many options as a day of loading gives (copies of the first): the strip scrolls, the
+  // page keeps the screen's width (on a phone the page itself would grow, so `innerWidth` is
+  // measured against the device's width, not the page's).
+  const width = page.viewportSize()!.width;
+  const fits = await page.evaluate(() => {
+    const strip = document.querySelector('.options-bar .opts')!;
+    const first = strip.querySelector('.opt')!;
+    for (let i = 0; i < 8; i++) {
+      const copy = first.cloneNode(true) as HTMLElement;
+      copy.dataset.copy = '';
+      strip.appendChild(copy);
+    }
+    const page = document.querySelector('.page')!.getBoundingClientRect();
+    return {
+      inner: innerWidth,
+      scroll: document.documentElement.scrollWidth,
+      bar: document.querySelector('.options-bar')!.getBoundingClientRect().right <= page.right,
+      scrolls: strip.scrollWidth > strip.clientWidth,
+    };
+  });
+  expect(fits, 'no sideways page scroll').toEqual({
+    inner: width,
+    scroll: width,
+    bar: true,
+    scrolls: true,
+  });
+  await page.evaluate(() => document.querySelectorAll('[data-copy]').forEach((x) => x.remove()));
   release();
   await expect(page.getByText('Could not load more connections. Try again.')).toBeVisible({
     timeout: 30_000,

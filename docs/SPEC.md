@@ -1,4 +1,4 @@
-# Spec: Swiss Rail Day-Trip Planner
+# Spec: Viadukt (Swiss rail day-trip planner)
 
 1 Nov 2026 · @AB · revised the same day to follow the portfolio standard ([`jibes/apps-data/STANDARD.md`](https://github.com/jibes/apps-data/blob/main/STANDARD.md))
 

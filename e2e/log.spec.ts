@@ -27,7 +27,7 @@ test('debug log: opt in, plan a trip, save it as a file, never the sync key; off
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save file' }).click();
   const file = await download;
-  expect(file.suggestedFilename()).toMatch(/^rail-day-trip-log-.*\.txt$/);
+  expect(file.suggestedFilename()).toMatch(/^viadukt-log-.*\.txt$/);
   const text = await readFile((await file.path())!, 'utf8');
   for (const event of [
     'log.on',

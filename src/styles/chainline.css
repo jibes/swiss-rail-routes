@@ -227,6 +227,9 @@
 /* One box: the strip and its note */
 .options-wrap {
   display: grid;
+  /* One column no wider than the page: an `auto` column grows to fit every option, and the
+     strip would widen the page instead of scrolling. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   margin-top: 18px;
 }
