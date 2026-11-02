@@ -250,4 +250,6 @@ export const it = {
   yourTrips: 'I tuoi viaggi',
   partOfLine: 'Fa parte della linea {line}: modifica invece le sue stazioni di partenza e arrivo.',
   timetableStop: 'Aggiunta dall’orario: modifica invece le stazioni vicine.',
+  tripDeleted: 'Eliminato: {name}',
+  undo: 'Annulla',
 } satisfies Catalogue;

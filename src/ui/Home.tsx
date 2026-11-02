@@ -16,6 +16,7 @@ import { go } from './useHash';
 import { useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
+import { forgetDeleted, useDeleted } from './undoDelete';
 
 /** A trip on the list: its day, name, line and times. */
 function Card({
@@ -70,6 +71,7 @@ export function Home() {
   const trips = useTrips((s) => s.trips);
   const add = useTrips((s) => s.add);
   const remove = useTrips((s) => s.remove);
+  const deleted = useDeleted((s) => s.trip);
   const liveStatus = useLiveStatus((s) => s.status);
   const now = useNow();
   const index = useStopIndex();
@@ -116,6 +118,25 @@ export function Home() {
             ))}
           </ul>
         </section>
+      )}
+
+      {deleted && (
+        <div className="toast" role="status">
+          <span>
+            {t('tripDeleted', {
+              name: deleted.name || autoName(deleted.route, stop) || t('newTour'),
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              add(deleted);
+              forgetDeleted();
+            }}
+          >
+            {t('undo')}
+          </button>
+        </div>
       )}
 
       <footer className="home-foot">

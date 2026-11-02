@@ -946,3 +946,43 @@ svg.mini-line circle.via {
 .add-sheet .forget {
   color: var(--ink-3);
 }
+
+/* Undo after a deletion, above the dock */
+.toast {
+  position: fixed;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100% - 2 * var(--pad));
+  padding: 10px 10px 10px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 15px;
+  box-shadow: var(--shadow);
+}
+
+.toast span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--bg);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

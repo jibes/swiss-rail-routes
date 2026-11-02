@@ -30,6 +30,7 @@ import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { usePlanner } from './usePlanner';
+import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 
 /** Earlier/Later move the departure by an hour, within the day. */
@@ -84,7 +85,6 @@ export function TripScreen({ id }: { id: string }) {
     trip && !trip.route.waypoints.length ? { after: -1 } : null,
   );
   const [menu, setMenu] = useState(false);
-  const [confirm, setConfirm] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [dates, setDates] = useState(false);
 
@@ -150,7 +150,6 @@ export function TripScreen({ id }: { id: string }) {
           aria-expanded={menu}
           onClick={() => {
             setMenu(!menu);
-            setConfirm(false);
           }}
         >
           <Icon name="more" />
@@ -195,13 +194,14 @@ export function TripScreen({ id }: { id: string }) {
               role="menuitem"
               className="danger"
               onClick={() => {
-                if (!confirm) return setConfirm(true);
+                // At once; the list offers Undo for a few seconds.
+                rememberDeleted(trip);
                 remove(id);
                 go('/');
               }}
             >
               <Icon name="trash" size={18} />
-              {confirm ? t('confirmDeleteTrip') : t('deleteTrip')}
+              {t('deleteTrip')}
             </button>
           </div>
         </div>

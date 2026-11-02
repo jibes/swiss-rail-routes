@@ -252,4 +252,6 @@ export const de = {
   yourTrips: 'Deine Reisen',
   partOfLine: 'Teil der Linie {line}: ändere stattdessen ihre Endstationen.',
   timetableStop: 'Vom Fahrplan eingefügt: ändere stattdessen die Stationen davor oder danach.',
+  tripDeleted: 'Gelöscht: {name}',
+  undo: 'Rückgängig',
 } satisfies Catalogue;

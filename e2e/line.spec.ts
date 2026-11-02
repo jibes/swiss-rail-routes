@@ -123,3 +123,31 @@ test('a trip whose day is over leaves the list and waits in search', async ({ pa
   await page.getByRole('button', { name: /^Forget/ }).click();
   await expect(page.getByRole('heading', { name: 'Your trips' })).toHaveCount(0);
 });
+
+test('delete at once, with Undo for a few seconds', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await add(page, 'Chur');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await add(page, 'Arosa');
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Delete trip' }).click();
+
+  // Back on the list without it; Undo brings it back as it was.
+  const card = page.getByRole('link', { name: /Chur → Arosa/ });
+  await expect(card).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(card).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+
+  // Without Undo it stays gone, and the note goes after a few seconds.
+  await card.click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Delete trip' }).click();
+  await expect(page.getByText('Deleted: Chur → Arosa')).toBeVisible();
+  await page.clock.runFor(7000);
+  await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0);
+  await page.reload();
+  await expect(card).toHaveCount(0);
+});

@@ -62,7 +62,6 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.getByRole('link', { name: /From the laptop/ }).click();
   await page.getByRole('button', { name: 'More' }).click();
   await page.getByRole('menuitem', { name: 'Delete trip' }).click();
-  await page.getByRole('menuitem', { name: 'Tap again to delete' }).click();
   await page.waitForTimeout(3500);
   await laptop.goto('./');
   await laptop.reload();

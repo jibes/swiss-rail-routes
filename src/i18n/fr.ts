@@ -249,4 +249,6 @@ export const fr = {
   yourTrips: 'Tes voyages',
   partOfLine: 'Fait partie de la ligne {line} : modifie plutôt ses gares de départ et d’arrivée.',
   timetableStop: 'Ajoutée par l’horaire : modifie plutôt les gares autour.',
+  tripDeleted: 'Supprimé : {name}',
+  undo: 'Annuler',
 } satisfies Catalogue;
