@@ -143,10 +143,7 @@ export default function MapView({ id }: { id: string }) {
           source: 'lines',
           paint: {
             'line-color': ACCENT,
-            'line-width': 3,
-            // Each ride a little to the right of its way: a round trip out and back on the same
-            // tracks shows as two lines side by side, not one (the way back hidden under it).
-            'line-offset': 3,
+            'line-width': 4,
             'line-dasharray': ['case', ['get', 'exact'], ['literal', [1]], ['literal', [2, 2]]],
           },
         });
