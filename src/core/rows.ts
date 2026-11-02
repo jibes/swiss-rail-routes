@@ -28,6 +28,8 @@ export interface StationRow {
   leg?: number;
   /** A station of the route the plan does not reach (no connection passes it at this time). */
   missed?: true;
+  /** The other stop merged into this row across a walk under a minute. */
+  also?: string[];
 }
 
 export interface RideRow {
@@ -89,6 +91,8 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     shortWalk = false;
     if (last && lastIndex === seq.length - 1 && (merge || last.key === key)) {
       Object.assign(last, Object.fromEntries(Object.entries(times).filter(([, v]) => v)));
+      // Either stop is the route's station there (you may have entered either one).
+      if (last.key !== key) last.also = [...(last.also ?? []), key];
       return;
     }
     seq.push({ type: 'station', name, key, role: 'change', leg, ...times });
@@ -137,7 +141,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     let m = -1;
     for (let q = p; q < route.length; q++) {
       const r = route[q]!;
-      if (r.key === row.key) {
+      if (r.key === row.key || row.also?.includes(r.key)) {
         m = q;
         break;
       }

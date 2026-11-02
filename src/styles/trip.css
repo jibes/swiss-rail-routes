@@ -1056,3 +1056,50 @@ svg.mini-line circle.via {
   line-height: 1.45;
   color: var(--ink);
 }
+
+/* Controls, plain (0.5.4): flat tonal fills instead of outlined pills; one radius. */
+.trip-screen .pill,
+.add-sheet .pill {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: none;
+}
+
+.trip-screen .pill.on,
+.trip-screen .pill[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.trip-screen .options-bar {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  box-shadow: none;
+}
+
+.opt {
+  border-radius: 9px;
+}
+
+.panel .sq {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: none;
+}
+
+.trip-line .panel {
+  border-radius: 14px;
+  box-shadow: none;
+  background: var(--surface);
+  outline: 1px solid var(--hair);
+}
+
+.trip-line .missed-note .text-button {
+  min-height: 32px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--rail-ink);
+}

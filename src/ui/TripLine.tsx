@@ -251,7 +251,7 @@ export function TripLine({
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
               <div className="missed-note">
                 <span>{t('notReached')}</span>
-                <button type="button" className="pill" onClick={act.later}>
+                <button type="button" className="text-button" onClick={act.later}>
                   {t('tryLater')}
                 </button>
               </div>

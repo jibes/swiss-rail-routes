@@ -282,6 +282,42 @@ describe('rows: what the plan does not reach, and walks under a minute', () => {
       },
     ]);
     expect(rows.map(label)).toEqual(['Zurich', '[R62]', 'Lauterbrunnen', '[PB]', 'Muerren']);
+    // A route that names the other stop matches the merged row, not a station missed.
+    const viaSeilbahn = insertEntries(start(), 0, [
+      stationEntry(s('LauterbrunnenSeilbahn')),
+      stationEntry(s('Muerren')),
+    ]);
+    const rows2 = plannedRows(viaSeilbahn, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('08:00'),
+        transfers: 1,
+        sections: [
+          {
+            mode: 'rail',
+            line: 'R62',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Lauterbrunnen', '07:30'),
+            intermediate: [],
+          },
+          {
+            mode: 'walk',
+            from: call('Lauterbrunnen'),
+            to: call('LauterbrunnenSeilbahn'),
+            intermediate: [],
+          },
+          {
+            mode: 'cableCar',
+            line: 'PB',
+            from: call('LauterbrunnenSeilbahn', undefined, '07:40'),
+            to: call('Muerren', '08:00'),
+            intermediate: [],
+          },
+        ],
+      },
+    ]);
+    expect(rows2.map(label)).not.toContain('LauterbrunnenSeilbahn (missed)');
     const at = rows[2]!;
     expect(at.type === 'station' && [at.arr, at.dep]).toEqual([iso('07:30'), iso('07:40')]);
   });
