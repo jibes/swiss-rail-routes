@@ -22,6 +22,15 @@ const withTimeout = (signal?: AbortSignal) => {
 
 export class PlanningUnavailable extends Error {}
 
+/** Longest wait before a retry: longer, and the screen says it is busy instead. */
+const MAX_WAIT_MS = 10_000;
+
+/** The server's `Retry-After` (seconds), else `fallback`. */
+export function retryAfterMs(res: Response, fallback: number): number {
+  const s = Number(res.headers.get('Retry-After'));
+  return Number.isFinite(s) && s > 0 ? s * 1000 : fallback;
+}
+
 /** The Worker answered with an error; `detail` is its status and short text. */
 export class WorkerError extends Error {
   constructor(readonly detail: string) {
@@ -55,10 +64,12 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
       throw e;
     }
     const ms = Math.round(performance.now() - t0);
-    // Rate-limited (Worker 429, OJP quota 503): wait and try twice more.
-    if ((res.status === 429 || res.status === 503) && attempt < 2) {
-      log('ojp.trip.retry', { ...what, status: res.status, attempt, ms });
-      await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
+    // Rate-limited (Worker 429, OJP quota 503): wait as asked and try twice more, unless the
+    // wait is longer than a person waits for an answer (the Worker's limit: a minute).
+    const wait = retryAfterMs(res, 3000 * (attempt + 1));
+    if ((res.status === 429 || res.status === 503) && attempt < 2 && wait <= MAX_WAIT_MS) {
+      log('ojp.trip.retry', { ...what, status: res.status, attempt, ms, wait });
+      await new Promise((r) => setTimeout(r, wait));
       signal?.throwIfAborted();
       continue;
     }

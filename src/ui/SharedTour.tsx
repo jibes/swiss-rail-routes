@@ -4,6 +4,7 @@ import { stopKey } from '../core/stops';
 import { TEMPLATES } from '../data';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
+import { lineName } from './TemplatePicker';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { dayOf, defaultDate, newTrip } from '../core/trip';
@@ -64,7 +65,9 @@ export function SharedTour({
         </button>
       </header>
       <header className="hero">
-        <h1>{tour.name || autoName(shown, (r) => index?.byRef(stopKey(r))) || t('newTour')}</h1>
+        <h1>
+          {tour.name || autoName(shown, (r) => index?.byRef(stopKey(r)), lineName) || t('newTour')}
+        </h1>
         <p>{t('sharedTour')}</p>
       </header>
       <TripLine route={shown} rows={routeRows(shown)} warnings={[]} planning={false} />

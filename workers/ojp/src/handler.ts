@@ -51,7 +51,7 @@ function cors(origin: string | null, allowed: string[]): Record<string, string> 
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Max-Age': '86400',
     // The app logs whether an answer came from the cache (debug log).
-    'Access-Control-Expose-Headers': 'X-Cache',
+    'Access-Control-Expose-Headers': 'X-Cache, Retry-After',
     Vary: 'Origin',
   };
 }

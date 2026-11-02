@@ -214,7 +214,10 @@ export function TripLine({
                         t(w.key, w.params))
                       : t(w.key, w.params);
                   // A disruption opens the operator's own message on a tap.
-                  const detail = w.type === 'disruption' && s.notices?.length ? s.notices : null;
+                  const detail =
+                    (w.type === 'disruption' || w.type === 'disruption-away') && s.notices?.length
+                      ? s.notices
+                      : null;
                   const wid = `${id}-${j}`;
                   return detail ? (
                     <span key={j} className="warn-wrap">

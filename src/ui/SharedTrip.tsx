@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { decodeTrip } from '../core/export/tripShare';
 import { dayOf, isPlanned, type PlannedTrip } from '../core/trip';
 import { markRings, routeKey } from '../core/line';
+import { lineName } from './TemplatePicker';
 import { useTours } from '../tours';
 import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
@@ -59,7 +60,7 @@ export function SharedTrip({ hash }: { hash: string }) {
         </button>
       </header>
       <header className="hero">
-        <h1>{trip.name || autoName(trip.route) || t('newTour')}</h1>
+        <h1>{trip.name || autoName(trip.route, undefined, lineName) || t('newTour')}</h1>
         <p>{t('sharedTrip')}</p>
       </header>
       <p className="eyebrow">{longDate(trip.route.date, lang)}</p>

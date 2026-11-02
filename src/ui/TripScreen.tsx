@@ -16,6 +16,7 @@ import { stopKey } from '../core/stops';
 import { encodeTrip } from '../core/export/tripShare';
 import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { usePrefs, useT } from '../store';
+import { lineName } from './TemplatePicker';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
@@ -130,7 +131,7 @@ export function TripScreen({ id }: { id: string }) {
   if (!trip) return <NotFound />;
 
   const route = trip.route;
-  const name = trip.name || autoName(route, stop) || t('newTour');
+  const name = trip.name || autoName(route, stop, lineName) || t('newTour');
   const entries = entriesOf(route);
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
   const chain = trip.chain;
@@ -376,7 +377,7 @@ export function TripScreen({ id }: { id: string }) {
           }}
           onBlur={(e) => {
             const v = e.target.value.trim();
-            update(id, (x) => ({ ...x, name: v === autoName(route, stop) ? '' : v }));
+            update(id, (x) => ({ ...x, name: v === autoName(route, stop, lineName) ? '' : v }));
             setRenaming(false);
           }}
         />

@@ -61,7 +61,7 @@ function SyncOn({
         <span className={`sync-dot ${status}`} aria-hidden="true" />
         <span role="status">{state}</span>
         {status !== 'replaced' && (
-          <button type="button" className="text-button" onClick={() => void syncNow()}>
+          <button type="button" className="text-button" onClick={() => void syncNow(true)}>
             {t('syncNow')}
           </button>
         )}

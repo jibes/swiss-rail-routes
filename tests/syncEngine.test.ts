@@ -60,8 +60,19 @@ describe('sync engine', () => {
     await a.sync.syncNow();
     expect(a.sync.useSync.getState().status).toBe('error');
     const before = [...boxes.values()][0]!.v;
-    // Next round: the copy on the Worker is read in full and the trip written after all.
+    // A round by itself waits (backing off: each one would download the whole copy)…
+    const gets = vi.fn();
+    vi.stubGlobal('fetch', (input: string | URL | Request, init?: RequestInit) => {
+      gets();
+      return worker(input, init);
+    });
     await a.sync.syncNow();
+    expect(gets).not.toHaveBeenCalled();
+    expect([...boxes.values()][0]!.v).toBe(before);
+    expect(a.sync.backoffMs(1)).toBe(60_000);
+    expect(a.sync.backoffMs(9)).toBe(30 * 60_000);
+    // …a tap on Sync now does not: the copy is read in full and the trip written after all.
+    await a.sync.syncNow(true);
     expect(a.sync.useSync.getState().status).toBe('ok');
     const box = [...boxes.values()][0]!;
     expect(box.v).toBe(before + 1);

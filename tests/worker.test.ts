@@ -103,6 +103,7 @@ describe('OJP worker', () => {
   it('lets the app read whether an answer came from the cache', async () => {
     const res = await setup().call();
     expect(res.headers.get('Access-Control-Expose-Headers')).toContain('X-Cache');
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('Retry-After');
   });
 
   it('rejects foreign origins, bad paths, bad bodies, other methods', async () => {

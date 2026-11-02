@@ -4,7 +4,6 @@
 import { isPlanned, tripStatus, type Trip } from '../core/trip';
 import { useTrips } from '../trips';
 import { log } from './log';
-import { askNotifications } from './notifications';
 import { keepPlan, planRoute, routeJson } from './planTrip';
 
 const RETRY_MS = 10 * 60_000;
@@ -45,8 +44,8 @@ export function watchAutoPlan() {
     log('autoplan', { trip: t.id, date: t.route.date });
     try {
       // No connection found is a failure too, tried again later; not at once, in a loop.
-      if (keepPlan(t.id, json, await planRoute(t))) void askNotifications();
-      else failed.set(`${t.id}|${json}`, Date.now());
+      // Kept quietly: the permission is asked on the trip screen, never in the background.
+      if (!keepPlan(t.id, json, await planRoute(t))) failed.set(`${t.id}|${json}`, Date.now());
     } catch (e) {
       log('autoplan.fail', { trip: t.id, e, retryMin: RETRY_MS / 60_000 });
       failed.set(`${t.id}|${json}`, Date.now());

@@ -26,6 +26,51 @@ export interface WarningContext {
   stop: (ref: string) => LatLon | undefined;
 }
 
+const fold = (x: string) =>
+  x
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+/** "between A and B" in an operator's notice, in the four languages OJP writes them in. */
+const BETWEEN = [
+  /zwischen (.+?) und (.+?)(?: ist| sind| wird| werden| kommt|[.,;]|$)/i,
+  /entre (.+?) et (.+?)(?: est| sont|[.,;]|$)/i,
+  /tra (.+?) e (.+?)(?: è| sono|[.,;]|$)/i,
+  /between (.+?) and (.+?)(?: is| are|[.,;]|$)/i,
+];
+
+/** The two ends a notice names, if it names a stretch. */
+export function stretchOf(text: string): [string, string] | undefined {
+  for (const re of BETWEEN) {
+    const m = re.exec(text);
+    if (m) return [m[1]!, m[2]!];
+  }
+  return undefined;
+}
+
+/**
+ * Whether a ride's notices concern the stretch you ride: yes when one names no stretch (it may be
+ * about anything), or names an end you pass; no only when every one names a stretch whose ends are
+ * none of your ride's stops. OJP gives the train, not the stops, so the notice's words decide.
+ */
+export function onThisStretch(s: Section): boolean {
+  const notices = s.notices ?? [];
+  if (!notices.length) return true;
+  const stops = [s.from, ...s.intermediate, s.to].map((x) => fold(x.name));
+  const passes = (end: string) => {
+    const e = fold(end);
+    return stops.some(
+      (x) => x === e || x.startsWith(`${e} `) || e.startsWith(`${x} `) || x.startsWith(`${e},`),
+    );
+  };
+  return notices.some((n) => {
+    const ends = stretchOf(n);
+    return !ends || passes(ends[0]) || passes(ends[1]);
+  });
+}
+
 /** A highlight counts as passed at the nearest call within this distance. */
 const HIGHLIGHT_KM = 15;
 
@@ -81,14 +126,27 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
     if (s.mode === 'walk') return;
     const where = { from: s.from.name, to: s.to.name };
     if (s.situationIds?.length)
-      w.push({
-        ...base,
-        sectionIndex: i,
-        type: 'disruption',
-        severity: 'error',
-        key: 'wDisruption',
-        params: where,
-      });
+      w.push(
+        onThisStretch(s)
+          ? {
+              ...base,
+              sectionIndex: i,
+              type: 'disruption',
+              severity: 'error',
+              key: 'wDisruption',
+              params: where,
+            }
+          : {
+              // The train's own notice, about a stretch of its route you do not ride (its
+              // Lausanne–Genève works on your Bern–Zürich): said, not counted against the plan.
+              ...base,
+              sectionIndex: i,
+              type: 'disruption-away',
+              severity: 'info',
+              key: 'wDisruptionAway',
+              params: where,
+            },
+      );
     if (isSupplement(s, ctx.ga))
       w.push({
         ...base,

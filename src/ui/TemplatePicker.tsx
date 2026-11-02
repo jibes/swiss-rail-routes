@@ -17,3 +17,6 @@ export function directionFrom(
   const b = stop(tp.chain.at(-1)!.ref);
   return !!a && !!b && km(from, b) < km(from, a);
 }
+
+/** A scenic line's name by its id (a route that is just that line is called by it). */
+export const lineName = (id: string) => TEMPLATES.find((x) => x.id === id)?.name;

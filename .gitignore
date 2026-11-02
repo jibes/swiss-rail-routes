@@ -10,3 +10,4 @@ docs/design/logos/.sheet.html
 
 # Android release key and secrets (never commit)
 .android-release/
+__pycache__/

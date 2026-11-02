@@ -48,7 +48,14 @@ export interface Leg {
 }
 
 export type WarningType =
-  'disruption' | 'after-sunset' | 'not-ga' | 'reservation' | 'tight-transfer' | 'seasonal';
+  | 'disruption'
+  /** A notice of the train about a stretch you do not ride: said, not counted. */
+  | 'disruption-away'
+  | 'after-sunset'
+  | 'not-ga'
+  | 'reservation'
+  | 'tight-transfer'
+  | 'seasonal';
 
 export interface LatLon {
   lat: number;

@@ -44,6 +44,38 @@ function EditOrTrip({ id }: { id: string }) {
   return live ? <EditTrip id={id} /> : <TripScreen key={id} id={id} />;
 }
 
+/**
+ * A trip whose day is over leaves the list and waits in search (your trips), checked as the clock
+ * moves on. Its own component: the shared 15 s clock re-renders only it, not the whole app.
+ */
+function Retire({ loaded, tripsLoaded }: { loaded: boolean; tripsLoaded: boolean }) {
+  const now = useNow();
+  const settled = useSync((s) => s.settled);
+  useEffect(() => {
+    if (!loaded || !tripsLoaded || !settled) return;
+    // Lists that could not be read are never written.
+    if (useTrips.getState().failed || useTours.getState().failed) return;
+    const live = useLiveStatus.getState().status;
+    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
+      t.chain ? expectedArrival(t.chain.connections, live) : undefined,
+    );
+    if (!r.changed) return;
+    log('retire', {
+      trips: useTrips.getState().trips.length - r.trips.length,
+      pastTrips: r.tours.length - useTours.getState().tours.length,
+    });
+    void useTours
+      .getState()
+      .replaceAll(r.tours)
+      .catch(() => undefined);
+    void useTrips
+      .getState()
+      .replaceAll(r.trips)
+      .catch(() => undefined);
+  }, [loaded, tripsLoaded, settled, now]);
+  return null;
+}
+
 function Route({ hash: full }: { hash: string }) {
   const [hash = '/', q = ''] = full.split('?');
   if (hash.startsWith('/t/')) return <SharedTour legacy={hash} />;
@@ -99,32 +131,6 @@ export function App() {
       document.removeEventListener('visibilitychange', back);
     };
   }, [trips, tripsLoaded, lang]);
-  // A trip whose day is over leaves the list and waits in search (your trips), checked as the
-  // clock moves on.
-  const now = useNow();
-  const settled = useSync((s) => s.settled);
-  useEffect(() => {
-    if (!loaded || !tripsLoaded || !settled) return;
-    // Lists that could not be read are never written.
-    if (useTrips.getState().failed || useTours.getState().failed) return;
-    const live = useLiveStatus.getState().status;
-    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
-      t.chain ? expectedArrival(t.chain.connections, live) : undefined,
-    );
-    if (!r.changed) return;
-    log('retire', {
-      trips: useTrips.getState().trips.length - r.trips.length,
-      pastTrips: r.tours.length - useTours.getState().tours.length,
-    });
-    void useTours
-      .getState()
-      .replaceAll(r.tours)
-      .catch(() => undefined);
-    void useTrips
-      .getState()
-      .replaceAll(r.trips)
-      .catch(() => undefined);
-  }, [loaded, tripsLoaded, settled, now]);
   useEffect(() => watchBack(), []);
   // Trips without a timetable (changed elsewhere, left before planning) are planned meanwhile.
   useEffect(() => (loaded && tripsLoaded ? watchAutoPlan() : undefined), [loaded, tripsLoaded]);
@@ -134,7 +140,7 @@ export function App() {
   useEffect(() => {
     if (!loaded || !tripsLoaded) return;
     console.info('srr:ready');
-    log('app.ready', { live: !!useLiveStatus.getState().status });
+    log('app.ready', { trains: useLiveStatus.getState().status.size });
   }, [loaded, tripsLoaded]);
   // A notification of a trip deleted or retired since opens the list instead.
   useEffect(
@@ -169,6 +175,7 @@ export function App() {
 
   return (
     <>
+      <Retire loaded={loaded} tripsLoaded={tripsLoaded} />
       {loaded && tripsLoaded ? (
         <ErrorBoundary resetKey={hash.split('?')[0]!}>
           <Route hash={hash} />

@@ -37,7 +37,14 @@ interface Saved {
   /** A write was due and has not been confirmed: the next round downloads the copy in full
    * (never "unchanged" from stamps) and so writes again. */
   unsent?: boolean;
+  /** Rounds in a row that failed after an answer, and when the last did: while a write is
+   * unsent each round downloads the whole copy, so rounds back off (1, 2, 4 … 30 min). */
+  fails?: number;
+  failedAt?: number;
 }
+
+/** How long rounds wait after `fails` failures while a write is unsent. */
+export const backoffMs = (fails: number) => Math.min(30, 2 ** Math.max(0, fails - 1)) * 60_000;
 
 /** Sync was turned off or given another key while a round ran: that round keeps nothing. */
 class Stopped extends Error {}
@@ -237,8 +244,12 @@ async function round(start: Saved): Promise<Saved> {
 let running: Promise<void> | null = null;
 let again = false;
 
-/** Syncs now. A call while a round runs queues one more round after it. */
-export function syncNow(): Promise<void> {
+let forced = false;
+
+/** Syncs now. A call while a round runs queues one more round after it. `force` (the user's own
+ * tap) skips the back-off after failures. */
+export function syncNow(force = false): Promise<void> {
+  forced ||= force;
   if (running) {
     again = true;
     return running;
@@ -246,7 +257,9 @@ export function syncNow(): Promise<void> {
   running = (async () => {
     do {
       again = false;
-      await once();
+      const f = forced;
+      forced = false;
+      await once(f);
     } while (again);
   })().finally(() => {
     running = null;
@@ -258,7 +271,7 @@ export function syncNow(): Promise<void> {
 const exclusive = (f: () => Promise<void>) =>
   navigator.locks ? navigator.locks.request('srr-sync', f) : f();
 
-async function once() {
+async function once(force = false) {
   if (!syncAvailable()) return;
   if (!useTours.getState().loaded || !useTrips.getState().loaded) return;
   // Lists that could not be read look empty: syncing them would delete everything elsewhere.
@@ -271,10 +284,22 @@ async function once() {
       if (useSync.getState().key) useSync.setState({ key: null, status: 'off', settled: true });
       return;
     }
+    // A write unsent and the last rounds failed: each round downloads the whole copy (mobile
+    // data), so wait as the back-off says, unless asked to now.
+    if (
+      !force &&
+      saved.unsent &&
+      saved.fails &&
+      saved.failedAt &&
+      Date.now() - saved.failedAt < backoffMs(saved.fails)
+    ) {
+      log('sync.wait', { fails: saved.fails, ms: backoffMs(saved.fails) });
+      return;
+    }
     useSync.setState({ key: saved.key, status: 'syncing' });
     try {
       const next = await round(saved);
-      await keepFor(saved.key, { ...next, status: 'ok' });
+      await keepFor(saved.key, { ...next, status: 'ok', fails: 0, failedAt: undefined });
       // The first round that reached the server: retiring may run now.
       useSync.setState({ status: 'ok', at: next.at ?? null, settled: true });
       log('sync.ok', { v: next.v });
@@ -285,7 +310,14 @@ async function once() {
       if (now?.key !== saved.key) return;
       const status = e instanceof SyncProblem ? e.status : 'error';
       log('sync.fail', { status, e });
-      await keepFor(saved.key, { ...now, status }).catch(() => undefined);
+      // Offline is no failure of the server: no back-off for it (nothing was downloaded).
+      const fails = status === 'offline' ? (now.fails ?? 0) : (now.fails ?? 0) + 1;
+      await keepFor(saved.key, {
+        ...now,
+        status,
+        fails,
+        failedAt: status === 'offline' ? now.failedAt : Date.now(),
+      }).catch(() => undefined);
       // The server answered (replaced, too big, busy…): what it holds is known, so retiring may
       // run. Only offline it waits, as the other devices' changes are not in yet.
       useSync.setState(status === 'offline' ? { status } : { status, settled: true });

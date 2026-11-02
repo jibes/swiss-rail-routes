@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from './helpers/edit';
 import { autoName } from '../src/core/naming';
+import { markRings } from '../src/core/line';
 import { index, ref, templates } from './helpers/timetable';
 
 const st = (name: string) => ({ stopRef: ref(name), name });
@@ -41,5 +42,14 @@ describe('autoName', () => {
   it('without coordinates still names start and end', () => {
     expect(autoName(newTour('t', '2026-11-07', st('Bern')))).toBe('Bern');
     expect(autoName(newTour('t', '2026-11-07'))).toBe('');
+  });
+
+  it('just one scenic line: its name; its own stations never name a route', () => {
+    const b = insertTemplate(newTour('t', '2026-11-07'), tpl('bernina'));
+    // As the app keeps it: the line's stations between its ends are rings.
+    const t = { ...b, waypoints: markRings(b.waypoints) };
+    const name = (id: string) => templates.find((x) => x.id === id)?.name;
+    expect(autoName(t, stop, name)).toBe('Bernina');
+    expect(autoName(t, stop)).toBe('St. Moritz → Tirano');
   });
 });

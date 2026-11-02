@@ -1,6 +1,7 @@
 // A route's default name: its start, at most two stations in between, its end.
 // The two: where you get off (longest stay first), then spread out (farthest from the start and
 // from the one picked: a loop's turning point and its middle); shown in route order. A round trip: "Start ↺ A · B".
+import { linesOf } from './line';
 import type { LatLon, Tour } from './model';
 import { stopKey } from './stops';
 import { isRoundTrip } from './tour';
@@ -11,9 +12,21 @@ const km = (a: LatLon, b: LatLon) => {
   return Math.hypot(x, (b.lat - a.lat) * r) * 6371;
 };
 
-export function autoName(tour: Tour, stop?: (ref: string) => LatLon | undefined): string {
+export function autoName(
+  tour: Tour,
+  stop?: (ref: string) => LatLon | undefined,
+  /** A scenic line's name by its id: a route that is just that line is called by it. */
+  lineName?: (id: string) => string | undefined,
+): string {
   const wps = tour.waypoints;
   if (!wps.length) return '';
+  // Just one scenic line, end to end: "Bernina", not its stations.
+  const own = wps.filter((w) => !w.ring);
+  const lines = [...linesOf(wps)];
+  if (lineName && own.length === 2 && lines.length === 1) {
+    const n = lineName(lines[0]!);
+    if (n) return n;
+  }
   const start = wps[0]!;
   if (wps.length === 1) return start.name;
   const end = wps.at(-1)!;
@@ -23,6 +36,8 @@ export function autoName(tour: Tour, stop?: (ref: string) => LatLon | undefined)
   const candidates = wps
     .slice(1, -1)
     .map((w, i) => ({ w, i, at: stop?.(stopKey(w.stopRef)) }))
+    // A scenic line's own stations are the line's, not the trip's: never its name.
+    .filter(({ w }) => !w.ring)
     .filter(({ w }) => {
       const k = stopKey(w.stopRef);
       return !seen.has(k) && !!seen.add(k);

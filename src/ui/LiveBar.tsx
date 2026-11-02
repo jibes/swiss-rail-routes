@@ -1,6 +1,7 @@
 import { expectedArrival, liveState } from '../core/live';
 import { autoName } from '../core/naming';
 import { isPlanned, liveTrip } from '../core/trip';
+import { lineName } from './TemplatePicker';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { badge } from './format';
@@ -30,7 +31,7 @@ export function LiveBar() {
           ? n.kind === 'board'
             ? `${badge(ride.s)} ${hhmm(n.at)}${n.stop.platform ? ` · ${t('platform', { p: n.stop.platform })}` : ''}`
             : `${t('nowAlight', { stop: n.stop.name })} ${hhmm(n.at)}`
-          : trip.name || autoName(trip.route)}
+          : trip.name || autoName(trip.route, undefined, lineName)}
       </span>
     </a>
   );

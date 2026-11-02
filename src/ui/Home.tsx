@@ -5,6 +5,7 @@ import { stopKey } from '../core/stops';
 import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
+import { lineName } from './TemplatePicker';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { duration, hhmm, minutesBetween, nextFive } from './format';
@@ -43,7 +44,9 @@ function Card({
           <i>{fmt({ month: 'short' })}</i>
         </span>
         <span className="cbody">
-          <span className="name">{trip.name || autoName(trip.route, stop) || t('newTour')}</span>
+          <span className="name">
+            {trip.name || autoName(trip.route, stop, lineName) || t('newTour')}
+          </span>
           {trip.route.waypoints.length > 1 && <MiniLine tour={trip.route} />}
           <span className="sub num">
             <span className="sr-only">
@@ -138,7 +141,7 @@ export function Home() {
         <div className="toast" role="status">
           <span>
             {t('tripDeleted', {
-              name: deleted.name || autoName(deleted.route, stop) || t('newTour'),
+              name: deleted.name || autoName(deleted.route, stop, lineName) || t('newTour'),
             })}
           </span>
           <button
