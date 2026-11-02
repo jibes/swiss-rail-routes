@@ -15,7 +15,7 @@ import {
   stationEntry,
 } from '../src/core/line';
 import type { Tour } from '../src/core/model';
-import { newTrip } from '../src/core/trip';
+import { dayOf, newTrip, zurichTime } from '../src/core/trip';
 import { retire } from '../src/core/retire';
 import { plannedRows, routeRows } from '../src/core/rows';
 
@@ -121,6 +121,12 @@ describe('the line: entries and scenic lines', () => {
     expect(routeKey(trip())).not.toBe(routeKey(dropLine(trip(), 2)));
   });
 
+  it('a line switched off leaves no rule behind: its ends lose the template', () => {
+    const off = dropLine(trip(), 2);
+    expect(off.waypoints.filter((w) => w.templateId === 'vae')).toEqual([]);
+    expect(off.waypoints.filter((w) => w.templateId === 'bruenig').length).toBeGreaterThan(0);
+  });
+
   it('does not add the station you are at twice', () => {
     const t = insertEntries(start(), 0, [stationEntry(s('Zurich')), stationEntry(s('Bern'))]);
     expect(entriesOf(t).map((e) => e.w.name)).toEqual(['Zurich', 'Bern']);
@@ -201,6 +207,86 @@ describe('rows', () => {
   });
 });
 
+describe('rows: what the plan does not reach, and walks under a minute', () => {
+  const iso = (t: string) => `2026-11-07T${t}:00Z`;
+  const call = (n: string, arr?: string, dep?: string) => ({
+    stopRef: `ch:1:sloid:${n}`,
+    name: n,
+    ...(arr ? { arr: iso(arr) } : {}),
+    ...(dep ? { dep: iso(dep) } : {}),
+  });
+  const label = (r: ReturnType<typeof plannedRows>[number]) =>
+    r.type === 'ride'
+      ? `[${r.section.line ?? r.section.mode}]`
+      : `${r.name}${r.missed ? ' (missed)' : ''}`;
+
+  it('keeps a line station the train does not pass, marked as missed', () => {
+    const tour = insertEntries(start(), 0, lineEntries(VAE));
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('09:00'),
+        transfers: 0,
+        sections: [
+          {
+            mode: 'rail',
+            line: 'IR',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Luzern', '09:00'),
+            intermediate: [call('StGallen', '07:50', '07:52'), call('Wattwil', '08:20', '08:21')],
+          },
+        ],
+      },
+    ]);
+    expect(rows.map(label)).toEqual([
+      'Zurich',
+      '[IR]',
+      'StGallen',
+      'Herisau (missed)',
+      'Wattwil',
+      'Luzern',
+    ]);
+  });
+
+  it('merges the two ends of a walk under a minute into one station', () => {
+    const tour = insertEntries(start(), 0, [stationEntry(s('Muerren'))]);
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('08:00'),
+        transfers: 1,
+        sections: [
+          {
+            mode: 'rail',
+            line: 'R62',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Lauterbrunnen', '07:30'),
+            intermediate: [],
+          },
+          {
+            mode: 'walk',
+            from: call('Lauterbrunnen'),
+            to: call('LauterbrunnenSeilbahn'),
+            intermediate: [],
+          },
+          {
+            mode: 'cableCar',
+            line: 'PB',
+            from: call('LauterbrunnenSeilbahn', undefined, '07:40'),
+            to: call('Muerren', '08:00'),
+            intermediate: [],
+          },
+        ],
+      },
+    ]);
+    expect(rows.map(label)).toEqual(['Zurich', '[R62]', 'Lauterbrunnen', '[PB]', 'Muerren']);
+    const at = rows[2]!;
+    expect(at.type === 'station' && [at.arr, at.dep]).toEqual([iso('07:30'), iso('07:40')]);
+  });
+});
+
 describe('a finished trip waits in search', () => {
   const chain = (day: string) => ({
     connections: [],
@@ -211,8 +297,6 @@ describe('a finished trip waits in search', () => {
   });
   const tripOn = (id: string, day: string, route = trip()) =>
     newTrip(id, { ...route, id: 'r', date: day, name: id } as Tour, [], chain(day), new Date(0));
-  let n = 0;
-  const ids = () => `x${++n}`;
 
   it('moves past trips into your trips, newest first, the same stations once', () => {
     const now = Date.parse('2026-11-10T12:00:00Z');
@@ -220,11 +304,19 @@ describe('a finished trip waits in search', () => {
       [tripOn('a', '2026-11-01'), tripOn('b', '2026-11-07'), tripOn('c', '2026-11-20')],
       [{ ...trip(), id: 'old', name: 'old', date: '2026-10-01' } as Tour],
       now,
-      ids,
     );
     expect(r.changed).toBe(true);
     expect(r.trips.map((t) => t.id)).toEqual(['c']);
     expect(r.tours.map((t) => t.name)).toEqual(['b']);
+  });
+
+  it('gives a retired trip the same id on every device, and counts days in Zurich', () => {
+    const r = retire([tripOn('a', '2026-11-01')], [], Date.parse('2026-11-03T12:00:00Z'));
+    expect(r.tours[0]!.id).toBe('past-a');
+    // 23:30 in Zurich on the 7th is already the 8th in UTC: the trip of the 7th is not over yet.
+    expect(dayOf(Date.parse('2026-11-07T22:30:00Z'))).toBe('2026-11-07');
+    expect(zurichTime('2026-11-07', '08:00')).toBe(Date.parse('2026-11-07T07:00:00Z'));
+    expect(zurichTime('2026-07-04', '08:00')).toBe(Date.parse('2026-07-04T06:00:00Z'));
   });
 
   it('retires a trip never planned once its day is over, and nothing early', () => {
@@ -235,7 +327,7 @@ describe('a finished trip waits in search', () => {
       undefined,
       new Date(0),
     );
-    expect(retire([draft], [], Date.parse('2026-11-07T22:00:00'), ids).changed).toBe(false);
-    expect(retire([draft], [], Date.parse('2026-11-08T08:00:00'), ids).tours).toHaveLength(1);
+    expect(retire([draft], [], Date.parse('2026-11-07T20:00:00Z')).changed).toBe(false);
+    expect(retire([draft], [], Date.parse('2026-11-08T08:00:00Z')).tours).toHaveLength(1);
   });
 });

@@ -254,4 +254,9 @@ export const de = {
   timetableStop: 'Vom Fahrplan eingefügt: ändere stattdessen die Stationen davor oder danach.',
   tripDeleted: 'Gelöscht: {name}',
   undo: 'Rückgängig',
+  notReached:
+    'Zu dieser Zeit fährt keine Verbindung hier durch: die Reise geht ohne diese Station.',
+  tryLater: 'Eine Stunde später versuchen',
+  onlyOneShort: 'Einzige Verbindung zu dieser Zeit',
+  relaxedAvoidAt: '{from} → {to}: nur durch einen Tunnel, den du meiden wolltest.',
 } satisfies Catalogue;

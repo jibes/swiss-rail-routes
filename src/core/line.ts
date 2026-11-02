@@ -4,6 +4,7 @@
 // the stations at its two ends.
 import { normalise } from './edit';
 import type { Tour, Waypoint } from './model';
+import { stopKey } from './stops';
 
 export interface Entry {
   w: Waypoint;
@@ -66,8 +67,20 @@ export function fromEntries<T extends Pick<Tour, 'waypoints'>>(tour: T, entries:
 export const lineTo = (entries: Entry[], k: number) =>
   k > 0 ? entries[k]?.rings[0]?.templateId : undefined;
 
+/**
+ * Cuts the line that leads to entry `k`: its rings go, and its template comes off its two ends
+ * (else the planner would still apply the line's rules, and its highlights would still notify).
+ */
 const cut = (entries: Entry[], k: number) => {
-  if (entries[k]) entries[k] = { ...entries[k]!, rings: [] };
+  const e = entries[k];
+  if (!e) return;
+  const id = e.rings[0]?.templateId;
+  entries[k] = { ...e, rings: [] };
+  if (!id) return;
+  for (const j of [k - 1, k]) {
+    const x = entries[j];
+    if (x?.w.templateId === id) entries[j] = { ...x, w: { ...x.w, templateId: undefined } };
+  }
 };
 
 /** Moves entry `from` to position `to`; lines into it, out of it and across the gap it lands in go. */
@@ -202,5 +215,7 @@ export function linesLostByMove(tour: Pick<Tour, 'waypoints'>, from: number, to:
 /** Same stations, same stays, same lines: the key that makes two routes one in search. */
 export const routeKey = (tour: Pick<Tour, 'waypoints'>) =>
   markRings(tour.waypoints)
-    .map((w) => `${w.stopRef}|${w.kind}|${w.dwellMin}|${w.ring ? (w.templateId ?? '') : ''}`)
+    .map(
+      (w) => `${stopKey(w.stopRef)}|${w.kind}|${w.dwellMin}|${w.ring ? (w.templateId ?? '') : ''}`,
+    )
     .join(';');

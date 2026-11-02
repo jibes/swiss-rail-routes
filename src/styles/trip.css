@@ -986,3 +986,71 @@ svg.mini-line circle.via {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* A route station the plan does not reach */
+.trip-line .station.missed .n {
+  text-decoration: line-through;
+  text-decoration-color: var(--amber);
+  color: var(--ink-3);
+}
+
+.trip-line .station.missed .dot {
+  background: var(--bg);
+  border: 2px dashed var(--amber);
+  box-shadow: none;
+}
+
+.trip-line .missed-note {
+  grid-column: 3 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .missed-note .pill {
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* A disruption: the operator's message on a tap */
+.trip-line .warn-wrap {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.trip-line button.warn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trip-line button.warn svg {
+  flex: none;
+  align-self: center;
+}
+
+.trip-line button.warn[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.trip-line .warn-wrap .detail {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}

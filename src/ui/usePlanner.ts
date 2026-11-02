@@ -3,7 +3,7 @@
 // options are kept with the last plan (srr.plans.v1) for when the screen opens again.
 import { useEffect, useState } from 'react';
 import { plan, type PlanResult, type PlannedChain } from '../core/planner/plan';
-import type { Trip } from '../core/trip';
+import { compactTrip, type Trip } from '../core/trip';
 import { GA, SEGMENTS, TEMPLATES } from '../data';
 import { PlanningUnavailable, WorkerError, fetchTrips } from '../io/ojp';
 import { stopSearch } from '../io/stops';
@@ -20,7 +20,9 @@ const routeJson = (t: Trip) => JSON.stringify(t.route);
 export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const update = useTrips((s) => s.update);
   const [status, setStatus] = useState<PlanStatus>('idle');
-  const [result, setResult] = useState<PlanResult | null>(null);
+  // The result with the route it was planned for: options of an older route never show or pick.
+  const [planned_, setPlanned] = useState<{ json: string; result: PlanResult } | null>(null);
+  const setResult = (result: PlanResult, forJson: string) => setPlanned({ json: forJson, result });
   const [detail, setDetail] = useState('');
   const [attempt, setAttempt] = useState(0);
   const id = trip?.id;
@@ -37,7 +39,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
         const saved = (await loadPlans())[id];
         if (ctrl.signal.aborted) return;
         if (saved?.tourJson === json && saved.result.legs && saved.result.options) {
-          setResult(saved.result);
+          setResult(saved.result, json);
           setStatus('done');
           if (!planned) keep(saved.result);
           return;
@@ -59,12 +61,14 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
             stop: (ref) => index.byRef(ref),
           });
           if (ctrl.signal.aborted) return;
-          setResult(r);
+          setResult(r, json);
           setStatus('done');
           keep(r);
+          // Kept for trips that still exist only, so the cache does not grow for good.
           const plans = await loadPlans();
+          const ids = new Set(useTrips.getState().trips.map((t) => t.id));
           await savePlans({
-            ...plans,
+            ...Object.fromEntries(Object.entries(plans).filter(([k]) => ids.has(k))),
             [id]: { tourJson: json, at: new Date().toISOString(), result: r },
           });
         } catch (e) {
@@ -85,7 +89,11 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     function keep(r: PlanResult) {
       const chain = r.recommended ?? r.options?.[0];
       if (!chain || !r.legs) return;
-      update(id!, (t) => (routeJson(t) === json && !t.chain ? { ...t, chain, legs: r.legs } : t));
+      update(id!, (t) =>
+        routeJson(t) === json && !t.chain
+          ? compactTrip({ ...t, chain, legs: r.legs!, compact: undefined })
+          : t,
+      );
     }
     return () => {
       ctrl.abort();
@@ -93,10 +101,13 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     };
   }, [id, json, needs, planned, attempt, update]);
 
+  const result = planned_?.json === json ? planned_.result : null;
   const pick = (c: PlannedChain) => {
     if (!id || !result?.legs) return;
     const legs = result.legs;
-    update(id, (t) => (routeJson(t) === json ? { ...t, chain: c, legs } : t));
+    update(id, (t) =>
+      routeJson(t) === json ? compactTrip({ ...t, chain: c, legs, compact: undefined }) : t,
+    );
   };
 
   return {

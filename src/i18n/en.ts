@@ -247,6 +247,10 @@ export const en = {
   timetableStop: 'Added by the timetable: change the stations around it instead.',
   tripDeleted: 'Deleted: {name}',
   undo: 'Undo',
+  notReached: 'No connection passes here at this time: the trip goes without it.',
+  tryLater: 'Try an hour later',
+  onlyOneShort: 'Only connection at this time',
+  relaxedAvoidAt: '{from} → {to}: only through a tunnel you wanted to avoid.',
 };
 
 export type Catalogue = typeof en;

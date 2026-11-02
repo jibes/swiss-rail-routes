@@ -66,8 +66,28 @@ export type TripStatus = 'upcoming' | 'live' | 'past';
 export const LIVE_BEFORE_MIN = 30;
 export const LIVE_AFTER_MIN = 15;
 
-/** Local calendar day of a time, `YYYY-MM-DD`. */
-export const dayOf = (now: number) => new Date(now).toLocaleDateString('sv-SE');
+const ZURICH_DAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich' });
+/** The calendar day in Zurich (where trip dates are), `YYYY-MM-DD`, wherever the device is. */
+export const dayOf = (now: number) => ZURICH_DAY.format(now);
+
+const ZURICH_PARTS = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Zurich',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+/** A Zurich date and time (`YYYY-MM-DD`, `HH:MM`) as an instant. */
+export function zurichTime(date: string, time: string): number {
+  const guess = Date.parse(`${date}T${time}:00Z`);
+  // Zurich's offset then (+1 h, +2 h in summer), read back from the formatter.
+  const parts = ZURICH_PARTS.formatToParts(guess);
+  const v = (k: string) => Number(parts.find((p) => p.type === k)?.value);
+  const local = Date.UTC(v('year'), v('month') - 1, v('day'), v('hour'), v('minute'));
+  return guess - (local - guess);
+}
 
 /**
  * `arrival`: the expected arrival with live delays, so a late last train keeps it live. A trip
@@ -164,7 +184,7 @@ export function sortTrips(
 export function departure(t: Trip): number {
   if (t.chain) return Date.parse(t.chain.dep);
   const time = 'departAt' in t.route.anchor ? t.route.anchor.departAt : t.route.anchor.arriveBy;
-  return Date.parse(`${t.route.date}T${time}:00`);
+  return zurichTime(t.route.date, time);
 }
 
 /** The trip under way now, if any (the one that started last). */

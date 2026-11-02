@@ -252,4 +252,9 @@ export const it = {
   timetableStop: 'Aggiunta dall’orario: modifica invece le stazioni vicine.',
   tripDeleted: 'Eliminato: {name}',
   undo: 'Annulla',
+  notReached:
+    'A quest’ora nessun collegamento passa di qui: il viaggio prosegue senza questa stazione.',
+  tryLater: 'Prova un’ora più tardi',
+  onlyOneShort: 'Unico collegamento a quest’ora',
+  relaxedAvoidAt: '{from} → {to}: solo attraverso una galleria che volevi evitare.',
 } satisfies Catalogue;

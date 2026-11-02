@@ -251,4 +251,8 @@ export const fr = {
   timetableStop: 'Ajoutée par l’horaire : modifie plutôt les gares autour.',
   tripDeleted: 'Supprimé : {name}',
   undo: 'Annuler',
+  notReached: 'Aucune liaison ne passe ici à cette heure : le voyage se fait sans cette gare.',
+  tryLater: 'Essayer une heure plus tard',
+  onlyOneShort: 'Seule liaison à cette heure',
+  relaxedAvoidAt: '{from} → {to} : seulement par un tunnel que tu voulais éviter.',
 } satisfies Catalogue;

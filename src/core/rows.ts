@@ -26,6 +26,8 @@ export interface StationRow {
   platformDep?: string;
   /** Index of the ride (in planned order) this station is on or starts. */
   leg?: number;
+  /** A station of the route the plan does not reach (no connection passes it at this time). */
+  missed?: true;
 }
 
 export interface RideRow {
@@ -71,6 +73,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
   const wanted = new Set(route.map((r) => r.key));
   // The timetable's own sequence: boarding and alighting stations, and passed route stations.
   const seq: LineRow[] = [];
+  let shortWalk = false;
   const station = (
     name: string,
     ref: string,
@@ -80,8 +83,11 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     const key = stopKey(ref);
     const last = [...seq].reverse().find((r) => r.type === 'station') as StationRow | undefined;
     const lastIndex = seq.lastIndexOf(last as LineRow);
-    // The same station again right away (arrive, then leave): one row.
-    if (last && last.key === key && lastIndex === seq.length - 1) {
+    // The same station again right away (arrive, then leave), or across a walk of under a
+    // minute (Lauterbrunnen to its cable car station): one row, named as you arrive.
+    const merge = shortWalk;
+    shortWalk = false;
+    if (last && lastIndex === seq.length - 1 && (merge || last.key === key)) {
       Object.assign(last, Object.fromEntries(Object.entries(times).filter(([, v]) => v)));
       return;
     }
@@ -89,8 +95,16 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
   };
   connections.forEach((c, leg) => {
     c.sections.forEach((s, j) => {
-      // A walk that stays at the station (another platform) is no step of its own.
-      if (s.mode === 'walk' && stopKey(s.from.stopRef) === stopKey(s.to.stopRef)) return;
+      // A walk that stays at the station (another platform), or takes under a minute, is no
+      // step of its own.
+      if (s.mode === 'walk') {
+        const min =
+          s.from.dep && s.to.arr ? (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000 : 0;
+        if (stopKey(s.from.stopRef) === stopKey(s.to.stopRef) || min < 1) {
+          shortWalk = true;
+          return;
+        }
+      }
       station(s.from.name, s.from.stopRef, leg, { dep: s.from.dep, platformDep: s.from.platform });
       seq.push({ type: 'ride', section: s, leg, sectionIndex: j });
       for (const call of s.intermediate)
@@ -134,9 +148,8 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
       out.push(row);
       continue;
     }
-    // Stations you entered that the timetable skipped come first, without times; a line's
-    // stations it skipped are left out.
-    for (; p < m; p++) if (!route[p]!.ring) out.push(route[p]!);
+    // Route stations the plan does not reach come first, without times, marked as missed.
+    for (; p < m; p++) out.push({ ...route[p]!, missed: true });
     const r = route[m]!;
     out.push({
       ...row,
@@ -149,7 +162,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     });
     p = m + 1;
   }
-  for (; p < route.length; p++) out.push(route[p]!);
+  for (; p < route.length; p++) out.push({ ...route[p]!, missed: true });
   return out;
 }
 

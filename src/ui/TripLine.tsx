@@ -19,15 +19,16 @@ export interface LineActions {
   dropLine: (k: number) => void;
   addAfter: (k: number) => void;
   add: () => void;
+  /** An hour later (a station not reached may be at another time). */
+  later: () => void;
 }
 
 const STAYS = [0, 30, 60, 90, 120];
 const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
 
+/** Only a stay is said: a change shows as a big dot with two times. */
 function stayLabel(t: ReturnType<typeof useT>, r: StationRow) {
-  if (r.role === 'change') return t('changeTrains');
-  if (r.role !== 'stop') return '';
-  return r.stay ? t('stayFor', { min: r.stay }) : t('changeTrains');
+  return r.role === 'stop' && r.stay ? t('stayFor', { min: r.stay }) : '';
 }
 
 /**
@@ -58,6 +59,7 @@ export function TripLine({
   const box = useRef<HTMLOListElement>(null);
   // A station the timetable added (grey): a tap says why it cannot be edited.
   const [hint, setHint] = useState<number | null>(null);
+  const [more, setMore] = useState<string | null>(null);
   const [drag, setDrag] = useState<{
     from: number;
     dy: number;
@@ -143,14 +145,40 @@ export function TripLine({
                     {min > 0 && <span>{duration(min)}</span>}
                   </>
                 )}
-                {ws.map((w, j) => (
-                  <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
-                    {w.type === 'seasonal'
+                {ws.map((w, j) => {
+                  const text =
+                    w.type === 'seasonal'
                       ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
                         t(w.key, w.params))
-                      : t(w.key, w.params)}
-                  </span>
-                ))}
+                      : t(w.key, w.params);
+                  // A disruption opens the operator's own message on a tap.
+                  const detail = w.type === 'disruption' && s.notices?.length ? s.notices : null;
+                  const id = `${i}-${j}`;
+                  return detail ? (
+                    <span key={j} className="warn-wrap">
+                      <button
+                        type="button"
+                        className={`warn ${SEVERITY[w.severity]} more`}
+                        aria-expanded={more === id}
+                        onClick={() => setMore(more === id ? null : id)}
+                      >
+                        {text}
+                        <Icon name="chevron" size={14} />
+                      </button>
+                      {more === id && (
+                        <span className="detail">
+                          {detail.map((d, k) => (
+                            <span key={k}>{d}</span>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
+                      {text}
+                    </span>
+                  );
+                })}
               </div>
             </li>
           );
@@ -175,6 +203,7 @@ export function TripLine({
             className={[
               'station',
               big ? 'off' : 'pass',
+              r.missed ? 'missed' : '',
               r.ring ? 'ring' : '',
               k === undefined ? 'auto' : 'entry',
               isOpen ? 'open' : '',
@@ -218,6 +247,14 @@ export function TripLine({
                 <span className="n">{r.name}</span>
                 {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
               </button>
+            )}
+            {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
+              <div className="missed-note">
+                <span>{t('notReached')}</span>
+                <button type="button" className="pill" onClick={act.later}>
+                  {t('tryLater')}
+                </button>
+              </div>
             )}
             {isOpen && n > 1 && (
               <button

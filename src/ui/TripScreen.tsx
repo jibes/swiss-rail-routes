@@ -324,11 +324,17 @@ export function TripScreen({ id }: { id: string }) {
               })}
             </p>
           )}
-          {planner.result?.relaxed.map((r, i) => (
-            <p key={i} className="notice">
-              {t(r.rule === 'mustPass' ? 'relaxedMustPass' : 'relaxedAvoid', { n: r.legIndex + 1 })}
-            </p>
-          ))}
+          {/* Stations not reached show on the line itself; an avoided stretch has no row. */}
+          {planner.result?.relaxed
+            .filter((r) => r.rule === 'avoid')
+            .map((r, i) => (
+              <p key={i} className="notice">
+                {t('relaxedAvoidAt', {
+                  from: planner.result?.legs?.[r.legIndex]?.from.name ?? '',
+                  to: planner.result?.legs?.[r.legIndex]?.to.name ?? '',
+                })}
+              </p>
+            ))}
 
           {route.waypoints.length >= 2 && (
             <div className="options-bar">
@@ -363,7 +369,7 @@ export function TripScreen({ id }: { id: string }) {
                     );
                   })
                 ) : (
-                  <span className="single muted">{!chain ? '' : t('onlyOne')}</span>
+                  <span className="single muted">{!chain ? '' : t('onlyOneShort')}</span>
                 )}
               </div>
               <button
@@ -398,6 +404,7 @@ export function TripScreen({ id }: { id: string }) {
               dropLine: (k) => edit((r) => dropLine(r, k)),
               addAfter: (k) => setSheet({ after: k }),
               add: () => setSheet({ after: entries.length - 1 }),
+              later: () => shift(60),
             }}
           />
         </>

@@ -12,6 +12,8 @@ import { watchBack } from './io/back';
 import { watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
 import { retire } from './core/retire';
+import { expectedArrival } from './core/live';
+import { useLiveStatus } from './ui/useLive';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
 import { useTrips } from './trips';
@@ -77,8 +79,9 @@ export function App() {
   const now = useNow();
   useEffect(() => {
     if (!loaded || !tripsLoaded) return;
-    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, () =>
-      crypto.randomUUID(),
+    const live = useLiveStatus.getState().status;
+    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
+      t.chain ? expectedArrival(t.chain.connections, live) : undefined,
     );
     if (!r.changed) return;
     void useTours.getState().replaceAll(r.tours);
@@ -105,7 +108,10 @@ export function App() {
     } catch {
       // No session storage (some private modes): go to the trip as on any opening.
     }
-    const live = liveTrip(useTrips.getState().trips, Date.now());
+    const status = useLiveStatus.getState().status;
+    const live = liveTrip(useTrips.getState().trips, Date.now(), (t) =>
+      t.chain ? expectedArrival(t.chain.connections, status) : undefined,
+    );
     if (live) location.hash = `/trip/${live.id}`;
   }, [tripsLoaded]);
 
