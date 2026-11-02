@@ -57,8 +57,21 @@ test('the arrows load more options without changing the trip; a tap chooses one'
   const n = await opts.count();
   const hero = (await page.locator('.hero-times').textContent()) ?? '';
   // Nothing recorded after the last option: the bar says it could not load more, and the trip
-  // and its options stay as they were.
+  // and its options stay as they were. While it loads, the strip grows: it scrolls itself,
+  // never the page sideways.
+  let release = () => {};
+  const held = new Promise<void>((r) => (release = r));
+  await page.route(/\/trip$/, async (route) => {
+    await held;
+    await route.fallback();
+  });
   await page.getByRole('button', { name: 'Later connections' }).click();
+  await expect(page.locator('.opt.loading')).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    'no sideways page scroll',
+  ).toBe(true);
+  release();
   await expect(page.getByText('Could not load more connections. Try again.')).toBeVisible({
     timeout: 30_000,
   });

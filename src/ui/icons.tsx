@@ -3,6 +3,7 @@ const P = {
   back: 'M15 5l-7 7 7 7',
   next: 'M9 5l7 7-7 7',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14',
   share: 'M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6',
   calendar: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',

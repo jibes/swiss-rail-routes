@@ -23,7 +23,10 @@ export interface LineActions {
   later: () => void;
 }
 
-const STAYS = [0, 30, 60, 90, 120];
+/** A stay goes up and down in quarter hours; any length can be typed (to 10 h). */
+const STAY_STEP = 15;
+const STAY_MAX = 600;
+const clampStay = (m: number) => Math.min(STAY_MAX, Math.max(1, Math.round(m)));
 const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
 
 /** Whether the ride that goes past a missed station (the next one on the line) is disrupted. */
@@ -352,27 +355,36 @@ function Panel({
         onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
       />
       {inner && (
-        <div className="chips" role="group" aria-label={t('atThisStation')}>
-          <button
-            type="button"
-            className={`pill ${stay === null ? 'on' : ''}`}
-            aria-pressed={stay === null}
-            onClick={() => act.stay(k, null)}
-          >
-            {t('noStop')}
-          </button>
-          {STAYS.map((m) => (
+        <>
+          {/* Three choices, one each: ride through, change trains, or stay (for how long below). */}
+          <div className="chips seg" role="group" aria-label={t('atThisStation')}>
+            {(
+              [
+                [null, t('noStop')],
+                [0, t('changeHere')],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={String(m)}
+                type="button"
+                className={`pill ${stay === m ? 'on' : ''}`}
+                aria-pressed={stay === m}
+                onClick={() => act.stay(k, m)}
+              >
+                {label}
+              </button>
+            ))}
             <button
-              key={m}
               type="button"
-              className={`pill ${stay === m ? 'on' : ''}`}
-              aria-pressed={stay === m}
-              onClick={() => act.stay(k, m)}
+              className={`pill ${stay ? 'on' : ''}`}
+              aria-pressed={!!stay}
+              onClick={() => !stay && act.stay(k, 30)}
             >
-              {m ? t('minutes', { n: m }) : t('changeHere')}
+              {t('stayHere')}
             </button>
-          ))}
-        </div>
+          </div>
+          {!!stay && <StayStepper k={k} name={name} stay={stay} act={act} />}
+        </>
       )}
       {line && (
         <div className="chips">
@@ -388,12 +400,11 @@ function Panel({
           </span>
         </div>
       )}
+      <button type="button" className="pill add-after" onClick={() => act.addAfter(k)}>
+        <Icon name="plus" size={16} />
+        {t('addAfter')}
+      </button>
       <div className="acts">
-        <button type="button" className="pill" onClick={() => act.addAfter(k)}>
-          <Icon name="plus" size={16} />
-          {t('addAfter')}
-        </button>
-        <span className="sp" />
         <button
           type="button"
           className="sq"
@@ -412,6 +423,7 @@ function Panel({
         >
           <Icon name="down" size={18} />
         </button>
+        <span className="sp" />
         {n > 1 && (
           <button
             type="button"
@@ -423,6 +435,68 @@ function Panel({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * How long to stay: a quarter hour less or more, or the number typed (tap it). Saved when the
+ * typing ends (Enter, leaving the field), not on every key: each change plans again.
+ */
+function StayStepper({
+  k,
+  name,
+  stay,
+  act,
+}: {
+  k: number;
+  name: string;
+  stay: number;
+  act: LineActions;
+}) {
+  const t = useT();
+  const commit = (v: string) => {
+    const m = Number(v);
+    if (v.trim() && Number.isFinite(m) && m > 0 && clampStay(m) !== stay) act.stay(k, clampStay(m));
+  };
+  return (
+    <div className="stepper" role="group" aria-label={t('stayAtStop', { stop: name })}>
+      <button
+        type="button"
+        className="sq"
+        aria-label={t('stayShorter', { n: STAY_STEP })}
+        disabled={stay <= STAY_STEP}
+        onClick={() => act.stay(k, clampStay(stay - STAY_STEP))}
+      >
+        <Icon name="minus" size={18} />
+      </button>
+      <label className="stay-input">
+        <input
+          // A new value from the buttons replaces what was typed.
+          key={stay}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={STAY_MAX}
+          defaultValue={stay}
+          aria-label={t('stayMinutes', { stop: name })}
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => commit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
+        />
+        <span aria-hidden="true">{t('minUnit')}</span>
+      </label>
+      <button
+        type="button"
+        className="sq"
+        aria-label={t('stayLonger', { n: STAY_STEP })}
+        disabled={stay >= STAY_MAX}
+        onClick={() => act.stay(k, clampStay(stay + STAY_STEP))}
+      >
+        <Icon name="plus" size={18} />
+      </button>
     </div>
   );
 }

@@ -34,10 +34,17 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
 
   // The panel: what you do there, the line that leads there, add after, up, down, remove.
   await entries.nth(1).getByRole('button').first().click();
+  // Stay: 30 min at first, then a quarter hour more with +, or any number typed.
   await page
     .getByRole('group', { name: 'At this station' })
-    .getByRole('button', { name: '60 min' })
+    .getByRole('button', { name: 'Stay', exact: true })
     .click();
+  await expect(entries.nth(1)).toContainText('Stay 30 min');
+  await page.getByRole('button', { name: '15 min longer' }).click();
+  await expect(entries.nth(1)).toContainText('Stay 45 min');
+  const minutes = page.getByRole('spinbutton', { name: /^Minutes at/ });
+  await minutes.fill('60');
+  await minutes.press('Enter');
   await expect(entries.nth(1)).toContainText('Stay 60 min');
   await entries.nth(2).getByRole('button').first().click();
   await expect(page.getByText('Via Brünig')).toBeVisible();

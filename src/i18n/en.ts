@@ -229,6 +229,12 @@ export const en = {
   storageFailed:
     'Your saved trips could not be read. Nothing is saved until the app is opened again.',
   riskNotServed: '{line} does not stop at {stop}',
+  stayHere: 'Stay',
+  stayAtStop: 'Stay at {stop}',
+  stayShorter: '{n} min shorter',
+  stayLonger: '{n} min longer',
+  stayMinutes: 'Minutes at {stop}',
+  minUnit: 'min',
 };
 
 export type Catalogue = typeof en;

@@ -234,4 +234,10 @@ export const it = {
   storageFailed:
     'Non è stato possibile leggere i tuoi viaggi salvati. Nulla viene salvato fino alla prossima apertura dell’app.',
   riskNotServed: '{line} non ferma a {stop}',
+  stayHere: 'Sosta',
+  stayAtStop: 'Sosta a {stop}',
+  stayShorter: '{n} min in meno',
+  stayLonger: '{n} min in più',
+  stayMinutes: 'Minuti a {stop}',
+  minUnit: 'min',
 } satisfies Catalogue;

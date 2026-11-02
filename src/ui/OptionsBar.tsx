@@ -65,18 +65,17 @@ export function OptionsBar({
   const failed = none?.base === base && none.failed;
   const strip = useRef<HTMLDivElement>(null);
   const chosenKey = trip.chain ? keyOf(trip.chain) : '';
-  // The chosen one in view, also after more were loaded around it.
+  // The chosen one in view, also after more were loaded around it. Only the strip scrolls
+  // (scrollIntoView would move the page too).
   useEffect(() => {
-    strip.current
-      ?.querySelector('[aria-pressed="true"]')
-      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    const box = strip.current;
+    const el = box?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (box && el) box.scrollLeft = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
   }, [chosenKey, all.length]);
   // What is loading, in view: the strip scrolls to the end being filled.
   useEffect(() => {
-    if (busy)
-      strip.current
-        ?.querySelector('.loading')
-        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    const box = strip.current;
+    if (busy && box) box.scrollLeft = busy === 'later' ? box.scrollWidth : 0;
   }, [busy]);
 
   const load = async (dir: 'earlier' | 'later') => {

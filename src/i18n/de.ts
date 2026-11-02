@@ -238,4 +238,10 @@ export const de = {
   storageFailed:
     'Deine gespeicherten Reisen konnten nicht gelesen werden. Bis zum nächsten Öffnen der App wird nichts gespeichert.',
   riskNotServed: '{line} hält nicht in {stop}',
+  stayHere: 'Aufenthalt',
+  stayAtStop: 'Aufenthalt in {stop}',
+  stayShorter: '{n} Min. kürzer',
+  stayLonger: '{n} Min. länger',
+  stayMinutes: 'Minuten in {stop}',
+  minUnit: 'Min.',
 } satisfies Catalogue;

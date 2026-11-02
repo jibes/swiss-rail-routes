@@ -344,6 +344,62 @@
   flex: 1;
 }
 
+/* No stop · Change · Stay: one row, equal widths. */
+.panel .chips.seg {
+  flex-wrap: nowrap;
+}
+
+.panel .chips.seg .pill {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.panel .add-after {
+  justify-self: start;
+}
+
+/* − 30 min +: the number is a field, tap to type. */
+.panel .stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stay-input {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.stay-input input {
+  width: 3.2em;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px solid var(--hair);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.stay-input input::-webkit-inner-spin-button,
+.stay-input input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stay-input input:focus {
+  outline: none;
+  border-bottom-color: var(--rail);
+}
+
 .panel .sq {
   width: 44px;
   height: 44px;

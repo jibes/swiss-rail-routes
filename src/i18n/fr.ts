@@ -235,4 +235,10 @@ export const fr = {
   storageFailed:
     'Vos voyages enregistrés n’ont pas pu être lus. Rien n’est enregistré avant la prochaine ouverture de l’app.',
   riskNotServed: '{line} ne s’arrête pas à {stop}',
+  stayHere: 'Séjour',
+  stayAtStop: 'Séjour à {stop}',
+  stayShorter: '{n} min de moins',
+  stayLonger: '{n} min de plus',
+  stayMinutes: 'Minutes à {stop}',
+  minUnit: 'min',
 } satisfies Catalogue;

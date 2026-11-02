@@ -74,7 +74,7 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
 
   const wengen = line.locator('.station.entry', { hasText: 'Wengen' });
   await wengen.getByRole('button', { name: /^Wengen/ }).click();
-  await page.getByRole('button', { name: '30 min' }).click();
+  await page.getByRole('button', { name: 'Stay', exact: true }).click();
   // Planned as you edit: no Find button, Update once the plan is there.
   await expect(page.getByRole('button', { name: 'Find connections' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Update trip' }).click({ timeout: 30_000 });

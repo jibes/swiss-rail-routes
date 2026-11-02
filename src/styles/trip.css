@@ -258,9 +258,18 @@ svg.mini-line circle.via {
 }
 
 .options-bar .opts {
+  position: relative;
   flex: 1;
   display: flex;
   min-width: 0;
+  /* More options than fit scroll inside the strip, never the page. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.options-bar .opts::-webkit-scrollbar {
+  display: none;
 }
 
 .options-bar .single {
@@ -269,8 +278,8 @@ svg.mini-line circle.via {
 }
 
 .opt {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 84px;
+  min-width: 84px;
   display: grid;
   gap: 2px;
   padding: 7px 2px;
