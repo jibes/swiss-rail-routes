@@ -140,6 +140,8 @@ export function TripScreen({ id }: { id: string }) {
   const shift = (min: number) =>
     edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }));
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
+  // Disruptions are on the rides they concern; their number is said at the top.
+  const disruptions = chain ? chain.warnings.filter((w) => w.type === 'disruption').length : 0;
   const trains = chain
     ? chain.connections.reduce((n, c) => n + c.sections.filter((s) => s.mode !== 'walk').length, 0)
     : 0;
@@ -332,6 +334,14 @@ export function TripScreen({ id }: { id: string }) {
                 {trains === 1 ? t('train1') : t('trainsN', { n: trains })}
                 {changes > 0 &&
                   ` · ${changes === 1 ? t('transfer1') : t('transfers', { n: changes })}`}
+                {disruptions > 0 && (
+                  <>
+                    {' · '}
+                    <span className="red-text">
+                      {disruptions === 1 ? t('disruption1') : t('disruptionsN', { n: disruptions })}
+                    </span>
+                  </>
+                )}
               </p>
             </>
           )}

@@ -236,4 +236,8 @@ export const de = {
   onlyOneShort: 'Einzige Verbindung zu dieser Zeit',
   relaxedAvoidAt: '{from} → {to}: nur durch einen Tunnel, den du meiden wolltest.',
   forgotten: 'Vergessen: {name}',
+  notReachedDisrupted:
+    'Die Strecke ist hier unterbrochen (siehe Störung): die Reise führt darum herum.',
+  disruption1: '1 Störung',
+  disruptionsN: '{n} Störungen',
 } satisfies Catalogue;

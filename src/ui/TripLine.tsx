@@ -26,6 +26,13 @@ export interface LineActions {
 const STAYS = [0, 30, 60, 90, 120];
 const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
 
+/** Whether the ride that goes past a missed station (the next one on the line) is disrupted. */
+function disruptedLeg(rows: LineRow[], i: number, warnings: Warning[]) {
+  const next = rows.slice(i + 1).find((r) => r.type === 'station' && r.leg !== undefined);
+  const leg = next?.type === 'station' ? next.leg : undefined;
+  return leg !== undefined && warnings.some((w) => w.type === 'disruption' && w.legIndex === leg);
+}
+
 /** Only a stay is said: a change shows as a big dot with two times. */
 function stayLabel(t: ReturnType<typeof useT>, r: StationRow) {
   return r.role === 'stop' && r.stay ? t('stayFor', { min: r.stay }) : '';
@@ -250,7 +257,12 @@ export function TripLine({
             )}
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
               <div className="missed-note">
-                <span>{t('notReached')}</span>
+                <span>
+                  {
+                    // An interruption on that stretch is the likely reason: say so.
+                    disruptedLeg(rows, i, warnings) ? t('notReachedDisrupted') : t('notReached')
+                  }
+                </span>
                 <button type="button" className="text-button" onClick={act.later}>
                   {t('tryLater')}
                 </button>

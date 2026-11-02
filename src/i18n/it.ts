@@ -233,4 +233,7 @@ export const it = {
   onlyOneShort: 'Unico collegamento a quest’ora',
   relaxedAvoidAt: '{from} → {to}: solo attraverso una galleria che volevi evitare.',
   forgotten: 'Dimenticato: {name}',
+  notReachedDisrupted: 'Qui la linea è interrotta (vedi il disturbo): il viaggio la aggira.',
+  disruption1: '1 disturbo',
+  disruptionsN: '{n} disturbi',
 } satisfies Catalogue;

@@ -228,6 +228,10 @@ export const en = {
   onlyOneShort: 'Only connection at this time',
   relaxedAvoidAt: '{from} → {to}: only through a tunnel you wanted to avoid.',
   forgotten: 'Forgotten: {name}',
+  notReachedDisrupted:
+    'The line is interrupted here (see the disruption): the trip goes around it.',
+  disruption1: '1 disruption',
+  disruptionsN: '{n} disruptions',
 };
 
 export type Catalogue = typeof en;

@@ -1103,3 +1103,8 @@ svg.mini-line circle.via {
   font-weight: 650;
   color: var(--rail-ink);
 }
+
+.facts .red-text {
+  color: var(--red);
+  font-weight: 600;
+}
