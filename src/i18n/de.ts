@@ -246,4 +246,6 @@ export const de = {
   noEarlier: 'Keine frühere Verbindung an diesem Tag.',
   moreFailed: 'Weitere Verbindungen konnten nicht geladen werden. Versuche es nochmals.',
   noneFrom: 'Nichts gefunden ab {time}',
+  loadingMore: 'Weitere Verbindungen werden geladen',
+  opening: 'Reise wird geöffnet',
 } satisfies Catalogue;

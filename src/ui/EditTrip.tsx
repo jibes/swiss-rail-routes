@@ -24,6 +24,7 @@ import { hhmm } from './format';
 import { Icon } from './icons';
 import { OptionTabs } from './OptionTabs';
 import { StopPicker } from './StopPicker';
+import { RailLoader } from './RailLoader';
 import { StopRow } from './StopRow';
 import { TEMPLATES } from './TemplatePicker';
 import { useDragList } from './useDragList';
@@ -257,7 +258,11 @@ export function EditTrip({ id }: { id: string }) {
               disabled={status === 'planning' || entries.length < 2}
               onClick={() => void run()}
             >
-              {status === 'planning' ? t('planning') : t('findConnections')}
+              {status === 'planning' ? (
+                <RailLoader label={t('planning')} small />
+              ) : (
+                t('findConnections')
+              )}
             </button>
           </div>
         </div>

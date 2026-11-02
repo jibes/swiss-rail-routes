@@ -6,6 +6,7 @@ import { planRoute } from '../io/planTrip';
 import { useT } from '../store';
 import { duration, hhmm, minutesBetween, zurichHm } from './format';
 import { Icon } from './icons';
+import { RailLoader } from './RailLoader';
 
 interface Option {
   c: PlannedChain;
@@ -66,6 +67,13 @@ export function OptionsBar({
       ?.querySelector('[aria-pressed="true"]')
       ?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }, [chosenKey, all.length]);
+  // What is loading, in view: the strip scrolls to the end being filled.
+  useEffect(() => {
+    if (busy)
+      strip.current
+        ?.querySelector('.loading')
+        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [busy]);
 
   const load = async (dir: 'earlier' | 'later') => {
     const first = all[0];
@@ -107,7 +115,7 @@ export function OptionsBar({
   };
 
   return (
-    <div className="options">
+    <div className="options-wrap">
       <div className="options-bar">
         <button
           type="button"
@@ -120,6 +128,11 @@ export function OptionsBar({
           <Icon name="back" size={18} />
         </button>
         <div className="opts" role="group" aria-label={t('alternatives')} ref={strip}>
+          {busy === 'earlier' && (
+            <span className="opt loading">
+              <RailLoader label={t('loadingMore')} small />
+            </span>
+          )}
           {all.map(({ c, legs }) => {
             const on = trip.chain?.dep === c.dep && trip.chain.arr === c.arr;
             return (
@@ -149,9 +162,18 @@ export function OptionsBar({
               </button>
             );
           })}
+          {busy === 'later' && (
+            <span className="opt loading">
+              <RailLoader label={t('loadingMore')} small />
+            </span>
+          )}
           {!all.length && (
             <span className="single muted">
-              {planning ? t('planning') : t('noneFrom', { time: from })}
+              {planning ? (
+                <RailLoader label={t('planning')} small />
+              ) : (
+                t('noneFrom', { time: from })
+              )}
             </span>
           )}
         </div>

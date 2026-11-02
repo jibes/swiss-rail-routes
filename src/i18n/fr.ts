@@ -242,4 +242,6 @@ export const fr = {
   noEarlier: 'Pas de liaison plus tôt ce jour-là.',
   moreFailed: 'Impossible de charger d’autres liaisons. Réessaie.',
   noneFrom: 'Rien trouvé dès {time}',
+  loadingMore: 'Chargement d’autres liaisons',
+  opening: 'Ouverture du voyage',
 } satisfies Catalogue;

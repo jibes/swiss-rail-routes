@@ -10,6 +10,7 @@ import { ChainView } from './ChainView';
 import { hhmm, longDate } from './format';
 import { go } from './useHash';
 import { Icon } from './icons';
+import { RailLoader } from './RailLoader';
 
 /** `#/j/<data>`: a trip someone shared, as they planned it. Saving copies it to this device. */
 export function SharedTrip({ hash }: { hash: string }) {
@@ -29,7 +30,14 @@ export function SharedTrip({ hash }: { hash: string }) {
     };
   }, [hash]);
 
-  if (trip === undefined) return <main className="page" />;
+  if (trip === undefined)
+    return (
+      <main className="page">
+        <div className="hero-loading">
+          <RailLoader label={t('opening')} />
+        </div>
+      </main>
+    );
   if (!trip)
     return (
       <main className="page">

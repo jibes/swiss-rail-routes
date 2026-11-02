@@ -237,6 +237,8 @@ export const en = {
   noEarlier: 'No earlier connection on this day.',
   moreFailed: 'Could not load more connections. Try again.',
   noneFrom: 'Nothing found from {time}',
+  loadingMore: 'Loading more connections',
+  opening: 'Opening the trip',
 };
 
 export type Catalogue = typeof en;

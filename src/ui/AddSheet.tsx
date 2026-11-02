@@ -7,6 +7,7 @@ import { useTours } from '../tours';
 import { shortDate } from './format';
 import { Icon } from './icons';
 import { MiniLine } from './MiniLine';
+import { RailLoader } from './RailLoader';
 import { directionFrom, TEMPLATES } from './TemplatePicker';
 import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
@@ -185,9 +186,15 @@ export function AddSheet({
               </button>
             );
           })}
-          {f.length >= 2 && !stations.length && !trips.length && !lines.length && (
-            <p className="muted">{index ? t('noStops') : t('stopsLoading')}</p>
-          )}
+          {f.length >= 2 &&
+            !stations.length &&
+            !trips.length &&
+            !lines.length &&
+            (index ? (
+              <p className="muted">{t('noStops')}</p>
+            ) : (
+              <RailLoader label={t('stopsLoading')} />
+            ))}
         </div>
       </div>
     </div>

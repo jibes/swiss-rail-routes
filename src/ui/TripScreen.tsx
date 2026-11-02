@@ -27,6 +27,7 @@ import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
 import { OptionsBar } from './OptionsBar';
+import { RailLoader } from './RailLoader';
 import { ChainView } from './ChainView';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
@@ -343,9 +344,10 @@ export function TripScreen({ id }: { id: string }) {
             </>
           )}
           {!chain && route.waypoints.length >= 2 && planning && (
-            <p className="hero-times busy" role="status">
-              {t('planning')}
-            </p>
+            <div className="hero-loading">
+              <RailLoader label={t('planning')} />
+              <span className="muted">{t('planning')}</span>
+            </div>
           )}
 
           {planner.status === 'unavailable' && (

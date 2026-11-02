@@ -241,4 +241,6 @@ export const it = {
   noEarlier: 'Nessun collegamento precedente in questo giorno.',
   moreFailed: 'Impossibile caricare altri collegamenti. Riprova.',
   noneFrom: 'Nulla trovato dalle {time}',
+  loadingMore: 'Caricamento di altri collegamenti',
+  opening: 'Apertura del viaggio',
 } satisfies Catalogue;
