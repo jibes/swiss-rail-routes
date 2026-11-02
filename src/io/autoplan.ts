@@ -3,6 +3,7 @@
 // apart; a failure is tried again after ten minutes or when the device is back online.
 import { isPlanned, tripStatus, type Trip } from '../core/trip';
 import { useTrips } from '../trips';
+import { log } from './log';
 import { askNotifications } from './notifications';
 import { keepPlan, planRoute, routeJson } from './planTrip';
 
@@ -29,9 +30,11 @@ export function watchAutoPlan() {
     if (!t) return;
     busy = true;
     const json = routeJson(t);
+    log('autoplan', { trip: t.id, date: t.route.date });
     try {
       if (keepPlan(t.id, json, await planRoute(t))) void askNotifications();
-    } catch {
+    } catch (e) {
+      log('autoplan.fail', { trip: t.id, e, retryMin: RETRY_MS / 60_000 });
       failed.set(`${t.id}|${json}`, Date.now());
     } finally {
       busy = false;

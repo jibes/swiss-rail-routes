@@ -20,6 +20,7 @@ import {
 import { compactTrip, type Trip } from '../core/trip';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
+import { log } from './log';
 import { loadTours } from './tours';
 import { loadTrips } from './trips';
 
@@ -154,6 +155,13 @@ async function round(start: Saved): Promise<Saved> {
   let saved = start;
   for (let attempt = 0; ; attempt++) {
     const got = await remote(id, aes, saved.v);
+    log('sync.read', {
+      attempt,
+      v: got.v,
+      seen: saved.v,
+      same: !!got.same,
+      remote: got.doc && { routes: got.doc.tours.length, trips: got.doc.trips.length },
+    });
     // A replaced key answers 410 (above). A version lower than the one seen: the copy expired
     // (unused for 180 days) and is written afresh from what this device has.
     const v = got.v < saved.v ? 0 : got.v;
@@ -170,6 +178,12 @@ async function round(start: Saved): Promise<Saved> {
       remote: got.same ? asShared(saved.stamps, local) : got.doc,
       now,
       lastSync: saved.at,
+    });
+    log('sync.merge', {
+      local: { routes: local.tours.length, trips: local.trips.length },
+      applyRoutes: plan.apply.tours?.length,
+      applyTrips: plan.apply.trips?.length,
+      push: !!plan.push,
     });
     const store = useTrips.getState().trips;
     const trips =
@@ -189,8 +203,10 @@ async function round(start: Saved): Promise<Saved> {
       const data = await seal({ v: 1, ...plan.merged } satisfies Doc, aes);
       if (data.length > MAX_DATA) throw new SyncProblem('tooBig');
       const next = await push(id, v, data);
+      log('sync.write', { v: next, chars: data.length });
       return { ...saved, v: next, at: now };
     } catch (e) {
+      log('sync.write.fail', { attempt, conflict: e instanceof Conflict, e });
       if (e instanceof Conflict && attempt < 3) continue;
       throw e;
     }
@@ -235,10 +251,12 @@ async function once() {
       if ((await get<Saved>(KEY))?.key !== saved.key) return;
       await set(KEY, { ...next, status: 'ok' });
       useSync.setState({ status: 'ok', at: next.at ?? null });
+      log('sync.ok', { v: next.v });
     } catch (e) {
       const now = await get<Saved>(KEY);
       if (now?.key !== saved.key) return;
       const status = e instanceof SyncProblem ? e.status : 'error';
+      log('sync.fail', { status, e });
       await set(KEY, { ...now, status });
       useSync.setState({ status });
     }
@@ -276,6 +294,7 @@ export async function startSync(key = newKey()) {
           trips: joinStamps(useTrips.getState().trips.map(compactTrip)),
         };
   await del(LAST);
+  log('sync.start', { sameKeyAgain: last?.key === clean });
   await set(KEY, { key: clean, v: 0, stamps } satisfies Saved);
   useSync.setState({ key: clean, status: 'syncing', at: null });
   await syncNow();
@@ -289,6 +308,7 @@ export async function startSync(key = newKey()) {
 export async function stopSync() {
   const saved = await get<Saved>(KEY);
   if (saved) await set(LAST, { key: saved.key, stamps: saved.stamps });
+  log('sync.stop');
   await del(KEY);
   useSync.setState({ key: null, status: 'off', at: null });
 }
@@ -307,6 +327,7 @@ export async function renewKey() {
     // The old copy must really be closed (a leaked key is the reason for a new one): if the
     // Worker did not confirm it, nothing changes and it says so.
     const res = await request(`${base()}/sync/${id}`, { method: 'DELETE' }).catch(() => null);
+    log('sync.renew', { status: res?.status ?? 'offline' });
     if (!res?.ok) {
       useSync.setState({ status: res ? problemOf(res.status) : 'offline' });
       return false;

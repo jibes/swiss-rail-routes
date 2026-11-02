@@ -9,6 +9,7 @@ import { keepPlan, planRoute, routeJson } from '../io/planTrip';
 import { loadPlans } from '../io/tours';
 import { useTrips } from '../trips';
 import { askNotifications } from '../io/notifications';
+import { log } from '../io/log';
 
 export type PlanStatus = 'idle' | 'planning' | 'done' | 'unavailable' | 'error';
 
@@ -37,6 +38,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
         const saved = (await loadPlans())[id];
         if (ctrl.signal.aborted) return;
         if (saved?.tourJson === json && saved.result.legs && saved.result.options) {
+          log('planner.cached', { trip: id, at: saved.at });
           setResult(saved.result, json);
           setStatus('done');
           if (!planned) keep(saved.result);
@@ -48,6 +50,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
           return;
         }
         setStatus('planning');
+        log('planner.plan', { trip: id });
         try {
           const current = useTrips.getState().trips.find((t) => t.id === id);
           if (!current) return;
@@ -59,6 +62,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
           keep(r);
         } catch (e) {
           if (ctrl.signal.aborted) return;
+          log('planner.error', { trip: id, e });
           setDetail(
             e instanceof WorkerError
               ? e.detail
@@ -85,6 +89,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const result = planned_?.json === json ? planned_.result : null;
   const pick = (c: PlannedChain) => {
     if (!id || !result?.legs) return;
+    log('planner.pick', { trip: id, dep: c.dep, arr: c.arr });
     const legs = result.legs;
     update(id, (t) =>
       routeJson(t) === json ? compactTrip({ ...t, chain: c, legs, compact: undefined }) : t,

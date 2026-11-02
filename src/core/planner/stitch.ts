@@ -4,8 +4,8 @@
 // plus the next via as destination, and the answers are stitched, merging the two halves of a
 // ride that continues through the split point.
 import type { Connection, Section, Waypoint } from '../model';
-import { stopKey } from '../stops';
-import { MIN, ms, rides } from './connection';
+import { sameStop, type SamePlace } from '../stops';
+import { MIN, ms, rides, stopSeq } from './connection';
 
 export type Query = (
   from: Waypoint,
@@ -107,25 +107,8 @@ export async function stitched(
   return partial;
 }
 
-/**
- * The stops a connection rides through (walks left out) by key, and the names of the stops its
- * replacement buses (category EV) call at: in a disruption they stop outside the station under
- * a stop id of their own, named after it ("Interlaken Ost, Bahnhof"), and that is the station.
- */
-export function ridden(c: Connection) {
-  const rides = c.sections.filter((s) => s.mode !== 'walk');
-  const calls = (s: Connection['sections'][number]) => [s.from, ...s.intermediate, s.to];
-  return {
-    keys: new Set(rides.flatMap(calls).map((x) => stopKey(x.stopRef))),
-    names: rides.filter((s) => s.category === 'EV').flatMap((s) => calls(s).map((x) => x.name)),
-  };
-}
-
-export const calledAt = (v: Pick<Waypoint, 'stopRef' | 'name'>, at: ReturnType<typeof ridden>) =>
-  at.keys.has(stopKey(v.stopRef)) || at.names.some((n) => n.startsWith(`${v.name},`));
-
-/** True when a connection calls at every via (or at its replacement stop), in any order. */
-export const passesVias = (c: Connection, vias: Waypoint[]) => {
-  const at = ridden(c);
-  return vias.every((v) => calledAt(v, at));
+/** True when a connection calls at every via (or a stop of the same place), in any order. */
+export const passesVias = (c: Connection, vias: Waypoint[], same: SamePlace = sameStop) => {
+  const seq = stopSeq(c);
+  return vias.every((v) => seq.some((k) => same(v.stopRef, k)));
 };

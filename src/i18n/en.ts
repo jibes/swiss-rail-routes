@@ -239,6 +239,16 @@ export const en = {
   noneFrom: 'Nothing found from {time}',
   loadingMore: 'Loading more connections',
   opening: 'Opening the trip',
+  debugLog: 'Debug log',
+  debugLogSwitch: 'Keep a debug log',
+  debugLogHint:
+    'Records what the app does, to find faults. Kept on this device only, at most about 512 KB (the oldest goes first). Save or copy it to send it on. Turning it off deletes it.',
+  debugLogSize: '{size} KB kept',
+  debugLogSave: 'Save file',
+  debugLogCopy: 'Copy',
+  debugLogCopied: 'Log copied',
+  debugLogClear: 'Clear',
+  debugLogFailed: 'Could not save the log',
 };
 
 export type Catalogue = typeof en;

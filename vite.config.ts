@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -11,6 +12,7 @@ const ojpOrigin = ojpUrl ? new URL(ojpUrl).origin : '';
 const build = {
   sha: execSync('git rev-parse --short HEAD').toString().trim(),
   time: new Date().toISOString(),
+  version: (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version,
 };
 
 export default defineConfig({

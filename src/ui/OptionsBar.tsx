@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { dayOf, type Trip } from '../core/trip';
+import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
 import { useT } from '../store';
 import { duration, hhmm, minutesBetween, zurichHm } from './format';
@@ -83,7 +84,11 @@ export function OptionsBar({
     // finds connections leaving at or after the time it is given).
     const at =
       dir === 'later' ? Date.parse(last.c.dep) + 60_000 : Date.parse(first.c.dep) - 120 * 60_000;
-    if (dayOf(at) !== trip.route.date) return setNone({ base, dir });
+    log('options.more', { trip: trip.id, dir, from: zurichHm(at), shown: all.length });
+    if (dayOf(at) !== trip.route.date) {
+      log('options.more.otherDay', { trip: trip.id, dir });
+      return setNone({ base, dir });
+    }
     setBusy(dir);
     setNone(null);
     try {
@@ -100,13 +105,20 @@ export function OptionsBar({
         dir === 'later'
           ? found.filter((c) => Date.parse(c.dep) > Date.parse(last.c.dep))
           : found.filter((c) => Date.parse(c.dep) < Date.parse(first.c.dep));
+      log('options.more.done', {
+        trip: trip.id,
+        dir,
+        found: found.length,
+        fresh: fresh.map((c) => `${hhmm(c.dep)}-${hhmm(c.arr)}`),
+      });
       if (!fresh.length || !r.legs) setNone({ base, dir });
       else
         setMore({
           base,
           list: [...extra, ...fresh.map((c) => ({ c, legs: r.legs! }))],
         });
-    } catch {
+    } catch (e) {
+      log('options.more.fail', { trip: trip.id, dir, e });
       // Not none: the service did not answer (offline, busy). Say so; the arrow stays usable.
       setNone({ base, dir, failed: true });
     } finally {

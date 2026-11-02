@@ -344,35 +344,41 @@ describe('rows: the replacement bus outside the station', () => {
     ...(dep ? { dep: iso(dep) } : {}),
   });
 
-  it('counts "Interlaken Ost, Bahnhof" as Interlaken Ost, not as a station missed', () => {
+  it('counts a stop of the same place as the station, not as a station missed', () => {
     const tour = insertEntries(start(), 0, [
       stationEntry(s('Interlaken Ost')),
       stationEntry(s('Bern')),
     ]);
-    const rows = plannedRows(tour, [
-      {
-        legIndex: 0,
-        dep: iso('07:00'),
-        arr: iso('09:00'),
-        transfers: 1,
-        sections: [
-          {
-            mode: 'bus',
-            line: 'EV',
-            from: call('Zurich', undefined, '07:00'),
-            to: call('Interlaken Ost, Bahnhof', '08:00'),
-            intermediate: [],
-          },
-          {
-            mode: 'rail',
-            line: 'IC',
-            from: call('Interlaken Ost', undefined, '08:10'),
-            to: call('Bern', '09:00'),
-            intermediate: [],
-          },
-        ],
-      },
-    ]);
+    const near = (x: string, y: string) =>
+      x === y || [x, y].every((k) => k.startsWith('ch:1:sloid:Interlaken Ost'));
+    const rows = plannedRows(
+      tour,
+      [
+        {
+          legIndex: 0,
+          dep: iso('07:00'),
+          arr: iso('09:00'),
+          transfers: 1,
+          sections: [
+            {
+              mode: 'bus',
+              line: 'EV',
+              from: call('Zurich', undefined, '07:00'),
+              to: call('Interlaken Ost, Bahnhof', '08:00'),
+              intermediate: [],
+            },
+            {
+              mode: 'rail',
+              line: 'IC',
+              from: call('Interlaken Ost', undefined, '08:10'),
+              to: call('Bern', '09:00'),
+              intermediate: [],
+            },
+          ],
+        },
+      ],
+      near,
+    );
     const names = rows.flatMap((r) =>
       r.type === 'station' ? [`${r.name}${r.missed ? ' (missed)' : ''}`] : [],
     );

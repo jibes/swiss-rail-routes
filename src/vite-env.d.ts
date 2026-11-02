@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/react" />
 
-declare const __BUILD__: { sha: string; time: string };
+declare const __BUILD__: { sha: string; time: string; version: string };
 
 interface ImportMetaEnv {
   /** OJP Worker base URL, e.g. `https://srr-ojp.<account>.workers.dev`. Empty: planning is off. */

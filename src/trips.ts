@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import type { Tour } from './core/model';
 import type { Trip } from './core/trip';
+import { log } from './io/log';
 import { loadTrips, saveTrips } from './io/trips';
 
 interface TripsState {
@@ -47,15 +48,28 @@ export const useTrips = create<TripsState>()((set, get) => ({
   trips: [],
   load: async () => {
     if (get().loaded) return;
-    set({ trips: await loadTrips(), loaded: true });
+    const trips = await loadTrips();
+    log('trips.load', { count: trips.length });
+    set({ trips, loaded: true });
   },
   add: (t) => {
+    log('trip.add', { trip: t.id, date: t.route.date, stops: t.route.waypoints.length });
     const trips = [t, ...get().trips];
     set({ trips });
     void persistNow(trips);
   },
   update: (id, edit) => {
-    const trips = get().trips.map((t) => (t.id === id ? edit(t) : t));
+    const trips = get().trips.map((t) => {
+      if (t.id !== id) return t;
+      const next = edit(t);
+      if (next !== t)
+        log('trip.update', {
+          trip: id,
+          changed: (Object.keys(next) as (keyof Trip)[]).filter((k) => next[k] !== t[k]),
+          planned: !!next.chain,
+        });
+      return next;
+    });
     set({ trips });
     persist(trips);
   },
@@ -65,6 +79,13 @@ export const useTrips = create<TripsState>()((set, get) => ({
       const route = edit(t.route);
       if (JSON.stringify(route) === JSON.stringify(t.route)) return t;
       const { chain: _c, legs: _l, compact: _p, ...rest } = t;
+      log('trip.route', {
+        trip: id,
+        date: route.date,
+        anchor: route.anchor,
+        stops: route.waypoints.map((w) => `${w.name}${w.kind === 'stop' ? ` ${w.dwellMin}′` : ''}`),
+        hadTimetable: !!t.chain,
+      });
       return { ...rest, route };
     });
     set({ trips });
@@ -72,11 +93,13 @@ export const useTrips = create<TripsState>()((set, get) => ({
     void persistNow(trips);
   },
   remove: (id) => {
+    log('trip.remove', { trip: id });
     const trips = get().trips.filter((t) => t.id !== id);
     set({ trips });
     void persistNow(trips);
   },
   replaceAll: (trips) => {
+    log('trips.replaceAll', { count: trips.length });
     set({ trips });
     return Promise.resolve(persistNow(trips));
   },

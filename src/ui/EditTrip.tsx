@@ -32,6 +32,7 @@ import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
+import { log } from '../io/log';
 import { expectedArrival } from '../core/live';
 
 /**
@@ -134,20 +135,28 @@ export function EditTrip({ id }: { id: string }) {
         setDraft(from);
       }
     }
+    log('replan.start', {
+      trip: id,
+      from: point?.stop.name,
+      anchor: from.anchor,
+      stops: from.waypoints.map((w) => w.name),
+    });
     try {
       const index = await stopSearch();
-      setResult(
-        await plan(from, {
-          fetchTrips: (q) => fetchTrips(q),
-          templates: TEMPLATES,
-          segments: SEGMENTS,
-          ga: GA,
-          stop: (r) => index.byRef(r),
-        }),
-      );
+      const r = await plan(from, {
+        fetchTrips: (q) => fetchTrips(q),
+        templates: TEMPLATES,
+        segments: SEGMENTS,
+        ga: GA,
+        stop: (x) => index.byRef(x),
+        trace: (event, data) => log(event, { trip: id, ...(data as object) }),
+      });
+      log('replan.done', { trip: id, options: r.options?.length ?? 0, failedLeg: r.failedLeg });
+      setResult(r);
       setPicked(null);
       setStatus('idle');
     } catch (e) {
+      log('replan.fail', { trip: id, e });
       setDetail(e instanceof WorkerError ? e.detail : e instanceof Error ? e.message : '');
       setStatus('error');
     }

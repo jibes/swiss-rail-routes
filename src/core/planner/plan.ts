@@ -5,11 +5,11 @@ import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
 import { zurichDateTime } from '../ojp/request';
 import { usesSegment } from '../segments';
-import { stopKey } from '../stops';
+import { samePlace, sameStop, stopKey, type SamePlace } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
 import { MIN, ms, rides, stopSeq } from './connection';
-import { calledAt, passesVias, ridden, stitched, type Query } from './stitch';
+import { passesVias, stitched, type Query } from './stitch';
 
 export interface PlanDeps {
   fetchTrips: (q: TripQuery) => Promise<Connection[]>;
@@ -20,6 +20,8 @@ export interface PlanDeps {
   weights?: Partial<Weights>;
   minTransferMin?: number;
   beamWidth?: number;
+  /** Debug log (io/log.ts); the planner says what it asked, kept and gave up. */
+  trace?: (event: string, data?: unknown) => void;
 }
 
 export interface Weights {
@@ -120,18 +122,11 @@ export function rejectReason(
   c: Connection,
   rules: LegRules,
   relaxed: Set<Relaxed>,
+  same: SamePlace = sameStop,
 ): Relaxed | null {
   const seq = stopSeq(c);
-  if (!relaxed.has('mustPass')) {
-    const have = new Set(seq);
-    const at = ridden(c);
-    const passed = (r: string) => {
-      if (have.has(r)) return true;
-      const w = rules.leg.vias.find((v) => stopKey(v.stopRef) === r);
-      return !!w && calledAt(w, at);
-    };
-    if (rules.mustPass.some((r) => !passed(r))) return 'mustPass';
-  }
+  if (!relaxed.has('mustPass') && rules.mustPass.some((r) => !seq.some((k) => same(r, k))))
+    return 'mustPass';
   if (!relaxed.has('avoid') && rules.avoid.some((s) => usesSegment(seq, s))) return 'avoid';
   return null;
 }
@@ -184,6 +179,14 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
   const legs = rulesList.map((r) => r.leg);
   const relaxedOut: PlanResult['relaxed'] = [];
   const cache = new Map<string, Connection[]>();
+  const trace = deps.trace ?? (() => undefined);
+  const hm = (t: number) => zurichLocal(t).slice(11, 16);
+  trace('plan.from', {
+    start: zurichLocal(start),
+    legs: legs.map(
+      (l) => `${l.from.name} > ${l.vias.map((v) => v.name).join(', ')} > ${l.to.name}`,
+    ),
+  });
 
   const query: Query = async (from, to, via, at) => {
     // OJP refuses a trip from a stop to itself (TRIP_ORIGINDESTINATIONIDENTICAL).
@@ -198,16 +201,33 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
       results: 6,
     };
     const key = JSON.stringify(q);
-    if (!cache.has(key)) cache.set(key, await deps.fetchTrips(q));
+    if (!cache.has(key)) {
+      const got = await deps.fetchTrips(q);
+      trace('plan.query', {
+        from: from.name,
+        to: to.name,
+        via: via.map((w) => w.name),
+        at: hm(at),
+        got: got.map((c) => `${hm(ms(c.dep))}-${hm(ms(c.arr))}/${c.transfers}`),
+      });
+      cache.set(key, got);
+    }
     return cache.get(key)!;
   };
+
+  const same = samePlace(deps.stop);
 
   /** One request with all vias; split at the vias when no answer passes them all. */
   const fetchAt = async (rules: LegRules, at: number) => {
     const { from, vias, to } = rules.leg;
     const direct = await query(from, to, vias, at);
-    if (vias.length < 2 || direct.some((c) => passesVias(c, vias))) return direct;
+    if (vias.length < 2 || direct.some((c) => passesVias(c, vias, same))) return direct;
     const parts = await stitched(from, vias, to, at, query, minTransfer);
+    trace('plan.stitched', {
+      leg: `${from.name} > ${to.name}`,
+      vias: vias.length,
+      got: parts.length,
+    });
     return parts.length ? parts : direct;
   };
 
@@ -226,7 +246,23 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
     for (const step of ladder) {
       const relaxed = new Set(step);
       const ready = Math.min(...beams.map((b) => b.ready));
-      let pool = (await fetchAt(rules, ready)).filter((c) => !rejectReason(c, rules, relaxed));
+      const all = await fetchAt(rules, ready);
+      let pool = all.filter((c) => !rejectReason(c, rules, relaxed, same));
+      const why: Record<string, number> = {};
+      for (const c of all) {
+        const r = rejectReason(c, rules, relaxed, same);
+        if (r) why[r] = (why[r] ?? 0) + 1;
+      }
+      trace('plan.leg', {
+        leg: i,
+        relaxed: step,
+        from: hm(ready),
+        answers: all.length,
+        kept: pool.length,
+        rejected: why,
+        mustPass: rules.leg.vias.map((v) => v.name),
+        avoid: rules.avoid.map((s) => s.id),
+      });
       // Regular trains over panorama/supplement trains when both run.
       const regular = pool.filter((c) => !rides(c).some(([s]) => isSupplement(s, deps.ga)));
       if (regular.length) pool = regular;
@@ -234,7 +270,7 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
         let opts = pool.filter((c) => ms(c.dep) >= b.ready);
         if (!opts.length && b.ready > ready) {
           opts = (await fetchAt(rules, b.ready)).filter(
-            (c) => !rejectReason(c, rules, relaxed) && ms(c.dep) >= b.ready,
+            (c) => !rejectReason(c, rules, relaxed, same) && ms(c.dep) >= b.ready,
           );
         }
         for (const c of opts) {
@@ -252,16 +288,19 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
         // Report only the rules the kept connections actually break.
         const broken = new Set<Relaxed>();
         for (const b of next) {
-          const r = rejectReason(b.conns.at(-1)!, rules, new Set());
+          const r = rejectReason(b.conns.at(-1)!, rules, new Set(), same);
           if (r) broken.add(r);
-          if (r === 'avoid' && rejectReason(b.conns.at(-1)!, rules, new Set(['avoid'])))
+          if (r === 'avoid' && rejectReason(b.conns.at(-1)!, rules, new Set(['avoid']), same))
             broken.add('mustPass');
         }
         for (const r of step) if (broken.has(r)) relaxedOut.push({ legIndex: i, rule: r });
         break;
       }
     }
-    if (!next.length) return { relaxed: relaxedOut, failedLeg: i, legs };
+    if (!next.length) {
+      trace('plan.failed', { leg: i });
+      return { relaxed: relaxedOut, failedLeg: i, legs };
+    }
     // Keep the best chain per first departure, so options can differ; then the best overall.
     next.sort((a, b) => total(a) - total(b));
     const perStart = new Map<number, Beam>();
@@ -280,7 +319,17 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
     dep: b.conns[0]!.dep,
     arr: b.conns.at(-1)!.arr,
   }));
-  return { ...pickOptions(done), relaxed: relaxedOut, legs };
+  const picked = pickOptions(done);
+  trace('plan.result', {
+    chains: done.length,
+    options: picked.options?.map(
+      (c) => `${hm(ms(c.dep))}-${hm(ms(c.arr))} score ${Math.round(c.score)}`,
+    ),
+    recommended: picked.recommended && hm(ms(picked.recommended.dep)),
+    relaxed: relaxedOut,
+    warnings: picked.recommended?.warnings.map((w) => w.type),
+  });
+  return { ...picked, relaxed: relaxedOut, legs };
 }
 
 /**
@@ -321,6 +370,7 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   for (let attempt = 0; attempt < 4; attempt++, start -= 60 * MIN) {
     last = await planFrom(start, tour, deps);
     const inTime = (last.options ?? []).filter((c) => ms(c.arr) <= by);
+    deps.trace?.('plan.arriveBy', { attempt, inTime: inTime.length });
     if (inTime.length) return { ...last, ...pickOptions(inTime) };
   }
   return { ...last, options: undefined, recommended: undefined };

@@ -4,7 +4,7 @@
 // stations are rings; a change the timetable needs on its own is a station without an entry.
 import { entriesOf, markRings } from './line';
 import type { Connection, Section, Tour, Waypoint } from './model';
-import { stopKey } from './stops';
+import { sameStop, stopKey, type SamePlace } from './stops';
 
 export type StationRole = 'start' | 'end' | 'pass' | 'stop' | 'change';
 
@@ -70,14 +70,14 @@ export function routeRows(tour: Pick<Tour, 'waypoints'>): LineRow[] {
  * get off, and the route's stations passed on the way (with their times). Route stations the
  * timetable does not show are kept, without times, where they belong.
  */
-export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connection[]): LineRow[] {
+export function plannedRows(
+  tour: Pick<Tour, 'waypoints'>,
+  connections: Connection[],
+  same: SamePlace = sameStop,
+): LineRow[] {
   const route = routeStations(tour);
-  const wanted = new Set(route.map((r) => r.key));
-  // In a disruption the replacement bus stops outside the station under its own stop id
-  // ("Interlaken Ost, Bahnhof"): it is that station.
-  const outside = (name: string) => route.some((r) => name.startsWith(`${r.name},`));
-  const onePlace = (a: string, b: string) =>
-    a === b || a.startsWith(`${b},`) || b.startsWith(`${a},`);
+  // A stop within SAME_PLACE_M of a route station is that station.
+  const wanted = (key: string) => route.some((r) => same(r.key, key));
   // The timetable's own sequence: boarding and alighting stations, and passed route stations.
   const seq: LineRow[] = [];
   let shortWalk = false;
@@ -94,11 +94,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     // minute (Lauterbrunnen to its cable car station): one row, named as you arrive.
     const merge = shortWalk;
     shortWalk = false;
-    if (
-      last &&
-      lastIndex === seq.length - 1 &&
-      (merge || last.key === key || onePlace(last.name, name))
-    ) {
+    if (last && lastIndex === seq.length - 1 && (merge || same(last.key, key))) {
       Object.assign(last, Object.fromEntries(Object.entries(times).filter(([, v]) => v)));
       // Either stop is the route's station there (you may have entered either one).
       if (last.key !== key) last.also = [...(last.also ?? []), key];
@@ -115,7 +111,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
           s.from.dep && s.to.arr ? (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000 : 0;
         if (
           stopKey(s.from.stopRef) === stopKey(s.to.stopRef) ||
-          onePlace(s.from.name, s.to.name) ||
+          same(s.from.stopRef, s.to.stopRef) ||
           min < 1
         ) {
           shortWalk = true;
@@ -125,7 +121,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
       station(s.from.name, s.from.stopRef, leg, { dep: s.from.dep, platformDep: s.from.platform });
       seq.push({ type: 'ride', section: s, leg, sectionIndex: j });
       for (const call of s.intermediate)
-        if (wanted.has(stopKey(call.stopRef)) || outside(call.name))
+        if (wanted(stopKey(call.stopRef)))
           seq.push({
             type: 'station',
             name: call.name,
@@ -154,7 +150,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     let m = -1;
     for (let q = p; q < route.length; q++) {
       const r = route[q]!;
-      if (r.key === row.key || row.also?.includes(r.key) || row.name.startsWith(`${r.name},`)) {
+      if (same(r.key, row.key) || row.also?.some((k) => same(r.key, k))) {
         m = q;
         break;
       }

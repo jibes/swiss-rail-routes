@@ -9,6 +9,7 @@ import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
+import { log } from './io/log';
 import { watchAutoPlan } from './io/autoplan';
 import { useSync, watchSync } from './io/sync';
 import { liveTrip, tripStatus } from './core/trip';
@@ -102,6 +103,10 @@ export function App() {
       t.chain ? expectedArrival(t.chain.connections, live) : undefined,
     );
     if (!r.changed) return;
+    log('retire', {
+      trips: useTrips.getState().trips.length - r.trips.length,
+      pastTrips: r.tours.length - useTours.getState().tours.length,
+    });
     void useTours.getState().replaceAll(r.tours);
     void useTrips.getState().replaceAll(r.trips);
   }, [loaded, tripsLoaded, settled, now]);
@@ -112,7 +117,9 @@ export function App() {
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.
   useEffect(() => {
-    if (loaded && tripsLoaded) console.info('srr:ready');
+    if (!loaded || !tripsLoaded) return;
+    console.info('srr:ready');
+    log('app.ready', { live: !!useLiveStatus.getState().status });
   }, [loaded, tripsLoaded]);
   // A notification of a trip deleted or retired since opens the list instead.
   useEffect(

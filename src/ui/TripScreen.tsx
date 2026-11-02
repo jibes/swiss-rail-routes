@@ -14,8 +14,8 @@ import {
 } from '../core/line';
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
-import { plannedRows, routeRows } from '../core/rows';
-import { stopKey } from '../core/stops';
+import { plannedRows, routeRows, type LineRow } from '../core/rows';
+import { samePlace, stopKey } from '../core/stops';
 import { encodeTrip } from '../core/export/tripShare';
 import { compactTrip, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { usePrefs, useT } from '../store';
@@ -36,6 +36,7 @@ import { usePlanner } from './usePlanner';
 import { useLayer } from './layers';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
+import { log } from '../io/log';
 
 /** Earlier/Later move the departure by an hour, within the day. */
 function shifted(time: string, min: number): string {
@@ -61,6 +62,36 @@ function entriesFor(p: Picked): Entry[] {
  * The one screen (SPEC §3a, 0.4.0): a trip is one line, always with a date. Before it leaves you
  * edit it in place and it plans itself; under way it shows where you are.
  */
+/** The line's actions, each logged by name with its arguments (debug log). */
+function logged<A extends object>(trip: string, act: A): A {
+  return Object.fromEntries(
+    Object.entries(act).map(([name, f]) => [
+      name,
+      (...args: unknown[]) => {
+        log(`line.${name}`, { trip, args });
+        (f as (...a: unknown[]) => void)(...args);
+      },
+    ]),
+  ) as A;
+}
+
+/** Logs what the line shows, once per timetable: stations struck, changes, rides. */
+function LogRows({ trip, rows, at }: { trip: string; rows: LineRow[]; at: string }) {
+  useEffect(() => {
+    if (!at) return;
+    log('trip.rows', {
+      trip,
+      rows: rows.map((r) =>
+        r.type === 'ride'
+          ? `[${r.section.category ?? r.section.mode} ${r.section.line ?? r.section.number ?? ''}]`
+          : `${r.name}${r.missed ? ' (missed)' : ''}${r.role === 'change' ? ' (change)' : ''}`,
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per timetable, not per render
+  }, [trip, at]);
+  return null;
+}
+
 export function TripScreen({ id }: { id: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -123,7 +154,8 @@ export function TripScreen({ id }: { id: string }) {
   const entries = entriesOf(route);
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
   const chain = trip.chain;
-  const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
+  const same = index ? samePlace(index.byRef) : undefined;
+  const rows = chain ? plannedRows(route, chain.connections, same) : routeRows(route);
   const planning = !chain && planner.status === 'planning';
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
@@ -136,6 +168,7 @@ export function TripScreen({ id }: { id: string }) {
 
   const pick = (p: Picked) => {
     const at = sheet?.after ?? entries.length - 1;
+    log('add.pick', { trip: id, kind: p.kind, after: at });
     if (p.kind === 'trip' && !route.waypoints.length && !trip.name)
       update(id, (x) => ({ ...x, name: p.tour.name }));
     edit((r) => insertEntries(r, at, entriesFor(p)));
@@ -187,6 +220,7 @@ export function TripScreen({ id }: { id: string }) {
                 type="button"
                 role="menuitem"
                 onClick={() => {
+                  log('export.ics', { trip: id });
                   downloadIcs(route, name, trip.chain, trip.id);
                   setMenu(false);
                 }}
@@ -399,23 +433,34 @@ export function TripScreen({ id }: { id: string }) {
               result={planner.result}
               planning={planning}
               from={anchor}
-              move={(min) => edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }))}
+              move={(min) => {
+                log('options.move', { trip: id, min });
+                edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }));
+              }}
               choose={(c, legs) =>
                 // The trip takes it, and its time becomes the trip's: planning again (after
                 // an edit) starts there.
-                update(id, (x) =>
-                  compactTrip({
-                    ...x,
-                    route: { ...x.route, anchor: { departAt: zurichHm(Date.parse(c.dep)) } },
-                    chain: c,
-                    legs,
-                    compact: undefined,
-                  }),
+                (
+                  log('options.choose', { trip: id, dep: c.dep, arr: c.arr }),
+                  update(id, (x) =>
+                    compactTrip({
+                      ...x,
+                      route: { ...x.route, anchor: { departAt: zurichHm(Date.parse(c.dep)) } },
+                      chain: c,
+                      legs,
+                      compact: undefined,
+                    }),
+                  )
                 )
               }
             />
           )}
 
+          <LogRows
+            trip={id}
+            rows={rows}
+            at={chain ? `${chain.dep}|${chain.arr}|${JSON.stringify(route.waypoints).length}` : ''}
+          />
           <TripLine
             route={route}
             rows={rows}
@@ -423,7 +468,7 @@ export function TripScreen({ id }: { id: string }) {
             planning={planning}
             open={open}
             setOpen={setOpen}
-            act={{
+            act={logged(id, {
               replace: (k, s) => edit((r) => replaceEntry(r, k, s)),
               stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
               move: (from, to) => {
@@ -438,7 +483,7 @@ export function TripScreen({ id }: { id: string }) {
               addAfter: (k) => setSheet({ after: k }),
               add: () => setSheet({ after: entries.length - 1 }),
               later: () => edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, 60) } })),
-            }}
+            })}
           />
         </>
       )}

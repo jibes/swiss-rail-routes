@@ -1,6 +1,6 @@
 {
   "name": "swiss-rail-routes",
-  "version": "0.5.8",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",
@@ -29,7 +29,9 @@
     "@capacitor/android": "^8.6.0",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
     "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/share": "^8.0.3",
     "fast-xml-parser": "^5.11.2",
     "idb-keyval": "^6.3.0",
     "jsqr": "1.4.0",

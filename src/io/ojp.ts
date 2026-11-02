@@ -1,6 +1,7 @@
 // Trip requests through the OJP Worker (VITE_OJP_URL); answers parsed on the device.
 import type { Connection } from '../core/model';
 import type { TripQuery } from '../core/ojp/request';
+import { log } from './log';
 
 export const ojpConfigured = () => !!import.meta.env.VITE_OJP_URL;
 
@@ -17,20 +18,51 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
   const url = import.meta.env.VITE_OJP_URL;
   if (!url) throw new PlanningUnavailable();
   const { parseTrips } = await import('../core/ojp/parse');
+  const what = {
+    from: q.origin.name,
+    to: q.destination.name,
+    via: q.vias.map((v) => v.name),
+    time: q.time,
+    arriveBy: q.arriveBy,
+  };
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${url.replace(/[/]$/, '')}/trip`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(q),
-      signal,
-    });
+    const t0 = performance.now();
+    let res: Response;
+    try {
+      res = await fetch(`${url.replace(/[/]$/, '')}/trip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(q),
+        signal,
+      });
+    } catch (e) {
+      log('ojp.trip.fail', { ...what, attempt, e, aborted: signal?.aborted });
+      throw e;
+    }
+    const ms = Math.round(performance.now() - t0);
     // Rate-limited (Worker 429, OJP quota 503): wait and try twice more.
     if ((res.status === 429 || res.status === 503) && attempt < 2) {
+      log('ojp.trip.retry', { ...what, status: res.status, attempt, ms });
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
       continue;
     }
-    if (!res.ok) throw new WorkerError(`${res.status} ${(await res.text()).slice(0, 80)}`);
-    return parseTrips(await res.text());
+    if (!res.ok) {
+      const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+      log('ojp.trip.fail', { ...what, detail, attempt, ms });
+      throw new WorkerError(detail);
+    }
+    const text = await res.text();
+    const out = parseTrips(text);
+    log('ojp.trip', {
+      ...what,
+      ms,
+      bytes: text.length,
+      cache: res.headers.get('cf-cache-status') ?? undefined,
+      connections: out.length,
+      disrupted: out.filter((c) => c.sections.some((s) => s.notices?.length)).length,
+      ev: out.filter((c) => c.sections.some((s) => s.category === 'EV')).length,
+    });
+    return out;
   }
 }
 
@@ -50,6 +82,12 @@ export async function fetchJourney(
     }),
     import('../core/ojp/journey'),
   ]);
-  if (!res.ok) throw new WorkerError(`${res.status} ${(await res.text()).slice(0, 80)}`);
-  return parseJourney(await res.text());
+  if (!res.ok) {
+    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+    log('ojp.journey.fail', { journey: q, detail });
+    throw new WorkerError(detail);
+  }
+  const out = parseJourney(await res.text());
+  log('ojp.journey', { journey: q, status: out });
+  return out;
 }

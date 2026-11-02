@@ -243,4 +243,14 @@ export const it = {
   noneFrom: 'Nulla trovato dalle {time}',
   loadingMore: 'Caricamento di altri collegamenti',
   opening: 'Apertura del viaggio',
+  debugLog: 'Registro di debug',
+  debugLogSwitch: 'Tieni un registro di debug',
+  debugLogHint:
+    'Registra cosa fa l’app, per trovare gli errori. Resta solo su questo dispositivo, al massimo circa 512 KB (il più vecchio va via per primo). Salvalo o copialo per inoltrarlo. Disattivarlo lo cancella.',
+  debugLogSize: '{size} KB salvati',
+  debugLogSave: 'Salva file',
+  debugLogCopy: 'Copia',
+  debugLogCopied: 'Registro copiato',
+  debugLogClear: 'Svuota',
+  debugLogFailed: 'Impossibile salvare il registro',
 } satisfies Catalogue;

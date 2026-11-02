@@ -11,6 +11,7 @@ import {
   useSync,
   type SyncStatus,
 } from '../io/sync';
+import { clearLog, copyLog, log, saveLog, setLogging, useLog } from '../io/log';
 import { publicUrl } from '../native';
 import { usePrefs, useT } from '../store';
 import { hhmm } from './format';
@@ -188,6 +189,54 @@ function SyncOff({ offered }: { offered?: string }) {
   );
 }
 
+/** The debug log: on or off, how much is kept, save, copy, clear. */
+function DebugLog() {
+  const t = useT();
+  const { on, size } = useLog();
+  const [note, setNote] = useState('');
+  const run = (job: () => Promise<void>, done = '') => {
+    setNote('');
+    job().then(
+      () => setNote(done),
+      () => setNote(t('debugLogFailed')),
+    );
+  };
+  return (
+    <section className="setting debug-log">
+      <h2 className="section-label">{t('debugLog')}</h2>
+      <label className="switch">
+        <input type="checkbox" checked={on} onChange={(e) => void setLogging(e.target.checked)} />
+        <span>{t('debugLogSwitch')}</span>
+      </label>
+      <p className="muted">{t('debugLogHint')}</p>
+      {on && (
+        <>
+          <p className="muted" aria-live="polite">
+            {t('debugLogSize', { size: Math.max(1, Math.round(size / 1024)) })}
+          </p>
+          <div className="log-actions">
+            <button type="button" className="secondary" onClick={() => run(saveLog)}>
+              <Icon name="share" />
+              {t('debugLogSave')}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => run(copyLog, t('debugLogCopied'))}
+            >
+              {t('debugLogCopy')}
+            </button>
+            <button type="button" className="text-button" onClick={() => run(clearLog)}>
+              {t('debugLogClear')}
+            </button>
+          </div>
+          {note && <p role="status">{note}</p>}
+        </>
+      )}
+    </section>
+  );
+}
+
 /** Settings: language and sync. `join` is a key from a link (`#/sync/<key>`), to confirm. */
 export function Settings({ join }: { join?: string }) {
   const t = useT();
@@ -217,7 +266,10 @@ export function Settings({ join }: { join?: string }) {
           label={t('language')}
           value={lang}
           options={LANGS.map((l) => ({ value: l, label: t(`lang_${l}`) }))}
-          onChange={(l) => setLang(l as Lang)}
+          onChange={(l) => {
+            log('settings.lang', { lang: l });
+            setLang(l as Lang);
+          }}
         />
       </section>
 
@@ -238,6 +290,8 @@ export function Settings({ join }: { join?: string }) {
           <SyncOff offered={offered} />
         )}
       </section>
+
+      <DebugLog />
 
       <p className="muted build">{t('build', { sha: __BUILD__.sha })}</p>
     </main>

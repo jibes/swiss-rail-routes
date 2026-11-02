@@ -113,3 +113,25 @@ export function stopKey(ref: string): string {
   }
   return ref;
 }
+
+/** Stops this close are one station: the replacement bus outside it, the pier across the square. */
+export const SAME_PLACE_M = 400;
+
+/** Whether two stops are one station; without coordinates, only the same stop is. */
+export type SamePlace = (a: string, b: string) => boolean;
+
+export const sameStop: SamePlace = (a, b) => stopKey(a) === stopKey(b);
+
+export function samePlace(
+  at: (key: string) => { lat: number; lon: number } | undefined,
+): SamePlace {
+  return (a, b) => {
+    if (sameStop(a, b)) return true;
+    const p = at(stopKey(a));
+    const q = at(stopKey(b));
+    if (!p || !q) return false;
+    const dy = (p.lat - q.lat) * 111_195;
+    const dx = (p.lon - q.lon) * 111_195 * Math.cos((p.lat * Math.PI) / 180);
+    return Math.hypot(dx, dy) <= SAME_PLACE_M;
+  };
+}

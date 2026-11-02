@@ -176,3 +176,25 @@
   align-items: center;
   gap: 6px;
 }
+
+/* Debug log */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  font-weight: 600;
+}
+
+.switch input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--rail);
+}
+
+.log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}

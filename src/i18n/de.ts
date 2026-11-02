@@ -248,4 +248,14 @@ export const de = {
   noneFrom: 'Nichts gefunden ab {time}',
   loadingMore: 'Weitere Verbindungen werden geladen',
   opening: 'Reise wird geöffnet',
+  debugLog: 'Fehlerprotokoll',
+  debugLogSwitch: 'Fehlerprotokoll führen',
+  debugLogHint:
+    'Hält fest, was die App tut, um Fehler zu finden. Bleibt nur auf diesem Gerät, höchstens etwa 512 KB (das Älteste fällt zuerst weg). Zum Weitergeben speichern oder kopieren. Ausschalten löscht es.',
+  debugLogSize: '{size} KB gespeichert',
+  debugLogSave: 'Datei speichern',
+  debugLogCopy: 'Kopieren',
+  debugLogCopied: 'Protokoll kopiert',
+  debugLogClear: 'Leeren',
+  debugLogFailed: 'Protokoll konnte nicht gespeichert werden',
 } satisfies Catalogue;

@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { translate, type Lang } from '../i18n';
+import { log } from '../io/log';
 import { usePrefs } from '../store';
 
 /**
@@ -14,6 +15,10 @@ export class ErrorBoundary extends Component<
 
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+
+  componentDidCatch(error: unknown, info: { componentStack?: string | null }) {
+    log('screen.crash', { e: error, stack: info.componentStack?.slice(0, 1500) });
   }
 
   componentDidUpdate(prev: { resetKey: string }) {

@@ -7,6 +7,7 @@ import { translate, type Lang } from '../i18n';
 import { isNative } from '../native';
 import { stopSearch } from './stops';
 import { stopKey } from '../core/stops';
+import { log } from './log';
 
 const CHANNEL = 'trip';
 
@@ -37,12 +38,18 @@ let queue: Promise<unknown> = Promise.resolve();
  */
 export function scheduleTrips(trips: Trip[], lang: Lang, now = Date.now()): Promise<unknown> {
   if (!isNative) return Promise.resolve();
-  queue = queue.then(() => reschedule(trips, lang, now)).catch(() => undefined);
+  queue = queue
+    .then(() => reschedule(trips, lang, now))
+    .catch((e: unknown) => log('notify.fail', { e }));
   return queue;
 }
 
 async function reschedule(trips: Trip[], lang: Lang, now: number) {
-  if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
+  const perm = (await LocalNotifications.checkPermissions()).display;
+  if (perm !== 'granted') {
+    log('notify.skip', { permission: perm });
+    return;
+  }
   const index = await stopSearch();
   const notices = trips
     .filter(isPlanned)
@@ -58,6 +65,15 @@ async function reschedule(trips: Trip[], lang: Lang, now: number) {
     await LocalNotifications.cancel({
       notifications: pending.notifications.map((n) => ({ id: n.id })),
     });
+  log('notify.schedule', {
+    cancelled: pending.notifications.length,
+    scheduled: notices.length,
+    next: notices
+      .slice()
+      .sort((a, b) => a.at - b.at)
+      .slice(0, 5)
+      .map((n) => `${n.kind} ${new Date(n.at).toISOString()} ${n.tripId}`),
+  });
   if (!notices.length) return;
   await LocalNotifications.schedule({
     notifications: notices.map((n) => ({
@@ -74,7 +90,10 @@ async function reschedule(trips: Trip[], lang: Lang, now: number) {
 export async function askNotifications(): Promise<void> {
   if (!isNative) return;
   const perm = await LocalNotifications.checkPermissions().catch(() => null);
-  if (perm?.display === 'prompt') await LocalNotifications.requestPermissions().catch(() => null);
+  if (perm?.display === 'prompt') {
+    const got = await LocalNotifications.requestPermissions().catch(() => null);
+    log('notify.ask', { result: got?.display });
+  }
 }
 
 /** Tapping a notification opens "Now" for its trip. */
@@ -82,6 +101,7 @@ export function onNotificationTap(go: (tripId: string) => void) {
   if (!isNative) return () => undefined;
   const h = LocalNotifications.addListener('localNotificationActionPerformed', (a) => {
     const id = (a.notification.extra as { tripId?: string } | undefined)?.tripId;
+    log('notify.tap', { trip: id });
     if (id) go(id);
   });
   return () => void h.then((x) => x.remove());

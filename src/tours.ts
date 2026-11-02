@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { newTour } from './core/edit';
 import type { Tour } from './core/model';
+import { log } from './io/log';
 import { loadTours, saveTours } from './io/tours';
 
 interface ToursState {
@@ -57,28 +58,34 @@ export const useTours = create<ToursState>()((set, get) => ({
   tours: [],
   load: async () => {
     if (get().loaded) return;
-    set({ tours: await loadTours(), loaded: true });
+    const tours = await loadTours();
+    log('pastTrips.load', { count: tours.length });
+    set({ tours, loaded: true });
   },
   create: (tour) => {
     const id = newId();
     if (!tour) madeHere.add(id);
     const t: Tour = tour ? { ...tour, id } : newTour(id, defaultDate());
+    log('pastTrip.add', { id, stops: t.waypoints.length });
     const tours = [t, ...get().tours];
     set({ tours });
     void persistNow(tours);
     return id;
   },
   update: (id, edit) => {
+    log('pastTrip.update', { id });
     const tours = get().tours.map((t) => (t.id === id ? edit(t) : t));
     set({ tours });
     persist(tours);
   },
   remove: (id) => {
+    log('pastTrip.remove', { id });
     const tours = get().tours.filter((t) => t.id !== id);
     set({ tours });
     void persistNow(tours);
   },
   replaceAll: (tours) => {
+    log('pastTrips.replaceAll', { count: tours.length });
     set({ tours });
     return Promise.resolve(persistNow(tours));
   },

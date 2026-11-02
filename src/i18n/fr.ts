@@ -244,4 +244,14 @@ export const fr = {
   noneFrom: 'Rien trouvé dès {time}',
   loadingMore: 'Chargement d’autres liaisons',
   opening: 'Ouverture du voyage',
+  debugLog: 'Journal de débogage',
+  debugLogSwitch: 'Tenir un journal de débogage',
+  debugLogHint:
+    'Enregistre ce que fait l’app pour trouver les erreurs. Reste sur cet appareil, au plus environ 512 Ko (le plus ancien part en premier). Enregistrez-le ou copiez-le pour le transmettre. Le désactiver le supprime.',
+  debugLogSize: '{size} Ko conservés',
+  debugLogSave: 'Enregistrer le fichier',
+  debugLogCopy: 'Copier',
+  debugLogCopied: 'Journal copié',
+  debugLogClear: 'Vider',
+  debugLogFailed: 'Impossible d’enregistrer le journal',
 } satisfies Catalogue;
