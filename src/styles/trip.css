@@ -345,8 +345,25 @@ svg.mini-line circle.via {
   display: block;
   font-style: normal;
   font-weight: 500;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.2;
   color: var(--ink-3);
+}
+
+/* Arrival above: the departure stays level with the station's dot and name; the row makes
+   room for it. */
+.trip-line .station:has(.t i) {
+  padding-top: 10px;
+}
+
+.trip-line .station:has(.t i) .rail::before {
+  top: -10px;
+}
+
+/* Arrival above: the departure stays level with the station's dot and name. */
+.trip-line .t:has(i) {
+  padding-top: 0;
+  margin-top: -7px;
 }
 
 .trip-line .rail {

@@ -155,15 +155,15 @@ export function TripLine({
         }
         const k = r.entry;
         const isOpen = k !== undefined && open === k;
+        // Where you change or stay: the arrival small above, the departure (what you act on) big.
+        const both = (r.role === 'stop' || r.role === 'change') && !!r.arr && !!r.dep;
         const time =
-          r.role === 'start'
+          r.role === 'start' || both
             ? r.dep && hhmm(r.dep)
             : r.role === 'end'
               ? r.arr && hhmm(r.arr)
-              : r.role === 'pass'
-                ? (r.dep ?? r.arr) && hhmm((r.dep ?? r.arr)!)
-                : r.arr && hhmm(r.arr);
-        const second = (r.role === 'stop' || r.role === 'change') && r.dep ? hhmm(r.dep) : '';
+              : (r.dep ?? r.arr) && hhmm((r.dep ?? r.arr)!);
+        const before = both ? hhmm(r.arr!) : '';
         const big = r.role !== 'pass';
         const label = stayLabel(t, r);
         const dragging = drag && k === drag.from;
@@ -183,8 +183,8 @@ export function TripLine({
             {...(k !== undefined ? { 'data-entry': k } : {})}
           >
             <span className="t">
+              {before && !planning && <i>{before}</i>}
               {planning ? <span className="shim" /> : time}
-              {second && !planning && <i>{second}</i>}
             </span>
             <span className="rail">
               <span className="dot" />
