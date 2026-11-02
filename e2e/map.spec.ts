@@ -1,4 +1,9 @@
-import { BEFORE, expect, test } from './fixtures';
+import AxeBuilder from '@axe-core/playwright';
+import type { Locator, Page } from '@playwright/test';
+import { FIXTURE_DATE } from '../tests/acceptance/ojp';
+import { acceptanceTours } from '../tests/acceptance/tours';
+import { encodeTour } from '../tests/helpers/share';
+import { BEFORE, expect, planShared, test } from './fixtures';
 
 test('map opens for a trip and says so when tiles are unreachable', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
@@ -41,4 +46,138 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
     .toBeGreaterThan(50);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chur → St. Moritz');
+});
+
+// T5 (Interlaken Ost 09:04 →) by a controlled clock; a location near Interlaken Ost.
+const AT_INTERLAKEN = { latitude: 46.69, longitude: 7.87, accuracy: 30 };
+const watches = (page: Page) =>
+  page.evaluate(() => (window as unknown as { watches: number }).watches);
+
+const openT5 = async (page: Page, zurichTime: string) => {
+  await page.addInitScript(() => {
+    const g = navigator.geolocation;
+    const watch = g.watchPosition.bind(g);
+    const w = window as unknown as { watches: number };
+    w.watches = 0;
+    g.watchPosition = (...a) => {
+      w.watches++;
+      return watch(...a);
+    };
+  });
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+  await page.clock.setSystemTime(new Date(`${FIXTURE_DATE}T${zurichTime}:00+01:00`));
+  await page.clock.runFor(16_000);
+  await page.getByRole('button', { name: 'Map' }).click();
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+};
+const inView = async (page: Page, marker: Locator) => {
+  const box = (await marker.boundingBox())!;
+  const size = page.viewportSize()!;
+  expect(box.x).toBeGreaterThan(0);
+  expect(box.x).toBeLessThan(size.width);
+  expect(box.y).toBeGreaterThan(0);
+  expect(box.y).toBeLessThan(size.height);
+};
+
+test('where you are: by the time, by the device once turned on, the time again when it stops', async ({
+  page,
+  context,
+}) => {
+  await context.setGeolocation(AT_INTERLAKEN);
+  await context.grantPermissions(['geolocation']);
+  await openT5(page, '09:15');
+
+  // By the time, with nothing asked of the device.
+  const estimate = page.locator('.map-here.estimate');
+  const location = page.locator('.map-here.location');
+  const button = page.getByRole('button', { name: 'Show my location' });
+  await expect(estimate).toBeVisible();
+  await inView(page, estimate);
+  await expect(page.locator('.map-source.estimate')).toHaveText(
+    /^By the timetable you are between/,
+  );
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  expect(await watches(page)).toBe(0);
+  const axe = async () =>
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .include('.map-bar')
+          .include('.map-notes')
+          .include('.map-here')
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  await axe();
+
+  // Turned on: one marker, the device's.
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect(location).toBeVisible();
+  await expect(estimate).toHaveCount(0);
+  await inView(page, location);
+  await expect(page.locator('.map-source.location')).toHaveText(
+    'Your location. It stays on this device.',
+  );
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await axe();
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  // Somewhere else: said, and the map stays where it is.
+  await context.setGeolocation({ latitude: 46.2, longitude: 6.14, accuracy: 30 });
+  await expect(page.locator('.map-source.location')).toHaveText(
+    'Your location is outside this view.',
+  );
+
+  // Off: no location any more, the estimate again.
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await expect(location).toHaveCount(0);
+  await expect(estimate).toBeVisible();
+
+  // On again, then no news (a tunnel) for over two minutes: the estimate, and it says so.
+  await context.setGeolocation(AT_INTERLAKEN);
+  await button.click();
+  await expect(location).toBeVisible();
+  await page.clock.runFor('02:30');
+  await expect(estimate).toBeVisible();
+  await expect(location).toHaveCount(0);
+  await expect(page.locator('.map-notes [role=status]')).toHaveText('Waiting for your location.');
+
+  // Remembered on this device: on after a reload, with no tap.
+  await page.reload();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect(location).toBeVisible();
+});
+
+test('location refused: off again, said, the estimate stays, not asked again', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.geolocation.watchPosition = (_ok, err) => {
+      err?.({ code: 1, PERMISSION_DENIED: 1 } as GeolocationPositionError);
+      return 1;
+    };
+    navigator.geolocation.clearWatch = () => undefined;
+  });
+  await openT5(page, '09:15');
+  const button = page.getByRole('button', { name: 'Show my location' });
+  await expect(page.locator('.map-here.estimate')).toBeVisible();
+  await button.click();
+  await expect(page.locator('.map-notes [role=status]')).toHaveText(/^Location is not allowed/);
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.map-here.estimate')).toBeVisible();
+  await page.reload();
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.map-notes [role=status]')).toHaveCount(0);
+});
+
+test('before the first train, and with the trip over: no marker by the time', async ({ page }) => {
+  await openT5(page, '08:55');
+  await expect(page.getByRole('button', { name: 'Show my location' })).toBeVisible();
+  await expect(page.locator('.map-here')).toHaveCount(0);
+  await expect(page.locator('.map-source')).toHaveCount(0);
+  await page.clock.setSystemTime(new Date(`${FIXTURE_DATE}T22:00:00+01:00`));
+  await page.clock.runFor(16_000);
+  await expect(page.locator('.map-here')).toHaveCount(0);
+  await expect(page.locator('.map-source')).toHaveCount(0);
 });

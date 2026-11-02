@@ -9,6 +9,9 @@ interface Prefs {
   setLang: (lang: Lang) => void;
   reservations: Reservations;
   setReservations: (reservations: Reservations) => void;
+  /** Show the device's location on the map: off until asked for there. */
+  location: boolean;
+  setLocation: (location: boolean) => void;
 }
 
 export const usePrefs = create<Prefs>()(
@@ -18,6 +21,8 @@ export const usePrefs = create<Prefs>()(
       setLang: (lang) => set({ lang }),
       reservations: 'avoid',
       setReservations: (reservations) => set({ reservations }),
+      location: false,
+      setLocation: (location) => set({ location }),
     }),
     { name: KEYS.prefs, version: 1 },
   ),

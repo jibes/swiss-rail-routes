@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: 0.12.0. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. Next: the MCP (remote, for the phone), then SPEC §3 Should/Could items.
+Status: 0.13.0. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. Next: the MCP (remote, for the phone), then SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -35,6 +35,7 @@ Status: 0.12.0. One object, one screen, one line (SPEC §3a): every trip dated (
 - Kept answers (0.8.4): every timetable answer the planner gets is kept on the device (`src/io/answers.ts`, database `srr.answers.v1`, one entry per query), good until its day starts and, on the day, for 15 min (delays, cancellations; `src/core/answers.ts`); about 8 MB at most, the oldest dropped. The options loaded with the strip's arrows are kept per trip until they leave (`srr.options.v1`), and a trip's saved plan still shows its options after a connection is chosen or the trip renamed (`optionsKey`: stations, day, ticket).
 - Reservation trains (Settings, `srr.prefs.v1`, on this device, not synced): `PlanDeps.reservations` is `avoid` (default; also when absent, so other callers of `plan()` see no change), `include` or `never`. `planRoute` passes it and marks the result; a result planned under another choice is never kept, saved plans of another choice are not reused, and options loaded with the arrows are keyed by it (`optionsKey`). Changing it drops the timetable of planned trips that have not started (`replanUpcoming`); trips under way keep theirs.
 - Debug log (opt in, Settings): `log(event, data)` from `src/io/log.ts`, a no-op while off; `src/core/log.ts` (pure: line format, `scrub` drops keys/secrets, size rotation in two parts of 256 KB, `screenOf` never logs a link's data or a sync key). The planner logs through its injected `trace`. Log every new I/O, decision and failure; never a sync key or anything decrypted. e2e: `e2e/log.spec.ts`.
+- Position on the map (SPEC "Position"): `src/core/position.ts` (pure: the estimate along the track or straight, which of it and the location shows), `src/ui/useLocation.ts` (`navigator.geolocation`, while `usePrefs.location` and the map is open; Capacitor's WebView asks Android, no plugin). A fix stays in memory: never stored, logged, sent, and the map is never moved to it (tile requests would give the place away).
 - Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
@@ -54,7 +55,7 @@ Status: 0.12.0. One object, one screen, one line (SPEC §3a): every trip dated (
 ## Invariants
 
 - Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.options.v1`, `srr.sync.v1`, `srr.syncLast.v1`, `srr.log.v1`, and the database `srr.answers.v1`; localStorage: `srr.prefs.v1`, `srr.logging.v1`, `srr.unsaved.trips.v1`, `srr.unsaved.tours.v1`; retired: `srr.oneList.v1`; sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
-- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device, except with sync on: trips and your past trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
+- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device (the device's location never does), except with sync on: trips and your past trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
 - API keys exist only as Worker secrets.
 - Curated data in `src/data/` is schema-checked by a test; a template change needs a fixture run of T1–T6.
 - Tests never hit the network: OJP answers are recorded fixtures. Live checks run only in `live.yml`.

@@ -2,22 +2,31 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import * as maplibregl from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { expectedArrival } from '../core/live';
 import { mapData } from '../core/mapdata';
 import type { Connection } from '../core/model';
+import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
+import { stopKey } from '../core/stops';
+import { isPlanned, tripStatus } from '../core/trip';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
-import { useT } from '../store';
+import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { NotFound } from './NotFound';
 import { TEMPLATES } from './TemplatePicker';
 import { Icon } from './icons';
 import { go } from './useHash';
+import { useLive, useLiveStatus } from './useLive';
+import { canLocate, useLocation } from './useLocation';
+import { useNow } from './useNow';
+import { useStopIndex } from './useStopIndex';
 
 maplibregl.setWorkerUrl(workerUrl);
 
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 const ACCENT = '#c0261b';
+const LOCATION = '#1a73e8';
 
 /** Without the tile host (offline, blocked): the route on a plain ground, still readable. */
 const PLAIN: maplibregl.StyleSpecification = {
@@ -47,6 +56,46 @@ export default function MapView({ id }: { id: string }) {
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
   const [straight, setStraight] = useState(false);
   const json = tour ? JSON.stringify([tour, tripChain ?? null]) : '';
+  // The map, once it can take what is drawn on it after loading.
+  const [map, setMap] = useState<maplibregl.Map | null>(null);
+  // A move of the map: whether the location is in view is read from it.
+  const [, setMoved] = useState(0);
+
+  // Where you are: by the time while the trip is under way, by the device when asked to.
+  const now = useNow();
+  const liveStatus = useLiveStatus((s) => s.status);
+  const status = trip
+    ? tripStatus(
+        trip,
+        now,
+        trip.chain ? expectedArrival(trip.chain.connections, liveStatus) : undefined,
+      )
+    : 'upcoming';
+  const { state } = useLive(trip && status === 'live' && isPlanned(trip) ? trip : undefined);
+  const index = useStopIndex();
+  const estimate = useMemo(
+    () => (state && index ? estimatedPosition(state, (k) => index.byRef(stopKey(k))) : null),
+    [state, index],
+  );
+  const locating = usePrefs((s) => s.location);
+  const setLocating = usePrefs((s) => s.setLocation);
+  // Refused: off again, so the next visit does not ask or fail again; said until tapped.
+  const [denied, setDenied] = useState(false);
+  const onDenied = useCallback(() => {
+    setDenied(true);
+    setLocating(false);
+  }, [setLocating]);
+  const fix = useLocation(locating, onDenied);
+  const shown = shownPosition(estimate, fix, now);
+  const here: [number, number] | null = !shown
+    ? null
+    : shown.source === 'location'
+      ? [shown.fix.lon, shown.fix.lat]
+      : shown.estimate.pos;
+  const source = shown?.source;
+  const hereLabel = t(source === 'location' ? 'mapYou' : 'mapEstimate');
+  // Never moved to the location: tiles for that place would tell the tile host where you are.
+  const away = !!map && source === 'location' && !map.getBounds().contains(here!);
 
   useEffect(() => {
     if (!json || !box.current) return;
@@ -75,11 +124,19 @@ export default function MapView({ id }: { id: string }) {
         attributionControl: { compact: true },
       });
       map.on('error', () => setFailed(true));
+      map.on('moveend', () => setMoved((n) => n + 1));
       map.on('load', () => {
         if (!map) return;
         map.addSource('lines', { type: 'geojson', data: d.lines });
         map.addSource('stops', { type: 'geojson', data: d.stops });
         map.addSource('highlights', { type: 'geojson', data: d.highlights });
+        map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
+        map.addLayer({
+          id: 'accuracy',
+          type: 'fill',
+          source: 'accuracy',
+          paint: { 'fill-color': LOCATION, 'fill-opacity': 0.15 },
+        });
         map.addLayer({
           id: 'lines',
           type: 'line',
@@ -126,13 +183,40 @@ export default function MapView({ id }: { id: string }) {
             },
             paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
           });
+        setMap(map);
       });
     })().catch(() => setFailed(true));
     return () => {
       gone = true;
+      setMap(null);
       map?.remove();
     };
   }, [json, id]);
+
+  // The marker: one, its look by what it is from (made anew only when that changes).
+  const marker = useRef<maplibregl.Marker | null>(null);
+  const placed = !!here;
+  useEffect(() => {
+    if (!map || !placed || !source) return;
+    const el = document.createElement('div');
+    el.className = `map-here ${source}`;
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', hereLabel);
+    const m = new maplibregl.Marker({ element: el }).setLngLat([0, 0]).addTo(map);
+    marker.current = m;
+    return () => {
+      marker.current = null;
+      m.remove();
+    };
+  }, [map, placed, source, hereLabel]);
+  const [lon, lat] = here ?? [0, 0];
+  useEffect(() => {
+    marker.current?.setLngLat([lon, lat]);
+  }, [map, placed, source, hereLabel, lon, lat]);
+  const shownFix = shown?.source === 'location' ? shown.fix : null;
+  useEffect(() => {
+    map?.getSource<maplibregl.GeoJSONSource>('accuracy')?.setData(accuracyArea(shownFix));
+  }, [map, shownFix]);
 
   if (!tour) return <NotFound />;
   return (
@@ -147,13 +231,49 @@ export default function MapView({ id }: { id: string }) {
         >
           <Icon name="back" />
         </button>
+        {canLocate() && (
+          <button
+            type="button"
+            className={locating ? 'icon locating' : 'icon'}
+            aria-label={t('mapLocate')}
+            aria-pressed={locating}
+            onClick={() => {
+              setDenied(false);
+              setLocating(!locating);
+            }}
+          >
+            <Icon name="locate" />
+          </button>
+        )}
       </div>
       {failed && (
         <p role="status" className="notice map-note">
           {t('mapOffline')}
         </p>
       )}
-      {straight && !failed && <p className="notice map-note map-legend">{t('mapStraight')}</p>}
+      <div className="map-notes">
+        {denied && (
+          <p role="status" className="notice">
+            {t('mapYouDenied')}
+          </p>
+        )}
+        {locating && source !== 'location' && (
+          <p role="status" className="notice">
+            {t('mapYouWaiting')}
+          </p>
+        )}
+        {source === 'location' && (
+          <p className="notice map-source location">{t(away ? 'mapYouAway' : 'mapYou')}</p>
+        )}
+        {shown?.source === 'estimate' && (
+          <p className="notice map-source estimate">
+            {shown.estimate.kind === 'riding'
+              ? t('mapBetween', { from: shown.estimate.from, to: shown.estimate.to })
+              : t('mapAtStop', { stop: shown.estimate.at })}
+          </p>
+        )}
+        {straight && !failed && <p className="notice map-legend">{t('mapStraight')}</p>}
+      </div>
       <div ref={box} className="map" />
     </main>
   );
