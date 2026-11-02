@@ -39,8 +39,10 @@ export interface SavedList<T extends Item> {
   save: (before: T[], after: T[], now?: boolean) => Promise<void>;
   /** Called with the stored list (with this tab's unsaved changes) when another tab saved. */
   onOtherTab: (cb: (list: T[]) => void) => void;
-  /** Reading failed: nothing is written for the rest of this visit. */
+  /** Reading or writing failed: nothing more is written (or synced) this visit. */
   failed: () => boolean;
+  /** Called once when it fails (the store shows it, sync stops). */
+  onFailed: (cb: () => void) => void;
 }
 
 export function savedList<T extends Item>(key: string, read: (raw: unknown) => T[]): SavedList<T> {
@@ -48,32 +50,53 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
   let timer: ReturnType<typeof setTimeout> | undefined;
   let broken = false;
   let listener: ((list: T[]) => void) | undefined;
+  let failedCb: (() => void) | undefined;
   let writing: Promise<void> = Promise.resolve();
+  const fail = () => {
+    if (broken) return;
+    broken = true;
+    failedCb?.();
+  };
   const channel =
     typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(`srr-list:${key}`);
 
+  /**
+   * Writes what is pending. A failed write rejects (a sync round must not count it as saved:
+   * what it received would look deleted after a reload), keeps the changes in memory, and
+   * marks the list failed: nothing more is written or synced this visit.
+   */
   const flush = (): Promise<void> => {
     clearTimeout(timer);
     timer = undefined;
-    if (broken || !pending.size) return writing;
+    if (broken) return Promise.reject(new Error(`${key}: storage failed`));
+    if (!pending.size) return writing;
     const changes = pending;
     pending = new Map();
-    writing = writing
+    const done = writing
       .then(() => update<unknown>(key, (stored) => applyChanges(read(stored), changes)))
-      .then(() => channel?.postMessage('saved'))
-      .catch((e: unknown) => log('store.save.fail', { key, e }));
-    return writing;
+      .then(() => void channel?.postMessage('saved'));
+    // The chain goes on after a failure; this write's caller hears of it.
+    writing = done.catch((e: unknown) => {
+      log('store.save.fail', { key, e });
+      for (const [id, x] of changes) if (!pending.has(id)) pending.set(id, x);
+      fail();
+    });
+    return done;
   };
 
   channel?.addEventListener('message', () => {
-    void get(key)
+    // After this tab's own writes in flight (IndexedDB keeps their order): the reload sees
+    // them, and an edit just taken out of `pending` is not lost from memory.
+    void writing
+      .then(() => get(key))
       .then((raw) => listener?.(applyChanges(read(raw), pending)))
       .catch((e: unknown) => log('store.reload.fail', { key, e }));
   });
+  const quiet = () => void flush().catch(() => undefined);
   if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', () => void flush());
+    window.addEventListener('pagehide', quiet);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') void flush();
+      if (document.visibilityState === 'hidden') quiet();
     });
   }
 
@@ -82,8 +105,8 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       try {
         return read(await get(key));
       } catch (e) {
-        broken = true;
         log('store.load.fail', { key, e });
+        fail();
         throw e;
       }
     },
@@ -91,12 +114,15 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       for (const [id, x] of changesOf(before, after)) pending.set(id, x);
       if (now) return flush();
       clearTimeout(timer);
-      timer = setTimeout(() => void flush(), 300);
+      timer = setTimeout(quiet, 300);
       return Promise.resolve();
     },
     onOtherTab: (cb) => {
       listener = cb;
     },
     failed: () => broken,
+    onFailed: (cb) => {
+      failedCb = cb;
+    },
   };
 }

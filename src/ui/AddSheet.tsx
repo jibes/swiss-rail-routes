@@ -129,7 +129,7 @@ export function AddSheet({
                 type="button"
                 className="text-button"
                 onClick={() => {
-                  void addMine([forgot, ...useTours.getState().tours]);
+                  void addMine([forgot, ...useTours.getState().tours]).catch(() => undefined);
                   setForgot(null);
                 }}
               >

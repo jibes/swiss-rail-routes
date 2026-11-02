@@ -86,4 +86,62 @@ describe('sync engine', () => {
     await a.sync.loadSync();
     expect(a.sync.useSync.getState().key).toBeNull();
   });
+
+  const openBox = async (key: string) => {
+    const { deriveKeys, open, parseKey } = await import('../src/core/sync');
+    const { id, aes } = await deriveKeys(parseKey(key)!);
+    const box = boxes.get(id)!;
+    return {
+      id,
+      box,
+      doc: () => open<{ trips: { id: string; at: number; value?: unknown }[] }>(box.data, aes),
+    };
+  };
+
+  it('a replaced key is an answer: retiring may run, it does not wait for good', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    const { id } = await openBox(key);
+    // Another device made a new key: this box is closed.
+    await worker(`${WORKER}/sync/${id}`, { method: 'DELETE' });
+    a.sync.useSync.setState({ settled: false });
+    await a.sync.syncNow();
+    expect(a.sync.useSync.getState().status).toBe('replaced');
+    expect(a.sync.useSync.getState().settled).toBe(true);
+  });
+
+  it('a copy from a newer version of the app is left alone: "update the app"', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    const { deriveKeys, parseKey, seal } = await import('../src/core/sync');
+    const { id, aes } = await deriveKeys(parseKey(key)!);
+    const newer = await seal({ v: 2, tours: [], trips: [], more: 'unknown to 0.7' }, aes);
+    boxes.set(id, { v: 9, data: newer });
+    await a.sync.syncNow();
+    expect(a.sync.useSync.getState().status).toBe('update');
+    expect(boxes.get(id)!.data).toBe(newer);
+  });
+
+  it('a new key carries the deletions and change times along', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    a.useTrips.getState().add(trip('keep', 'Albula'));
+    a.useTrips.getState().add(trip('gone', 'Rigi'));
+    await a.sync.syncNow();
+    a.useTrips.getState().remove('gone');
+    await a.sync.syncNow();
+    expect(await a.sync.renewKey()).toBe(true);
+    const { doc } = await openBox(a.sync.useSync.getState().key!);
+    const trips = (await doc()).trips;
+    // The deletion goes along (else an older device joining would bring the trip back).
+    const gone = trips.find((x) => x.id === 'gone');
+    expect(gone).toBeDefined();
+    expect(gone!.value).toBeUndefined();
+    expect(trips.find((x) => x.id === 'keep')!.at).toBeGreaterThan(0);
+  });
 });

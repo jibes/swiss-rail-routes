@@ -83,7 +83,10 @@ export function SharedTrip({ hash }: { hash: string }) {
                 };
                 const key = routeKey(tour);
                 const tours = useTours.getState().tours.filter((x) => routeKey(x) !== key);
-                void useTours.getState().replaceAll([tour, ...tours]);
+                void useTours
+                  .getState()
+                  .replaceAll([tour, ...tours])
+                  .catch(() => undefined);
                 location.replace('#/');
               }}
             >

@@ -236,7 +236,7 @@ export const de = {
   debugLogClear: 'Leeren',
   debugLogFailed: 'Protokoll konnte nicht gespeichert werden',
   storageFailed:
-    'Deine gespeicherten Reisen konnten nicht gelesen werden. Bis zum nächsten Öffnen der App wird nichts gespeichert.',
+    'Der Speicher dieses Geräts funktioniert nicht: Bis zum nächsten Öffnen der App wird nichts gespeichert oder abgeglichen.',
   riskNotServed: '{line} hält nicht in {stop}',
   stayHere: 'Aufenthalt',
   stayAtStop: 'Aufenthalt in {stop}',
@@ -244,4 +244,5 @@ export const de = {
   stayLonger: '{n} Min. länger',
   stayMinutes: 'Minuten in {stop}',
   minUnit: 'Min.',
+  syncUpdate: 'Aktualisiere die App zum Abgleichen: Ein anderes Gerät hat eine neuere Version.',
 } satisfies Catalogue;

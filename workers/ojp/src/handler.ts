@@ -32,6 +32,8 @@ export interface Deps {
     put(key: Request, res: Response): Promise<void>;
   };
   limit: (key: string) => Promise<boolean>;
+  /** Sync writes, far fewer allowed (a device writes a few times an hour): storage is not free. */
+  limitWrite: (key: string) => Promise<boolean>;
   now: () => Date;
   /** Keeps the cache write alive after the response is sent (ctx.waitUntil). */
   defer: (p: Promise<unknown>) => void;
@@ -85,8 +87,13 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (path.startsWith('/sync/')) {
     const id = path.slice(6);
     if (!SYNC_ID.test(id)) return reply(404, 'sync id');
-    if (!(await d.limit(`sync:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}`)))
-      return reply(429, 'rate', { 'Retry-After': '60' });
+    const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+    if (!(await d.limit(`sync:${ip}`))) return reply(429, 'rate', { 'Retry-After': '60' });
+    if (req.method === 'PUT') {
+      // Its size said up front, so a body is never read without bounds.
+      if (!req.headers.get('Content-Length')) return reply(411, 'length');
+      if (!(await d.limitWrite(`put:${ip}`))) return reply(429, 'rate', { 'Retry-After': '60' });
+    }
     const res = await d.sync(id, req);
     return new Response(res.body, {
       status: res.status,

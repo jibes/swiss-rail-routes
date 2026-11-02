@@ -26,7 +26,14 @@ export function watchAutoPlan() {
   async function step() {
     if (busy || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
     const now = Date.now();
-    const t = useTrips.getState().trips.find((x) => due(x, now));
+    const trips = useTrips.getState().trips;
+    // Failures of routes no longer waiting (edited, planned, deleted, retired) are forgotten:
+    // else their retry time, long past, would wake this every few seconds.
+    const waiting = new Set(
+      trips.filter((x) => !isPlanned(x)).map((x) => `${x.id}|${routeJson(x)}`),
+    );
+    for (const k of failed.keys()) if (!waiting.has(k)) failed.delete(k);
+    const t = trips.find((x) => due(x, now));
     if (!t) {
       // Nothing due now: wake for the first failed trip whose ten minutes are up.
       const first = Math.min(...failed.values());
@@ -53,11 +60,12 @@ export function watchAutoPlan() {
     failed.clear();
     next();
   };
-  window.addEventListener('online', online);
+  const win = typeof window === 'undefined' ? undefined : window;
+  win?.addEventListener('online', online);
   next();
   return () => {
     off();
     clearTimeout(timer);
-    window.removeEventListener('online', online);
+    win?.removeEventListener('online', online);
   };
 }

@@ -129,6 +129,9 @@ export async function readLog(): Promise<string> {
 const fileName = () =>
   `rail-day-trip-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
 
+/** In the app the file goes through the cache under one name: each export replaces the last. */
+const APP_FILE = 'rail-day-trip-log.txt';
+
 /** Hands the log over as a file: the share sheet in the app, a download in the browser. */
 export async function saveLog(): Promise<void> {
   log('log.export');
@@ -140,12 +143,17 @@ export async function saveLog(): Promise<void> {
       import('@capacitor/share'),
     ]);
     const { uri } = await Filesystem.writeFile({
-      path: name,
+      path: APP_FILE,
       data: text,
       directory: Directory.Cache,
       encoding: Encoding.UTF8,
     });
-    await Share.share({ title: name, files: [uri] });
+    try {
+      await Share.share({ title: name, files: [uri] });
+    } catch (e) {
+      // Closing the share sheet is no failure.
+      if (!/cancel/i.test(e instanceof Error ? e.message : String(e))) throw e;
+    }
     return;
   }
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));

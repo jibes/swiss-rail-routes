@@ -8,6 +8,7 @@ interface Env {
   OJP_URL: string;
   ALLOWED_ORIGINS: string;
   LIMIT: RateLimit;
+  WRITES: RateLimit;
   SYNC: DurableObjectNamespace<SyncBox>;
 }
 
@@ -52,6 +53,7 @@ export default {
       fetch: (...a) => fetch(...a),
       cache: caches.default,
       limit: async (key) => (await env.LIMIT.limit({ key })).success,
+      limitWrite: async (key) => (await env.WRITES.limit({ key })).success,
       now: () => new Date(),
       defer: (p) => ctx.waitUntil(p),
       sync: (id, r) => env.SYNC.get(env.SYNC.idFromName(id)).fetch(r),

@@ -27,6 +27,7 @@ function setup(over: Partial<Deps> = {}) {
       put: async (k, r) => void store.set(k.url, await r.text()),
     },
     limit: async () => true,
+    limitWrite: async () => true,
     now: () => new Date('2026-11-01T12:00:00Z'),
     defer: (p) => void pending.push(p),
     sync: async (id, req) => {
@@ -175,11 +176,18 @@ describe('OJP worker', () => {
 
 describe('sync mailbox', () => {
   const ID = 'a'.repeat(43);
-  const sync = (method: string, body?: unknown, id = ID) =>
-    setup().call(`/sync/${id}`, {
+  const sync = (method: string, body?: unknown, id = ID) => {
+    const text = body === undefined ? undefined : JSON.stringify(body);
+    return setup().call(`/sync/${id}`, {
       method,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: text,
+      // Browsers send it with every PUT; the Worker refuses a write without it.
+      headers: {
+        Origin: ORIGIN,
+        ...(text ? { 'Content-Length': String(new TextEncoder().encode(text).length) } : {}),
+      },
     });
+  };
 
   it('stores one blob per id, version by version, and refuses a stale write', async () => {
     syncBoxes.clear();
@@ -199,6 +207,27 @@ describe('sync mailbox', () => {
     expect((await sync('DELETE')).status).toBe(204);
     expect((await sync('GET')).status).toBe(410);
     expect((await sync('PUT', { v: 0, data: 'again' })).status).toBe(410);
+  });
+
+  it('limits writes on their own, and refuses one without its size', async () => {
+    const id = 'w'.repeat(43);
+    const noLength = await setup().call(`/sync/${id}`, {
+      method: 'PUT',
+      headers: { Origin: ORIGIN },
+      body: JSON.stringify({ v: 0, data: 'abc' }),
+    });
+    expect(noLength.status).toBe(411);
+    const reads = vi.fn(async () => true);
+    const s2 = setup({ limit: reads, limitWrite: async () => false });
+    const body = JSON.stringify({ v: 0, data: 'abc' });
+    const put = await s2.call(`/sync/${id}`, {
+      method: 'PUT',
+      headers: { Origin: ORIGIN, 'Content-Length': String(body.length) },
+      body,
+    });
+    expect(put.status).toBe(429);
+    // Reading is not a write: it goes on under the ordinary limit.
+    expect((await s2.call(`/sync/${id}`, { method: 'GET', body: undefined })).status).toBe(200);
   });
 
   it('rejects odd ids, shapes and sizes', async () => {

@@ -116,8 +116,14 @@ export function App() {
       trips: useTrips.getState().trips.length - r.trips.length,
       pastTrips: r.tours.length - useTours.getState().tours.length,
     });
-    void useTours.getState().replaceAll(r.tours);
-    void useTrips.getState().replaceAll(r.trips);
+    void useTours
+      .getState()
+      .replaceAll(r.tours)
+      .catch(() => undefined);
+    void useTrips
+      .getState()
+      .replaceAll(r.trips)
+      .catch(() => undefined);
   }, [loaded, tripsLoaded, settled, now]);
   useEffect(() => watchBack(), []);
   // Trips without a timetable (changed elsewhere, left before planning) are planned meanwhile.

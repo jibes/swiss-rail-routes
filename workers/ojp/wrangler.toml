@@ -16,6 +16,13 @@ name = "LIMIT"
 namespace_id = "1001"
 simple = { limit = 120, period = 60 }
 
+# Sync writes: 10 a minute per client IP (a device writes a few times an hour). Storage of
+# boxes anyone can create is the one thing here that costs: this keeps filling it slow.
+[[ratelimits]]
+name = "WRITES"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
 # Sync: one Durable Object (SQLite-backed, free plan) per sync id, holding one encrypted blob.
 [[durable_objects.bindings]]
 name = "SYNC"

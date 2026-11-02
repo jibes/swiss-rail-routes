@@ -9,7 +9,15 @@ export const ojpConfigured = () => !!import.meta.env.VITE_OJP_URL;
 const TIMEOUT_MS = 30_000;
 const withTimeout = (signal?: AbortSignal) => {
   const t = AbortSignal.timeout(TIMEOUT_MS);
-  return signal && 'any' in AbortSignal ? AbortSignal.any([signal, t]) : (signal ?? t);
+  if (!signal) return t;
+  if ('any' in AbortSignal) return AbortSignal.any([signal, t]);
+  // WebView 111–115 has no AbortSignal.any: one controller that either aborts.
+  const both = new AbortController();
+  const stop = (s: AbortSignal) => () => both.abort(s.reason);
+  if (signal.aborted) both.abort(signal.reason);
+  signal.addEventListener('abort', stop(signal), { once: true });
+  t.addEventListener('abort', stop(t), { once: true });
+  return both.signal;
 };
 
 export class PlanningUnavailable extends Error {}

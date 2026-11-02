@@ -45,13 +45,15 @@ function SyncOn({
           ? t('syncReplaced')
           : status === 'tooBig'
             ? t('syncTooBig')
-            : status === 'busy'
-              ? t('syncBusy')
-              : status === 'error'
-                ? t('syncFailed')
-                : at
-                  ? t('syncedAt', { time: hhmm(at) })
-                  : t('syncOn');
+            : status === 'update'
+              ? t('syncUpdate')
+              : status === 'busy'
+                ? t('syncBusy')
+                : status === 'error'
+                  ? t('syncFailed')
+                  : at
+                    ? t('syncedAt', { time: hhmm(at) })
+                    : t('syncOn');
   return (
     <>
       <div className="sync-state">

@@ -227,7 +227,7 @@ export const en = {
   debugLogClear: 'Clear',
   debugLogFailed: 'Could not save the log',
   storageFailed:
-    'Your saved trips could not be read. Nothing is saved until the app is opened again.',
+    "This device's storage is not working: nothing is saved or synced until the app is opened again.",
   riskNotServed: '{line} does not stop at {stop}',
   stayHere: 'Stay',
   stayAtStop: 'Stay at {stop}',
@@ -235,6 +235,7 @@ export const en = {
   stayLonger: '{n} min longer',
   stayMinutes: 'Minutes at {stop}',
   minUnit: 'min',
+  syncUpdate: 'Update the app to sync: another device has a newer version.',
 };
 
 export type Catalogue = typeof en;

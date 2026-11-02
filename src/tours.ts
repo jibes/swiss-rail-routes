@@ -34,7 +34,7 @@ export const useTours = create<ToursState>()((set, get) => ({
     const before = get().tours;
     const tours = before.filter((t) => t.id !== id);
     set({ tours });
-    void toursList.save(before, tours, true);
+    void toursList.save(before, tours, true).catch(() => undefined);
   },
   replaceAll: (tours) => {
     log('pastTrips.replaceAll', { count: tours.length });
@@ -45,3 +45,6 @@ export const useTours = create<ToursState>()((set, get) => ({
 }));
 
 toursList.onOtherTab((tours) => useTours.setState({ tours }));
+
+// A failed write stops saving and syncing for this visit, and the list says so.
+toursList.onFailed(() => useTours.setState({ failed: true }));

@@ -50,7 +50,8 @@ async function post(url: string, init: RequestInit): Promise<string> {
       const res = await fetch(url, init);
       const body = await res.text();
       if (res.ok) return body;
-      if (res.status !== 429 || attempt >= 3)
+      // Busy (the Worker's limit, OJP's quota): wait and try again.
+      if ((res.status !== 429 && res.status !== 503) || attempt >= 3)
         throw new Error(`${res.status}: ${body.slice(0, 200)}`);
     } catch (e) {
       if (attempt >= 3) throw e;
@@ -92,6 +93,8 @@ export function ojpFor(tour: string) {
             },
             body: tripRequestXml(q, new Date(), 'swiss-rail-routes'),
           });
+      // Parsed before it is kept: an error answer (OJP says so with 200) is never stored.
+      const parsed = parseTrips(xml);
       mkdirSync(`${DIR}/${tour}`, { recursive: true });
       writeFileSync(file, gzipSync(thinTracks(xml), { level: 9 }));
       index[key] = {
@@ -101,7 +104,7 @@ export function ojpFor(tour: string) {
         time: q.time,
       };
       writeFileSync(`${DIR}/${tour}/index.json`, JSON.stringify(index, null, 2) + '\n');
-      return parseTrips(xml);
+      return parsed;
     }
     if (!existsSync(file))
       throw new Error(

@@ -233,7 +233,7 @@ export const fr = {
   debugLogClear: 'Vider',
   debugLogFailed: 'Impossible d’enregistrer le journal',
   storageFailed:
-    'Vos voyages enregistrés n’ont pas pu être lus. Rien n’est enregistré avant la prochaine ouverture de l’app.',
+    'Le stockage de cet appareil ne fonctionne pas : rien n’est enregistré ni synchronisé avant la prochaine ouverture de l’app.',
   riskNotServed: '{line} ne s’arrête pas à {stop}',
   stayHere: 'Séjour',
   stayAtStop: 'Séjour à {stop}',
@@ -241,4 +241,6 @@ export const fr = {
   stayLonger: '{n} min de plus',
   stayMinutes: 'Minutes à {stop}',
   minUnit: 'min',
+  syncUpdate:
+    'Mettez l’app à jour pour synchroniser : un autre appareil a une version plus récente.',
 } satisfies Catalogue;

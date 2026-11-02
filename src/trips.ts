@@ -40,7 +40,7 @@ export const useTrips = create<TripsState>()((set, get) => ({
     const before = get().trips;
     const trips = [t, ...before];
     set({ trips });
-    void tripsList.save(before, trips, true);
+    void tripsList.save(before, trips, true).catch(() => undefined);
   },
   update: (id, edit) => {
     const before = get().trips;
@@ -56,7 +56,7 @@ export const useTrips = create<TripsState>()((set, get) => ({
       return next;
     });
     set({ trips });
-    void tripsList.save(before, trips);
+    void tripsList.save(before, trips).catch(() => undefined);
   },
   editRoute: (id, edit) => {
     const before = get().trips;
@@ -76,14 +76,14 @@ export const useTrips = create<TripsState>()((set, get) => ({
     });
     set({ trips });
     // A tap, not a keystroke: saved at once.
-    void tripsList.save(before, trips, true);
+    void tripsList.save(before, trips, true).catch(() => undefined);
   },
   remove: (id) => {
     log('trip.remove', { trip: id });
     const before = get().trips;
     const trips = before.filter((t) => t.id !== id);
     set({ trips });
-    void tripsList.save(before, trips, true);
+    void tripsList.save(before, trips, true).catch(() => undefined);
   },
   replaceAll: (trips) => {
     log('trips.replaceAll', { count: trips.length });
@@ -108,3 +108,6 @@ tripsList.onOtherTab((trips) => {
   log('trips.otherTab', { count: trips.length });
   useTrips.setState({ trips });
 });
+
+// A failed write stops saving and syncing for this visit, and the list says so.
+tripsList.onFailed(() => useTrips.setState({ failed: true }));

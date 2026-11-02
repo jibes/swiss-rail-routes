@@ -19,6 +19,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await shot('2-trip');
     await shot('2-trip-full', true);
     await page.locator('.trip-line .station.entry').nth(2).getByRole('button').first().click();
+    await page.getByRole('button', { name: 'Stay', exact: true }).click();
+    await page.locator('.panel').scrollIntoViewIfNeeded();
     await shot('3-panel');
     await page.getByRole('button', { name: 'Add a station' }).click();
     await shot('3-add');

@@ -55,7 +55,16 @@ async function keepFor(key: string, next: Saved) {
 type Doc = SyncDoc<Tour, Trip>;
 
 export type SyncStatus =
-  'off' | 'syncing' | 'ok' | 'offline' | 'error' | 'replaced' | 'tooBig' | 'busy';
+  | 'off'
+  | 'syncing'
+  | 'ok'
+  | 'offline'
+  | 'error'
+  | 'replaced'
+  | 'tooBig'
+  | 'busy'
+  /** The copy was written by a newer version of the app: update this one to sync. */
+  | 'update';
 
 interface SyncState {
   loaded: boolean;
@@ -123,11 +132,16 @@ async function remote(
   const r = (await res.json()) as { v: number; data?: string; same?: boolean };
   if (r.same) return { v: r.v, doc: null, same: true };
   if (!r.data) return { v: r.v, doc: null };
+  let doc: Doc;
   try {
-    return { v: r.v, doc: await open<Doc>(r.data, aes) };
+    doc = await open<Doc>(r.data, aes);
   } catch {
     throw new SyncProblem('error'); // not ours, or damaged: never overwrite it
   }
+  // A format this version does not know: merging it could drop or trim what it cannot read,
+  // and that would travel back to every device. Wait for the update instead.
+  if (doc?.v !== 1) throw new SyncProblem('update');
+  return { v: r.v, doc };
 }
 
 async function push(id: string, v: number, data: string): Promise<number> {
@@ -252,8 +266,12 @@ async function once() {
   await exclusive(async () => {
     // Read inside the lock: another tab may just have synced and saved newer stamps.
     const saved = await get<Saved>(KEY);
-    if (!saved) return;
-    useSync.setState({ status: 'syncing' });
+    // Turned off, or a new key, in another tab: this tab shows what is stored.
+    if (!saved) {
+      if (useSync.getState().key) useSync.setState({ key: null, status: 'off', settled: true });
+      return;
+    }
+    useSync.setState({ key: saved.key, status: 'syncing' });
     try {
       const next = await round(saved);
       await keepFor(saved.key, { ...next, status: 'ok' });
@@ -268,7 +286,9 @@ async function once() {
       const status = e instanceof SyncProblem ? e.status : 'error';
       log('sync.fail', { status, e });
       await keepFor(saved.key, { ...now, status }).catch(() => undefined);
-      useSync.setState({ status });
+      // The server answered (replaced, too big, busy…): what it holds is known, so retiring may
+      // run. Only offline it waits, as the other devices' changes are not in yet.
+      useSync.setState(status === 'offline' ? { status } : { status, settled: true });
     }
   });
 }
@@ -288,7 +308,7 @@ export async function loadSync() {
  * has counts as older than the shared copy, so joining never undoes newer changes made
  * elsewhere; items only this device has are added.
  */
-export async function startSync(key = newKey()) {
+export async function startSync(key = newKey(), carry?: Saved['stamps']) {
   const bytes = parseKey(key);
   if (!bytes) return false;
   await running;
@@ -296,13 +316,16 @@ export async function startSync(key = newKey()) {
   // The same key again (sync turned off and on here): its stamps, so edits made meanwhile
   // count as the newer changes they are. Otherwise what this device has counts as older.
   const last = await get<{ key: string; stamps: Saved['stamps'] }>(LAST);
+  // A new key from this device (renewKey): its own stamps go along, with their real times
+  // and deletions, so devices joining again with older copies lose ties as joiners should.
   const stamps =
-    last?.key === clean
+    carry ??
+    (last?.key === clean
       ? last.stamps
       : {
           tours: joinStamps(useTours.getState().tours),
           trips: joinStamps(useTrips.getState().trips.map(compactTrip)),
-        };
+        });
   await del(LAST);
   log('sync.start', { sameKeyAgain: last?.key === clean });
   await set(KEY, { key: clean, v: 0, stamps } satisfies Saved);
@@ -343,7 +366,7 @@ export async function renewKey() {
       return false;
     }
   }
-  await startSync();
+  await startSync(undefined, saved?.stamps);
   return true;
 }
 

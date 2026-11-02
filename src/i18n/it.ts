@@ -232,7 +232,7 @@ export const it = {
   debugLogClear: 'Svuota',
   debugLogFailed: 'Impossibile salvare il registro',
   storageFailed:
-    'Non è stato possibile leggere i tuoi viaggi salvati. Nulla viene salvato fino alla prossima apertura dell’app.',
+    'La memoria di questo dispositivo non funziona: nulla viene salvato o sincronizzato fino alla prossima apertura dell’app.',
   riskNotServed: '{line} non ferma a {stop}',
   stayHere: 'Sosta',
   stayAtStop: 'Sosta a {stop}',
@@ -240,4 +240,5 @@ export const it = {
   stayLonger: '{n} min in più',
   stayMinutes: 'Minuti a {stop}',
   minUnit: 'min',
+  syncUpdate: 'Aggiorna l’app per sincronizzare: un altro dispositivo ha una versione più recente.',
 } satisfies Catalogue;
