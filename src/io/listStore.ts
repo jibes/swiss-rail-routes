@@ -2,6 +2,8 @@
 // saved item by item into what is stored now (one IndexedDB transaction), never as the whole
 // list a tab holds: a stale tab cannot overwrite what another tab saved. Each save tells the
 // other tabs, which read the list again. A list that could not be read is never written.
+// IndexedDB cannot finish a write once the page goes (it must read before it writes), so what is
+// still unsaved then goes to localStorage, written at once, and into the list on the next load.
 import { get, update } from 'idb-keyval';
 import { log } from './log';
 
@@ -32,6 +34,25 @@ export function applyChanges<T extends Item>(stored: T[], changes: Map<string, T
   return [...added, ...kept];
 }
 
+/** What was left unsaved, from its stored form; nothing when it is unreadable. */
+export function readUnsaved<T extends Item>(raw: string | null): Map<string, T | null> {
+  try {
+    const entries: unknown = JSON.parse(raw ?? '[]');
+    return new Map(Array.isArray(entries) ? (entries as [string, T | null][]) : []);
+  } catch {
+    return new Map();
+  }
+}
+
+/** localStorage, if this visit has it (the accessor throws with site data blocked). */
+function unsavedStorage(): Storage | undefined {
+  try {
+    return localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface SavedList<T extends Item> {
   /** The stored list; throws when storage cannot be read. */
   load: () => Promise<T[]>;
@@ -47,6 +68,9 @@ export interface SavedList<T extends Item> {
 
 export function savedList<T extends Item>(key: string, read: (raw: unknown) => T[]): SavedList<T> {
   let pending = new Map<string, T | null>();
+  /** Taken out of `pending`, not yet known to be stored. */
+  const writes = new Map<string, T | null>();
+  const unsavedKey = key.replace('srr.', 'srr.unsaved.');
   let timer: ReturnType<typeof setTimeout> | undefined;
   let broken = false;
   let listener: ((list: T[]) => void) | undefined;
@@ -72,9 +96,13 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     if (!pending.size) return writing;
     const changes = pending;
     pending = new Map();
+    for (const [id, x] of changes) writes.set(id, x);
     const done = writing
       .then(() => update<unknown>(key, (stored) => applyChanges(read(stored), changes)))
-      .then(() => void channel?.postMessage('saved'));
+      .then(() => {
+        for (const [id, x] of changes) if (writes.get(id) === x) writes.delete(id);
+        channel?.postMessage('saved');
+      });
     // The chain goes on after a failure; this write's caller hears of it.
     writing = done.catch((e: unknown) => {
       log('store.save.fail', { key, e });
@@ -93,8 +121,36 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       .catch((e: unknown) => log('store.reload.fail', { key, e }));
   });
   const quiet = () => void flush().catch(() => undefined);
+  /** The page goes: what is not stored yet, added to what another tab closing just left. */
+  const leave = () => {
+    if (broken || (!pending.size && !writes.size)) return;
+    try {
+      const left = readUnsaved<T>(localStorage.getItem(unsavedKey));
+      for (const [id, x] of [...writes, ...pending]) left.set(id, x);
+      localStorage.setItem(unsavedKey, JSON.stringify([...left]));
+      log('store.unsaved.leave', { key, items: left.size });
+    } catch (e) {
+      log('store.unsaved.fail', { key, e });
+    }
+  };
+  /** What a page left behind goes into the list, once it is stored. */
+  const takeUnsaved = async () => {
+    const left = readUnsaved<T>(unsavedStorage()?.getItem(unsavedKey) ?? null);
+    if (!left.size) return;
+    log('store.unsaved.take', { key, items: left.size });
+    await update<unknown>(key, (stored) => applyChanges(read(stored), left));
+    channel?.postMessage('saved');
+    unsavedStorage()?.removeItem(unsavedKey);
+  };
   if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', quiet);
+    window.addEventListener('pagehide', () => {
+      leave();
+      quiet();
+    });
+    // Back from the browser's page cache, the page itself finishes its writes.
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) unsavedStorage()?.removeItem(unsavedKey);
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') quiet();
     });
@@ -103,6 +159,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
   return {
     load: async () => {
       try {
+        await takeUnsaved();
         return read(await get(key));
       } catch (e) {
         log('store.load.fail', { key, e });

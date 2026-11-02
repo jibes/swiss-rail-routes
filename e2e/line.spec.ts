@@ -104,6 +104,30 @@ test('drag the open station by its grip; rename the trip', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lötschberg day');
 });
 
+test('an edit survives a reload right after it', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await add(page, 'Bern');
+  // A name waits 300 ms to be saved; the page goes before that.
+  await page.locator('h1 .title').click();
+  const name = page.getByRole('textbox', { name: 'Name' });
+  await name.fill('Lötschberg day');
+  await name.press('Enter');
+  await page.reload();
+  await expect(page.locator('h1 .title')).toHaveText('Lötschberg day');
+  // Taken into the list, it is gone from where the page left it.
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('srr.unsaved.trips.v1')))
+    .toBeNull();
+  // A station is saved at once, and the page may still go during the write.
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await add(page, 'Thun');
+  await expect(page.locator('.trip-line .station.entry').nth(1)).toContainText('Thun');
+  await page.reload();
+  await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Bern/, /^Thun/]);
+});
+
 test('a trip whose day is over leaves the list and waits in search', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
   await page.goto('./');

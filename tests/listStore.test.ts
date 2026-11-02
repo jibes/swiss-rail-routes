@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyChanges, changesOf } from '../src/io/listStore';
+import { applyChanges, changesOf, readUnsaved } from '../src/io/listStore';
 
 const item = (id: string, n = 0) => ({ id, n });
 
@@ -27,5 +27,21 @@ describe('saved lists: changes item by item', () => {
   it('puts new items first and keeps the stored order otherwise', () => {
     const changes = changesOf([], [item('n')]);
     expect(applyChanges([item('a'), item('b')], changes).map((x) => x.id)).toEqual(['n', 'a', 'b']);
+  });
+
+  it('reads what a page left unsaved: edits and removals, nothing when unreadable', () => {
+    const left = readUnsaved(
+      JSON.stringify([
+        ['a', item('a', 2)],
+        ['b', null],
+      ]),
+    );
+    expect(applyChanges([item('a'), item('b'), item('c')], left)).toEqual([
+      item('a', 2),
+      item('c'),
+    ]);
+    expect(readUnsaved(null).size).toBe(0);
+    expect(readUnsaved('{not json').size).toBe(0);
+    expect(readUnsaved('{"a":1}').size).toBe(0);
   });
 });
