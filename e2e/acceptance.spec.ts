@@ -67,22 +67,32 @@ test('more options that fail to load change nothing; a tap chooses one', async (
   await expect(page.locator('.opt.loading')).toBeVisible();
   // As many options as a day of loading gives (copies of the first): the strip scrolls, the
   // page keeps the screen's width (on a phone the page itself would grow, so `innerWidth` is
-  // measured against the device's width, not the page's).
+  // measured against the device's width, not the page's), and the arrows scroll with the
+  // options: earlier before the first, later after the last.
   const width = page.viewportSize()!.width;
   const fits = await page.evaluate(() => {
     const strip = document.querySelector('.options-bar .opts')!;
-    const first = strip.querySelector('.opt')!;
+    const list = strip.querySelector('.opts-list')!;
+    const first = list.querySelector('.opt')!;
     for (let i = 0; i < 8; i++) {
       const copy = first.cloneNode(true) as HTMLElement;
       copy.dataset.copy = '';
-      strip.appendChild(copy);
+      list.appendChild(copy);
     }
+    const [earlier, later] = [...strip.querySelectorAll<HTMLElement>(':scope > .shift')];
+    const items = [...list.children] as HTMLElement[];
     const page = document.querySelector('.page')!.getBoundingClientRect();
     return {
       inner: innerWidth,
       scroll: document.documentElement.scrollWidth,
       bar: document.querySelector('.options-bar')!.getBoundingClientRect().right <= page.right,
       scrolls: strip.scrollWidth > strip.clientWidth,
+      arrows:
+        !!earlier &&
+        !!later &&
+        earlier.offsetLeft + earlier.offsetWidth <= items[0]!.offsetLeft &&
+        later.offsetLeft >= items.at(-1)!.offsetLeft + items.at(-1)!.offsetWidth &&
+        later.offsetLeft + later.offsetWidth > strip.clientWidth,
     };
   });
   expect(fits, 'no sideways page scroll').toEqual({
@@ -90,6 +100,7 @@ test('more options that fail to load change nothing; a tap chooses one', async (
     scroll: width,
     bar: true,
     scrolls: true,
+    arrows: true,
   });
   await page.evaluate(() => document.querySelectorAll('[data-copy]').forEach((x) => x.remove()));
   release();

@@ -165,75 +165,81 @@ export function OptionsBar({
   return (
     <div className="options-wrap">
       <div className="options-bar">
-        <button
-          type="button"
-          className="shift"
-          aria-label={t('earlierOptions')}
-          aria-busy={busy === 'earlier'}
-          disabled={
-            planning || busy !== null || noMore === 'earlier' || (!all.length && planFailed)
-          }
-          onClick={() => (all.length ? void load('earlier') : move(-60))}
-        >
-          <Icon name="back" size={18} />
-        </button>
-        <div className="opts" role="group" aria-label={t('alternatives')} ref={strip}>
-          {busy === 'earlier' && (
-            <span className="opt loading">
-              <RailLoader label={t('loadingMore')} small />
-            </span>
-          )}
-          {all.map(({ c, legs }) => {
-            const on = trip.chain?.dep === c.dep && trip.chain.arr === c.arr;
-            return (
-              <button
-                key={keyOf(c)}
-                type="button"
-                className={`opt ${planning ? 'stale' : ''}`}
-                aria-pressed={on && !planning}
-                disabled={planning}
-                onClick={() => {
-                  // What is shown stays: the options loaded so far are kept with this route.
-                  setMore({ base, list: all });
-                  choose(c, legs);
-                }}
-              >
-                <b>
-                  {hhmm(c.dep)}
-                  {c.dep === result?.recommended?.dep && c.arr === result.recommended.arr && (
-                    <span className="best" role="img" aria-label={t('recommended')} />
-                  )}
-                </b>
-                <span>
-                  {sameArr
-                    ? duration(minutesBetween(c.dep, c.arr))
-                    : t('backAt', { time: hhmm(c.arr) })}
-                </span>
-              </button>
-            );
-          })}
-          {busy === 'later' && (
-            <span className="opt loading">
-              <RailLoader label={t('loadingMore')} small />
-            </span>
-          )}
-          {!all.length && !planFailed && (
-            <span className="single muted">
-              {/* The screen announces planning once; this loader is only seen. */}
-              {planning ? <RailLoader small /> : t('noneFrom', { time: from })}
-            </span>
-          )}
+        {/* The arrows scroll with the options: more earlier before the first, more later
+            after the last. */}
+        <div className="opts" ref={strip}>
+          <button
+            type="button"
+            className="shift"
+            aria-label={t('earlierOptions')}
+            aria-busy={busy === 'earlier'}
+            disabled={
+              planning || busy !== null || noMore === 'earlier' || (!all.length && planFailed)
+            }
+            onClick={() => (all.length ? void load('earlier') : move(-60))}
+          >
+            <Icon name="back" size={18} />
+          </button>
+          <div className="opts-list" role="group" aria-label={t('alternatives')}>
+            {busy === 'earlier' && (
+              <span className="opt loading">
+                <RailLoader label={t('loadingMore')} small />
+              </span>
+            )}
+            {all.map(({ c, legs }) => {
+              const on = trip.chain?.dep === c.dep && trip.chain.arr === c.arr;
+              return (
+                <button
+                  key={keyOf(c)}
+                  type="button"
+                  className={`opt ${planning ? 'stale' : ''}`}
+                  aria-pressed={on && !planning}
+                  disabled={planning}
+                  onClick={() => {
+                    // What is shown stays: the options loaded so far are kept with this route.
+                    setMore({ base, list: all });
+                    choose(c, legs);
+                  }}
+                >
+                  <b>
+                    {hhmm(c.dep)}
+                    {c.dep === result?.recommended?.dep && c.arr === result.recommended.arr && (
+                      <span className="best" role="img" aria-label={t('recommended')} />
+                    )}
+                  </b>
+                  <span>
+                    {sameArr
+                      ? duration(minutesBetween(c.dep, c.arr))
+                      : t('backAt', { time: hhmm(c.arr) })}
+                  </span>
+                </button>
+              );
+            })}
+            {busy === 'later' && (
+              <span className="opt loading">
+                <RailLoader label={t('loadingMore')} small />
+              </span>
+            )}
+            {!all.length && !planFailed && (
+              <span className="single muted">
+                {/* The screen announces planning once; this loader is only seen. */}
+                {planning ? <RailLoader small /> : t('noneFrom', { time: from })}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="shift"
+            aria-label={t('laterOptions')}
+            aria-busy={busy === 'later'}
+            disabled={
+              planning || busy !== null || noMore === 'later' || (!all.length && planFailed)
+            }
+            onClick={() => (all.length ? void load('later') : move(60))}
+          >
+            <Icon name="next" size={18} />
+          </button>
         </div>
-        <button
-          type="button"
-          className="shift"
-          aria-label={t('laterOptions')}
-          aria-busy={busy === 'later'}
-          disabled={planning || busy !== null || noMore === 'later' || (!all.length && planFailed)}
-          onClick={() => (all.length ? void load('later') : move(60))}
-        >
-          <Icon name="next" size={18} />
-        </button>
       </div>
       {(noMore || failed) && (
         <p className="muted options-note" role="status">

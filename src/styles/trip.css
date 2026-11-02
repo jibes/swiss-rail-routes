@@ -273,6 +273,14 @@ svg.mini-line circle.via {
   display: none;
 }
 
+/* The options between the arrows: they fill the strip when few, and scroll with the arrows
+   when many. */
+.options-bar .opts-list {
+  flex: 1 0 auto;
+  display: flex;
+  gap: 2px;
+}
+
 .options-bar .single {
   margin: auto;
   font-size: 14px;
