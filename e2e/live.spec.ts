@@ -54,7 +54,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.goto('./#/trips');
   await page.goto('./#/');
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('1 ahead');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Under way');
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {

@@ -8,9 +8,9 @@ export const en = {
   build: 'Build {sha}',
   wDisruption: 'Disruption {from}–{to}',
   wReservation: 'Reservation or supplement needed {from}–{to}',
-  wGaHalf: 'Not covered by GA or day pass {from}–{to}: 50 % with them',
-  wGaReduced: 'Not covered by GA or day pass {from}–{to}: reduced fare with them',
-  wGaNone: 'Not covered by GA or day pass {from}–{to}',
+  wGaHalf: '{from}–{to}: not covered by GA or day pass (50 % off with them)',
+  wGaReduced: '{from}–{to}: not covered by GA or day pass (reduced fare with them)',
+  wGaNone: '{from}–{to}: not covered by GA or day pass',
   wTightTransfer: 'Tight transfer in {at}: {min} min',
   wAfterSunset: '{name} passed after sunset ({time})',
   wSeasonal: 'Seasonal restrictions apply',
@@ -236,6 +236,12 @@ export const en = {
   doneTodaySection: 'Done today',
   saveToYourTrips: 'Save to your trips',
   sharedPast: "This trip's day is over: it can be kept to go again.",
+  changeHere: 'Change',
+  noStop: 'No stop',
+  planOffline: 'No connection to the timetable. Try again when you are online.',
+  planServer: 'The timetable service is not answering right now.',
+  fromTime: 'from {time}',
+  underWay: 'Under way',
 };
 
 export type Catalogue = typeof en;

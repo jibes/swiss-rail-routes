@@ -338,7 +338,7 @@ function Panel({
             aria-pressed={stay === null}
             onClick={() => act.stay(k, null)}
           >
-            {t('passThrough')}
+            {t('noStop')}
           </button>
           {STAYS.map((m) => (
             <button
@@ -348,7 +348,7 @@ function Panel({
               aria-pressed={stay === m}
               onClick={() => act.stay(k, m)}
             >
-              {m ? t('minutes', { n: m }) : t('change')}
+              {m ? t('minutes', { n: m }) : t('changeHere')}
             </button>
           ))}
         </div>

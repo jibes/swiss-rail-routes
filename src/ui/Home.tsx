@@ -39,8 +39,8 @@ function Card({
       <a href={`#/trip/${trip.id}`} className={`card ${live ? 'live' : ''}`}>
         <span className="day" aria-hidden="true">
           <b>{d.getUTCDate()}</b>
-          <i>{fmt({ month: 'short' })}</i>
           <i>{fmt({ weekday: 'short' })}</i>
+          <i>{fmt({ month: 'short' })}</i>
         </span>
         <span className="cbody">
           <span className="name">{trip.name || autoName(trip.route, stop) || t('newTour')}</span>
@@ -98,7 +98,11 @@ export function Home() {
         <span>{t('appName')}</span>
       </div>
       <h1 className="h1">
-        {current.length ? t('tripsAhead', { n: current.length }) : t('nothingPlanned')}
+        {ahead.length
+          ? t('tripsAhead', { n: ahead.length })
+          : live.length
+            ? t('underWay')
+            : t('nothingPlanned')}
       </h1>
       {!current.length && <p className="muted empty">{t('noTripsYet')}</p>}
       {live.length > 0 && (

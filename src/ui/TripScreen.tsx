@@ -22,7 +22,7 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import { duration, hhmm, longDate, minutesBetween, nextHalfHour } from './format';
+import { duration, hhmm, longDate, minutesBetween, nextHalfHour, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
@@ -123,10 +123,32 @@ export function TripScreen({ id }: { id: string }) {
   const chain = trip.chain;
   const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
   const planning = !chain && planner.status === 'planning';
-  const options = planner.result?.options ?? [];
+  const options = planner.shown?.options ?? [];
+  const stale = !planner.result && options.length > 0;
+  const sameArr = options.length > 1 && options.every((c) => c.arr === options[0]!.arr);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
+  // Earlier/Later step in whole hours, as many as it takes to pass the options found: Later
+  // to just after the last, Earlier back by as much as the options span. With trains two hours
+  // apart one hour often brought the same options back.
+  const minutesOf = (hm: string) => {
+    const [h, m] = hm.split(':').map(Number) as [number, number];
+    return h * 60 + m;
+  };
+  const later = () => {
+    const last = options.at(-1);
+    if (!last) return shifted(anchor, 60);
+    const past = minutesOf(zurichHm(Date.parse(last.dep))) - minutesOf(anchor);
+    return shifted(anchor, 60 * Math.max(1, Math.floor(past / 60) + 1));
+  };
+  const earlier = () => {
+    const first = options[0];
+    const last = options.at(-1);
+    if (!first || !last) return shifted(anchor, -60);
+    const span = (Date.parse(last.dep) - Date.parse(first.dep)) / 60_000;
+    return shifted(anchor, -60 * Math.max(1, Math.ceil((span + 1) / 60)));
+  };
   const shift = (min: number) =>
-    edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }));
+    edit((r) => ({ ...r, anchor: { departAt: min > 0 ? later() : earlier() } }));
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
   // Disruptions are on the rides they concern; their number is said at the top.
   const disruptions = chain ? chain.warnings.filter((w) => w.type === 'disruption').length : 0;
@@ -160,8 +182,13 @@ export function TripScreen({ id }: { id: string }) {
         >
           <Icon name="map" />
         </button>
-        {isPlanned(trip) && (
+        {isPlanned(trip) ? (
           <ShareButton label={t('shareTrip')} title={name} hash={() => encodeTrip(trip)} />
+        ) : (
+          // Its place kept until the trip has a timetable: the icons do not move.
+          <button type="button" className="icon" aria-label={t('shareTrip')} disabled>
+            <Icon name="share" />
+          </button>
         )}
         <button
           type="button"
@@ -353,12 +380,18 @@ export function TripScreen({ id }: { id: string }) {
           {planner.status === 'error' && (
             <div role="alert" className="notice red">
               <span>
-                {t('planFailed')}{' '}
-                {planner.detail && <code className="muted">{planner.detail}</code>}{' '}
-                <button type="button" className="text-button" onClick={planner.retry}>
-                  {t('retry')}
-                </button>
+                {
+                  // Plain words, not the error's text: offline, the server, or anything else.
+                  /fetch|network|TypeError/i.test(planner.detail)
+                    ? t('planOffline')
+                    : /^5\d\d/.test(planner.detail)
+                      ? t('planServer')
+                      : t('planFailed')
+                }
               </span>
+              <button type="button" className="secondary small" onClick={planner.retry}>
+                {t('retry')}
+              </button>
             </div>
           )}
           {planner.result?.failedLeg !== undefined && (
@@ -388,7 +421,7 @@ export function TripScreen({ id }: { id: string }) {
                 type="button"
                 className="shift"
                 aria-label={t('earlier')}
-                disabled={shifted(anchor, -60) === anchor}
+                disabled={earlier() === anchor}
                 onClick={() => shift(-60)}
               >
                 <Icon name="back" size={18} />
@@ -401,8 +434,9 @@ export function TripScreen({ id }: { id: string }) {
                       <button
                         key={`${c.dep}-${c.arr}`}
                         type="button"
-                        className="opt"
-                        aria-pressed={on}
+                        className={`opt ${stale ? 'stale' : ''}`}
+                        aria-pressed={on && !stale}
+                        disabled={stale}
                         onClick={() => planner.pick(c)}
                       >
                         <b>
@@ -411,19 +445,28 @@ export function TripScreen({ id }: { id: string }) {
                             <span className="best" aria-label={t('recommended')} />
                           )}
                         </b>
-                        <span>{t('backAt', { time: hhmm(c.arr) })}</span>
+                        <span>
+                          {
+                            // The same arrival for all: their length tells them apart.
+                            sameArr
+                              ? duration(minutesBetween(c.dep, c.arr))
+                              : t('backAt', { time: hhmm(c.arr) })
+                          }
+                        </span>
                       </button>
                     );
                   })
                 ) : (
-                  <span className="single muted">{!chain ? '' : t('onlyOneShort')}</span>
+                  <span className="single muted">
+                    {chain ? t('onlyOneShort') : t('fromTime', { time: anchor })}
+                  </span>
                 )}
               </div>
               <button
                 type="button"
                 className="shift"
                 aria-label={t('later')}
-                disabled={shifted(anchor, 60) === anchor}
+                disabled={later() === anchor}
                 onClick={() => shift(60)}
               >
                 <Icon name="next" size={18} />

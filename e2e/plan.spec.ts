@@ -16,7 +16,7 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   const search = page.getByPlaceholder('Station, scenic line or past trip');
   await expect(search).toBeFocused();
   await search.fill('Interlaken Ost');
-  await page.getByRole('button', { name: /^Interlaken Ost Station/ }).click();
+  await page.getByRole('button', { name: 'Interlaken Ost', exact: true }).click();
   await page.getByRole('button', { name: 'Add a station' }).click();
   await search.fill('Kleine Scheidegg');
   await search.press('Enter');
@@ -30,7 +30,9 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   await expect(page.locator('.hero-times:not(.busy)')).toContainText('09:04', { timeout: 30_000 });
   await expect(page.locator('.opt[aria-pressed="true"]')).toHaveCount(1);
   await expect(
-    page.getByText(/Not covered by GA or day pass .*Kleine Scheidegg: 50 % with them/).first(),
+    page
+      .getByText(/Kleine Scheidegg: not covered by GA or day pass \(50.% off with them\)/)
+      .first(),
   ).toBeVisible();
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('CC 63', { exact: true }).first()).toBeVisible();

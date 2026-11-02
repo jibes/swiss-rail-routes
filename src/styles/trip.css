@@ -1108,3 +1108,54 @@ svg.mini-line circle.via {
   color: var(--red);
   font-weight: 600;
 }
+
+/* Options of the previous time, while the new ones are planned */
+.opt.stale {
+  opacity: 0.45;
+}
+
+/* Audit 0.5.5: no native border on pills; 44 px targets; a sheet that keeps its height */
+.pill {
+  border: 0;
+}
+
+.trip-screen .pill {
+  min-height: 40px;
+}
+
+.options-bar .shift {
+  width: 44px;
+}
+
+.options-bar .shift:disabled {
+  opacity: 0.3;
+}
+
+.eyebrow {
+  min-height: var(--tap);
+}
+
+.trip-line .missed-note .text-button {
+  min-height: var(--tap);
+}
+
+.add-sheet {
+  height: 86dvh;
+}
+
+.secondary.small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.notice.red {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.notice.red .secondary {
+  margin-left: auto;
+}

@@ -37,6 +37,9 @@ const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+/** A time as `HH:MM` in Zurich. */
+export const zurichHm = (ms: number) => ZURICH_HM.format(ms);
+
 /** The next full or half hour in Zurich, `HH:MM` (the day's last, 23:30, at most). */
 export function nextHalfHour(now: number): string {
   const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];

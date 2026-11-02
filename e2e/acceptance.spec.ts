@@ -45,12 +45,19 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
   });
 }
 
-test('Later moves the departure an hour and replans', async ({ page }) => {
+test('Later starts after the last option, in whole hours; the options stay while it plans', async ({
+  page,
+}) => {
   await page.clock.install({ time: BEFORE });
   await planShared(page, encodeTour({ ...tours.T5!, name: 'T5' }));
-  const first = page.locator('.hero-times');
-  const before = await first.innerText();
-  await page.getByRole('button', { name: /Later/ }).click();
-  await expect(first).not.toHaveText(before, { timeout: 30_000 });
-  await expect(page.locator('.hero-times:not(.busy)')).toBeVisible({ timeout: 30_000 });
+  const opts = page.getByRole('group', { name: 'Alternatives' }).getByRole('button');
+  const times = (await opts.allInnerTexts()).map((x) => x.split('\n')[0]!.trim());
+  const [h, m] = times.at(-1)!.split(':').map(Number) as [number, number];
+  // From 09:00, the first whole hour after the last option found.
+  const next = `${String(Math.floor((h * 60 + m - 9 * 60) / 60) + 10).padStart(2, '0')}:00`;
+  await page.getByRole('button', { name: 'Later' }).click();
+  // Nothing is recorded for that time: the plan fails, and the bar says from when it looked.
+  await expect(page.locator('.options-bar .single')).toHaveText(`from ${next}`, {
+    timeout: 30_000,
+  });
 });

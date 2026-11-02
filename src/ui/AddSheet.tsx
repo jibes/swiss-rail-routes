@@ -118,7 +118,6 @@ export function AddSheet({
             >
               <span className="r-icon r-dot" aria-hidden="true" />
               <span className="r-name">{s.name}</span>
-              <span className="r-sub">{t('station')}</span>
             </button>
           ))}
           {forgot && (
