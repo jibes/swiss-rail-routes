@@ -120,6 +120,28 @@ describe('stitched', () => {
   });
 });
 
+describe('passesVias at a replacement stop', () => {
+  it('takes the replacement bus stop outside the station as the station', () => {
+    const c = conn(
+      ride('EV 3', [
+        ['Wilderswil', '09:00'],
+        ['Interlaken Ost, Bahnhof', '09:10'],
+      ]),
+    );
+    expect(passesVias(c, [w('Interlaken Ost')])).toBe(true);
+    // Any other station is still missed.
+    expect(passesVias(c, [w('Bern')])).toBe(false);
+    // A city bus from the stop outside the station is no ride through the station.
+    const bus = conn(
+      ride('B 1', [
+        ['Wilderswil', '09:00'],
+        ['Interlaken Ost, Bahnhof', '09:10'],
+      ]),
+    );
+    expect(passesVias(bus, [w('Interlaken Ost')])).toBe(false);
+  });
+});
+
 describe('stitched diversity', () => {
   it('keeps different starts apart instead of funnelling them into one chain', async () => {
     const a = (d: string, a_: string, j: string) =>

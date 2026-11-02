@@ -107,12 +107,25 @@ export async function stitched(
   return partial;
 }
 
-/** True when a connection calls at every via, in any order. */
+/**
+ * The stops a connection rides through (walks left out) by key, and the names of the stops its
+ * replacement buses (category EV) call at: in a disruption they stop outside the station under
+ * a stop id of their own, named after it ("Interlaken Ost, Bahnhof"), and that is the station.
+ */
+export function ridden(c: Connection) {
+  const rides = c.sections.filter((s) => s.mode !== 'walk');
+  const calls = (s: Connection['sections'][number]) => [s.from, ...s.intermediate, s.to];
+  return {
+    keys: new Set(rides.flatMap(calls).map((x) => stopKey(x.stopRef))),
+    names: rides.filter((s) => s.category === 'EV').flatMap((s) => calls(s).map((x) => x.name)),
+  };
+}
+
+export const calledAt = (v: Pick<Waypoint, 'stopRef' | 'name'>, at: ReturnType<typeof ridden>) =>
+  at.keys.has(stopKey(v.stopRef)) || at.names.some((n) => n.startsWith(`${v.name},`));
+
+/** True when a connection calls at every via (or at its replacement stop), in any order. */
 export const passesVias = (c: Connection, vias: Waypoint[]) => {
-  const keys = new Set(
-    c.sections.flatMap((s) =>
-      (s.mode === 'walk' ? [] : [s.from, ...s.intermediate, s.to]).map((x) => stopKey(x.stopRef)),
-    ),
-  );
-  return vias.every((v) => keys.has(stopKey(v.stopRef)));
+  const at = ridden(c);
+  return vias.every((v) => calledAt(v, at));
 };

@@ -335,6 +335,51 @@ describe('rows: what the plan does not reach, and walks under a minute', () => {
   });
 });
 
+describe('rows: the replacement bus outside the station', () => {
+  const iso = (t: string) => `2026-11-07T${t}:00Z`;
+  const call = (n: string, arr?: string, dep?: string) => ({
+    stopRef: `ch:1:sloid:${n}`,
+    name: n,
+    ...(arr ? { arr: iso(arr) } : {}),
+    ...(dep ? { dep: iso(dep) } : {}),
+  });
+
+  it('counts "Interlaken Ost, Bahnhof" as Interlaken Ost, not as a station missed', () => {
+    const tour = insertEntries(start(), 0, [
+      stationEntry(s('Interlaken Ost')),
+      stationEntry(s('Bern')),
+    ]);
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('09:00'),
+        transfers: 1,
+        sections: [
+          {
+            mode: 'bus',
+            line: 'EV',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Interlaken Ost, Bahnhof', '08:00'),
+            intermediate: [],
+          },
+          {
+            mode: 'rail',
+            line: 'IC',
+            from: call('Interlaken Ost', undefined, '08:10'),
+            to: call('Bern', '09:00'),
+            intermediate: [],
+          },
+        ],
+      },
+    ]);
+    const names = rows.flatMap((r) =>
+      r.type === 'station' ? [`${r.name}${r.missed ? ' (missed)' : ''}`] : [],
+    );
+    expect(names).toEqual(['Zurich', 'Interlaken Ost', 'Bern']);
+  });
+});
+
 describe('a finished trip waits in search', () => {
   const chain = (day: string) => ({
     connections: [],

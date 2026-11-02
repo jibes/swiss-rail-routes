@@ -1,6 +1,7 @@
 // SPEC §8 acceptance tours T1–T6 on recorded OJP answers (see tests/acceptance/ojp.ts).
 import { describe, expect, it } from 'vitest';
 import { calls } from '../src/core/planner/connection';
+import { calledAt, ridden } from '../src/core/planner/stitch';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
 import { usesSegment } from '../src/core/segments';
 import { addWaypoint, setStop } from '../src/core/edit';
@@ -91,8 +92,11 @@ suite('acceptance tours', { timeout }, () => {
     const r = await planned('T4');
     for (const c of chains(r)) {
       expect(stopsOf(c, 0).has(ref('Rigi Kulm'))).toBe(true);
-      const down = stopsOf(c, 1);
-      expect(down.has(ref('Vitznau')) && down.has(ref('Luzern'))).toBe(true);
+      // Luzern by train, or by the replacement bus from outside the station (recorded day).
+      const down = ridden(c.connections[1]!);
+      expect(['Vitznau', 'Luzern'].every((n) => calledAt({ stopRef: ref(n), name: n }, down))).toBe(
+        true,
+      );
     }
     if (onFixtureDate)
       expect(r.recommended!.warnings.some((w) => w.type === 'seasonal')).toBe(true);

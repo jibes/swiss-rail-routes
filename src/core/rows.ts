@@ -73,6 +73,11 @@ export function routeRows(tour: Pick<Tour, 'waypoints'>): LineRow[] {
 export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connection[]): LineRow[] {
   const route = routeStations(tour);
   const wanted = new Set(route.map((r) => r.key));
+  // In a disruption the replacement bus stops outside the station under its own stop id
+  // ("Interlaken Ost, Bahnhof"): it is that station.
+  const outside = (name: string) => route.some((r) => name.startsWith(`${r.name},`));
+  const onePlace = (a: string, b: string) =>
+    a === b || a.startsWith(`${b},`) || b.startsWith(`${a},`);
   // The timetable's own sequence: boarding and alighting stations, and passed route stations.
   const seq: LineRow[] = [];
   let shortWalk = false;
@@ -89,7 +94,11 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     // minute (Lauterbrunnen to its cable car station): one row, named as you arrive.
     const merge = shortWalk;
     shortWalk = false;
-    if (last && lastIndex === seq.length - 1 && (merge || last.key === key)) {
+    if (
+      last &&
+      lastIndex === seq.length - 1 &&
+      (merge || last.key === key || onePlace(last.name, name))
+    ) {
       Object.assign(last, Object.fromEntries(Object.entries(times).filter(([, v]) => v)));
       // Either stop is the route's station there (you may have entered either one).
       if (last.key !== key) last.also = [...(last.also ?? []), key];
@@ -104,7 +113,11 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
       if (s.mode === 'walk') {
         const min =
           s.from.dep && s.to.arr ? (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000 : 0;
-        if (stopKey(s.from.stopRef) === stopKey(s.to.stopRef) || min < 1) {
+        if (
+          stopKey(s.from.stopRef) === stopKey(s.to.stopRef) ||
+          onePlace(s.from.name, s.to.name) ||
+          min < 1
+        ) {
           shortWalk = true;
           return;
         }
@@ -112,7 +125,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
       station(s.from.name, s.from.stopRef, leg, { dep: s.from.dep, platformDep: s.from.platform });
       seq.push({ type: 'ride', section: s, leg, sectionIndex: j });
       for (const call of s.intermediate)
-        if (wanted.has(stopKey(call.stopRef)))
+        if (wanted.has(stopKey(call.stopRef)) || outside(call.name))
           seq.push({
             type: 'station',
             name: call.name,
@@ -141,7 +154,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     let m = -1;
     for (let q = p; q < route.length; q++) {
       const r = route[q]!;
-      if (r.key === row.key || row.also?.includes(r.key)) {
+      if (r.key === row.key || row.also?.includes(r.key) || row.name.startsWith(`${r.name},`)) {
         m = q;
         break;
       }

@@ -9,7 +9,7 @@ import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
 import { MIN, ms, rides, stopSeq } from './connection';
-import { passesVias, stitched, type Query } from './stitch';
+import { calledAt, passesVias, ridden, stitched, type Query } from './stitch';
 
 export interface PlanDeps {
   fetchTrips: (q: TripQuery) => Promise<Connection[]>;
@@ -124,7 +124,13 @@ export function rejectReason(
   const seq = stopSeq(c);
   if (!relaxed.has('mustPass')) {
     const have = new Set(seq);
-    if (rules.mustPass.some((r) => !have.has(r))) return 'mustPass';
+    const at = ridden(c);
+    const passed = (r: string) => {
+      if (have.has(r)) return true;
+      const w = rules.leg.vias.find((v) => stopKey(v.stopRef) === r);
+      return !!w && calledAt(w, at);
+    };
+    if (rules.mustPass.some((r) => !passed(r))) return 'mustPass';
   }
   if (!relaxed.has('avoid') && rules.avoid.some((s) => usesSegment(seq, s))) return 'avoid';
   return null;
