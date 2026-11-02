@@ -220,7 +220,6 @@ export const de = {
   doneTodaySection: 'Heute erledigt',
   saveToYourTrips: 'In deinen Reisen speichern',
   sharedPast: 'Der Tag dieser Reise ist vorbei: du kannst sie behalten, um sie wieder zu machen.',
-  changeHere: 'Umsteigen',
   noStop: 'Kein Halt',
   fromTime: 'ab',
   departFrom: 'Abfahrt ab (Zeit)',

@@ -5,6 +5,7 @@
 import { markRings } from './line';
 import type { Connection, Section, Tour, Waypoint } from './model';
 import { stopKey } from './stops';
+import type { Warning } from './warnings';
 
 export type StationRole = 'start' | 'end' | 'pass' | 'stop' | 'change';
 
@@ -41,8 +42,58 @@ export interface RideRow {
 
 export type LineRow = StationRow | RideRow;
 
+/** A route station a ride passes: the row, and which of the ride's stops between it is. */
+export interface ViaOnRide {
+  row: number;
+  call: number;
+}
+
+/**
+ * The route's stations a ride goes through belong to that ride: shown in its list of stops, not
+ * as rows after it. By the index of the ride's row. Stations missed stay on the line.
+ */
+export function viasOnRides(rows: LineRow[]): Map<number, ViaOnRide[]> {
+  const out = new Map<number, ViaOnRide[]>();
+  rows.forEach((r, i) => {
+    if (r.type !== 'ride' || r.section.mode === 'walk') return;
+    const calls = r.section.intermediate.map((c) => stopKey(c.stopRef));
+    const vias: ViaOnRide[] = [];
+    let from = 0;
+    for (let j = i + 1; j < rows.length; j++) {
+      const x = rows[j]!;
+      if (x.type !== 'station') break;
+      if (x.missed) continue;
+      const call = x.role === 'pass' ? calls.indexOf(x.key, from) : -1;
+      if (call < 0) break;
+      vias.push({ row: j, call });
+      from = call + 1;
+    }
+    if (vias.length) out.set(i, vias);
+  });
+  return out;
+}
+
 const roleOf = (w: Waypoint): StationRole =>
   w.kind === 'start' ? 'start' : w.kind === 'end' ? 'end' : w.kind === 'via' ? 'pass' : 'stop';
+
+/**
+ * Whether a disruption explains the station missed at row `i`: one on the ride that goes past it
+ * or the next one, not anywhere on the leg (a trip's only leg may be a whole day long).
+ */
+export function missedByDisruption(rows: LineRow[], i: number, warnings: Warning[]): boolean {
+  const isRide = (r: LineRow): r is RideRow => r.type === 'ride';
+  const near = [rows.slice(0, i).findLast(isRide), rows.slice(i + 1).find(isRide)];
+  return near.some(
+    (r) =>
+      r &&
+      warnings.some(
+        (w) =>
+          w.type === 'disruption' &&
+          w.legIndex === r.leg &&
+          (w.sectionIndex === undefined || w.sectionIndex === r.sectionIndex),
+      ),
+  );
+}
 
 /** The route's stations, numbered by entry (rings carry none). */
 function routeStations(tour: Pick<Tour, 'waypoints'>): StationRow[] {

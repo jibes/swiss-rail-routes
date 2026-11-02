@@ -1,6 +1,6 @@
 // The line under way (TripLine with `live`): expected times with their delay, the stops of a
 // ride, and the marker where you are between them.
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { LiveRide, LiveState } from '../core/live';
 import type { LineRow, RideRow, StationRow } from '../core/rows';
 import { useT } from '../store';
@@ -108,20 +108,27 @@ export function SyncHere({ i, fraction }: { i: number; fraction: number }) {
   return <span ref={ref} hidden />;
 }
 
-/** The stops a ride calls at between its ends, with the marker where you are. */
+/**
+ * A ride's stops between its ends, with the marker where you are: all of them, or (`all` false)
+ * only the route's own, which `via` draws (it answers nothing for any other stop).
+ */
 export function Mids({
   r,
   live,
   riding,
+  all,
+  via,
 }: {
   r: RideRow;
   live: LiveCtx | undefined;
   riding: boolean;
+  all: boolean;
+  via: (call: number, when: ReactNode, passed: boolean) => ReactNode;
 }) {
   const t = useT();
   const lr = rideOf(live, r);
   const mids = r.section.intermediate;
-  const between = riding ? live?.state.between : undefined;
+  const between = riding && all ? live?.state.between : undefined;
   const here = (
     <li key="here" className="here-mid">
       <span className="sr-only">{t('youAreHere')}</span>
@@ -133,9 +140,13 @@ export function Mids({
       {mids.flatMap((m, k) => {
         const ls = lr?.stops[k + 1];
         const when = ls?.dep ?? ls?.arr;
-        const item = (
-          <li key={k} className={live && when !== undefined && when <= live.now ? 'passed' : ''}>
-            <When plan={m.dep ?? m.arr} live={when} />
+        const passed = !!live && when !== undefined && when <= live.now;
+        const time = <When plan={m.dep ?? m.arr} live={when} />;
+        const own = via(k, time, passed);
+        if (!own && !all) return [];
+        const item = own ?? (
+          <li key={k} className={passed ? 'passed' : ''}>
+            {time}
             <span>{m.name}</span>
           </li>
         );

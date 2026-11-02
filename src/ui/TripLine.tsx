@@ -1,8 +1,14 @@
-import { useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from 'react';
+import {
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as RPointerEvent,
+  type ReactNode,
+} from 'react';
 import type { RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
-import type { LineRow, StationRow } from '../core/rows';
+import { missedByDisruption, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import type { Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
 import { badge } from './format';
@@ -29,13 +35,6 @@ const STAY_STEP = 15;
 const STAY_MAX = 600;
 const clampStay = (m: number) => Math.min(STAY_MAX, Math.max(1, Math.round(m)));
 const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
-
-/** Whether the ride that goes past a missed station (the next one on the line) is disrupted. */
-function disruptedLeg(rows: LineRow[], i: number, warnings: Warning[]) {
-  const next = rows.slice(i + 1).find((r) => r.type === 'station' && r.leg !== undefined);
-  const leg = next?.type === 'station' ? next.leg : undefined;
-  return leg !== undefined && warnings.some((w) => w.type === 'disruption' && w.legIndex === leg);
-}
 
 const isWalk = (r?: LineRow) => r?.type === 'ride' && r.section.mode === 'walk';
 
@@ -143,6 +142,123 @@ export function TripLine({
     grip.addEventListener('pointercancel', up);
   };
 
+  const onRide = viasOnRides(rows);
+  const onRideRows = new Set([...onRide.values()].flat().map((v) => v.row));
+
+  /** A station's name: opens the panel (yours), says why not (the timetable's), or just is. */
+  const nameOf = (r: StationRow, i: number) => {
+    const k = act ? r.entry : undefined;
+    const isOpen = k !== undefined && open === k;
+    const label = stayLabel(t, r);
+    if (!act && r.entry !== undefined)
+      return (
+        // Nothing to edit: a station you entered is just its name.
+        <div className="m">
+          <span className="n">{r.name}</span>
+          {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
+        </div>
+      );
+    if (k === undefined)
+      return (
+        <button
+          type="button"
+          className="m locked"
+          aria-expanded={hint === `${r.key}@${i}`}
+          onClick={() => setHint(hint === `${r.key}@${i}` ? null : `${r.key}@${i}`)}
+        >
+          <span className="n">{r.name}</span>
+          {label && <span className="chip quiet">{label}</span>}
+        </button>
+      );
+    return (
+      <button
+        type="button"
+        className="m"
+        aria-expanded={isOpen}
+        onClick={() => setOpen?.(isOpen ? null : k)}
+      >
+        <span className="n">{r.name}</span>
+        {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
+      </button>
+    );
+  };
+
+  const whyLocked = (r: StationRow, i: number) =>
+    hint === `${r.key}@${i}` && (
+      <span className="why" role="status">
+        {r.ring && lineName(r.line)
+          ? t('partOfLine', { line: lineName(r.line) })
+          : t('timetableStop')}
+      </span>
+    );
+
+  /** The open station's grip and panel. */
+  const editing = (r: StationRow) => {
+    const k = act ? r.entry : undefined;
+    if (k === undefined || open !== k) return null;
+    return (
+      <>
+        {n > 1 && !(fixedFirst && k === 0) && (
+          <button
+            type="button"
+            className="grip"
+            aria-label={t('dragToMove', { stop: r.name })}
+            onPointerDown={(e) => startDrag(k, e)}
+          >
+            <Icon name="grip" size={18} />
+          </button>
+        )}
+        {!drag && act && (
+          <Panel
+            k={k}
+            n={n}
+            fixed={fixedFirst ? 1 : 0}
+            name={r.name}
+            stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
+            line={lineName(lineTo(entries, k))}
+            change={r.role === 'change'}
+            act={act}
+          />
+        )}
+      </>
+    );
+  };
+
+  /** A route station on a ride: among the ride's stops, in white, editable as on the line. */
+  const viaRow = (r: StationRow, i: number, when: ReactNode, passed: boolean) => {
+    const k = act ? r.entry : undefined;
+    const dragging = drag && k === drag.from;
+    return (
+      <li
+        key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
+        className={[
+          'station',
+          'pass',
+          'via',
+          r.ring ? 'ring' : '',
+          r.entry === undefined ? 'auto' : 'entry',
+          k !== undefined && open === k ? 'open' : '',
+          dragging ? 'dragging' : '',
+          passed ? 'passed' : '',
+          drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
+        ].join(' ')}
+        style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
+        {...(k !== undefined ? { 'data-entry': k } : {})}
+      >
+        {planning ? (
+          <span className="t">
+            <span className="shim" />
+          </span>
+        ) : (
+          when
+        )}
+        {nameOf(r, i)}
+        {whyLocked(r, i)}
+        {editing(r)}
+      </li>
+    );
+  };
+
   return (
     <ol
       className={`trip-line ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''}`}
@@ -168,6 +284,7 @@ export function TripLine({
               : 0;
           const mids = s.mode === 'walk' ? [] : s.intermediate;
           const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
+          const vias = onRide.get(i) ?? [];
           const platform = lr?.stops[0]?.platform ?? s.from.platform;
           return (
             // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
@@ -178,7 +295,7 @@ export function TripLine({
                 'ride',
                 s.mode === 'walk' ? 'walk' : '',
                 riding ? 'here' : '',
-                shown ? 'with-mids' : '',
+                shown || vias.length ? 'with-mids' : '',
                 live && arrives !== undefined && arrives <= live.now ? 'passed' : '',
               ].join(' ')}
               style={riding ? ({ '--f': `${(f * 100).toFixed(1)}%` } as CSSProperties) : undefined}
@@ -194,7 +311,7 @@ export function TripLine({
                     {s.product && <b>{s.product}</b>}
                     {platform && <span>{t('platform', { p: platform })}</span>}
                     {min > 0 && <span>{duration(min)}</span>}
-                    {mids.length > 0 && (
+                    {mids.length > vias.length && (
                       <button
                         type="button"
                         className="mids-toggle"
@@ -206,7 +323,18 @@ export function TripLine({
                     )}
                   </>
                 )}
-                {shown && <Mids r={r} live={live} riding={riding} />}
+                {(shown || vias.length > 0) && (
+                  <Mids
+                    r={r}
+                    live={live}
+                    riding={riding}
+                    all={shown}
+                    via={(call, when, passed) => {
+                      const v = vias.find((x) => x.call === call);
+                      return v ? viaRow(rows[v.row] as StationRow, v.row, when, passed) : null;
+                    }}
+                  />
+                )}
                 {ws.map((w, j) => {
                   const text =
                     w.type === 'seasonal'
@@ -248,6 +376,7 @@ export function TripLine({
             </li>
           );
         }
+        if (onRideRows.has(i)) return null;
         const k = act ? r.entry : undefined;
         const isOpen = k !== undefined && open === k;
         const L = stationLive(rows, i, live);
@@ -261,7 +390,6 @@ export function TripLine({
         );
         const before = both ? <When plan={r.arr} live={L?.arr} /> : null;
         const big = r.role !== 'pass';
-        const label = stayLabel(t, r);
         const dragging = drag && k === drag.from;
         return (
           <li
@@ -290,79 +418,28 @@ export function TripLine({
             <span className="rail">
               <span className="dot" />
             </span>
-            {!act && r.entry !== undefined ? (
-              // Nothing to edit: a station you entered is just its name.
-              <div className="m">
-                <span className="n">{r.name}</span>
-                {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
-              </div>
-            ) : k === undefined ? (
-              <button
-                type="button"
-                className="m locked"
-                aria-expanded={hint === `${r.key}@${i}`}
-                onClick={() => setHint(hint === `${r.key}@${i}` ? null : `${r.key}@${i}`)}
-              >
-                <span className="n">{r.name}</span>
-                {label && <span className="chip quiet">{label}</span>}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="m"
-                aria-expanded={isOpen}
-                onClick={() => setOpen?.(isOpen ? null : k)}
-              >
-                <span className="n">{r.name}</span>
-                {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
-              </button>
-            )}
+            {nameOf(r, i)}
             {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
-            {hint === `${r.key}@${i}` && (
-              <span className="why" role="status">
-                {r.ring && lineName(r.line)
-                  ? t('partOfLine', { line: lineName(r.line) })
-                  : t('timetableStop')}
-              </span>
-            )}
+            {whyLocked(r, i)}
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
               <div className="missed-note">
                 <span>
                   {
                     // An interruption on that stretch is the likely reason: say so.
-                    disruptedLeg(rows, i, warnings) ? t('notReachedDisrupted') : t('notReached')
+                    missedByDisruption(rows, i, warnings)
+                      ? t('notReachedDisrupted')
+                      : t('notReached')
                   }
                 </span>
                 {/* A disruption (works, a closure) is not over in an hour: no point trying later. */}
-                {act && !disruptedLeg(rows, i, warnings) && (
+                {act && !missedByDisruption(rows, i, warnings) && (
                   <button type="button" className="text-button" onClick={act.later}>
                     {t('tryLater')}
                   </button>
                 )}
               </div>
             )}
-            {isOpen && n > 1 && !(fixedFirst && k === 0) && (
-              <button
-                type="button"
-                className="grip"
-                aria-label={t('dragToMove', { stop: r.name })}
-                onPointerDown={(e) => startDrag(k, e)}
-              >
-                <Icon name="grip" size={18} />
-              </button>
-            )}
-            {isOpen && !drag && act && (
-              <Panel
-                k={k}
-                n={n}
-                fixed={fixedFirst ? 1 : 0}
-                name={r.name}
-                stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
-                line={lineName(lineTo(entries, k))}
-                change={r.role === 'change'}
-                act={act}
-              />
-            )}
+            {editing(r)}
           </li>
         );
       })}
@@ -428,24 +505,17 @@ function Panel({
       />
       {inner && (
         <>
-          {/* Three choices, one each: ride through, change trains, or stay (for how long below). */}
+          {/* Ride through (changing if the timetable needs it), or stay (for how long below). A
+              stop of 0 min (a replan's, an older trip's) has no stay: it reads as no stop. */}
           <div className="chips seg" role="group" aria-label={t('atThisStation')}>
-            {(
-              [
-                [null, t('noStop')],
-                [0, t('changeHere')],
-              ] as const
-            ).map(([m, label]) => (
-              <button
-                key={String(m)}
-                type="button"
-                className={`pill ${stay === m ? 'on' : ''}`}
-                aria-pressed={stay === m}
-                onClick={() => act.stay(k, m)}
-              >
-                {label}
-              </button>
-            ))}
+            <button
+              type="button"
+              className={`pill ${!stay ? 'on' : ''}`}
+              aria-pressed={!stay}
+              onClick={() => stay !== null && act.stay(k, null)}
+            >
+              {t('noStop')}
+            </button>
             <button
               type="button"
               className={`pill ${stay ? 'on' : ''}`}

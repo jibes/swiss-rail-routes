@@ -216,7 +216,6 @@ export const it = {
   doneTodaySection: 'Fatto oggi',
   saveToYourTrips: 'Salva nei tuoi viaggi',
   sharedPast: 'Il giorno di questo viaggio è passato: puoi tenerlo per rifarlo.',
-  changeHere: 'Cambio',
   noStop: 'Senza sosta',
   fromTime: 'dalle',
   departFrom: 'Partenza dalle (ora)',

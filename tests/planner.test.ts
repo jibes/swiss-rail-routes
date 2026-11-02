@@ -25,6 +25,8 @@ import {
   setEntryStay,
   stationEntry,
 } from '../src/core/line';
+import { visited } from '../src/core/planner/connection';
+import { stopKey } from '../src/core/stops';
 import { DATE, conn, deps, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (name: string) => ({ stopRef: ref(name), name });
@@ -410,6 +412,79 @@ describe('supplement trains', () => {
     const t = tour('St. Moritz', (x) => addWaypoint(x, stop('Tirano')), '08:30');
     const r = await plan(t, deps([bex, r1]).deps);
     for (const c of r.options!) expect(c.connections[0]!.sections[0]!.category).toBe('R');
+  });
+});
+
+describe('a station closed that day', () => {
+  // Mürren → Grütschalp (closed) → Lauterbrunnen → Interlaken Ost → Bern → Zürich HB.
+  const out = (x: Tour) =>
+    addWaypoint(
+      addWaypoint(
+        addWaypoint(
+          addWaypoint(addWaypoint(x, stop('Grütschalp')), stop('Lauterbrunnen')),
+          stop('Interlaken Ost'),
+        ),
+        stop('Bern'),
+      ),
+      stop('Zürich HB'),
+    );
+  const hop = (a: string, b: string, dep: string, arr: string) =>
+    conn(
+      ride('R 1', [
+        [a, dep],
+        [b, arr],
+      ]),
+    );
+  /** What OJP answers without Grütschalp: straight to Zürich, past none of the stations. */
+  const roundabout = conn(
+    ride('B 1', [
+      ['Mürren BLM', '09:00'],
+      ['Spiez', '10:00'],
+    ]),
+    ride('IC 1', [
+      ['Spiez', '10:05'],
+      ['Zürich HB', '11:30'],
+    ]),
+  );
+
+  it('costs only that station: the others are still ridden through', async () => {
+    const t = tour('Mürren BLM', out, '09:00');
+    const r = await plan(
+      t,
+      deps([
+        roundabout,
+        // Station to station, each one there …
+        hop('Mürren BLM', 'Lauterbrunnen', '09:00', '09:50'),
+        hop('Lauterbrunnen', 'Interlaken Ost', '09:55', '10:15'),
+        hop('Interlaken Ost', 'Bern', '10:25', '11:20'),
+        // … and the two halves OJP gives when asked with one via each.
+        conn(
+          ride('R 2', [
+            ['Mürren BLM', '09:00'],
+            ['Lauterbrunnen', '09:50'],
+            ['Interlaken Ost', '10:15'],
+          ]),
+        ),
+        conn(
+          ride('IC 2', [
+            ['Interlaken Ost', '10:25'],
+            ['Bern', '11:20'],
+            ['Zürich HB', '12:30'],
+          ]),
+        ),
+      ]).deps,
+    );
+    expect(r.relaxed).toEqual([{ legIndex: 0, rule: 'mustPass' }]);
+    const at = visited(r.recommended!.connections[0]!);
+    for (const s of ['Lauterbrunnen', 'Interlaken Ost', 'Bern'])
+      expect(at.has(stopKey(ref(s))), s).toBe(true);
+    expect(at.has(stopKey(ref('Grütschalp')))).toBe(false);
+  });
+
+  it('gives up on the stations only when nothing else connects', async () => {
+    const r = await plan(tour('Mürren BLM', out, '09:00'), deps([roundabout]).deps);
+    expect(r.relaxed).toEqual([{ legIndex: 0, rule: 'mustPass' }]);
+    expect(r.recommended!.connections[0]!.dep).toBe(roundabout.dep);
   });
 });
 

@@ -18,7 +18,14 @@ import {
 import type { Tour } from '../src/core/model';
 import { dayOf, newTrip, zurichTime } from '../src/core/trip';
 import { retire } from '../src/core/retire';
-import { plannedRows, routeRows } from '../src/core/rows';
+import {
+  missedByDisruption,
+  plannedRows,
+  routeRows,
+  viasOnRides,
+  type RideRow,
+} from '../src/core/rows';
+import type { Warning } from '../src/core/warnings';
 
 const s = (name: string) => ({ stopRef: `ch:1:sloid:${name}`, name });
 const VAE = {
@@ -313,6 +320,120 @@ describe('rows: what the plan does not reach, and walks under a minute', () => {
       'Wattwil',
       'Luzern',
     ]);
+  });
+
+  const voralpen = () =>
+    plannedRows(
+      insertEntries(start(), 0, [
+        stationEntry(s('Wattwil')),
+        stationEntry(s('Biberbrugg')),
+        stationEntry(s('Luzern')),
+      ]),
+      [
+        {
+          legIndex: 0,
+          dep: iso('12:05'),
+          arr: iso('14:21'),
+          transfers: 0,
+          sections: [
+            {
+              mode: 'rail',
+              line: 'VAE',
+              from: call('Zurich', undefined, '12:05'),
+              to: call('Luzern', '14:21'),
+              intermediate: [
+                call('Herisau', '12:13', '12:14'),
+                call('Wattwil', '12:32', '12:33'),
+                call('Uznach', '12:43', '12:44'),
+                call('Biberbrugg', '13:20', '13:21'),
+              ],
+            },
+          ],
+        },
+      ],
+    );
+
+  it('puts a route station on the ride among its stops, at its own place', () => {
+    const rows = voralpen();
+    expect(rows.map(label)).toEqual(['Zurich', '[VAE]', 'Wattwil', 'Biberbrugg', 'Luzern']);
+    expect(viasOnRides(rows)).toEqual(
+      new Map([
+        [
+          1,
+          [
+            { row: 2, call: 1 },
+            { row: 3, call: 3 },
+          ],
+        ],
+      ]),
+    );
+  });
+
+  it('leaves a station where you change, and one missed, on the line', () => {
+    const tour = insertEntries(start(), 0, lineEntries(VAE));
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('09:00'),
+        transfers: 0,
+        sections: [
+          {
+            mode: 'rail',
+            line: 'IR',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Luzern', '09:00'),
+            intermediate: [call('StGallen', '07:50', '07:52'), call('Wattwil', '08:20', '08:21')],
+          },
+        ],
+      },
+    ]);
+    // StGallen, Herisau (missed), Wattwil: the missed one stays a row of its own.
+    expect(rows.map(label)[3]).toBe('Herisau (missed)');
+    expect(viasOnRides(rows).get(1)).toEqual([
+      { row: 2, call: 0 },
+      { row: 4, call: 1 },
+    ]);
+  });
+
+  it('blames a disruption for a missed station only when it is on a ride beside it', () => {
+    const tour = insertEntries(start(), 0, lineEntries(VAE));
+    const ride = (line: string, a: string, b: string) => ({
+      mode: 'rail' as const,
+      line,
+      from: call(a, undefined, '07:00'),
+      to: call(b, '08:00'),
+      intermediate: [],
+    });
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('10:00'),
+        transfers: 2,
+        sections: [
+          ride('A', 'Zurich', 'Wil'),
+          ride('B', 'Wil', 'Luzern'),
+          ride('C', 'Luzern', 'Bern'),
+        ],
+      },
+    ]);
+    const i = rows.findIndex((r) => r.type === 'station' && r.missed);
+    const on = (sectionIndex: number): Warning[] => [
+      {
+        type: 'disruption',
+        severity: 'warn',
+        legIndex: 0,
+        sectionIndex,
+        key: 'wDisruption',
+        params: {},
+      },
+    ];
+    expect(i).toBeGreaterThan(0);
+    const before = rows.slice(0, i).findLast((r) => r.type === 'ride') as RideRow;
+    expect(missedByDisruption(rows, i, on(before.sectionIndex))).toBe(true);
+    expect(missedByDisruption(rows, i, on(99))).toBe(false);
+    expect(missedByDisruption(rows, i, [])).toBe(false);
   });
 
   it('merges the two ends of a walk under a minute into one station', () => {

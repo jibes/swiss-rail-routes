@@ -1,10 +1,13 @@
 import { encodeTour } from '../tests/helpers/share';
 import { encodeTrip } from '../src/core/export/tripShare';
 import { plan } from '../src/core/planner/plan';
+import { setEntryStay } from '../src/core/line';
+import { expandLegs } from '../src/core/tour';
 import { newTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { ga, index, templates } from '../tests/helpers/timetable';
+import { addWaypoint, newTour } from '../tests/helpers/edit';
+import { conn, DATE, ga, index, ref, ride, templates } from '../tests/helpers/timetable';
 import { BEFORE, expect, guard, planShared, test } from './fixtures';
 
 test('a shared trip opens as planned, without replanning, and saves to Trips', async ({ page }) => {
@@ -71,4 +74,111 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   expect(asked, 'the shared trip is the timetable itself, not replanned').toBe(0);
   otherErrors.check();
   await other.close();
+});
+
+test('a via on the ride is one of its stops, in white; a station missed keeps the rail straight', async ({
+  page,
+}) => {
+  const st = (name: string) => ({ stopRef: ref(name), name });
+  const tour = {
+    ...addWaypoint(
+      addWaypoint(addWaypoint(newTour('v', DATE, st('St. Gallen')), st('Wattwil')), st('Bern')),
+      st('Luzern'),
+    ),
+    name: 'Via on the ride',
+  };
+  const c = conn(
+    ride('IR 1', [
+      ['St. Gallen', '12:05'],
+      ['Herisau', '12:13'],
+      ['Wattwil', '12:32'],
+      ['Uznach', '12:43'],
+      ['Luzern', '14:21'],
+    ]),
+  );
+  const chain = { connections: [c], warnings: [], score: 0, dep: c.dep, arr: c.arr };
+  await page.clock.install({ time: BEFORE });
+  await page.goto(
+    `./${await encodeTrip(newTrip('v', tour, expandLegs(tour), chain, new Date(0)))}`,
+  );
+  await page.getByRole('button', { name: 'Save trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\//);
+
+  const line = page.getByRole('list', { name: 'The trip' });
+  const ride1 = line.locator('.ride').first();
+  // Closed: the via alone, at the top of the ride; never a row of its own after it.
+  await expect(ride1.locator('.mids li')).toHaveText([/12:32\s*Wattwil/]);
+  await expect(line.locator('> li.station', { hasText: 'Wattwil' })).toHaveCount(0);
+  const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+  await expect(ride1.locator('.mids .via .n')).toHaveCSS('color', ink);
+
+  // Open: every stop in its place, the via once.
+  await ride1.getByRole('button', { name: '3 stops' }).click();
+  await expect(ride1.locator('.mids li')).toHaveText([/Herisau/, /Wattwil/, /Uznach/]);
+
+  // It opens the panel like any station of yours.
+  await ride1.locator('.via button.m').click();
+  await expect(page.getByRole('button', { name: 'No stop' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // Two choices: a change is the timetable's business, not one to pick.
+  await expect(page.getByRole('group', { name: 'At this station' }).getByRole('button')).toHaveText(
+    ['No stop', 'Stay'],
+  );
+  await ride1.locator('.via button.m').click();
+
+  // Missed: its rail runs on the line, not beside it.
+  const x = (sel: string) =>
+    line
+      .locator(sel)
+      .first()
+      .locator('> .rail')
+      .evaluate((el) => el.getBoundingClientRect().left);
+  await expect(line.locator('.station.missed')).toHaveText(/Bern/);
+  expect(await x('.station.missed')).toBe(await x('.ride'));
+});
+
+test('a stop of 0 min, from a replan or an older trip, reads as no stop', async ({ page }) => {
+  const st = (name: string) => ({ stopRef: ref(name), name });
+  const tour = {
+    ...setEntryStay(
+      addWaypoint(addWaypoint(newTour('z', DATE, st('St. Gallen')), st('Wattwil')), st('Luzern')),
+      1,
+      0,
+    ),
+    name: 'Zero stop',
+  };
+  const a = conn(
+    ride('IR 1', [
+      ['St. Gallen', '12:05'],
+      ['Wattwil', '12:32'],
+    ]),
+  );
+  const b = conn(
+    ride('IR 2', [
+      ['Wattwil', '12:40'],
+      ['Luzern', '14:21'],
+    ]),
+  );
+  const chain = { connections: [a, b], warnings: [], score: 0, dep: a.dep, arr: b.arr };
+  await page.clock.install({ time: BEFORE });
+  await page.goto(
+    `./${await encodeTrip(newTrip('z', tour, expandLegs(tour), chain, new Date(0)))}`,
+  );
+  await page.getByRole('button', { name: 'Save trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\//);
+  await page
+    .locator('.trip-line .station.entry', { hasText: 'Wattwil' })
+    .locator('button.m')
+    .click();
+  const choice = page.getByRole('group', { name: 'At this station' });
+  await expect(choice.getByRole('button', { name: 'No stop' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(choice.getByRole('button', { name: 'Stay' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
 });

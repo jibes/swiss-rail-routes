@@ -211,7 +211,6 @@ export const en = {
   doneTodaySection: 'Done today',
   saveToYourTrips: 'Save to your trips',
   sharedPast: "This trip's day is over: it can be kept to go again.",
-  changeHere: 'Change',
   noStop: 'No stop',
   fromTime: 'from',
   departFrom: 'Leave from (time)',
