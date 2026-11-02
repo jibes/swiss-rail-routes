@@ -78,7 +78,13 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
       new DecompressionStream('deflate-raw'),
     );
     const data = JSON.parse(new TextDecoder().decode(bytes));
-    if (data?.schema !== 1 || !data.chain?.connections?.length || !Array.isArray(data.legs))
+    if (
+      data?.schema !== 1 ||
+      !data.chain?.connections?.length ||
+      !Array.isArray(data.legs) ||
+      !Array.isArray(data.route?.waypoints) ||
+      typeof data.route?.date !== 'string'
+    )
       return null;
     // Every ride with its two ends: a damaged link must not reach the timetable view.
     const sound = (data.chain.connections as unknown[]).every(

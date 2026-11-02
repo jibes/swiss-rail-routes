@@ -240,4 +240,9 @@ export const de = {
     'Die Strecke ist hier unterbrochen (siehe Störung): die Reise führt darum herum.',
   disruption1: '1 Störung',
   disruptionsN: '{n} Störungen',
+  doneToday:
+    'Erledigt. Heute bleibt sie hier, ab morgen wartet sie in der Suche unter Deine Reisen.',
+  doneTodaySection: 'Heute erledigt',
+  saveToYourTrips: 'In deinen Reisen speichern',
+  sharedPast: 'Der Tag dieser Reise ist vorbei: du kannst sie behalten, um sie wieder zu machen.',
 } satisfies Catalogue;

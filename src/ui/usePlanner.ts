@@ -9,6 +9,7 @@ import { PlanningUnavailable, WorkerError, fetchTrips } from '../io/ojp';
 import { stopSearch } from '../io/stops';
 import { loadPlans, savePlans } from '../io/tours';
 import { useTrips } from '../trips';
+import { askNotifications } from '../io/notifications';
 
 export type PlanStatus = 'idle' | 'planning' | 'done' | 'unavailable' | 'error';
 
@@ -89,6 +90,8 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     function keep(r: PlanResult) {
       const chain = r.recommended ?? r.options?.[0];
       if (!chain || !r.legs) return;
+      // A trip with a timetable is what notifications are for: ask once (Android; no-op on the web).
+      void askNotifications();
       update(id!, (t) =>
         routeJson(t) === json && !t.chain
           ? compactTrip({ ...t, chain, legs: r.legs!, compact: undefined })

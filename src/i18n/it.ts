@@ -236,4 +236,8 @@ export const it = {
   notReachedDisrupted: 'Qui la linea è interrotta (vedi il disturbo): il viaggio la aggira.',
   disruption1: '1 disturbo',
   disruptionsN: '{n} disturbi',
+  doneToday: 'Fatto. Oggi resta qui; da domani aspetta nella ricerca sotto I tuoi viaggi.',
+  doneTodaySection: 'Fatto oggi',
+  saveToYourTrips: 'Salva nei tuoi viaggi',
+  sharedPast: 'Il giorno di questo viaggio è passato: puoi tenerlo per rifarlo.',
 } satisfies Catalogue;

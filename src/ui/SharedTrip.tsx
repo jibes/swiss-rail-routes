@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { decodeTrip } from '../core/export/tripShare';
-import { isPlanned, type PlannedTrip } from '../core/trip';
+import { dayOf, isPlanned, type PlannedTrip } from '../core/trip';
+import { markRings, routeKey } from '../core/line';
+import { useTours } from '../tours';
+import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { ChainView } from './ChainView';
@@ -13,6 +16,7 @@ export function SharedTrip({ hash }: { hash: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const add = useTrips((s) => s.add);
+  const now = useNow();
   const [trip, setTrip] = useState<PlannedTrip | null | undefined>(undefined);
 
   useEffect(() => {
@@ -35,6 +39,7 @@ export function SharedTrip({ hash }: { hash: string }) {
         </button>
       </main>
     );
+  const past = trip.route.date < dayOf(now);
   return (
     <main className="page">
       <header className="bar">
@@ -53,27 +58,50 @@ export function SharedTrip({ hash }: { hash: string }) {
         <span className="muted">{longDate(trip.route.date, lang)}</span>
       </div>
       <ChainView chain={trip.chain} dwell={trip.legs.map((l) => l.to.dwellMin)} />
+      {past && <p className="notice">{t('sharedPast')}</p>}
       <div className="dock">
         <div className="dock-inner">
-          <button
-            type="button"
-            className="primary wide"
-            onClick={() => {
-              // The same shared trip saved before: open it (no second copy, no double alerts).
-              const same = useTrips
-                .getState()
-                .trips.find(
-                  (x) =>
-                    x.chain?.dep === trip.chain.dep &&
-                    JSON.stringify(x.legs) === JSON.stringify(trip.legs),
-                );
-              if (same) return location.replace(`#/trip/${same.id}`);
-              add(trip);
-              location.replace(`#/trip/${trip.id}`);
-            }}
-          >
-            {t('saveToTrips')}
-          </button>
+          {past ? (
+            <button
+              type="button"
+              className="primary wide"
+              onClick={() => {
+                // Its day is over: kept as one of your trips (in search), to go again.
+                const tour = {
+                  ...trip.route,
+                  id: `shared-${trip.id}`,
+                  name: trip.name,
+                  waypoints: markRings(trip.route.waypoints),
+                };
+                const key = routeKey(tour);
+                const tours = useTours.getState().tours.filter((x) => routeKey(x) !== key);
+                void useTours.getState().replaceAll([tour, ...tours]);
+                location.replace('#/');
+              }}
+            >
+              {t('saveToYourTrips')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="primary wide"
+              onClick={() => {
+                // The same shared trip saved before: open it (no second copy, no double alerts).
+                const same = useTrips
+                  .getState()
+                  .trips.find(
+                    (x) =>
+                      x.chain?.dep === trip.chain.dep &&
+                      JSON.stringify(x.legs) === JSON.stringify(trip.legs),
+                  );
+                if (same) return location.replace(`#/trip/${same.id}`);
+                add(trip);
+                location.replace(`#/trip/${trip.id}`);
+              }}
+            >
+              {t('saveToTrips')}
+            </button>
+          )}
         </div>
       </div>
     </main>

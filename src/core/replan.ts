@@ -177,13 +177,20 @@ export function mergeReplan(
     i === point.leg
       ? {
           ...l,
-          to: {
-            ...l.to,
-            stopRef: point.stop.stopRef,
-            name: point.stop.name,
-            kind: 'via',
-            dwellMin: 0,
-          },
+          // The point ends the travelled part: a stay planned there stays; else it is a
+          // change (a leg ends there), never a scenic line's station.
+          to:
+            stopKey(point.stop.stopRef) === stopKey(l.to.stopRef)
+              ? { ...l.to, templateId: undefined, ring: undefined }
+              : {
+                  ...l.to,
+                  stopRef: point.stop.stopRef,
+                  name: point.stop.name,
+                  kind: 'stop',
+                  dwellMin: 0,
+                  templateId: undefined,
+                  ring: undefined,
+                },
           vias: [],
         }
       : l,

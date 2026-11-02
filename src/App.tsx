@@ -9,7 +9,7 @@ import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
-import { watchSync } from './io/sync';
+import { useSync, watchSync } from './io/sync';
 import { liveTrip, tripStatus } from './core/trip';
 import { retire } from './core/retire';
 import { expectedArrival } from './core/live';
@@ -93,8 +93,9 @@ export function App() {
   // A trip whose day is over leaves the list and waits in search (your trips), checked as the
   // clock moves on.
   const now = useNow();
+  const settled = useSync((s) => s.settled);
   useEffect(() => {
-    if (!loaded || !tripsLoaded) return;
+    if (!loaded || !tripsLoaded || !settled) return;
     const live = useLiveStatus.getState().status;
     const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
       t.chain ? expectedArrival(t.chain.connections, live) : undefined,
@@ -102,7 +103,7 @@ export function App() {
     if (!r.changed) return;
     void useTours.getState().replaceAll(r.tours);
     void useTrips.getState().replaceAll(r.trips);
-  }, [loaded, tripsLoaded, now]);
+  }, [loaded, tripsLoaded, settled, now]);
   useEffect(() => watchBack(), []);
   // Sync once both lists are loaded; then on return to the app and after changes.
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
@@ -110,7 +111,14 @@ export function App() {
   useEffect(() => {
     if (loaded && tripsLoaded) console.info('srr:ready');
   }, [loaded, tripsLoaded]);
-  useEffect(() => onNotificationTap((id) => (location.hash = `/trip/${id}`)), []);
+  // A notification of a trip deleted or retired since opens the list instead.
+  useEffect(
+    () =>
+      onNotificationTap((id) => {
+        location.hash = useTrips.getState().trips.some((t) => t.id === id) ? `/trip/${id}` : '/';
+      }),
+    [],
+  );
   // Opening the app during a trip goes straight to it (once, from the start screen). A reload
   // stays where it was: it is not an opening.
   useEffect(() => {

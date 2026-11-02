@@ -44,6 +44,9 @@ export type SyncStatus =
 
 interface SyncState {
   loaded: boolean;
+  /** The first round since opening is over (or there is no sync): retiring trips may run, as
+   * it then sees what other devices changed (a trip moved to a later day stays). */
+  settled: boolean;
   key: string | null;
   status: SyncStatus;
   at: number | null;
@@ -51,6 +54,7 @@ interface SyncState {
 
 export const useSync = create<SyncState>()(() => ({
   loaded: false,
+  settled: false,
   key: null,
   status: 'off',
   at: null,
@@ -317,7 +321,10 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Syncs on start, back in view, every minute in view, and 3 s after the last change. */
 export function watchSync() {
-  void loadSync().then(syncNow);
+  void loadSync()
+    .then(syncNow)
+    .catch(() => undefined)
+    .finally(() => useSync.setState({ settled: true }));
   const later = () => {
     if (!useSync.getState().key) return;
     clearTimeout(timer);

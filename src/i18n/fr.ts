@@ -236,4 +236,9 @@ export const fr = {
     'La ligne est interrompue ici (voir la perturbation) : le voyage la contourne.',
   disruption1: '1 perturbation',
   disruptionsN: '{n} perturbations',
+  doneToday:
+    'Terminé. Il reste ici aujourd’hui ; dès demain, il attend dans la recherche sous Tes voyages.',
+  doneTodaySection: 'Fait aujourd’hui',
+  saveToYourTrips: 'Enregistrer dans tes voyages',
+  sharedPast: 'Le jour de ce voyage est passé : tu peux le garder pour le refaire.',
 } satisfies Catalogue;

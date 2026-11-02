@@ -30,3 +30,16 @@ export function shortDate(date: string, locale: string) {
     timeZone: 'UTC',
   }).format(new Date(`${date}T12:00:00Z`));
 }
+
+const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
+  timeZone: 'Europe/Zurich',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+/** The next full or half hour in Zurich, `HH:MM` (the day's last, 23:30, at most). */
+export function nextHalfHour(now: number): string {
+  const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];
+  const t = Math.min(23 * 60 + 30, Math.ceil((h * 60 + m + 1) / 30) * 30);
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}

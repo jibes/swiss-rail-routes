@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { expectedArrival } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
-import { departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
+import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
 import { defaultDate } from '../tours';
 import { useTrips } from '../trips';
-import { duration, hhmm, minutesBetween } from './format';
+import { duration, hhmm, minutesBetween, nextHalfHour } from './format';
 import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
 import { Logo } from './Logo';
@@ -82,7 +82,9 @@ export function Home() {
   }, [remove]);
   const arrivalOf = (x: Trip) =>
     x.chain ? expectedArrival(x.chain.connections, liveStatus) : undefined;
-  const { current } = sortTrips(trips, now, arrivalOf);
+  const { current, past } = sortTrips(trips, now, arrivalOf);
+  // Over today: kept here, read-only, until the day ends (then they wait in search).
+  const doneToday = past.filter((x) => x.route.date === dayOf(now));
   const live = current.filter((x) => tripStatus(x, now, arrivalOf(x)) === 'live');
   const ahead = current
     .filter((x) => !live.includes(x))
@@ -139,6 +141,17 @@ export function Home() {
         </div>
       )}
 
+      {doneToday.length > 0 && (
+        <section>
+          <h2 className="section-label">{t('doneTodaySection')}</h2>
+          <ul className="cards done" aria-label={t('doneTodaySection')}>
+            {doneToday.map((x) => (
+              <Card key={x.id} trip={x} live={false} stop={stop} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <footer className="home-foot">
         <a className="settings-link" href="#/settings">
           <Icon name="gear" size={18} />
@@ -154,7 +167,12 @@ export function Home() {
             className="primary wide"
             onClick={() => {
               const id = crypto.randomUUID();
-              add(newTrip(id, newTour(id, defaultDate()), undefined, undefined, new Date()));
+              // On a Saturday that is today: from the next half hour, not from 08:00 gone by.
+              const date = defaultDate();
+              const tour = newTour(id, date);
+              if (date === dayOf(Date.now()) && nextHalfHour(Date.now()) > '08:00')
+                tour.anchor = { departAt: nextHalfHour(Date.now()) };
+              add(newTrip(id, tour, undefined, undefined, new Date()));
               go(`/trip/${id}`);
             }}
           >

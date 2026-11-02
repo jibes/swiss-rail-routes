@@ -285,7 +285,7 @@ describe('mergeReplan: the route follows the replan', () => {
     });
     expect(v.route.waypoints.map((x) => `${x.name}:${x.kind}`)).toEqual([
       'Zürich HB:start',
-      'Zug:via',
+      'Zug:stop',
       'Interlaken Ost:end',
     ]);
     expect(v.route.date).toBe(trip.route.date);

@@ -232,6 +232,10 @@ export const en = {
     'The line is interrupted here (see the disruption): the trip goes around it.',
   disruption1: '1 disruption',
   disruptionsN: '{n} disruptions',
+  doneToday: 'Done. It stays here today; tomorrow it waits in search under Your trips.',
+  doneTodaySection: 'Done today',
+  saveToYourTrips: 'Save to your trips',
+  sharedPast: "This trip's day is over: it can be kept to go again.",
 };
 
 export type Catalogue = typeof en;

@@ -22,10 +22,11 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import { duration, hhmm, longDate, minutesBetween } from './format';
+import { duration, hhmm, longDate, minutesBetween, nextHalfHour } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
+import { ChainView } from './ChainView';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
@@ -33,19 +34,6 @@ import { usePlanner } from './usePlanner';
 import { useLayer } from './layers';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
-
-const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
-  timeZone: 'Europe/Zurich',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
-/** The next full or half hour in Zurich, `HH:MM` (the day's last, 23:30, at most). */
-function nextHalfHour(now: number): string {
-  const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];
-  const t = Math.min(23 * 60 + 30, Math.ceil((h * 60 + m + 1) / 30) * 30);
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-}
 
 /** Earlier/Later move the departure by an hour, within the day. */
 function shifted(time: string, min: number): string {
@@ -269,6 +257,12 @@ export function TripScreen({ id }: { id: string }) {
 
       {liveTrip ? (
         <TripLive trip={liveTrip} live={live} />
+      ) : status === 'past' && isPlanned(trip) ? (
+        // Over, until its day ends: the record, read-only (then it waits in search).
+        <>
+          <p className="notice">{t('doneToday')}</p>
+          <ChainView chain={trip.chain} dwell={trip.legs.map((l) => l.to.dwellMin)} />
+        </>
       ) : (
         <>
           <button
