@@ -44,7 +44,7 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
           .evaluate(
             (li) => getComputedStyle(li.querySelector('.rail')!, '::before').backgroundImage,
           );
-      expect(await rail('.trip-line .ride.walk')).toContain('repeating-linear-gradient');
+      expect(await rail('.trip-line .ride.walk')).toContain('radial-gradient');
       expect(await rail('.trip-line .ride:not(.walk)')).toBe('none');
     }
 

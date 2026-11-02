@@ -785,12 +785,47 @@
   height: 18px;
 }
 
-/* A walk: the rail dashed (you are not on a train), as the design has it for a walk. */
+/* A walk: the rail dotted and grey (you are not on a train), from dot to dot. */
 .trip-line .ride.walk .rail::before {
-  width: 3px;
-  background: repeating-linear-gradient(var(--rail) 0 6px, transparent 6px 11px);
+  width: 4px;
+  margin-left: -2px;
+  /* Dotted and grey all the way: on foot, not on a train. */
+  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
+    repeat-y;
 }
 
-.trip-line.live .ride.walk.passed .rail::before {
-  background: repeating-linear-gradient(var(--ink-3) 0 6px, transparent 6px 11px);
+/* The stations either side: dotted between their dot and the walk, solid on the ride's side
+   (--dot-at: how far down the rail the dot sits). */
+.trip-line .station {
+  --dot-at: 18px;
+}
+
+.trip-line .station:has(.t i) {
+  --dot-at: 28px;
+}
+
+.trip-line .station.walk-from .rail::before,
+.trip-line .station.walk-to .rail::before {
+  width: 4px;
+  margin-left: -2px;
+  background:
+    linear-gradient(var(--rail), var(--rail)) center top / 3px var(--dot-at) no-repeat,
+    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
+}
+
+.trip-line .station.walk-to .rail::before {
+  background:
+    linear-gradient(var(--rail), var(--rail)) center bottom / 3px calc(100% - var(--dot-at))
+      no-repeat,
+    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
+}
+
+.trip-line .station.walk-from.walk-to .rail::before {
+  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
+    repeat-y;
+}
+
+/* A station not reached: the rail runs on past its note. */
+.trip-line .station:has(.missed-note) .rail {
+  grid-row: 1 / span 2;
 }

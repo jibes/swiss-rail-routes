@@ -2,7 +2,7 @@
 // (autoplan): one request per route at a time, the result kept with its options
 // (srr.plans.v1) and written into the trip unless its route changed meanwhile.
 import { plan, type PlanResult } from '../core/planner/plan';
-import { compactTrip, type Trip } from '../core/trip';
+import { compactTrip, dayOf, type Trip } from '../core/trip';
 import { GA, TEMPLATES } from '../data';
 import { useTrips } from '../trips';
 import { log } from './log';
@@ -11,6 +11,17 @@ import { stopSearch } from './stops';
 import { savePlan } from './tours';
 
 export const routeJson = (t: Trip) => JSON.stringify(t.route);
+
+/** Today, a time already gone plans from now: connections that have left are none to take. */
+export function fromNow(route: Trip['route'], now: number): Trip['route'] {
+  if (route.date !== dayOf(now) || !('departAt' in route.anchor)) return route;
+  const hm = new Intl.DateTimeFormat('de-CH', {
+    timeZone: 'Europe/Zurich',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
+  return route.anchor.departAt < hm ? { ...route, anchor: { departAt: hm } } : route;
+}
 
 /** A plan under way, shared by everyone who asked for it; stopped once all of them gave up. */
 interface Running {
@@ -72,7 +83,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
   });
   const p = (async () => {
     const index = await stopSearch();
-    const r = await plan(JSON.parse(json) as Trip['route'], {
+    const r = await plan(fromNow(JSON.parse(json) as Trip['route'], Date.now()), {
       trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
       fetchTrips: (q) => cachedTrips(q, ctrl.signal),
       templates: TEMPLATES,

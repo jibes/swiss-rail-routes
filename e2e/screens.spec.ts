@@ -31,9 +31,11 @@ for (const scheme of ['light', 'dark'] as const) {
 
   test(`now ${scheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15 Zürich
+    await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
     const t5 = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Kleine Scheidegg' };
     await planShared(page, encodeTour(t5));
+    // 09:15, on the R62 (a trip is never planned from a time gone).
+    await page.clock.runFor('25:00');
     await page.locator('.trip-line .ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
     await page.getByRole('link', { name: 'Replan from here' }).click();

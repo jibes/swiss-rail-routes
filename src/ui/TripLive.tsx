@@ -78,7 +78,16 @@ function NextStep({
 
 /** The trip under way (SPEC §3a): progress, the next step, connections at risk, the timetable
  * live with where you are; Change the rest replans from here (the travelled part fixed). */
-export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<typeof useLive> }) {
+export function TripLive({
+  trip,
+  live,
+  options,
+}: {
+  trip: PlannedTrip;
+  live: ReturnType<typeof useLive>;
+  /** Not left yet: the options strip, to take another connection. */
+  options?: ReactNode;
+}) {
   const t = useT();
   const update = useTrips((s) => s.update);
   const state = live.state;
@@ -131,6 +140,7 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
           })}
         </>
       )}
+      {options}
       <div className="live-actions">
         {/* Arrived: there is nothing left to replan from here. */}
         {state?.phase !== 'done' && (

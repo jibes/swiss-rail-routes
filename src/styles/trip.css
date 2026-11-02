@@ -628,3 +628,43 @@ svg.mini-line circle.via {
   background: none;
   box-shadow: inset 0 0 0 2.5px var(--rail);
 }
+
+/* When, at the top: the day and the time it leaves from, side by side; the day's pills below. */
+.trip-screen .when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+  margin: -6px 0 -10px;
+}
+
+.trip-screen .when .eyebrow {
+  margin: 0;
+}
+
+.trip-screen .when .dates {
+  flex-basis: 100%;
+}
+
+.when-time {
+  gap: 6px;
+  cursor: pointer;
+}
+
+.when-time input {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  font-variant-numeric: tabular-nums;
+  color-scheme: light dark;
+}
+
+.when-time input:focus-visible {
+  outline: 2px solid var(--rail);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

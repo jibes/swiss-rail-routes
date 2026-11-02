@@ -208,6 +208,8 @@ export const it = {
   sharedPast: 'Il giorno di questo viaggio è passato: puoi tenerlo per rifarlo.',
   changeHere: 'Cambio',
   noStop: 'Senza sosta',
+  fromTime: 'dalle',
+  departFrom: 'Partenza dalle (ora)',
   stationsLabel: 'Stazioni e fermate',
   kindBus: 'Fermata bus',
   kindBoat: 'Imbarcadero',

@@ -19,7 +19,7 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import { longDate, nextHalfHour, shiftHm, zurichHm } from './format';
+import { longDate, nextFive, shiftHm, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
@@ -99,7 +99,9 @@ export function TripScreen({ id }: { id: string }) {
     : 'upcoming';
   const liveTrip = trip && status === 'live' && isPlanned(trip) ? trip : undefined;
   const live = useLive(liveTrip);
-  const planner = usePlanner(trip, !liveTrip);
+  // Under way but not left yet: its options stay (from the saved plan, nothing asked).
+  const notLeft = !!liveTrip && now < Date.parse(liveTrip.chain.dep);
+  const planner = usePlanner(trip, !liveTrip || notLeft);
   const [open, setOpen] = useState<number | null>(null);
   // A new trip opens with the search: where it starts.
   const [sheet, setSheet] = useState<{ after: number } | null>(() =>
@@ -141,6 +143,10 @@ export function TripScreen({ id }: { id: string }) {
   const shown = chain ?? (planning ? planner.previous?.recommended : undefined);
   const rows = shown ? plannedRows(route, shown.connections) : routeRows(route);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
+  /** Today: no time before now (a connection gone is no option, and choosing one would end the
+   * trip at once). */
+  const nowHm = zurichHm(now);
+  const notBefore = (hm: string) => (route.date === today && hm < nowHm ? nowHm : hm);
   const today = dayOf(now);
 
   const pick = (p: Picked) => {
@@ -152,6 +158,113 @@ export function TripScreen({ id }: { id: string }) {
     setSheet(null);
     setOpen(null);
   };
+
+  // When: the date and the time it leaves from, at the top (before it is under way).
+  const when = (
+    <div className="when">
+      <button
+        type="button"
+        className="eyebrow"
+        aria-expanded={dates}
+        onClick={() => setDates(!dates)}
+      >
+        {longDate(route.date, lang)}
+        <Icon name="chevron" size={16} />
+      </button>
+      {/* The first connection after this time is the trip (today: now at the earliest). */}
+      <label className="eyebrow when-time">
+        <span aria-hidden="true">{t('fromTime')}</span>
+        <input
+          type="time"
+          aria-label={t('departFrom')}
+          value={anchor}
+          min={route.date === today ? nowHm : undefined}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!/^\d\d:\d\d$/.test(v) || v === anchor) return;
+            log('when.time', { trip: id, time: v });
+            edit((r) => ({ ...r, anchor: { departAt: notBefore(v) } }));
+          }}
+        />
+      </label>
+      {dates && (
+        <div className="dates" role="group" aria-label={t('date')} ref={strip}>
+          {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d, i) => (
+            <button
+              key={d}
+              type="button"
+              className={`pill ${d === route.date ? 'on' : ''}`}
+              aria-pressed={d === route.date}
+              onClick={() => {
+                // Today: from the next few minutes, not from a time already gone.
+                const soon = d === today ? nextFive(now) : '';
+                edit((r) => ({
+                  ...r,
+                  date: d,
+                  ...(soon && soon > anchor ? { anchor: { departAt: soon } } : {}),
+                }));
+                setDates(false);
+              }}
+            >
+              {i === 0
+                ? t('today')
+                : i === 1
+                  ? t('tomorrow')
+                  : longDate(d, lang).replace(/,? \d{4}$/, '')}
+            </button>
+          ))}
+          <label className="pill other-date">
+            {t('otherDay')}
+            <input
+              type="date"
+              min={today}
+              value={route.date}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                edit((r) => ({ ...r, date: e.target.value }));
+                setDates(false);
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+
+  const optionsBar = (
+    <>
+      {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
+      {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
+        <OptionsBar
+          trip={trip}
+          result={planner.result}
+          planning={planning}
+          failed={failed}
+          from={anchor}
+          move={(min) => {
+            log('options.move', { trip: id, min });
+            edit((r) => ({ ...r, anchor: { departAt: notBefore(shiftHm(anchor, min)) } }));
+          }}
+          choose={(c, legs) =>
+            // The trip takes it, and its time becomes the trip's: planning again (after
+            // an edit) starts there.
+            (
+              log('options.choose', { trip: id, dep: c.dep, arr: c.arr }),
+              update(id, (x) =>
+                compactTrip({
+                  ...x,
+                  route: { ...x.route, anchor: { departAt: zurichHm(Date.parse(c.dep)) } },
+                  chain: c,
+                  legs,
+                  compact: undefined,
+                }),
+              )
+            )
+          }
+        />
+      )}
+    </>
+  );
 
   return (
     <main className={`page trip-screen ${liveTrip ? 'now' : ''}`}>
@@ -242,6 +355,8 @@ export function TripScreen({ id }: { id: string }) {
         </div>
       )}
 
+      {!liveTrip && !(status === 'past' && isPlanned(trip)) && when}
+
       {renaming ? (
         <input
           className="title-input"
@@ -274,7 +389,12 @@ export function TripScreen({ id }: { id: string }) {
       )}
 
       {liveTrip ? (
-        <TripLive trip={liveTrip} live={live} />
+        <TripLive
+          trip={liveTrip}
+          live={live}
+          // Not left yet: another connection can still be chosen (an earlier one never ends it).
+          options={notLeft ? optionsBar : null}
+        />
       ) : status === 'past' && isPlanned(trip) ? (
         // Over, until its day ends: the record, read-only (then it waits in search).
         <>
@@ -288,57 +408,6 @@ export function TripScreen({ id }: { id: string }) {
         </>
       ) : (
         <>
-          <button
-            type="button"
-            className="eyebrow"
-            aria-expanded={dates}
-            onClick={() => setDates(!dates)}
-          >
-            {longDate(route.date, lang)}
-            <Icon name="chevron" size={16} />
-          </button>
-          {dates && (
-            <div className="dates" role="group" aria-label={t('date')} ref={strip}>
-              {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`pill ${d === route.date ? 'on' : ''}`}
-                  aria-pressed={d === route.date}
-                  onClick={() => {
-                    // Today: from the next half hour, not from a time already gone.
-                    const soon = d === today ? nextHalfHour(now) : '';
-                    edit((r) => ({
-                      ...r,
-                      date: d,
-                      ...(soon && soon > anchor ? { anchor: { departAt: soon } } : {}),
-                    }));
-                    setDates(false);
-                  }}
-                >
-                  {i === 0
-                    ? t('today')
-                    : i === 1
-                      ? t('tomorrow')
-                      : longDate(d, lang).replace(/,? \d{4}$/, '')}
-                </button>
-              ))}
-              <label className="pill other-date">
-                {t('otherDay')}
-                <input
-                  type="date"
-                  min={today}
-                  value={route.date}
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    edit((r) => ({ ...r, date: e.target.value }));
-                    setDates(false);
-                  }}
-                />
-              </label>
-            </div>
-          )}
-
           {chain && <TripFacts chain={chain} />}
           <PlanNotices
             state={
@@ -348,37 +417,7 @@ export function TripScreen({ id }: { id: string }) {
             result={planner.result}
             retry={planner.retry}
           />
-
-          {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
-          {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
-            <OptionsBar
-              trip={trip}
-              result={planner.result}
-              planning={planning}
-              failed={failed}
-              from={anchor}
-              move={(min) => {
-                log('options.move', { trip: id, min });
-                edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, min) } }));
-              }}
-              choose={(c, legs) =>
-                // The trip takes it, and its time becomes the trip's: planning again (after
-                // an edit) starts there.
-                (
-                  log('options.choose', { trip: id, dep: c.dep, arr: c.arr }),
-                  update(id, (x) =>
-                    compactTrip({
-                      ...x,
-                      route: { ...x.route, anchor: { departAt: zurichHm(Date.parse(c.dep)) } },
-                      chain: c,
-                      legs,
-                      compact: undefined,
-                    }),
-                  )
-                )
-              }
-            />
-          )}
+          {optionsBar}
 
           <LogRows
             trip={id}

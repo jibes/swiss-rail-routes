@@ -48,6 +48,13 @@ export function nextHalfHour(now: number): string {
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
 
+/** The next five minutes in Zurich, `HH:MM` (a new trip leaves from then; 23:55 at most). */
+export function nextFive(now: number): string {
+  const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];
+  const t = Math.min(23 * 60 + 55, Math.ceil((h * 60 + m + 1) / 5) * 5);
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
+
 /** `HH:MM` moved by `min` minutes, within the day (Earlier/Later, Try an hour later). */
 export function shiftHm(hm: string, min: number): string {
   const [h, m] = hm.split(':').map(Number) as [number, number];

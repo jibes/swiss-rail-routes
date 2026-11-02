@@ -33,7 +33,14 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   await search.fill('Kleine Scheidegg');
   await search.press('Enter');
 
-  // Next Saturday, 08:00 by default; Later asks for 09:00, the recorded plan.
+  // Today, from the next five minutes, by default (Mon 2 Nov, 09:00 in Zurich).
+  await expect(page.getByRole('button', { name: /Mon, Nov 2, 2026/ })).toBeVisible();
+  const time = page.getByLabel('Leave from (time)');
+  await expect(time).toHaveValue('09:05');
+  // Saturday at 08:00 instead: the day's pills, and the time typed. Later asks for 09:00.
+  await page.getByRole('button', { name: /Mon, Nov 2, 2026/ }).click();
+  await page.getByRole('button', { name: 'Sat, Nov 7', exact: true }).click();
+  await time.fill('08:00');
   await expect(page.getByRole('button', { name: /Sat, Nov 7, 2026/ })).toBeVisible();
   await expect(page.getByText('Nothing found from 08:00')).toBeVisible({ timeout: 30_000 });
   // Said as what it is: no connection on that leg from then (not "the service failed").

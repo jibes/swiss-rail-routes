@@ -7,6 +7,7 @@ import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
 import { loadOptions, saveOptions } from '../io/tours';
 import { useTrips } from '../trips';
+import { useNow } from './useNow';
 import { useT } from '../store';
 import { duration, hhmm, minutesBetween, zurichHm } from './format';
 import { Icon } from './icons';
@@ -80,9 +81,13 @@ export function OptionsBar({
     result?.options && result.legs ? result.options.map((c) => ({ c, legs: result.legs! })) : [];
   const extra = more.base === base ? more.list : [];
   const chosen = trip.chain && trip.legs ? [{ c: trip.chain, legs: trip.legs }] : [];
-  const all = [...new Map([...extra, ...own, ...chosen].map((o) => [keyOf(o.c), o])).values()].sort(
-    (a, b) => Date.parse(a.c.dep) - Date.parse(b.c.dep),
-  );
+  const now = useNow();
+  // Gone already (today): no option any more, but for the one chosen.
+  const ahead = (o: Option) =>
+    Date.parse(o.c.dep) > now || (!!trip.chain && keyOf(o.c) === keyOf(trip.chain));
+  const all = [...new Map([...extra, ...own, ...chosen].map((o) => [keyOf(o.c), o])).values()]
+    .filter(ahead)
+    .sort((a, b) => Date.parse(a.c.dep) - Date.parse(b.c.dep));
   const sameArr = all.length > 1 && all.every((o) => o.c.arr === all[0]!.c.arr);
   const noMore = none?.base === base && !none.failed ? none.dir : null;
   const failed = none?.base === base && none.failed;
@@ -112,8 +117,17 @@ export function OptionsBar({
     if (!first || !last) return;
     // Later: from just after the last option. Earlier: two hours before the first (the planner
     // finds connections leaving at or after the time it is given).
-    const at =
-      dir === 'later' ? Date.parse(last.c.dep) + 60_000 : Date.parse(first.c.dep) - 120 * 60_000;
+    // Never from before now: a connection gone is none to choose (and choosing it would end the
+    // trip at once).
+    const floor = Date.now();
+    const at = Math.max(
+      floor,
+      dir === 'later' ? Date.parse(last.c.dep) + 60_000 : Date.parse(first.c.dep) - 120 * 60_000,
+    );
+    if (dir === 'earlier' && Date.parse(first.c.dep) <= floor + 60_000) {
+      log('options.more.none', { trip: trip.id, dir, why: 'now' });
+      return setNone({ base, dir });
+    }
     log('options.more', { trip: trip.id, dir, from: zurichHm(at), shown: all.length });
     if (dayOf(at) !== trip.route.date) {
       log('options.more.otherDay', { trip: trip.id, dir });
@@ -129,7 +143,9 @@ export function OptionsBar({
       );
       const found = (r.options ?? []).filter(
         (c) =>
-          !all.some((o) => keyOf(o.c) === keyOf(c)) && dayOf(Date.parse(c.dep)) === trip.route.date,
+          !all.some((o) => keyOf(o.c) === keyOf(c)) &&
+          dayOf(Date.parse(c.dep)) === trip.route.date &&
+          Date.parse(c.dep) > floor,
       );
       const fresh =
         dir === 'later'

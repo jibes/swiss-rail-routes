@@ -37,6 +37,8 @@ function disruptedLeg(rows: LineRow[], i: number, warnings: Warning[]) {
   return leg !== undefined && warnings.some((w) => w.type === 'disruption' && w.legIndex === leg);
 }
 
+const isWalk = (r?: LineRow) => r?.type === 'ride' && r.section.mode === 'walk';
+
 /** Only a stay is said: a change shows as a big dot with two times. */
 function stayLabel(t: ReturnType<typeof useT>, r: StationRow) {
   return r.role === 'stop' && r.stay ? t('stayFor', { min: r.stay }) : '';
@@ -271,6 +273,8 @@ export function TripLine({
               dragging ? 'dragging' : '',
               L?.passed ? 'passed' : '',
               L?.here ? 'here' : '',
+              isWalk(rows[i + 1]) ? 'walk-from' : '',
+              isWalk(rows[i - 1]) ? 'walk-to' : '',
               drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
             ].join(' ')}
             style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
@@ -326,7 +330,8 @@ export function TripLine({
                     disruptedLeg(rows, i, warnings) ? t('notReachedDisrupted') : t('notReached')
                   }
                 </span>
-                {act && (
+                {/* A disruption (works, a closure) is not over in an hour: no point trying later. */}
+                {act && !disruptedLeg(rows, i, warnings) && (
                   <button type="button" className="text-button" onClick={act.later}>
                     {t('tryLater')}
                   </button>

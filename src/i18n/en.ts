@@ -203,6 +203,8 @@ export const en = {
   sharedPast: "This trip's day is over: it can be kept to go again.",
   changeHere: 'Change',
   noStop: 'No stop',
+  fromTime: 'from',
+  departFrom: 'Leave from (time)',
   stationsLabel: 'Stations',
   kindBus: 'Bus stop',
   kindBoat: 'Boat pier',

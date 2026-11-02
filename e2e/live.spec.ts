@@ -13,12 +13,23 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByText('Departure', { exact: true })).toBeVisible();
   await expect(page.getByText('in 14 min')).toBeVisible();
   await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
+  // Not left yet: another connection can still be taken.
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+  // 09:03:30, the train in half a minute: nothing leaves before it from now, so Earlier finds
+  // none and the trip stays as it is (choosing a connection gone would end it at once).
+  await page.clock.runFor('13:30');
+  const hero = await page.locator('.next-time .num').innerText();
+  await page.getByRole('button', { name: 'Earlier connections' }).click();
+  await expect(page.locator('.options-note')).toHaveText('No earlier connection on this day.');
+  await expect(page.locator('.next-time .num')).toHaveText(hero);
+  await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
 
   // On the train: the marker rides along, its stops open, passed ones grey.
-  await page.clock.runFor('25:00');
+  await page.clock.runFor('11:30');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
   await expect(page.locator('.trip-line .ride.here .mids li').first()).toBeVisible();
   await expect(page.locator('.here-mid')).toHaveCount(1);
   await expect(page.locator('.here-mid')).toHaveText('You are here');
@@ -58,8 +69,10 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
-  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15, on the R62
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+  // 09:15, on the R62 (a trip is never planned from a time gone).
+  await page.clock.runFor('25:00');
 
   await page.getByRole('link', { name: 'Replan from here' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');

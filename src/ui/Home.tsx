@@ -2,20 +2,12 @@ import { useEffect } from 'react';
 import { expectedArrival } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
-import {
-  dayOf,
-  defaultDate,
-  departure,
-  newTrip,
-  sortTrips,
-  tripStatus,
-  type Trip,
-} from '../core/trip';
+import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
-import { duration, hhmm, minutesBetween, nextHalfHour } from './format';
+import { duration, hhmm, minutesBetween, nextFive } from './format';
 import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
 import { Logo } from './Logo';
@@ -186,11 +178,9 @@ export function Home() {
             className="primary wide"
             onClick={() => {
               const id = crypto.randomUUID();
-              // On a Saturday that is today: from the next half hour, not from 08:00 gone by.
-              const date = defaultDate();
-              const tour = newTour(id, date);
-              if (date === dayOf(Date.now()) && nextHalfHour(Date.now()) > '08:00')
-                tour.anchor = { departAt: nextHalfHour(Date.now()) };
+              // Today, from the next few minutes: the first connection after then.
+              const tour = newTour(id, dayOf(Date.now()));
+              tour.anchor = { departAt: nextFive(Date.now()) };
               add(newTrip(id, tour, undefined, undefined, new Date()));
               go(`/trip/${id}`);
             }}

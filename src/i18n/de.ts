@@ -212,6 +212,8 @@ export const de = {
   sharedPast: 'Der Tag dieser Reise ist vorbei: du kannst sie behalten, um sie wieder zu machen.',
   changeHere: 'Umsteigen',
   noStop: 'Kein Halt',
+  fromTime: 'ab',
+  departFrom: 'Abfahrt ab (Zeit)',
   stationsLabel: 'Stationen',
   kindBus: 'Bushaltestelle',
   kindBoat: 'Schiffstation',
