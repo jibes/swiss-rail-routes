@@ -1,0 +1,237 @@
+/* ─── The live view (ChainView) in the trip line's look (split from tripline.css) ─── */
+
+.chain .badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.chain .station .what b {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.chain .times-col {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* As on the trip line: the arrival small above, the departure (what you act on) big. */
+.chain .times-col time:not(:last-child) {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.chain .times-col time:last-child {
+  font-size: 15px;
+}
+
+.chain .passed .badge {
+  border-color: var(--ink-3);
+  color: var(--ink-3);
+}
+
+/* The options strip (0.5.7): it scrolls when more are loaded; few fill the bar */
+.options-bar .opts {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  gap: 2px;
+}
+
+.options-bar .opts::-webkit-scrollbar {
+  display: none;
+}
+
+.options-bar .opt {
+  flex: 1 0 84px;
+  scroll-snap-align: center;
+}
+
+.options-bar .shift[aria-busy='true'] {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+.options-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* The rail loader: a train runs along a stretch of line between two stations */
+.rail-loader {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 64px;
+  height: 16px;
+  color: var(--rail);
+}
+
+.rail-loader .track {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+/* The two stations at its ends */
+.rail-loader .track::before,
+.rail-loader .track::after {
+  content: '';
+  position: absolute;
+  top: -3.5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2.5px solid color-mix(in srgb, currentColor 45%, transparent);
+  box-sizing: border-box;
+}
+
+.rail-loader .track::before {
+  left: -4px;
+}
+
+.rail-loader .track::after {
+  right: -4px;
+}
+
+.rail-loader .train {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 22px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+  background: currentColor;
+  animation: rail-run 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+.rail-loader.small {
+  height: 12px;
+}
+
+.rail-loader.small .train {
+  width: 16px;
+  height: 5px;
+  margin-top: -2.5px;
+}
+
+@keyframes rail-run {
+  from {
+    left: 6px;
+  }
+  to {
+    left: calc(100% - 6px - 22px);
+  }
+}
+
+.rail-loader.small .train {
+  animation-name: rail-run-small;
+}
+
+@keyframes rail-run-small {
+  from {
+    left: 6px;
+  }
+  to {
+    left: calc(100% - 6px - 16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-loader .train {
+    animation: rail-wait 1.2s ease-in-out infinite alternate;
+    left: calc(50% - 11px);
+  }
+  @keyframes rail-wait {
+    to {
+      opacity: 0.35;
+    }
+  }
+}
+
+/* Planning: the loader where departure and arrival will be */
+.hero-loading {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  max-width: 260px;
+  font-size: 14px;
+}
+
+/* A cell of the options strip that is loading */
+.options-bar .opt.loading {
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  flex: 0 0 84px;
+}
+
+.options-bar .single .rail-loader {
+  width: 120px;
+}
+
+.primary .rail-loader {
+  width: 72px;
+  color: var(--on-rail);
+}
+
+/* Times not there yet on the line: a soft shimmer instead of a still bar */
+.trip-line .t .shim {
+  background: linear-gradient(
+    90deg,
+    var(--hair) 0%,
+    color-mix(in srgb, var(--hair) 40%, var(--bg)) 50%,
+    var(--hair) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-line .t .shim {
+    animation: none;
+  }
+}
+
+/* One box: the strip and its note */
+.options-wrap {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.options-wrap .options-bar {
+  margin-top: 0;
+}
+
+.options-bar .opt.loading .rail-loader {
+  color: var(--rail);
+}

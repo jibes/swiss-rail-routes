@@ -136,9 +136,12 @@ export function TripLine({
           const first = !rows.slice(0, i).some((x) => x.type === 'ride' && x.leg === r.leg);
           const s = r.section;
           const ws = warnsFor(r.leg, r.sectionIndex, first);
-          const min = s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0;
+          const min =
+            s.walkMin ?? (s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0);
           return (
-            <li key={i} className="ride">
+            // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
+            // the focus in it) must stay the same element.
+            <li key={`r${r.leg}-${r.sectionIndex}`} className="ride">
               <span className="t" />
               <span className="rail" />
               <div className="m">
@@ -206,7 +209,7 @@ export function TripLine({
         const dragging = drag && k === drag.from;
         return (
           <li
-            key={i}
+            key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
             className={[
               'station',
               big ? 'off' : 'pass',

@@ -132,7 +132,7 @@ test('delete at once, with Undo for a few seconds', async ({ page }) => {
   await page.getByRole('button', { name: 'Add a station' }).click();
   await add(page, 'Arosa');
   await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: 'Delete trip' }).click();
+  await page.getByRole('button', { name: 'Delete trip' }).click();
 
   // Back on the list without it; Undo brings it back as it was.
   const card = page.getByRole('link', { name: /Chur → Arosa/ });
@@ -144,7 +144,7 @@ test('delete at once, with Undo for a few seconds', async ({ page }) => {
   // Without Undo it stays gone, and the note goes after a few seconds.
   await card.click();
   await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: 'Delete trip' }).click();
+  await page.getByRole('button', { name: 'Delete trip' }).click();
   await expect(page.getByText('Deleted: Chur → Arosa')).toBeVisible();
   await page.clock.runFor(11_000);
   await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0);
@@ -165,9 +165,9 @@ test('Escape closes what is on top first; renaming cancels; /edit before departu
   await entries.first().getByRole('button').first().click();
   await expect(page.locator('.panel')).toBeVisible();
   await page.getByRole('button', { name: 'More' }).click();
-  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(page.locator('.menu')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.locator('.menu')).toHaveCount(0);
   await expect(page.locator('.panel')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('.panel')).toHaveCount(0);

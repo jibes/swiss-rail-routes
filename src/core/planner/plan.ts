@@ -1,20 +1,18 @@
-// Planner (SPEC §5): one OJP request per leg, filter by must-pass stops and avoided segments,
+// Planner (SPEC §5): one OJP request per leg, filter by must-pass stops (and lines' modes),
 // score, chain legs with a beam, relax constraints when a leg has no survivor.
-import type { GaData, RouteTemplate, Segment } from '../data';
+import type { GaData, RouteTemplate } from '../data';
 import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
 import { zurichDateTime } from '../ojp/request';
-import { usesSegment } from '../segments';
 import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
-import { MIN, ms, rides, stopSeq, visited } from './connection';
+import { MIN, ms, rides, visited } from './connection';
 import { passesVias, stitched, type Query } from './stitch';
 
 export interface PlanDeps {
   fetchTrips: (q: TripQuery) => Promise<Connection[]>;
   templates: RouteTemplate[];
-  segments: Segment[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
   weights?: Partial<Weights>;
@@ -37,12 +35,12 @@ export const DEFAULT_WEIGHTS: Weights = {
   tightTransfer: 10,
 };
 
-export type Relaxed = 'avoid' | 'mustPass';
+/** The one rule that can be let go: a leg's must-pass stations (and its lines' modes). */
+export type Relaxed = 'mustPass';
 
 export interface LegRules {
   leg: Leg;
   mustPass: string[];
-  avoid: Segment[];
   templates: RouteTemplate[];
 }
 
@@ -67,7 +65,7 @@ export interface PlanResult {
   legs?: Leg[];
 }
 
-export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates' | 'segments'>): LegRules[] {
+export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates'>): LegRules[] {
   return expandLegs(tour).map((leg) => {
     // The lines that run inside this leg: by their must-pass stations (rings), or by two
     // stations in a row tagged with them (a line without rings). An end station alone is
@@ -81,11 +79,9 @@ export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates' | 'segment
       }),
     );
     const templates = deps.templates.filter((t) => ids.has(t.id));
-    const avoidIds = new Set(templates.flatMap((t) => t.avoid));
     return {
       leg,
       mustPass: leg.vias.map((w) => stopKey(w.stopRef)),
-      avoid: deps.segments.filter((s) => avoidIds.has(s.id)),
       templates,
     };
   });
@@ -131,7 +127,6 @@ export function rejectReason(
   rules: LegRules,
   relaxed: Set<Relaxed>,
 ): Relaxed | null {
-  const seq = stopSeq(c);
   if (!relaxed.has('mustPass')) {
     const at = visited(c);
     if (rules.mustPass.some((r) => !at.has(r))) return 'mustPass';
@@ -139,7 +134,6 @@ export function rejectReason(
     const modes = new Set(rides(c).map(([s]) => s.mode));
     if (rules.templates.some((t) => !t.modes.some((m) => modes.has(m)))) return 'mustPass';
   }
-  if (!relaxed.has('avoid') && rules.avoid.some((s) => usesSegment(seq, s))) return 'avoid';
   return null;
 }
 
@@ -258,7 +252,7 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
       ga: deps.ga,
       stop: deps.stop,
     };
-    const ladder: Relaxed[][] = [[], ['avoid'], ['avoid', 'mustPass']];
+    const ladder: Relaxed[][] = [[], ['mustPass']];
     const next: Beam[] = [];
     for (const step of ladder) {
       const relaxed = new Set(step);
@@ -278,7 +272,6 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
         kept: pool.length,
         rejected: why,
         mustPass: rules.leg.vias.map((v) => v.name),
-        avoid: rules.avoid.map((s) => s.id),
       });
       // Regular trains over panorama/supplement trains when both run.
       const regular = pool.filter((c) => !rides(c).some(([s]) => isSupplement(s, deps.ga)));
@@ -302,15 +295,9 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
         }
       }
       if (next.length) {
-        // Report only the rules the kept connections actually break.
-        const broken = new Set<Relaxed>();
-        // Each rule on its own: a connection can break both.
-        for (const b of next)
-          for (const rule of ['mustPass', 'avoid'] as const) {
-            const other: Relaxed = rule === 'mustPass' ? 'avoid' : 'mustPass';
-            if (rejectReason(b.conns.at(-1)!, rules, new Set([other]))) broken.add(rule);
-          }
-        for (const r of step) if (broken.has(r)) relaxedOut.push({ legIndex: i, rule: r });
+        // Said only when a kept connection really misses a station.
+        if (step.length && next.some((b) => rejectReason(b.conns.at(-1)!, rules, new Set())))
+          relaxedOut.push({ legIndex: i, rule: 'mustPass' });
         break;
       }
     }

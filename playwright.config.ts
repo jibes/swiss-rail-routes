@@ -4,6 +4,8 @@ const base = process.env.VITE_BASE && process.env.VITE_BASE !== './' ? process.e
 
 export default defineConfig({
   testDir: 'e2e',
+  // A stray test.only must not turn CI green with one test.
+  forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
   use: {
     baseURL: `http://localhost:4173${base}`,

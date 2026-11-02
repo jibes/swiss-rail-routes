@@ -55,22 +55,36 @@ export async function answerWorker(page: Page) {
   });
 }
 
+/**
+ * Answers the Worker for `page` and collects its errors: uncaught ones and console errors.
+ * Failed loads are allowed only where a test means them: map tiles (unreachable on purpose),
+ * live train data and answers not recorded (the app then says so itself). Every page a test
+ * opens goes through this, the extra ones too (`guard(other)`, then `check()`).
+ */
+export async function guard(page: Page) {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const url = m.location().url ?? '';
+    const failedLoad = /Failed to load resource|ERR_FAILED/.test(m.text());
+    const meant =
+      failedLoad &&
+      (/openfreemap|ojp\.invalid\/(journey|trip)/.test(url + m.text()) ||
+        // Sync's own answers: a write that lost the race (409), a replaced key (410).
+        (/ojp\.invalid\/sync\//.test(url) && /\b(409|410)\b/.test(m.text())));
+    if (!meant) errors.push(`console.error: ${m.text()} ${url}`);
+  });
+  await answerWorker(page);
+  return { errors, check: () => expect(errors, 'page errors').toEqual([]) };
+}
+
 export const test = base.extend<{ pageErrors: string[] }>({
   pageErrors: [
     async ({ page }, use) => {
-      const errors: string[] = [];
-      page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-      page.on('console', (m) => {
-        // Map tiles are unreachable in tests on purpose (e2e/map.spec.ts).
-        if (
-          m.type() === 'error' &&
-          !/openfreemap|ERR_FAILED|Failed to load resource/.test(m.text())
-        )
-          errors.push(`console.error: ${m.text()}`);
-      });
-      await answerWorker(page);
-      await use(errors);
-      expect(errors, 'page errors').toEqual([]);
+      const g = await guard(page);
+      await use(g.errors);
+      g.check();
     },
     { auto: true },
   ],
@@ -86,9 +100,7 @@ export async function planShared(page: Page, hash: string) {
   await page.goto(`./${hash}`);
   await page.getByRole('button', { name: 'Plan this trip' }).click();
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  await expect(
-    page.locator('.hero-times:not(.busy)').or(page.locator('.trip-progress')),
-  ).toBeVisible({
+  await expect(page.locator('.hero-times').or(page.locator('.trip-progress'))).toBeVisible({
     timeout: 30_000,
   });
 }

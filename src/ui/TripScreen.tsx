@@ -155,7 +155,10 @@ export function TripScreen({ id }: { id: string }) {
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
   const chain = trip.chain;
   const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
-  const planning = !chain && planner.status === 'planning';
+  // Planning from the first moment after an edit (the planner waits for edits to settle):
+  // no flash of "nothing found" and no jump while it waits.
+  const failed = planner.status === 'error' || planner.status === 'unavailable';
+  const planning = !chain && route.waypoints.length >= 2 && !planner.result && !failed;
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
   // Disruptions are on the rides they concern; their number is said at the top.
@@ -213,11 +216,11 @@ export function TripScreen({ id }: { id: string }) {
       </header>
       {menu && (
         <div className="menu-scrim" onClick={() => setMenu(false)}>
-          <div className="menu" role="menu" onClick={(e) => e.stopPropagation()}>
+          {/* A disclosure of plain buttons, not an ARIA menu (no arrow-key menu behaviour). */}
+          <div className="menu" onClick={(e) => e.stopPropagation()}>
             {isPlanned(trip) && (
               <button
                 type="button"
-                role="menuitem"
                 onClick={() => {
                   log('export.ics', { trip: id });
                   downloadIcs(route, name, trip.chain, trip.id);
@@ -230,7 +233,6 @@ export function TripScreen({ id }: { id: string }) {
             )}
             <button
               type="button"
-              role="menuitem"
               onClick={() => {
                 const copy = crypto.randomUUID();
                 const r = {
@@ -250,7 +252,6 @@ export function TripScreen({ id }: { id: string }) {
             </button>
             <button
               type="button"
-              role="menuitem"
               className="danger"
               onClick={() => {
                 // At once; the list offers Undo for a few seconds.
@@ -275,7 +276,12 @@ export function TripScreen({ id }: { id: string }) {
           onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
             // Escape cancels: the name as it was.
-            if (e.key === 'Escape') e.currentTarget.value = name;
+            if (e.key === 'Escape') {
+              e.currentTarget.value = name;
+              // Only the name: the panel or menu behind it stays open.
+              e.preventDefault();
+              e.stopPropagation();
+            }
             if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
           }}
           onBlur={(e) => {
@@ -377,8 +383,8 @@ export function TripScreen({ id }: { id: string }) {
             </>
           )}
           {!chain && route.waypoints.length >= 2 && planning && (
-            <div className="hero-loading">
-              <RailLoader label={t('planning')} />
+            <div className="hero-loading" role="status">
+              <RailLoader />
               <span className="muted">{t('planning')}</span>
             </div>
           )}
@@ -414,23 +420,14 @@ export function TripScreen({ id }: { id: string }) {
               })}
             </p>
           )}
-          {/* Stations not reached show on the line itself; an avoided stretch has no row. */}
-          {planner.result?.relaxed
-            .filter((r) => r.rule === 'avoid')
-            .map((r, i) => (
-              <p key={i} className="notice">
-                {t('relaxedAvoidAt', {
-                  from: planner.result?.legs?.[r.legIndex]?.from.name ?? '',
-                  to: planner.result?.legs?.[r.legIndex]?.to.name ?? '',
-                })}
-              </p>
-            ))}
+          {/* Stations not reached show on the line itself (struck, with Try later). */}
 
           {route.waypoints.length >= 2 && (
             <OptionsBar
               trip={trip}
               result={planner.result}
               planning={planning}
+              failed={failed}
               from={anchor}
               move={(min) => {
                 log('options.move', { trip: id, min });

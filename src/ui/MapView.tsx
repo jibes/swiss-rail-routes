@@ -124,7 +124,8 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
           type="button"
           className="icon"
           aria-label={t('back')}
-          onClick={() => history.back()}
+          // Up to the trip, as on every screen: the map may have been opened from a link.
+          onClick={() => go(tripId ? `/trip/${id}` : '/')}
         >
           <Icon name="back" />
         </button>

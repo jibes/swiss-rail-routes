@@ -51,7 +51,7 @@ describe('line enforcement (T6)', () => {
     // Template ends at Bellinzona; plan Zürich → Lugano through it.
     const { deps: d } = deps(list.map((c) => c));
     const rules = legRules(t, d);
-    expect(rules.at(-1)!.avoid.map((s) => s.id)).toContain('gotthard-base');
+    expect(rules.at(-1)!.templates.map((x) => x.id)).toContain('gotthard-bergstrecke');
     const tt = deps(list);
     const simple: Tour = {
       ...newTour('t', DATE, stop('Zürich HB')),
@@ -184,23 +184,6 @@ describe('relaxation', () => {
     expect(r.recommended).toBeDefined();
     expect(r.relaxed).toEqual([{ legIndex: 0, rule: 'mustPass' }]);
   });
-
-  it('says every rule the train breaks: not via Göschenen, and through the base tunnel', async () => {
-    const t: Tour = {
-      ...newTour('t', DATE),
-      anchor: { departAt: '08:00' },
-      waypoints: [
-        { ...stop('Zürich HB'), kind: 'start', dwellMin: 0 },
-        { ...stop('Göschenen'), kind: 'via', dwellMin: 0, templateId: 'gotthard-bergstrecke' },
-        { ...stop('Lugano'), kind: 'end', dwellMin: 0, templateId: 'gotthard-bergstrecke' },
-      ],
-    };
-    const r = await plan(t, deps([base('08:09', '10:08')]).deps);
-    expect(r.relaxed).toEqual([
-      { legIndex: 0, rule: 'avoid' },
-      { legIndex: 0, rule: 'mustPass' },
-    ]);
-  });
 });
 
 describe('supplement trains', () => {
@@ -319,7 +302,7 @@ describe('round trips', () => {
       ),
       true,
     );
-    const rules = legRules(t, { templates, segments: [] });
+    const rules = legRules(t, { templates });
     expect(rules).toHaveLength(1);
     expect(rules[0]!.templates.map((x) => x.id)).toEqual(['albula', 'bernina']);
     expect(index.byRef(rules[0]!.mustPass[0]!)?.name).toBe('Chur');
@@ -332,7 +315,7 @@ describe('lines and legs', () => {
     t = insertEntries(t, 0, lineEntries(tpl('albula')));
     t = insertEntries(t, 1, lineEntries(tpl('vereina'), true));
     t = setEntryStay(t, 1, 60);
-    const rules = legRules({ ...t, anchor: { departAt: '08:00' } }, { templates, segments: [] });
+    const rules = legRules({ ...t, anchor: { departAt: '08:00' } }, { templates });
     expect(rules.map((r) => r.templates.map((x) => x.id))).toEqual([['albula'], ['vereina']]);
   });
 });

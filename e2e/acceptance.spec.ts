@@ -38,7 +38,7 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
 
     // The calendar is in the menu; the map shows the trip and goes back to it.
     await page.getByRole('button', { name: 'More' }).click();
-    await expect(page.getByRole('menuitem', { name: /Calendar/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Calendar/ })).toBeVisible();
     await page.locator('.menu-scrim').click({ position: { x: 5, y: 400 } });
     await page.getByRole('button', { name: 'Map' }).click();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();

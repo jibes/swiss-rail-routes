@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
-import { usesSegment } from '../src/core/segments';
 import { addWaypoint, setStop } from '../src/core/edit';
 import { liveState } from '../src/core/live';
 import { zurichDateTime } from '../src/core/ojp/request';
@@ -10,7 +9,7 @@ import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';
 import { newTrip } from '../src/core/trip';
 import { FIXTURE_DATE, LIVE_URL, RECORD, ojpFor } from './acceptance/ojp';
 import { acceptanceTours } from './acceptance/tours';
-import { ga, index, ref, segments, templates } from './helpers/timetable';
+import { ga, index, ref, templates } from './helpers/timetable';
 
 const DATE = process.env.OJP_DATE ?? FIXTURE_DATE;
 const tours = acceptanceTours(DATE);
@@ -26,7 +25,6 @@ const planned = (id: string) => {
       plan(tours[id]!, {
         ...ojpFor(id),
         templates,
-        segments,
         ga,
         stop: (r) => index.byRef(r),
       }),
@@ -137,7 +135,6 @@ suite('acceptance tours', { timeout }, () => {
     const again = await plan(draft, {
       ...ojpFor('T5R'),
       templates,
-      segments,
       ga,
       stop: (x) => index.byRef(x),
     });
@@ -150,11 +147,9 @@ suite('acceptance tours', { timeout }, () => {
 
   it('T6 base tunnel: every chain over the mountain line', async () => {
     const r = await planned('T6');
-    const base = segments.find((s) => s.id === 'gotthard-base')!;
     expect(chains(r).length).toBeGreaterThan(0);
     for (const c of chains(r)) {
       const seq = c.connections.flatMap((x) => calls(x).map((k) => k.key));
-      expect(usesSegment(seq, base)).toBe(false);
       expect(seq).toContain(ref('Göschenen'));
       expect(seq).toContain(ref('Airolo'));
     }

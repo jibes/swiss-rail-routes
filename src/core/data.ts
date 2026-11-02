@@ -24,23 +24,11 @@ export interface RouteTemplate {
   chain: TemplateStop[];
   /** Served stops a connection must call at (checked against intermediate stops). */
   mustPass: string[];
-  /** Segment ids from segments.json the leg must not use. */
-  avoid: string[];
   modes: Mode[];
   highlights: TemplateHighlight[];
   /** Best seat side in chain order. */
   seat?: 'L' | 'R';
   season?: { months: number[]; note: Record<Lang, string> };
-}
-
-/** A stretch identified by its ends: any ride from an `a` stop to a `b` stop (either way)
- * that calls at none of `via` in between takes it (e.g. a base tunnel). */
-export interface Segment {
-  id: string;
-  name: string;
-  a: string[];
-  b: string[];
-  via: string[];
 }
 
 export type GaRule = 'half' | 'reduced' | 'none';

@@ -1,7 +1,7 @@
 import { encodeTour } from '../src/core/export/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { answerWorker, BEFORE, expect, planShared, test } from './fixtures';
+import { BEFORE, expect, guard, planShared, test } from './fixtures';
 
 // Two devices (separate browser contexts, so separate storage) and the Worker's mailbox.
 test('sync: start on one device, join with the key on another, changes go both ways', async ({
@@ -22,7 +22,7 @@ test('sync: start on one device, join with the key on another, changes go both w
   expect(key).toMatch(/^([0-9A-Z]{4}-){12}[0-9A-Z]{4}$/);
 
   const laptop = await browser.newPage({ baseURL: new URL('./', page.url()).href });
-  await answerWorker(laptop);
+  const laptopErrors = await guard(laptop);
   await laptop.clock.install({ time: BEFORE });
   await laptop.goto('./#/settings');
   await laptop.getByRole('button', { name: 'I have a key' }).click();
@@ -61,7 +61,7 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('link', { name: /From the laptop/ }).click();
   await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('menuitem', { name: 'Delete trip' }).click();
+  await page.getByRole('button', { name: 'Delete trip' }).click();
   await page.waitForTimeout(3500);
   await laptop.goto('./');
   await laptop.reload();
@@ -79,14 +79,16 @@ test('sync: start on one device, join with the key on another, changes go both w
   // Said again after a restart, before any round has run (the last status is kept).
   await laptop.reload();
   await expect(laptop.getByRole('status')).toContainText(/replaced on another device/);
+  laptopErrors.check();
   await laptop.close();
 
   // The key from a link: opens settings to confirm, and does not stay in the address bar.
   const third = await browser.newPage({ baseURL: new URL('./', page.url()).href });
-  await answerWorker(third);
+  const thirdErrors = await guard(third);
   await third.clock.install({ time: BEFORE });
   await third.goto(`./#/sync/${key}`);
   await expect(third.getByLabel('Key from your other device')).toHaveValue(key);
   await expect(third).toHaveURL(/#\/settings$/);
+  thirdErrors.check();
   await third.close();
 });

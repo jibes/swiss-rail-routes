@@ -5,14 +5,13 @@ import { newTrip, revise } from '../src/core/trip';
 import { ojpFor } from './acceptance/ojp';
 import { acceptanceTours } from './acceptance/tours';
 import { FIXTURE_DATE } from './acceptance/ojp';
-import { ga, index, segments, templates } from './helpers/timetable';
+import { ga, index, templates } from './helpers/timetable';
 
 describe('trip share link', async () => {
   const tour = acceptanceTours(FIXTURE_DATE).T3!;
   const r = await plan(tour, {
     ...ojpFor('T3'),
     templates,
-    segments,
     ga,
     stop: (x) => index.byRef(x),
   });

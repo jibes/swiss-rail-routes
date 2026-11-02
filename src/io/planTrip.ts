@@ -3,7 +3,7 @@
 // (srr.plans.v1) and written into the trip unless its route changed meanwhile.
 import { plan, type PlanResult } from '../core/planner/plan';
 import { compactTrip, type Trip } from '../core/trip';
-import { GA, SEGMENTS, TEMPLATES } from '../data';
+import { GA, TEMPLATES } from '../data';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { fetchTrips } from './ojp';
@@ -76,7 +76,6 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
       trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
       fetchTrips: (q) => fetchTrips(q, ctrl.signal),
       templates: TEMPLATES,
-      segments: SEGMENTS,
       ga: GA,
       stop: (ref) => index.byRef(ref),
     });

@@ -4,13 +4,12 @@ import type { Connection, Section } from '../../src/core/model';
 import type { TripQuery } from '../../src/core/ojp/request';
 import { zurichDateTime } from '../../src/core/ojp/request';
 import { createStopSearch, stopKey, type StopIndexFile } from '../../src/core/stops';
-import { GA, SEGMENTS, TEMPLATES } from '../../src/data';
+import { GA, TEMPLATES } from '../../src/data';
 
 export const index = createStopSearch(
   JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
 );
 export const templates = TEMPLATES;
-export const segments = SEGMENTS;
 export const ga = GA;
 
 export const ref = (name: string) => {
@@ -78,7 +77,6 @@ export const deps = (list: Connection[]) => {
     deps: {
       fetchTrips: tt.fetchTrips,
       templates,
-      segments,
       ga,
       stop: (r: string) => index.byRef(r),
     },

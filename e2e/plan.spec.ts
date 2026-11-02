@@ -13,6 +13,15 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   page,
 }) => {
   await page.clock.install({ time: BEFORE });
+  // At 08:00 OJP answers "no trip found" (an answer, not a failure): recorded only from 09:00.
+  await page.route(/\/trip$/, async (route) => {
+    const q = route.request().postDataJSON() as { time?: string };
+    if (!q.time?.endsWith('T08:00')) return route.fallback();
+    await route.fulfill({
+      contentType: 'application/xml',
+      body: '<OJP><OJPResponse><ServiceDelivery><OJPTripDelivery><ErrorCondition><TripProblemType>TRIP_NOTRIPFOUND</TripProblemType></ErrorCondition></OJPTripDelivery></ServiceDelivery></OJPResponse></OJP>',
+    });
+  });
   await page.goto('./');
   await page.getByRole('button', { name: 'New trip' }).click();
   // A new trip opens with the search: where it starts.
@@ -26,12 +35,11 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
 
   // Next Saturday, 08:00 by default; Later asks for 09:00, the recorded plan.
   await expect(page.getByRole('button', { name: /Sat, Nov 7, 2026/ })).toBeVisible();
-  await expect(page.locator('.hero-times:not(.busy)').or(page.getByRole('alert'))).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(page.getByText('Nothing found from 08:00')).toBeVisible();
+  await expect(page.getByText('Nothing found from 08:00')).toBeVisible({ timeout: 30_000 });
+  // Said as what it is: no connection on that leg from then (not "the service failed").
+  await expect(page.getByRole('alert')).toContainText('Kleine Scheidegg');
   await page.getByRole('button', { name: 'Later connections' }).click();
-  await expect(page.locator('.hero-times:not(.busy)')).toContainText('09:04', { timeout: 30_000 });
+  await expect(page.locator('.hero-times')).toContainText('09:04', { timeout: 30_000 });
   await expect(page.locator('.opt[aria-pressed="true"]')).toHaveCount(1);
   await expect(
     page

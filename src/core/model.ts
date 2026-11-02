@@ -21,16 +21,6 @@ export interface Waypoint {
   ring?: boolean;
 }
 
-export interface LegConstraint {
-  forcedVias: string[];
-  forcedLines: string[];
-  /** Segment ids from `src/data/segments.json`, e.g. `gotthard-base`. */
-  avoid: string[];
-  modes: Mode[];
-  maxTransfers?: number;
-  minTransferMin: number;
-}
-
 export interface Tour {
   id: string;
   name: string;

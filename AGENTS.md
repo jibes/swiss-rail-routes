@@ -35,7 +35,7 @@ Status: 0.4.0, one object, one screen, one line (SPEC §3a): every trip dated, p
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 
-- Curated data: `src/data/templates.json`, `segments.json` (types in `src/core/data.ts`). `ga.json` is generated (`npm run data:ga`) from SBB's OSDM fares; it covers fares SBB sells, so other operators' summit lines (Niesen, Harder…) are missing, never guessed. Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
+- Curated data: `src/data/templates.json` (types in `src/core/data.ts`; a line is enforced by its must-pass stations and its modes, nothing else: the avoided-segment rule was redundant and went in 0.6.3). `ga.json` is generated (`npm run data:ga`) from SBB's OSDM fares; it covers fares SBB sells, so other operators' summit lines (Niesen, Harder…) are missing, never guessed. Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
 
 ## Android
 

@@ -14,7 +14,7 @@ import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
 import { isPlanned, revise, tripStatus } from '../core/trip';
 import { stopKey } from '../core/stops';
-import { GA, SEGMENTS } from '../data';
+import { GA } from '../data';
 import { fetchTrips, WorkerError } from '../io/ojp';
 import { stopSearch } from '../io/stops';
 import { useT } from '../store';
@@ -146,7 +146,6 @@ export function EditTrip({ id }: { id: string }) {
       const r = await plan(from, {
         fetchTrips: (q) => fetchTrips(q),
         templates: TEMPLATES,
-        segments: SEGMENTS,
         ga: GA,
         stop: (x) => index.byRef(x),
         trace: (event, data) => log(event, { trip: id, ...(data as object) }),

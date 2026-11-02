@@ -199,10 +199,3 @@
 .options .muted {
   font-size: 14px;
 }
-
-/* Route templates: a row of chips */
-.routes {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}

@@ -159,8 +159,8 @@ svg.mini-line circle.via {
   align-items: center;
   gap: 2px;
   align-self: flex-start;
-  min-height: 36px;
-  margin-top: 12px;
+  min-height: 44px;
+  margin-top: 8px;
   padding: 0;
   border: 0;
   background: none;
@@ -185,7 +185,7 @@ svg.mini-line circle.via {
 }
 
 .trip-screen .dates .pill {
-  min-height: 36px;
+  min-height: 44px;
   font-size: 14px;
 }
 
@@ -248,7 +248,7 @@ svg.mini-line circle.via {
 
 .options-bar .shift {
   flex: none;
-  width: 36px;
+  width: 44px;
   display: grid;
   place-items: center;
   border: 0;

@@ -36,17 +36,23 @@ export function ShareButton({
   const t = useT();
   const [copied, setCopied] = useState(false);
   return (
-    <button
-      type="button"
-      className="icon"
-      aria-label={copied ? t('copied') : label}
-      onClick={async () => {
-        if ((await shareLink(await hash(), title)) !== 'copied') return;
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-    >
-      <Icon name={copied ? 'check' : 'share'} />
-    </button>
+    <>
+      <button
+        type="button"
+        className="icon"
+        aria-label={copied ? t('copied') : label}
+        onClick={async () => {
+          if ((await shareLink(await hash(), title)) !== 'copied') return;
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }}
+      >
+        <Icon name={copied ? 'check' : 'share'} />
+      </button>
+      {/* Said, not only shown: the icon's label change alone is not announced. */}
+      <span className="sr-only" role="status">
+        {copied ? t('copied') : ''}
+      </span>
+    </>
   );
 }

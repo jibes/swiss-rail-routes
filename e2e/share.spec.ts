@@ -4,15 +4,14 @@ import { plan } from '../src/core/planner/plan';
 import { newTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { ga, index, segments, templates } from '../tests/helpers/timetable';
-import { BEFORE, expect, planShared, test } from './fixtures';
+import { ga, index, templates } from '../tests/helpers/timetable';
+import { BEFORE, expect, guard, planShared, test } from './fixtures';
 
 test('a shared trip opens as planned, without replanning, and saves to Trips', async ({ page }) => {
   const tour = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Shared T5' };
   const r = await plan(tour, {
     ...ojpFor('T5'),
     templates,
-    segments,
     ga,
     stop: (x) => index.byRef(x),
   });
@@ -62,6 +61,7 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   expect(url).toMatch(/#\/j\//);
 
   const other = await browser.newPage({ baseURL: new URL('./', url).href });
+  const otherErrors = await guard(other);
   await other.clock.install({ time: BEFORE });
   let asked = 0;
   other.on('request', (q) => q.url().startsWith('https://ojp.invalid/') && asked++);
@@ -69,5 +69,6 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   await expect(other.getByRole('heading', { level: 1 })).toHaveText('T5 shared');
   await expect(other.locator('.summary .big')).toContainText('09:04');
   expect(asked, 'the shared trip is the timetable itself, not replanned').toBe(0);
+  otherErrors.check();
   await other.close();
 });

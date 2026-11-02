@@ -19,15 +19,6 @@
   color: var(--ink-2);
 }
 
-.tours {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 /* The mini line on a card: one dot per stop */
 .mini-line {
   display: flex;
@@ -114,50 +105,4 @@
   font-variant-numeric: tabular-nums;
   appearance: none;
   -webkit-appearance: none;
-}
-
-/* Text shown, native picker on top (invisible): compact and still the system's own picker. */
-.picker-pill {
-  position: relative;
-  cursor: pointer;
-}
-
-.picker-pill input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.time-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 4px;
-  font-weight: 600;
-}
-
-.seg {
-  display: inline-flex;
-  padding: 3px;
-  margin-left: -10px;
-  border-radius: 999px;
-  background: var(--bg);
-}
-
-.seg button {
-  border: 0;
-  background: none;
-  border-radius: 999px;
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 14px;
-  color: var(--ink-2);
-}
-
-.seg button[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow);
 }

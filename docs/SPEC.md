@@ -49,10 +49,9 @@ A **Tour** is an ordered list of **Waypoints**; consecutive waypoints form **Leg
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | Tour          | id, name, date, anchor (`{ departAt }` or `{ arriveBy }`), ticket (`GA` / `Tageskarte` / `Halbtax` / `none`), class (1/2), waypoints[], notes, schema version                              | Round trip = last waypoint equals first               |
 | Waypoint      | stopRef (SLOID), name, kind (`start` / `via` / `stop` / `turnaround` / `end`), dwellMin, earliestArr?, latestDep?                                                                          | `via` = ride through; `stop` = get off for dwellMin   |
-| LegConstraint | forcedVias[] (unlimited), forcedLines[] (e.g. RE "Lötschberger", IR46), avoid[] (segment ids, e.g. `gotthard-base`), modes (rail, cog, cable car, boat, bus), maxTransfers, minTransferMin | Defaults from the RouteTemplate                       |
 | Connection    | dep, arr, durationMin, transfers, sections[], realtime status                                                                                                                              | Chosen by scoring (§5)                                |
 | Section       | line, category, number, operator, from/to stop + platform, dep, arr, intermediate stops, geometry, reservationRequired, supplement, gaValid                                                | Parsed from the OJP TripResult                        |
-| RouteTemplate | id, name ("Albula", "Bernina", "Voralpen-Express"), ordered stop chain, mustPass[], avoid[], seat side (L/R) per direction, highlights[], season notes, timetable year                     | `src/data/templates/*.json`, schema-checked           |
+| RouteTemplate | id, name ("Albula", "Bernina", "Voralpen-Express"), ordered stop chain, mustPass[], modes[], seat side (L/R) per direction, highlights[], season notes, timetable year                     | `src/data/templates/*.json`, schema-checked           |
 | Highlight     | name, coords, side, legRef, sunlightRequired                                                                                                                                               | e.g. Landwasserviadukt, right side towards St. Moritz |
 | Warning       | type (`disruption`, `after-sunset`, `not-ga`, `reservation`, `tight-transfer`, `seasonal`), severity, legRef, sectionRef?, text key + params, source                                       | Shown inline per leg; text through i18n               |
 
@@ -76,7 +75,7 @@ Must = MVP; Should = v1.1; Could = later.
 **Routing**
 
 - [Must] One OJP TripRequest per leg with all its forced vias; leg n+1 departs ≥ arrival n + dwell + minTransfer.
-- [Must] Line enforcement: drop candidates that miss a must-pass stop or forced line, or use an avoided segment (Gotthard / Lötschberg / Ceneri base tunnels, Vereina when Albula is intended…).
+- [Must] Line enforcement: drop candidates that miss a must-pass stop (walks count: OJP walks through a station when the bus stops beside it) or do not ride a line its way (Lake Lucerne by boat). Passing the must-pass stations of a mountain line rules out its base tunnel.
 - [Must] Up to three options that leave at different times (the best-scored one marked), with total duration and the time at each stop; one option says so. Earlier/Later move the departure by an hour and replan.
 - [Should] Auto-fix: when a leg is impossible, propose the nearest valid substitute and say what is lost.
 
@@ -163,7 +162,7 @@ The planner never trusts the fastest result: it fetches candidates per leg, filt
 1. **Expand** the tour into legs: split at every `stop` / `turnaround`; `via` waypoints and template stop chains become forced vias of their leg.
 2. **Must-pass stops** per leg from templates (Albula = Thusis, Filisur, Bergün, Preda; Gotthard-Bergstrecke = Wassen, Göschenen; Voralpen-Express = Wattwil, Biberbrugg). Checked against intermediate stops, not sent as transfer points.
 3. **Query** each leg once: all forced vias as `Via`, `NotVia` for avoided nodes, intermediate stops and projection on, 6 results, departure = the earliest arrival among the current beam + dwell + minTransfer. One request per leg serves all beams, so a 4-leg tour costs 4 sequential requests, not 10.
-4. **Filter:** drop candidates that miss a must-pass stop, contain an avoided segment, use a reservation-only train when a regular one exists, or leave the GA area when ticket = GA (unless the user allows paid sections).
+4. **Filter:** drop candidates that miss a must-pass stop or a line's mode, use a reservation-only train when a regular one exists, or leave the GA area when ticket = GA (unless the user allows paid sections).
 5. **Score** (lower = better):
    `duration_min + 15·transfers + 60·highlights_after_sunset + 30·disrupted_sections + 10·transfers_under_4_min`.
    Weights in `src/core/planner/weights.ts`, tuned on T1–T4.
@@ -192,7 +191,7 @@ src/
     warnings/           GA, reservation, sunset, transfer, seasonal
     sun.ts              sunset / sun elevation
     export/             ics, gpx, kml, share-hash, sbb links
-  data/                 templates/*.json, ga-exceptions.json, segments.json (+ schemas)
+  data/                 templates.json, ga.json (+ schemas)
   ui/                   screens, components (React 19, plain CSS tokens)
   i18n/                 en.ts (source), de.ts, fr.ts, it.ts
   store.ts              zustand

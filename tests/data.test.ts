@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LANGS } from '../src/i18n';
 import { createStopSearch, type StopIndexFile } from '../src/core/stops';
-import { GA, SEGMENTS, TEMPLATES } from '../src/data';
+import { GA, TEMPLATES } from '../src/data';
 
 const templates = TEMPLATES;
-const segments = SEGMENTS;
 const ga = GA;
 const index = createStopSearch(
   JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
@@ -32,10 +31,9 @@ describe('templates.json', () => {
         expect(new Set(t.chain.map((s) => s.ref)).size).toBe(t.chain.length);
       });
 
-      it('must-pass stops lie on the chain, avoided segments exist', () => {
+      it('must-pass stops lie on the chain', () => {
         const chain = t.chain.map((s) => s.ref);
         for (const r of t.mustPass) expect(chain).toContain(r);
-        for (const id of t.avoid) expect(segments.map((s) => s.id)).toContain(id);
         for (const m of t.modes) expect(MODES).toContain(m);
         if (t.seat) expect(['L', 'R']).toContain(t.seat);
       });
@@ -55,19 +53,6 @@ describe('templates.json', () => {
       });
     });
   }
-});
-
-describe('segments.json', () => {
-  it('resolves every stop and keeps the ends apart', () => {
-    for (const s of segments) {
-      for (const r of [...s.a, ...s.b, ...s.via])
-        expect(index.byRef(r), `${s.id} ${r}`).toBeTruthy();
-      expect(
-        s.a.some((r) => s.b.includes(r)),
-        s.id,
-      ).toBe(false);
-    }
-  });
 });
 
 describe('ga.json', () => {

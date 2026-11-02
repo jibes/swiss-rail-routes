@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { Connection } from '../../src/core/model';
 import { parseTrips } from '../../src/core/ojp/parse';
-import { tripRequestXml, type TripQuery } from '../../src/core/ojp/request';
+import { parseTripQuery, tripRequestXml, type TripQuery } from '../../src/core/ojp/request';
 
 const DIR = 'tests/fixtures/ojp';
 export const RECORD = process.env.RECORD_OJP === '1';
@@ -62,6 +62,10 @@ async function post(url: string, init: RequestInit): Promise<string> {
 export function ojpFor(tour: string) {
   const index = readIndex(tour);
   const fetchTrips = async (q: TripQuery): Promise<Connection[]> => {
+    // What the Worker would refuse (400) fails here, not only in the nightly live run.
+    const checked = parseTripQuery(q);
+    if (typeof checked === 'string')
+      throw new Error(`${tour}: the Worker would refuse this query (${checked})`);
     const key = keyOf(q);
     const file = `${DIR}/${tour}/${key}.xml.gz`;
     if (LIVE_URL) {

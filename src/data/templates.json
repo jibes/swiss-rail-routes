@@ -47,7 +47,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:9189", "ch:1:sloid:9195", "ch:1:sloid:9197", "ch:1:sloid:9198"],
-      "avoid": ["vereina"],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -126,7 +125,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:9255", "ch:1:sloid:9356", "ch:1:sloid:9357"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -174,7 +172,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:9068", "ch:1:sloid:9269"],
-      "avoid": ["albula-line"],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": []
     },
@@ -224,7 +221,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:6200", "ch:1:sloid:3284"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -285,7 +281,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:8314", "ch:1:sloid:8308", "ch:1:sloid:8305"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -346,7 +341,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:5119", "ch:1:sloid:5201"],
-      "avoid": ["gotthard-base"],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -384,7 +378,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:7475", "ch:1:sloid:7474"],
-      "avoid": ["loetschberg-base"],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -429,7 +422,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:5172"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -468,7 +460,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:5069"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {
@@ -498,7 +489,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:8464"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": []
     },
@@ -516,7 +506,6 @@
         }
       ],
       "mustPass": [],
-      "avoid": [],
       "modes": ["boat"],
       "highlights": [],
       "season": {
@@ -547,7 +536,6 @@
         }
       ],
       "mustPass": ["ch:1:sloid:7378"],
-      "avoid": [],
       "modes": ["rail", "cog", "cableCar", "bus"],
       "highlights": [
         {

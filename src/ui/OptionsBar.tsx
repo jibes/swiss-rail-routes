@@ -27,6 +27,7 @@ export function OptionsBar({
   trip,
   result,
   planning,
+  failed: planFailed = false,
   choose,
   from,
   move,
@@ -35,6 +36,8 @@ export function OptionsBar({
   /** The screen's own plan (its options, the recommended one). */
   result: PlanResult | null;
   planning: boolean;
+  /** Planning failed (offline, the service): the screen says so; the strip says nothing. */
+  failed?: boolean;
   choose: (c: PlannedChain, legs: Leg[]) => void;
   /** The time searched from, and moving it (when nothing was found, the arrows do that). */
   from: string;
@@ -134,7 +137,9 @@ export function OptionsBar({
           className="shift"
           aria-label={t('earlierOptions')}
           aria-busy={busy === 'earlier'}
-          disabled={planning || busy !== null || noMore === 'earlier'}
+          disabled={
+            planning || busy !== null || noMore === 'earlier' || (!all.length && planFailed)
+          }
           onClick={() => (all.length ? void load('earlier') : move(-60))}
         >
           <Icon name="back" size={18} />
@@ -163,7 +168,7 @@ export function OptionsBar({
                 <b>
                   {hhmm(c.dep)}
                   {c.dep === result?.recommended?.dep && c.arr === result.recommended.arr && (
-                    <span className="best" aria-label={t('recommended')} />
+                    <span className="best" role="img" aria-label={t('recommended')} />
                   )}
                 </b>
                 <span>
@@ -179,13 +184,10 @@ export function OptionsBar({
               <RailLoader label={t('loadingMore')} small />
             </span>
           )}
-          {!all.length && (
+          {!all.length && !planFailed && (
             <span className="single muted">
-              {planning ? (
-                <RailLoader label={t('planning')} small />
-              ) : (
-                t('noneFrom', { time: from })
-              )}
+              {/* The screen announces planning once; this loader is only seen. */}
+              {planning ? <RailLoader small /> : t('noneFrom', { time: from })}
             </span>
           )}
         </div>
@@ -194,7 +196,7 @@ export function OptionsBar({
           className="shift"
           aria-label={t('laterOptions')}
           aria-busy={busy === 'later'}
-          disabled={planning || busy !== null || noMore === 'later'}
+          disabled={planning || busy !== null || noMore === 'later' || (!all.length && planFailed)}
           onClick={() => (all.length ? void load('later') : move(60))}
         >
           <Icon name="next" size={18} />
