@@ -1,21 +1,33 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { type LiveState } from '../core/live';
 import type { PlannedTrip } from '../core/trip';
 import { undo } from '../core/trip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
-import { badge, ChainView } from './ChainView';
+import { plannedRows } from '../core/rows';
+import { badge } from './format';
+import { TripLine } from './TripLine';
 import { hhmm } from './format';
 import { Icon } from './icons';
 import type { useLive } from './useLive';
 
 /** The next step in one sentence: what, when, where. */
-function NextStep({ state, now }: { state: LiveState; now: number }) {
+function NextStep({
+  state,
+  now,
+  source,
+}: {
+  state: LiveState;
+  now: number;
+  /** Where the times come from (live, or the timetable), said with them. */
+  source: ReactNode;
+}) {
   const t = useT();
   if (state.phase === 'done' || !state.next)
     return (
       <section className="next">
         <p className="next-label">{t('arrived')}</p>
+        {source}
       </section>
     );
   const { next } = state;
@@ -43,13 +55,23 @@ function NextStep({ state, now }: { state: LiveState; now: number }) {
         )}
         <span className="next-in">{inMin === 0 ? t('nowNow') : t('inMin', { n: inMin })}</span>
       </p>
-      <p className="next-what">
-        {next.kind === 'board' && <span className="badge">{badge(ride.s)}</span>}
-        <span>
-          {next.kind === 'board' ? t('toward', { to: ride.s.to.name }) : next.stop.name}
-          {next.stop.platform && ` · ${t('platform', { p: next.stop.platform })}`}
-        </span>
-      </p>
+      {/* Getting off: the label names the station already; only its platform is new. */}
+      {(next.kind === 'board' || next.stop.platform) && (
+        <p className="next-what">
+          {next.kind === 'board' && <span className="badge">{badge(ride.s)}</span>}
+          <span>
+            {next.kind === 'board'
+              ? [
+                  t('toward', { to: ride.s.to.name }),
+                  next.stop.platform && t('platform', { p: next.stop.platform }),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : t('platform', { p: next.stop.platform! })}
+          </span>
+        </p>
+      )}
+      {source}
     </section>
   );
 }
@@ -75,7 +97,21 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
           >
             <span />
           </div>
-          <NextStep state={state} now={live.now} />
+          <NextStep
+            state={state}
+            now={live.now}
+            source={
+              <p className="muted live-source">
+                {live.failed
+                  ? live.fetchedAt
+                    ? t('liveStale', { time: hhmm(live.fetchedAt) })
+                    : t('liveOffline')
+                  : live.fetchedAt
+                    ? t('liveAt', { time: hhmm(live.fetchedAt) })
+                    : t('liveTimetable')}
+              </p>
+            }
+          />
           {state.risks.map((r, i) => {
             const ride = state.rides[r.ride]!;
             const at = ride.stops[0]!.name;
@@ -112,22 +148,13 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
           </button>
         )}
       </div>
-      <ChainView
-        chain={trip.chain}
-        dwell={trip.legs.map((l) => l.to.dwellMin)}
+      <TripLine
+        route={trip.route}
+        rows={plannedRows(trip.route, trip.chain.connections)}
+        warnings={trip.chain.warnings}
+        planning={false}
         live={state ? { state, now: live.now } : undefined}
       />
-      {state && (
-        <p className="muted live-source">
-          {live.failed
-            ? live.fetchedAt
-              ? t('liveStale', { time: hhmm(live.fetchedAt) })
-              : t('liveOffline')
-            : live.fetchedAt
-              ? t('liveAt', { time: hhmm(live.fetchedAt) })
-              : t('liveTimetable')}
-        </p>
-      )}
     </>
   );
 }

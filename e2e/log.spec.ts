@@ -9,7 +9,7 @@ test('debug log: opt in, plan a trip, save it as a file, never the sync key; off
 }) => {
   await page.clock.install({ time: BEFORE });
   await page.goto('./#/settings');
-  const toggle = page.getByRole('checkbox', { name: 'Keep a debug log' });
+  const toggle = page.getByRole('switch', { name: 'Keep a debug log' });
   await expect(toggle).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Save file' })).toHaveCount(0);
   await toggle.check();
@@ -50,9 +50,9 @@ test('debug log: opt in, plan a trip, save it as a file, never the sync key; off
   expect(text).not.toContain(key.replaceAll('-', ''));
 
   // Off: gone, and on again starts empty.
-  await page.getByRole('checkbox', { name: 'Keep a debug log' }).uncheck();
+  await page.getByRole('switch', { name: 'Keep a debug log' }).uncheck();
   await expect(page.getByRole('button', { name: 'Save file' })).toHaveCount(0);
-  await page.getByRole('checkbox', { name: 'Keep a debug log' }).check();
+  await page.getByRole('switch', { name: 'Keep a debug log' }).check();
   const again = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Save file' }).click();
   const fresh = await readFile((await (await again).path())!, 'utf8');

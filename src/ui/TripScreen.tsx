@@ -19,22 +19,14 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import {
-  duration,
-  hhmm,
-  longDate,
-  minutesBetween,
-  nextHalfHour,
-  shiftHm,
-  zurichHm,
-} from './format';
+import { longDate, nextHalfHour, shiftHm, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
 import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
 import { PlanNotices } from './PlanNotices';
-import { ChainView } from './ChainView';
+import { TripFacts } from './TripFacts';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
@@ -149,12 +141,6 @@ export function TripScreen({ id }: { id: string }) {
   const shown = chain ?? (planning ? planner.previous?.recommended : undefined);
   const rows = shown ? plannedRows(route, shown.connections) : routeRows(route);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
-  const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
-  // Disruptions are on the rides they concern; their number is said at the top.
-  const disruptions = chain ? chain.warnings.filter((w) => w.type === 'disruption').length : 0;
-  const trains = chain
-    ? chain.connections.reduce((n, c) => n + c.sections.filter((s) => s.mode !== 'walk').length, 0)
-    : 0;
   const today = dayOf(now);
 
   const pick = (p: Picked) => {
@@ -293,7 +279,12 @@ export function TripScreen({ id }: { id: string }) {
         // Over, until its day ends: the record, read-only (then it waits in search).
         <>
           <p className="notice">{t('doneToday')}</p>
-          <ChainView chain={trip.chain} dwell={trip.legs.map((l) => l.to.dwellMin)} />
+          <TripLine
+            route={route}
+            rows={plannedRows(route, trip.chain.connections)}
+            warnings={trip.chain.warnings}
+            planning={false}
+          />
         </>
       ) : (
         <>
@@ -348,29 +339,7 @@ export function TripScreen({ id }: { id: string }) {
             </div>
           )}
 
-          {chain && (
-            <>
-              <p className="hero-times">
-                <span>{hhmm(chain.dep)}</span>
-                <Icon name="next" size={28} />
-                <span>{hhmm(chain.arr)}</span>
-              </p>
-              <p className="facts">
-                {duration(minutesBetween(chain.dep, chain.arr))} ·{' '}
-                {trains === 1 ? t('train1') : t('trainsN', { n: trains })}
-                {changes > 0 &&
-                  ` · ${changes === 1 ? t('transfer1') : t('transfers', { n: changes })}`}
-                {disruptions > 0 && (
-                  <>
-                    {' · '}
-                    <span className="red-text">
-                      {disruptions === 1 ? t('disruption1') : t('disruptionsN', { n: disruptions })}
-                    </span>
-                  </>
-                )}
-              </p>
-            </>
-          )}
+          {chain && <TripFacts chain={chain} />}
           <PlanNotices
             state={
               planning ? 'planning' : failed ? (planner.status as 'error' | 'unavailable') : 'done'

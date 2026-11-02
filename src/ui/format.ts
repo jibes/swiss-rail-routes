@@ -1,3 +1,4 @@
+import type { Section } from '../core/model';
 const tz = 'Europe/Zurich';
 
 export const hhmm = (iso: string | number) =>
@@ -53,3 +54,9 @@ export function shiftHm(hm: string, min: number): string {
   const t = Math.min(23 * 60 + 59, Math.max(0, h * 60 + m + min));
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
+
+/** "R62", "IC3"; numeric lines with their category: "CC 63" (cog), "PB 2461" (cable car). */
+export const badge = (s: Section) =>
+  s.line && /[A-Za-z]/.test(s.line)
+    ? s.line
+    : [s.category, s.line ?? s.number].filter(Boolean).join(' ');

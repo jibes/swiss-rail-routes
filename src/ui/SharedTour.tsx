@@ -11,6 +11,8 @@ import { markRings } from '../core/line';
 import { autoName } from '../core/naming';
 import { go } from './useHash';
 import { Icon } from './icons';
+import { routeRows } from '../core/rows';
+import { TripLine } from './TripLine';
 
 /**
  * A route someone shared: `#/r/<stops>?…` (or a route's address from another device), or the
@@ -52,32 +54,20 @@ export function SharedTour({
       </main>
     );
   const { id: _id, ...rest } = tour;
+  // A scenic line's stations as rings, as on the trip it becomes.
+  const shown = { ...tour, waypoints: markRings(tour.waypoints) };
   return (
-    <main className="page">
+    <main className="page trip-screen">
       <header className="bar">
         <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
         </button>
       </header>
       <header className="hero">
-        <h1>{tour.name || autoName(tour, (r) => index?.byRef(stopKey(r))) || t('newTour')}</h1>
+        <h1>{tour.name || autoName(shown, (r) => index?.byRef(stopKey(r))) || t('newTour')}</h1>
         <p>{t('sharedTour')}</p>
       </header>
-      <ol className="line">
-        {tour.waypoints.map((w, i) => (
-          <li
-            key={i}
-            className={`stop ${w.kind === 'via' ? 'via' : ''} ${i === tour.waypoints.length - 1 ? 'last' : ''}`}
-          >
-            <span className="dot" aria-hidden="true" />
-            <div className="stop-head">
-              <span className="stop-name">
-                <span>{w.name}</span>
-              </span>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <TripLine route={shown} rows={routeRows(shown)} warnings={[]} planning={false} />
       <div className="dock">
         <div className="dock-inner">
           <button

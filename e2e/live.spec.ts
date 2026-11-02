@@ -12,19 +12,19 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   // Before departure.
   await expect(page.getByText('Departure', { exact: true })).toBeVisible();
   await expect(page.getByText('in 14 min')).toBeVisible();
-  await expect(page.locator('.row.station.here')).toHaveCount(1);
+  await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
 
   // On the train: the marker rides along, its stops open, passed ones grey.
   await page.clock.runFor('25:00');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
-  await expect(page.locator('.row.ride.here')).toHaveCount(1);
-  await expect(page.locator('.row.ride.here .mids li').first()).toBeVisible();
+  await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
+  await expect(page.locator('.trip-line .ride.here .mids li').first()).toBeVisible();
   await expect(page.locator('.here-mid')).toHaveCount(1);
   await expect(page.locator('.here-mid')).toHaveText('You are here');
   // The marker sits on the rail between the stop before and the one after it.
   const marker = await page.evaluate(() => {
-    const row = document.querySelector('.row.ride.here')!;
+    const row = document.querySelector('.trip-line .ride.here')!;
     const dot = getComputedStyle(row.querySelector('.rail')!, '::after');
     const rail = row.querySelector('.rail')!.getBoundingClientRect();
     const y = rail.top + parseFloat(dot.top) + parseFloat(dot.height) / 2;
@@ -40,7 +40,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   });
   expect(marker.y).toBeGreaterThanOrEqual(marker.from - 1);
   expect(marker.y).toBeLessThanOrEqual(marker.to + 1);
-  await expect(page.locator('.chain.live .row.passed').first()).toBeVisible();
+  await expect(page.locator('.trip-line.live .passed').first()).toBeVisible();
   expect(Number(await page.getByRole('progressbar').getAttribute('aria-valuenow'))).toBeGreaterThan(
     0,
   );
@@ -84,10 +84,9 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
 
   // Back on Now: the new plan (via Wengen), undo available.
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  await expect(page.locator('.chain .leg')).toHaveCount(3);
-  await expect(page.locator('.chain')).toContainText('Wengen');
+  await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo last change' }).click();
-  await expect(page.locator('.chain .leg')).toHaveCount(1);
+  await expect(line).not.toContainText('Wengen');
 });
 
 test('before departure: edited in place; after its day: in search', async ({ page }) => {

@@ -211,7 +211,12 @@ function DebugLog() {
     <section className="setting debug-log">
       <h2 className="section-label">{t('debugLog')}</h2>
       <label className="switch">
-        <input type="checkbox" checked={on} onChange={(e) => void setLogging(e.target.checked)} />
+        <input
+          type="checkbox"
+          role="switch"
+          checked={on}
+          onChange={(e) => void setLogging(e.target.checked)}
+        />
         <span>{t('debugLogSwitch')}</span>
       </label>
       <p className="muted">{t('debugLogHint')}</p>

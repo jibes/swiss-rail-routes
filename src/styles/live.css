@@ -37,58 +37,6 @@
   font-weight: 600;
 }
 
-/* ─── Live: travelled parts grey, a marker where you are ─── */
-
-.chain.live .row.passed .rail::before {
-  background: var(--ink-3);
-}
-
-.chain.live .row.passed .times-col,
-.chain.live .row.passed .what,
-.mids li.passed {
-  opacity: 0.55;
-}
-
-.chain.live .row.station.passed .rail::after {
-  border-color: var(--ink-3);
-  background: var(--ink-3);
-}
-
-.row.ride.here .rail::before {
-  background: linear-gradient(
-    var(--ink-3) 0 var(--fm, var(--f)),
-    var(--rail) var(--fm, var(--f)) 100%
-  );
-}
-
-.row.ride.here .rail::after,
-.row.station.here .rail::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid var(--bg);
-  background: var(--rail);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--rail) 50%, transparent);
-}
-
-.row.ride.here .rail::after {
-  top: calc(var(--fm, var(--f)) - 10px);
-}
-
-.row.station.here .rail::after {
-  top: 4px;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .row.ride.here .rail::after,
-  .row.station.here .rail::after {
-    animation: here 2s ease-out infinite;
-  }
-}
-
 @keyframes here {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--rail) 50%, transparent);
@@ -163,9 +111,9 @@
   font-size: 17px;
 }
 
-.live-source {
-  font-size: 13px;
-  text-align: center;
+.next .live-source {
+  margin: 8px 0 0;
+  font-size: 12px;
 }
 
 .livebar {
@@ -194,29 +142,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* With the stops open, SyncHere sets --f in px to where the train is between the stops shown. */
+/* With the stops open, SyncHere sets --fm in px to where the train is between the stops shown. */
 .mids .here-mid {
   height: 0;
-}
-
-/* Each stop between gets a small tick on the rail. */
-.row.ride.with-mids .mids li:not(.here-mid) {
-  position: relative;
-}
-
-.row.ride.with-mids .mids li:not(.here-mid)::before {
-  content: '';
-  position: absolute;
-  /* Centred on the rail, 24 px left of the content column (12 px gap + half the rail column). */
-  left: -28px;
-  top: calc(50% - 4px);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 2px solid var(--rail);
-}
-
-.chain.live .row.ride.with-mids .mids li.passed::before {
-  border-color: var(--ink-3);
 }

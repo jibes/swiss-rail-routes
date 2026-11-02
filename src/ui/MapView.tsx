@@ -19,6 +19,23 @@ maplibregl.setWorkerUrl(workerUrl);
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 const ACCENT = '#c0261b';
 
+/** Without the tile host (offline, blocked): the route on a plain ground, still readable. */
+const PLAIN: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'ground', type: 'background', paint: { 'background-color': '#ecebe6' } }],
+};
+
+/** The map's style, fetched first: if it cannot be had, the plain one (and say so). */
+async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
+  try {
+    const res = await fetch(MAP_STYLE, { signal: AbortSignal.timeout(8000) });
+    return res.ok ? ((await res.json()) as maplibregl.StyleSpecification) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A trip's map: its saved connections, or its last plan while it has none. */
 export default function MapView({ id }: { id: string }) {
   const t = useT();
@@ -41,7 +58,8 @@ export default function MapView({ id }: { id: string }) {
     let map: maplibregl.Map | undefined;
     let gone = false;
     (async () => {
-      const [index, plans] = await Promise.all([stopSearch(), loadPlans()]);
+      const [index, plans, style] = await Promise.all([stopSearch(), loadPlans(), styleOf()]);
+      if (!style) setFailed(true);
       if (gone || !box.current) return;
       const saved = plans[id];
       const chain: Connection[] | undefined =
@@ -51,7 +69,7 @@ export default function MapView({ id }: { id: string }) {
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       map = new maplibregl.Map({
         container: box.current,
-        style: MAP_STYLE,
+        style: style ?? PLAIN,
         bounds: d.bounds ?? [5.9, 45.8, 10.5, 47.8],
         fitBoundsOptions: { padding: 40 },
         attributionControl: { compact: true },
@@ -94,18 +112,20 @@ export default function MapView({ id }: { id: string }) {
             'circle-stroke-width': 2,
           },
         });
-        map.addLayer({
-          id: 'labels',
-          type: 'symbol',
-          source: 'highlights',
-          layout: {
-            'text-field': ['get', 'name'],
-            'text-size': 12,
-            'text-offset': [0, 1.2],
-            'text-anchor': 'top',
-          },
-          paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-        });
+        // Names need the style's fonts: none on the plain ground (the highlights still show).
+        if (style)
+          map.addLayer({
+            id: 'labels',
+            type: 'symbol',
+            source: 'highlights',
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 12,
+              'text-offset': [0, 1.2],
+              'text-anchor': 'top',
+            },
+            paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+          });
       });
     })().catch(() => setFailed(true));
     return () => {

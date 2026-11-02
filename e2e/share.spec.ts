@@ -22,7 +22,7 @@ test('a shared trip opens as planned, without replanning, and saves to Trips', a
   await page.clock.install({ time: BEFORE });
   await page.goto(`./${hash}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shared T5');
-  await expect(page.locator('.summary .big')).toContainText('09:04');
+  await expect(page.locator('.hero-times')).toContainText('09:04');
   await page.getByRole('button', { name: 'Save trip' }).click();
   await expect(page).toHaveURL(/#\/trip\//);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -34,7 +34,7 @@ test('route links: a template by name opens as a new trip', async ({ page }) => 
   await page.clock.install({ time: BEFORE });
   await page.goto('./#/r/@bernina');
   await expect(page.getByText('Someone shared this route with you.')).toBeVisible();
-  await expect(page.locator('.line .stop').first()).toContainText('St. Moritz');
+  await expect(page.locator('.trip-line .station').first()).toContainText('St. Moritz');
   await page.getByRole('button', { name: 'Plan this trip' }).click();
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   const entries = page.locator('.trip-line .station.entry');
@@ -67,7 +67,7 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   other.on('request', (q) => q.url().startsWith('https://ojp.invalid/') && asked++);
   await other.goto(url);
   await expect(other.getByRole('heading', { level: 1 })).toHaveText('T5 shared');
-  await expect(other.locator('.summary .big')).toContainText('09:04');
+  await expect(other.locator('.hero-times')).toContainText('09:04');
   expect(asked, 'the shared trip is the timetable itself, not replanned').toBe(0);
   otherErrors.check();
   await other.close();

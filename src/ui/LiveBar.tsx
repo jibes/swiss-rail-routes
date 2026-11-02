@@ -3,7 +3,7 @@ import { autoName } from '../core/naming';
 import { isPlanned, liveTrip } from '../core/trip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
-import { badge } from './ChainView';
+import { badge } from './format';
 import { hhmm } from './format';
 import { useLiveStatus } from './useLive';
 import { useNow } from './useNow';

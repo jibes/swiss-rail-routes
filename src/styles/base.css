@@ -127,8 +127,23 @@ button {
   /* Under the phone's status bar too: stuck at the top, it covers what scrolls behind it. */
   margin: calc(-8px - env(safe-area-inset-top)) calc(-1 * var(--pad)) 0;
   padding: calc(8px + env(safe-area-inset-top)) calc(var(--pad) - 8px) 8px;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(12px);
+  /* Opaque: what scrolls under it never shows through the icons. */
+  background: var(--bg);
+}
+
+/* Scrolled: a hairline under the bar where it meets the page (where scroll timelines exist). */
+@supports (animation-timeline: scroll()) {
+  .bar {
+    animation: bar-edge linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 24px;
+  }
+}
+
+@keyframes bar-edge {
+  to {
+    box-shadow: 0 1px 0 var(--hair);
+  }
 }
 
 .bar h1,

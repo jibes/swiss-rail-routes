@@ -186,10 +186,57 @@
   font-weight: 600;
 }
 
+/* The app's own switch (a styled checkbox, role switch): a track and a knob, at the row's end. */
+.switch {
+  width: 100%;
+  justify-content: space-between;
+}
+
 .switch input {
+  order: 2;
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 48px;
+  height: 28px;
+  margin: 0;
+  border-radius: 14px;
+  background: var(--hair);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
   width: 22px;
   height: 22px;
-  accent-color: var(--rail);
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s;
+}
+
+.switch input:checked {
+  background: var(--rail);
+}
+
+.switch input:checked::after {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible {
+  outline: 2px solid var(--rail);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch input,
+  .switch input::after {
+    transition: none;
+  }
 }
 
 .log-actions {

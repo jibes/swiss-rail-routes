@@ -1,15 +1,16 @@
-import { useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from 'react';
 import type { RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
 import type { LineRow, StationRow } from '../core/rows';
 import type { Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
-import { badge } from './ChainView';
-import { duration, hhmm, minutesBetween } from './format';
+import { badge } from './format';
+import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
+import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 
 export interface LineActions {
   replace: (k: number, stop: { stopRef: string; name: string }) => void;
@@ -54,6 +55,7 @@ export function TripLine({
   setOpen,
   act,
   fixedFirst = false,
+  live,
 }: {
   /** Replan from here: the first station is where you are; only "Add after" it. */
   fixedFirst?: boolean;
@@ -61,9 +63,12 @@ export function TripLine({
   rows: LineRow[];
   warnings: Warning[];
   planning: boolean;
-  open: number | null;
-  setOpen: (k: number | null) => void;
-  act: LineActions;
+  /** Nothing to edit (under way, a shared trip, a finished one): `act` absent. */
+  open?: number | null;
+  setOpen?: (k: number | null) => void;
+  act?: LineActions;
+  /** Under way: expected times, the travelled part grey, the marker where you are. */
+  live?: LiveCtx;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -74,6 +79,8 @@ export function TripLine({
   // Keyed by the station, not its place: an edit moves rows.
   const [hint, setHint] = useState<string | null>(null);
   const [more, setMore] = useState<string | null>(null);
+  // A ride's stops between: a tap decides; until then the ride being travelled shows them.
+  const [midsOpen, setMidsOpen] = useState<Map<string, boolean>>(new Map());
   const [drag, setDrag] = useState<{
     from: number;
     dy: number;
@@ -127,7 +134,7 @@ export function TripLine({
       grip.removeEventListener('pointerup', up);
       grip.removeEventListener('pointercancel', up);
       setDrag(null);
-      if (moved && to !== k) act.move(k, to);
+      if (moved && to !== k) act?.move(k, to);
     };
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', up);
@@ -135,7 +142,11 @@ export function TripLine({
   };
 
   return (
-    <ol className={`trip-line ${planning ? 'planning' : ''}`} ref={box} aria-label={t('theLine')}>
+    <ol
+      className={`trip-line ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''}`}
+      ref={box}
+      aria-label={t('theLine')}
+    >
       {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
       {rows.map((r, i) => {
         if (r.type === 'ride') {
@@ -144,10 +155,31 @@ export function TripLine({
           const ws = warnsFor(r.leg, r.sectionIndex, first);
           const min =
             s.walkMin ?? (s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0);
+          const id = `${r.leg}-${r.sectionIndex}`;
+          const lr = rideOf(live, r);
+          const riding = !!live && live.state.phase === 'riding' && isCurrent(live, r);
+          const arrives = lr?.stops.at(-1)?.arr;
+          const dep = lr?.stops[0]?.dep;
+          const f =
+            riding && dep && arrives
+              ? Math.min(1, Math.max(0, (live.now - dep) / Math.max(1, arrives - dep)))
+              : 0;
+          const mids = s.mode === 'walk' ? [] : s.intermediate;
+          const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
+          const platform = lr?.stops[0]?.platform ?? s.from.platform;
           return (
             // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
             // the focus in it) must stay the same element.
-            <li key={`r${r.leg}-${r.sectionIndex}`} className="ride">
+            <li
+              key={`r${id}`}
+              className={[
+                'ride',
+                riding ? 'here' : '',
+                shown ? 'with-mids' : '',
+                live && arrives !== undefined && arrives <= live.now ? 'passed' : '',
+              ].join(' ')}
+              style={riding ? ({ '--f': `${(f * 100).toFixed(1)}%` } as CSSProperties) : undefined}
+            >
               <span className="t" />
               <span className="rail" />
               <div className="m">
@@ -157,10 +189,21 @@ export function TripLine({
                   <>
                     <span className="badge">{badge(s)}</span>
                     {s.product && <b>{s.product}</b>}
-                    {s.from.platform && <span>{t('platform', { p: s.from.platform })}</span>}
+                    {platform && <span>{t('platform', { p: platform })}</span>}
                     {min > 0 && <span>{duration(min)}</span>}
+                    {mids.length > 0 && (
+                      <button
+                        type="button"
+                        className="mids-toggle"
+                        aria-expanded={shown}
+                        onClick={() => setMidsOpen((m) => new Map(m).set(id, !shown))}
+                      >
+                        {mids.length === 1 ? t('stop1') : t('stopsBetween', { n: mids.length })}
+                      </button>
+                    )}
                   </>
                 )}
+                {shown && <Mids r={r} live={live} riding={riding} />}
                 {ws.map((w, j) => {
                   const text =
                     w.type === 'seasonal'
@@ -169,19 +212,19 @@ export function TripLine({
                       : t(w.key, w.params);
                   // A disruption opens the operator's own message on a tap.
                   const detail = w.type === 'disruption' && s.notices?.length ? s.notices : null;
-                  const id = `${r.leg}-${r.sectionIndex}-${j}`;
+                  const wid = `${id}-${j}`;
                   return detail ? (
                     <span key={j} className="warn-wrap">
                       <button
                         type="button"
                         className={`warn ${SEVERITY[w.severity]} more`}
-                        aria-expanded={more === id}
-                        onClick={() => setMore(more === id ? null : id)}
+                        aria-expanded={more === wid}
+                        onClick={() => setMore(more === wid ? null : wid)}
                       >
-                        {text}
+                        <span>{text}</span>
                         <Icon name="chevron" size={14} />
                       </button>
-                      {more === id && (
+                      {more === wid && (
                         <span className="detail">
                           {detail.map((d, k) => (
                             <span key={k}>{d}</span>
@@ -199,17 +242,18 @@ export function TripLine({
             </li>
           );
         }
-        const k = r.entry;
+        const k = act ? r.entry : undefined;
         const isOpen = k !== undefined && open === k;
+        const L = stationLive(rows, i, live);
         // Where you change or stay: the arrival small above, the departure (what you act on) big.
         const both = (r.role === 'stop' || r.role === 'change') && !!r.arr && !!r.dep;
-        const time =
-          r.role === 'start' || both
-            ? r.dep && hhmm(r.dep)
-            : r.role === 'end'
-              ? r.arr && hhmm(r.arr)
-              : (r.dep ?? r.arr) && hhmm((r.dep ?? r.arr)!);
-        const before = both ? hhmm(r.arr!) : '';
+        const showDep = r.role === 'start' || both || (r.role !== 'end' && !!r.dep);
+        const time = showDep ? (
+          <When plan={r.dep} live={L?.dep} />
+        ) : (
+          <When plan={r.arr} live={L?.arr} />
+        );
+        const before = both ? <When plan={r.arr} live={L?.arr} /> : null;
         const big = r.role !== 'pass';
         const label = stayLabel(t, r);
         const dragging = drag && k === drag.from;
@@ -221,9 +265,11 @@ export function TripLine({
               big ? 'off' : 'pass',
               r.missed ? 'missed' : '',
               r.ring ? 'ring' : '',
-              k === undefined ? 'auto' : 'entry',
+              r.entry === undefined ? 'auto' : 'entry',
               isOpen ? 'open' : '',
               dragging ? 'dragging' : '',
+              L?.passed ? 'passed' : '',
+              L?.here ? 'here' : '',
               drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
             ].join(' ')}
             style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
@@ -236,7 +282,13 @@ export function TripLine({
             <span className="rail">
               <span className="dot" />
             </span>
-            {k === undefined ? (
+            {!act && r.entry !== undefined ? (
+              // Nothing to edit: a station you entered is just its name.
+              <div className="m">
+                <span className="n">{r.name}</span>
+                {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
+              </div>
+            ) : k === undefined ? (
               <button
                 type="button"
                 className="m locked"
@@ -251,12 +303,13 @@ export function TripLine({
                 type="button"
                 className="m"
                 aria-expanded={isOpen}
-                onClick={() => setOpen(isOpen ? null : k)}
+                onClick={() => setOpen?.(isOpen ? null : k)}
               >
                 <span className="n">{r.name}</span>
                 {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
               </button>
             )}
+            {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
             {hint === `${r.key}@${i}` && (
               <span className="why" role="status">
                 {r.ring && lineName(r.line)
@@ -272,9 +325,11 @@ export function TripLine({
                     disruptedLeg(rows, i, warnings) ? t('notReachedDisrupted') : t('notReached')
                   }
                 </span>
-                <button type="button" className="text-button" onClick={act.later}>
-                  {t('tryLater')}
-                </button>
+                {act && (
+                  <button type="button" className="text-button" onClick={act.later}>
+                    {t('tryLater')}
+                  </button>
+                )}
               </div>
             )}
             {isOpen && n > 1 && !(fixedFirst && k === 0) && (
@@ -287,7 +342,7 @@ export function TripLine({
                 <Icon name="grip" size={18} />
               </button>
             )}
-            {isOpen && !drag && (
+            {isOpen && !drag && act && (
               <Panel
                 k={k}
                 n={n}
@@ -295,23 +350,26 @@ export function TripLine({
                 name={r.name}
                 stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
                 line={lineName(lineTo(entries, k))}
+                change={r.role === 'change'}
                 act={act}
               />
             )}
           </li>
         );
       })}
-      <li className="addrow">
-        <button type="button" onClick={act.add}>
-          <span className="t" />
-          <span className="rail">
-            <span className="plus" aria-hidden="true">
-              +
+      {act && (
+        <li className="addrow">
+          <button type="button" onClick={act.add}>
+            <span className="t" />
+            <span className="rail">
+              <span className="plus" aria-hidden="true">
+                +
+              </span>
             </span>
-          </span>
-          <span className="m">{n ? t('addStation') : t('chooseStart')}</span>
-        </button>
-      </li>
+            <span className="m">{n ? t('addStation') : t('chooseStart')}</span>
+          </button>
+        </li>
+      )}
     </ol>
   );
 }
@@ -323,8 +381,11 @@ function Panel({
   name,
   stay,
   line,
+  change,
   act,
 }: {
+  /** You asked to ride through, but the plan changes trains here. */
+  change: boolean;
   k: number;
   n: number;
   /** How many stations at the start stay where they are (replan: the one you are at). */
@@ -385,6 +446,7 @@ function Panel({
               {t('stayHere')}
             </button>
           </div>
+          {stay === null && change && <p className="panel-note">{t('changeNeeded')}</p>}
           {!!stay && <StayStepper k={k} name={name} stay={stay} act={act} />}
         </>
       )}

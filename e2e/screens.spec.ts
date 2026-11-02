@@ -34,7 +34,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15 Zürich
     const t5 = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Kleine Scheidegg' };
     await planShared(page, encodeTour(t5));
-    await page.locator('.row.ride.here').waitFor();
+    await page.locator('.trip-line .ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
     await page.getByRole('link', { name: 'Replan from here' }).click();
     await page.locator('.trip-line.past').waitFor();

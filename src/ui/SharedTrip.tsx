@@ -6,8 +6,10 @@ import { useTours } from '../tours';
 import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
-import { ChainView } from './ChainView';
-import { hhmm, longDate } from './format';
+import { plannedRows } from '../core/rows';
+import { TripFacts } from './TripFacts';
+import { TripLine } from './TripLine';
+import { longDate } from './format';
 import { autoName } from '../core/naming';
 import { go } from './useHash';
 import { Icon } from './icons';
@@ -50,7 +52,7 @@ export function SharedTrip({ hash }: { hash: string }) {
     );
   const past = trip.route.date < dayOf(now);
   return (
-    <main className="page">
+    <main className="page trip-screen">
       <header className="bar">
         <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
@@ -60,13 +62,14 @@ export function SharedTrip({ hash }: { hash: string }) {
         <h1>{trip.name || autoName(trip.route) || t('newTour')}</h1>
         <p>{t('sharedTrip')}</p>
       </header>
-      <div className="summary">
-        <span className="big">
-          {hhmm(trip.chain.dep)} – {hhmm(trip.chain.arr)}
-        </span>
-        <span className="muted">{longDate(trip.route.date, lang)}</span>
-      </div>
-      <ChainView chain={trip.chain} dwell={trip.legs.map((l) => l.to.dwellMin)} />
+      <p className="eyebrow">{longDate(trip.route.date, lang)}</p>
+      <TripFacts chain={trip.chain} />
+      <TripLine
+        route={trip.route}
+        rows={plannedRows(trip.route, trip.chain.connections)}
+        warnings={trip.chain.warnings}
+        planning={false}
+      />
       {past && <p className="notice">{t('sharedPast')}</p>}
       <div className="dock">
         <div className="dock-inner">

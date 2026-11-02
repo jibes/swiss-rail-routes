@@ -190,3 +190,26 @@ test('Escape closes what is on top first; renaming cancels; /edit before departu
   await expect(page.locator('.trip-line')).toBeVisible();
   await expect(page.getByText('Ticket', { exact: true })).toHaveCount(0);
 });
+
+test('search: a line typed by its name comes first, a station named so stays first; stops say what they are', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  const search = page.getByPlaceholder('Station, scenic line or past trip');
+  const first = page.locator('.add-sheet .results .result').first();
+  await search.fill('Bernina');
+  await expect(first).toContainText('St. Moritz → Tirano');
+  await search.fill('Bern');
+  await expect(first).toHaveText('Bern');
+  // A bus stop is said to be one.
+  await search.fill('Bernina Suot, Bahnhof');
+  await expect(
+    page.locator('.add-sheet .result', { hasText: 'Bernina Suot, Bahnhof' }),
+  ).toContainText('Bus stop');
+  await search.fill('Bern');
+  await search.press('Enter');
+  await expect(page.locator('.trip-line .station.entry').first()).toContainText('Bern');
+  await expect(page.locator('.trip-line .station.entry').first()).not.toContainText('Bernina');
+});

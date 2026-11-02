@@ -1,43 +1,4 @@
-/* ─── The live view (ChainView) in the trip line's look (split from tripline.css) ─── */
-
-.chain .badge {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 5px;
-  border: 1.5px solid var(--ink);
-  background: none;
-  color: var(--ink);
-  line-height: 1.1;
-}
-
-.chain .station .what b {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-
-.chain .times-col {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* As on the trip line: the arrival small above, the departure (what you act on) big. */
-.chain .times-col time:not(:last-child) {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-3);
-}
-
-.chain .times-col time:last-child {
-  font-size: 15px;
-}
-
-.chain .passed .badge {
-  border-color: var(--ink-3);
-  color: var(--ink-3);
-}
+/* The options strip, loaders and notes around the trip line (split from tripline.css). */
 
 /* The options strip (0.5.7): it scrolls when more are loaded; few fill the bar */
 .options-bar .opts {

@@ -93,14 +93,44 @@ export function AddSheet({
   const trips = mine.filter(
     (x) => x.waypoints.length > 1 && has([x.name, ...x.waypoints.map((w) => w.name)]),
   );
-  const lines = TEMPLATES.filter((tp) => has([tp.name, ...tp.chain.map((c) => c.name)]));
   const stations: Stop[] = index && f.length >= 2 ? index.search(q, 8) : [];
+  const lines = TEMPLATES.filter((tp) => has([tp.name, ...tp.chain.map((c) => c.name)]));
+  // Typed a line's own name ("Bernina"): the line comes first, before stations named after it.
+  // A station named just that ("Bern") stays first.
+  const linesFirst =
+    !!f && lines.some((tp) => has([tp.name])) && !stations.some((x) => fold(x.name) === f);
   const back = !f && first && after && after.stopRef !== first.stopRef ? first : undefined;
   const today = dayOf(useNow());
   const titleOf = (x: Tour) => x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`;
   // Forgotten just now: one tap brings it back.
   const [forgot, setForgot] = useState<Tour | null>(null);
   const addMine = useTours((s) => s.replaceAll);
+
+  const lineList = lines.length > 0 && (
+    <>
+      <h3 className="section-label">{t('scenicLines')}</h3>
+      {lines.map((tp) => {
+        const reversed = directionFrom(tp, from, stop);
+        const [a, b] = reversed
+          ? [tp.chain.at(-1)!, tp.chain[0]!]
+          : [tp.chain[0]!, tp.chain.at(-1)!];
+        return (
+          <button
+            key={tp.id}
+            type="button"
+            className="result"
+            onClick={() => onPick({ kind: 'line', template: tp, reversed })}
+          >
+            <span className="r-icon r-line" aria-hidden="true" />
+            <span className="r-name">{tp.name}</span>
+            <span className="r-sub">
+              {a.name} → {b.name}
+            </span>
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -132,6 +162,13 @@ export function AddSheet({
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return;
+            const tp = linesFirst ? lines[0] : undefined;
+            if (tp)
+              return onPick({
+                kind: 'line',
+                template: tp,
+                reversed: directionFrom(tp, from, stop),
+              });
             const s = stations[0];
             if (s) onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } });
           }}
@@ -148,6 +185,10 @@ export function AddSheet({
               <span className="r-sub">{t('roundTrip')}</span>
             </button>
           )}
+          {linesFirst && lineList}
+          {linesFirst && stations.length > 0 && (
+            <h3 className="section-label">{t('stationsLabel')}</h3>
+          )}
           {stations.map((s) => (
             <button
               key={s.ref}
@@ -155,8 +196,9 @@ export function AddSheet({
               className="result"
               onClick={() => onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
             >
-              <span className="r-icon r-dot" aria-hidden="true" />
+              <span className={`r-icon r-dot ${kindOf(s) ? 'minor' : ''}`} aria-hidden="true" />
               <span className="r-name">{s.name}</span>
+              {kindOf(s) && <span className="r-sub">{t(kindOf(s)!)}</span>}
             </button>
           ))}
           {forgot && (
@@ -203,27 +245,7 @@ export function AddSheet({
               </button>
             </div>
           ))}
-          {lines.length > 0 && <h3 className="section-label">{t('scenicLines')}</h3>}
-          {lines.map((tp) => {
-            const reversed = directionFrom(tp, from, stop);
-            const [a, b] = reversed
-              ? [tp.chain.at(-1)!, tp.chain[0]!]
-              : [tp.chain[0]!, tp.chain.at(-1)!];
-            return (
-              <button
-                key={tp.id}
-                type="button"
-                className="result"
-                onClick={() => onPick({ kind: 'line', template: tp, reversed })}
-              >
-                <span className="r-icon r-line" aria-hidden="true" />
-                <span className="r-name">{tp.name}</span>
-                <span className="r-sub">
-                  {a.name} → {b.name}
-                </span>
-              </button>
-            );
-          })}
+          {!linesFirst && lineList}
           {f.length >= 2 &&
             !stations.length &&
             !trips.length &&
@@ -237,6 +259,18 @@ export function AddSheet({
       </div>
     </div>
   );
+}
+
+/** Not a station trains call at: say what it is (a bus stop, a pier). */
+function kindOf(s: Stop) {
+  const m = s.modes;
+  if (m.includes('TRAIN') || m.includes('RACK_RAILWAY') || m.includes('METRO')) return undefined;
+  if (m.includes('BOAT')) return 'kindBoat' as const;
+  if (m.some((x) => x === 'CABLE_CAR' || x === 'CABLE_RAILWAY' || x === 'CHAIRLIFT'))
+    return 'kindCable' as const;
+  if (m.includes('TRAM')) return 'kindTram' as const;
+  if (m.includes('BUS')) return 'kindBus' as const;
+  return undefined;
 }
 
 /** What a pick adds to the line: a station, a scenic line's two ends, a past trip's stations. */

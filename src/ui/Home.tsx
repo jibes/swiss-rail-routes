@@ -57,7 +57,6 @@ function Card({
             <span className="sr-only">
               {fmt({ weekday: 'long', day: 'numeric', month: 'long' })} ·{' '}
             </span>
-            {live && <em>{t('liveNow')} · </em>}
             {c
               ? `${hhmm(c.dep)} – ${hhmm(c.arr)} · ${duration(minutesBetween(c.dep, c.arr))}`
               : trip.route.waypoints.length > 1
@@ -123,8 +122,9 @@ export function Home() {
       {!current.length && <p className="muted empty">{t('noTripsYet')}</p>}
       {live.length > 0 && (
         <section>
-          <h2 className="section-label">{t('nowSection')}</h2>
-          <ul className="cards">
+          {/* Only trips under way: the title says so already ("Under way"). */}
+          {ahead.length > 0 && <h2 className="section-label">{t('nowSection')}</h2>}
+          <ul className="cards" aria-label={t('nowSection')}>
             {live.map((x) => (
               <Card key={x.id} trip={x} live stop={stop} />
             ))}
@@ -177,7 +177,6 @@ export function Home() {
           <Icon name="gear" size={18} />
           {t('settings')}
         </a>
-        <span>{t('build', { sha: __BUILD__.sha })}</span>
       </footer>
 
       <div className="dock">

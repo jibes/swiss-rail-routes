@@ -192,8 +192,9 @@
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.02em;
-  background: var(--rail-soft);
-  color: var(--rail-ink);
+  /* A stay is no warning: neutral, the red stays for the rail and disruptions. */
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+  color: var(--ink);
   box-shadow: none;
 }
 
@@ -544,6 +545,8 @@
 }
 
 .trip-line button.warn {
+  /* The chevron beside the text, not centred below it in the 44 px target. */
+  align-items: center;
   padding: 0;
   border: 0;
   background: none;
@@ -682,4 +685,102 @@
 .notice.red > span {
   flex: 1;
   min-width: 0;
+}
+
+/* ─── Under way (TripLine live): travelled parts grey, a marker where you are ─── */
+
+.trip-line.live .passed .rail::before {
+  background: var(--ink-3);
+}
+
+.trip-line.live .passed > .t,
+.trip-line.live .passed > .m {
+  opacity: 0.55;
+}
+
+.trip-line.live .station.passed .dot {
+  background: var(--ink-3);
+  border-color: var(--ink-3);
+}
+
+.trip-line .ride.here .rail::before {
+  background: linear-gradient(
+    var(--ink-3) 0 var(--fm, var(--f)),
+    var(--rail) var(--fm, var(--f)) 100%
+  );
+}
+
+.trip-line .ride.here .rail::after,
+.trip-line .station.here .rail::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+  background: var(--rail);
+  z-index: 1;
+}
+
+.trip-line .ride.here .rail::after {
+  top: calc(var(--fm, var(--f)) - 10px);
+}
+
+.trip-line .station.here .rail::after {
+  top: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trip-line .ride.here .rail::after,
+  .trip-line .station.here .rail::after {
+    animation: here 2s ease-out infinite;
+  }
+}
+
+/* A ride's stops between, a tick on the rail for each. */
+.trip-line .ride .mids {
+  flex-basis: 100%;
+}
+
+.trip-line .ride.with-mids .mids li:not(.here-mid) {
+  position: relative;
+}
+
+.trip-line .ride.with-mids .mids li:not(.here-mid)::before {
+  content: '';
+  position: absolute;
+  /* Centred on the rail: the content column starts 15 px right of it, plus the 8 px padding. */
+  left: -28px;
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--rail);
+}
+
+.trip-line.live .ride.with-mids .mids li.passed::before {
+  border-color: var(--ink-3);
+}
+
+.trip-line .ride .mids-toggle {
+  min-height: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.panel .panel-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Nothing to add after the end (read-only): the rail stops at the last station. */
+.trip-line.read > li:last-child .rail::before {
+  bottom: auto;
+  height: 18px;
 }
