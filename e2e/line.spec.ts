@@ -27,7 +27,10 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   const entries = line.locator('.station.entry');
   await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
   await expect(line.locator('.station.ring').first()).toBeVisible();
-  await expect(line.locator('.station.ring button')).toHaveCount(0);
+  // Grey is the timetable's: a tap says why it is not editable, and opens no panel.
+  await line.locator('.station.ring button').first().click();
+  await expect(page.getByText(/Part of the Brünig line/)).toBeVisible();
+  await expect(page.locator('.panel')).toHaveCount(0);
 
   // The panel: what you do there, the line that leads there, add after, up, down, remove.
   await entries.nth(1).getByRole('button').first().click();

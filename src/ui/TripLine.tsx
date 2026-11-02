@@ -56,6 +56,8 @@ export function TripLine({
   const entries = entriesOf(route);
   const n = entries.length;
   const box = useRef<HTMLOListElement>(null);
+  // A station the timetable added (grey): a tap says why it cannot be edited.
+  const [hint, setHint] = useState<number | null>(null);
   const [drag, setDrag] = useState<{
     from: number;
     dy: number;
@@ -190,10 +192,22 @@ export function TripLine({
               <span className="dot" />
             </span>
             {k === undefined ? (
-              <div className="m">
+              <button
+                type="button"
+                className="m locked"
+                aria-expanded={hint === i}
+                onClick={() => setHint(hint === i ? null : i)}
+              >
                 <span className="n">{r.name}</span>
                 {label && <span className="chip quiet">{label}</span>}
-              </div>
+                {hint === i && (
+                  <span className="why" role="status">
+                    {r.ring && lineName(r.line)
+                      ? t('partOfLine', { line: lineName(r.line) })
+                      : t('timetableStop')}
+                  </span>
+                )}
+              </button>
             ) : (
               <button
                 type="button"

@@ -243,6 +243,8 @@ export const en = {
   whereStart: 'New trip',
   withoutLine: 'Go without the {line}',
   yourTrips: 'Your trips',
+  partOfLine: "Part of the {line} line: change the line's end stations instead.",
+  timetableStop: 'Added by the timetable: change the stations around it instead.',
 };
 
 export type Catalogue = typeof en;

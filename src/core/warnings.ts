@@ -99,19 +99,18 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
         key: 'wReservation',
         params: where,
       });
-    // A day pass (Tageskarte) is valid where the GA is: the same stretches are not covered.
-    if (ctx.ticket === 'GA' || ctx.ticket === 'Tageskarte') {
-      const rule = gaRuleOf(s, ctx.ga);
-      if (rule)
-        w.push({
-          ...base,
-          sectionIndex: i,
-          type: 'not-ga',
-          severity: 'warn',
-          key: rule === 'half' ? 'wGaHalf' : rule === 'reduced' ? 'wGaReduced' : 'wGaNone',
-          params: where,
-        });
-    }
+    // Shown to everyone, whatever ticket (0.5.1): a fact about the stretch, in neutral blue;
+    // those without a GA or day pass can pass over it. (A day pass is valid where the GA is.)
+    const rule = gaRuleOf(s, ctx.ga);
+    if (rule)
+      w.push({
+        ...base,
+        sectionIndex: i,
+        type: 'not-ga',
+        severity: 'info',
+        key: rule === 'half' ? 'wGaHalf' : rule === 'reduced' ? 'wGaReduced' : 'wGaNone',
+        params: where,
+      });
   });
   for (const g of transferGaps(c))
     if (g.min < TIGHT_TRANSFER_MIN)

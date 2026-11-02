@@ -248,4 +248,6 @@ export const it = {
   whereStart: 'Nuovo viaggio',
   withoutLine: 'Senza la linea {line}',
   yourTrips: 'I tuoi viaggi',
+  partOfLine: 'Fa parte della linea {line}: modifica invece le sue stazioni di partenza e arrivo.',
+  timetableStop: 'Aggiunta dall’orario: modifica invece le stazioni vicine.',
 } satisfies Catalogue;

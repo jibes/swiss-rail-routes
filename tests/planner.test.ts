@@ -202,17 +202,13 @@ describe('warnings', () => {
     const keys = r.recommended!.warnings.map((w) => w.key);
     expect(keys).toContain('wGaHalf');
     expect(keys).toContain('wTightTransfer');
-    expect(
-      await plan({ ...t, ticket: 'none' }, deps([c]).deps).then((x) =>
-        x.recommended!.warnings.map((w) => w.key),
-      ),
-    ).not.toContain('wGaHalf');
-    // A day pass is valid where the GA is: the same stretch is not covered. Half Fare: no such
-    // question (every ticket is bought).
-    const keysWith = async (ticket: Parameters<typeof plan>[0]['ticket']) =>
-      (await plan({ ...t, ticket }, deps([c]).deps)).recommended!.warnings.map((w) => w.key);
-    expect(await keysWith('Tageskarte')).toContain('wGaHalf');
-    expect(await keysWith('Halbtax')).not.toContain('wGaHalf');
+    // The GA note is for everyone (0.5.1), whatever ticket the trip carries, and neutral.
+    const notes = async (ticket: Parameters<typeof plan>[0]['ticket']) =>
+      (await plan({ ...t, ticket }, deps([c]).deps)).recommended!.warnings.filter(
+        (w) => w.key === 'wGaHalf',
+      );
+    for (const ticket of ['GA', 'Tageskarte', 'Halbtax', 'none'] as const)
+      expect((await notes(ticket)).map((w) => w.severity)).toEqual(['info']);
   });
 
   it('warns when a highlight is passed after sunset, and scores it', async () => {

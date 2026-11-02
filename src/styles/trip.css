@@ -461,8 +461,36 @@ svg.mini-line circle.via {
   color: var(--ink-3);
 }
 
+/* Dark is yours (tap: the panel); grey is the timetable's (tap: why it is not editable). */
 .trip-line .station.auto .n {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.trip-line .station.entry.pass .n {
+  color: var(--ink);
   font-weight: 600;
+}
+
+.trip-line .station.auto.off .dot {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+}
+
+.trip-line button.m.locked {
+  cursor: help;
+}
+
+.trip-line button.m.locked:hover .n {
+  text-decoration: none;
+}
+
+.trip-line .why {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
 }
 
 .trip-line .station.open .n {
