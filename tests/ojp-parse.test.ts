@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { OjpError, parseTrips } from '../src/core/ojp/parse';
+import { minutesOf, OjpError, parseTrips } from '../src/core/ojp/parse';
 import { rides } from '../src/core/planner/connection';
 import { stopKey } from '../src/core/stops';
 import { isSupplement } from '../src/core/warnings';
@@ -72,5 +72,34 @@ describe('parseTrips on recorded OJP answers', () => {
 
   it('rejects what is not a trip delivery', () => {
     expect(() => parseTrips('<html/>')).toThrow(OjpError);
+  });
+
+  it('a walk keeps its minutes, and a connection starts with its walk to the first ride', () => {
+    // T1: from Thusis station to the replacement bus outside it, 2 minutes on foot.
+    const c = load('T1', '229ff10bdf30')[0]!;
+    const walk = c.sections[0]!;
+    expect(walk).toMatchObject({ mode: 'walk', walkMin: 2 });
+    const ride = rides(c)[0]![0];
+    expect(Date.parse(ride.from.dep!) - Date.parse(c.dep)).toBe(2 * 60_000);
+    expect(c.dep).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:00Z$/);
+    expect(minutesOf('PT1H4M30S')).toBe(65);
+    expect(minutesOf(undefined)).toBeUndefined();
+  });
+
+  it('drops a cancelled train and the stops a train no longer serves', () => {
+    const xml = gunzipSync(readFileSync('tests/fixtures/ojp/T5/fceaee61013c.xml.gz')).toString();
+    const all = parseTrips(xml);
+    // The first trip's first train cancelled: that trip goes, the others stay.
+    const cancelled = xml.replace('<Service>', '<Service><Cancelled>true</Cancelled>');
+    expect(parseTrips(cancelled)).toHaveLength(all.length - 1);
+    // A stop on the way not served: it is no longer on the ride.
+    const first = rides(all[0]!)[0]![0];
+    const skipped = first.intermediate[0]!;
+    const notServed = xml.replace(
+      '<LegIntermediate>',
+      '<LegIntermediate><NotServicedStop>true</NotServicedStop>',
+    );
+    const after = rides(parseTrips(notServed)[0]!)[0]![0];
+    expect(after.intermediate.map((x) => x.name)).not.toContain(skipped.name);
   });
 });

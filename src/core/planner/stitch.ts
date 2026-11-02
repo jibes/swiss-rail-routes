@@ -3,7 +3,7 @@
 // first asked as is; when no answer passes every via, it is split into sub-queries of one via
 // plus the next via as destination, and the answers are stitched, merging the two halves of a
 // ride that continues through the split point.
-import type { Connection, Section, Waypoint } from '../model';
+import type { Connection, Section, StopCall, Waypoint } from '../model';
 import { stopKey } from '../stops';
 import { MIN, ms, rides, visited } from './connection';
 
@@ -33,12 +33,20 @@ export function subLegs(from: Waypoint, vias: Waypoint[], to: Waypoint) {
   return out;
 }
 
-function merge(a: Section, b: Section): Section {
+/**
+ * One ride from two halves of the same vehicle. `walked`: stops OJP walked to in between to
+ * pass a via beside the stop (Bergün/Bravuogn from its "posta"); the vehicle passes them, so
+ * they stay on the ride, without times, and the via still counts as passed.
+ */
+function merge(a: Section, b: Section, walked: StopCall[] = []): Section {
   const through = { ...a.to, dep: b.from.dep };
+  const near = walked
+    .filter((x) => x.stopRef !== a.to.stopRef && x.stopRef !== b.from.stopRef)
+    .map((x) => ({ stopRef: x.stopRef, name: x.name }));
   return {
     ...a,
     to: b.to,
-    intermediate: [...a.intermediate, through, ...b.intermediate],
+    intermediate: [...a.intermediate, through, ...near, ...b.intermediate],
     geometry: a.geometry && b.geometry ? [...a.geometry, ...b.geometry] : undefined,
     situationIds: [...new Set([...(a.situationIds ?? []), ...(b.situationIds ?? [])])],
     notices: [...new Set([...(a.notices ?? []), ...(b.notices ?? [])])],
@@ -53,7 +61,13 @@ export function join(a: Connection, b: Connection): Connection {
   if (last && first && last.journey && last.journey === first.journey) {
     const ai = a.sections.lastIndexOf(last);
     const bi = b.sections.indexOf(first);
-    sections = [...a.sections.slice(0, ai), merge(last, first), ...b.sections.slice(bi + 1)];
+    const between = [...a.sections.slice(ai + 1), ...b.sections.slice(0, bi)];
+    const walked = between.flatMap((s) => [s.from, s.to]);
+    sections = [
+      ...a.sections.slice(0, ai),
+      merge(last, first, walked),
+      ...b.sections.slice(bi + 1),
+    ];
   } else sections = [...a.sections, ...b.sections];
   const n = sections.filter((s) => s.mode !== 'walk').length;
   return { legIndex: a.legIndex, dep: a.dep, arr: b.arr, transfers: Math.max(0, n - 1), sections };
@@ -91,14 +105,26 @@ export async function stitched(
   let partial = (await query(parts[0]!.from, parts[0]!.to, parts[0]!.via, at)).slice(0, RESULTS);
   for (const p of parts.slice(1)) {
     if (!partial.length) return [];
-    const earliest = Math.min(...partial.map((c) => ms(c.arr)));
+    // From the last vehicle's own arrival: the same one may run on before the walk to a via
+    // beside it would end (the connection's arr includes that walk).
+    const rideArr = (c: Connection) => {
+      const t = rides(c).at(-1)?.[0].to.arr;
+      return t ? ms(t) : ms(c.arr);
+    };
+    const earliest = Math.min(...partial.map(rideArr));
     const pool = await query(p.from, p.to, p.via, earliest);
     const next: Connection[] = [];
     for (const c of partial) {
-      const ready = (x: Connection) => ms(c.arr) + (sameVehicle(c, x) ? 0 : minTransferMin * MIN);
-      let picks = pool.filter((x) => ms(x.dep) >= ready(x));
-      if (!picks.length)
-        picks = (await query(p.from, p.to, p.via, ms(c.arr))).filter((x) => ms(x.dep) >= ready(x));
+      // The same vehicle running on: its own times, walks to a via beside it left out (they
+      // count in the connections' dep/arr). Another vehicle: after arriving and changing.
+      const fits = (x: Connection) => {
+        if (!sameVehicle(c, x)) return ms(x.dep) >= ms(c.arr) + minTransferMin * MIN;
+        const arr = rides(c).at(-1)![0].to.arr;
+        const dep = rides(x)[0]![0].from.dep;
+        return !arr || !dep || ms(dep) >= ms(arr);
+      };
+      let picks = pool.filter(fits);
+      if (!picks.length) picks = (await query(p.from, p.to, p.via, rideArr(c))).filter(fits);
       // The first onward ride, and the next one: different starts keep different chains.
       for (const x of picks.slice(0, 2)) next.push(join(c, x));
     }

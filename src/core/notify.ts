@@ -1,6 +1,7 @@
 // Notifications for a saved trip, from its timetable (SPEC §3a; owner's choice 2026-11-01):
 // 10 min before each departure, 5 min before each exit, 10 min before passing a highlight
 // (with the sunset time when it is near). Pure: the app translates and schedules them.
+import { linesOf } from './line';
 import type { RouteTemplate } from './data';
 import type { LatLon } from './model';
 import { liveRides } from './live';
@@ -75,7 +76,7 @@ export function noticesFor(
       push('exit', exit.arr - BEFORE_EXIT_MIN * 60_000, { stop: exit.name, time: hhmm(exit.arr) });
   });
 
-  const ids = new Set(trip.route.waypoints.map((w) => w.templateId).filter(Boolean));
+  const ids = linesOf(trip.route.waypoints);
   for (const t of templates.filter((x) => ids.has(x.id)))
     for (const h of t.highlights) {
       // The call nearest the highlight, as for the after-sunset warning.

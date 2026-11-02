@@ -245,4 +245,6 @@ export const de = {
   stayMinutes: 'Minuten in {stop}',
   minUnit: 'Min.',
   syncUpdate: 'Aktualisiere die App zum Abgleichen: Ein anderes Gerät hat eine neuere Version.',
+  relaxedLeg:
+    '{from} → {to}: Keine Verbindung fährt über alle gewählten Stationen oder Linien; die nächstbeste ist gezeigt.',
 } satisfies Catalogue;

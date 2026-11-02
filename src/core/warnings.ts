@@ -3,7 +3,7 @@
 import type { MessageKey } from '../i18n';
 import type { GaData, GaRule, RouteTemplate } from './data';
 import type { Connection, LatLon, Section, WarningType } from './model';
-import { calls, transferGaps } from './planner/connection';
+import { calls, transferGaps, isTight } from './planner/connection';
 import { stopKey } from './stops';
 import { isAfterSunset } from './sun';
 
@@ -26,7 +26,6 @@ export interface WarningContext {
   stop: (ref: string) => LatLon | undefined;
 }
 
-export const TIGHT_TRANSFER_MIN = 4;
 /** A highlight counts as passed at the nearest call within this distance. */
 const HIGHLIGHT_KM = 15;
 
@@ -113,7 +112,7 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
       });
   });
   for (const g of transferGaps(c))
-    if (g.min < TIGHT_TRANSFER_MIN)
+    if (isTight(g.min, g.walk))
       w.push({
         ...base,
         sectionIndex: g.afterSection,

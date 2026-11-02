@@ -114,6 +114,9 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
           s.walkMin ??
           (s.from.dep && s.to.arr ? (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000 : 0);
         if (stopKey(s.from.stopRef) === stopKey(s.to.stopRef) || min < 1) {
+          // A walk first of all: its start is where the trip starts, a row to fold into.
+          if (!seq.some((r) => r.type === 'station'))
+            station(s.from.name, s.from.stopRef, leg, { dep: s.from.dep });
           shortWalk = true;
           walkedTo([stopKey(s.from.stopRef), stopKey(s.to.stopRef)]);
           return;

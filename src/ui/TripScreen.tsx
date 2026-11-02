@@ -413,7 +413,16 @@ export function TripScreen({ id }: { id: string }) {
               })}
             </p>
           )}
-          {/* Stations not reached show on the line itself (struck, with Try later). */}
+          {/* Stations not reached show on the line itself (struck, with Try later); a leg
+              planned without its stations or line is said once here. */}
+          {planner.result?.relaxed.map((r, i) => (
+            <p key={i} className="notice">
+              {t('relaxedLeg', {
+                from: planner.result?.legs?.[r.legIndex]?.from.name ?? '',
+                to: planner.result?.legs?.[r.legIndex]?.to.name ?? '',
+              })}
+            </p>
+          ))}
 
           {route.waypoints.length >= 2 && (
             <OptionsBar

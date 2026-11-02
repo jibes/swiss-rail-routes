@@ -189,7 +189,7 @@ export function mergeReplan(
           // change (a leg ends there), never a scenic line's station.
           to:
             stopKey(point.stop.stopRef) === stopKey(l.to.stopRef)
-              ? { ...l.to, templateId: undefined, ring: undefined }
+              ? { ...l.to, templateId: undefined, ring: undefined, line: undefined }
               : {
                   ...l.to,
                   stopRef: point.stop.stopRef,
@@ -198,6 +198,7 @@ export function mergeReplan(
                   dwellMin: 0,
                   templateId: undefined,
                   ring: undefined,
+                  line: undefined,
                 },
           vias: l.vias.filter(
             (w) =>

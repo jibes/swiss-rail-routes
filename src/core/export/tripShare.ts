@@ -3,7 +3,8 @@
 // 2026-11-01: an exact snapshot).
 import { decodePolyline, encodePolyline, simplify } from '../polyline';
 import { fromB64Url, toB64Url } from '../b64';
-import { sanitiseTour } from '../tour';
+import { mergeRepeats, splitLoops } from '../planner/plan';
+import { expandLegs, sanitiseTour } from '../tour';
 import type { Section } from '../model';
 import type { PlannedTrip, Trip } from '../trip';
 
@@ -79,20 +80,33 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
       typeof data.route?.date !== 'string'
     )
       return null;
-    // Every ride with its two ends: a damaged link must not reach the timetable view.
-    const sound = (data.chain.connections as unknown[]).every(
-      (c) =>
-        Array.isArray((c as { sections?: unknown }).sections) &&
-        (
-          c as { sections: { from?: { name?: unknown }; to?: { name?: unknown } }[] }
-        ).sections.every(
-          (s) => typeof s?.from?.name === 'string' && typeof s?.to?.name === 'string',
-        ),
-    );
-    if (!sound || data.legs.length !== data.chain.connections.length) return null;
+    // Every ride with its stops: a damaged or crafted link must not reach the screens (or be
+    // saved and synced).
+    const stop = (x: unknown) =>
+      !!x &&
+      typeof (x as { stopRef?: unknown }).stopRef === 'string' &&
+      typeof (x as { name?: unknown }).name === 'string';
+    const sound = (data.chain.connections as unknown[]).every((c) => {
+      const sections = (c as { sections?: unknown }).sections;
+      return (
+        Array.isArray(sections) &&
+        sections.length > 0 &&
+        sections.every(
+          (s) =>
+            stop(s?.from) &&
+            stop(s?.to) &&
+            Array.isArray(s?.intermediate) &&
+            (s.intermediate as unknown[]).every(stop),
+        )
+      );
+    });
+    if (!sound) return null;
     const route = sanitiseTour(data.route, data.route.date);
     const time = (x: unknown) => typeof x === 'string' && !Number.isNaN(Date.parse(x));
     if (!route || !time(data.chain.dep) || !time(data.chain.arr)) return null;
+    // The legs follow from the route, as the planner makes them: never taken from the link.
+    const legs = expandLegs(splitLoops(mergeRepeats({ ...route, id })));
+    if (legs.length !== data.chain.connections.length) return null;
     const f = full(data);
     // Built from the fields a trip has, nothing else: a link is someone else's data, and the
     // trip is saved and synced (no `previous`, `compact` or unknown keys come along).
@@ -103,7 +117,7 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
       name: typeof data.name === 'string' ? data.name.slice(0, 120) : '',
       savedAt: time(data.savedAt) ? data.savedAt : new Date().toISOString(),
       route: { ...route, id: typeof data.route.id === 'string' ? data.route.id : id },
-      legs: f.legs,
+      legs,
       chain: {
         connections: f.chain.connections,
         warnings: Array.isArray(f.chain.warnings) ? f.chain.warnings : [],

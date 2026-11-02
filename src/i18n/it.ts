@@ -241,4 +241,6 @@ export const it = {
   stayMinutes: 'Minuti a {stop}',
   minUnit: 'min',
   syncUpdate: 'Aggiorna l’app per sincronizzare: un altro dispositivo ha una versione più recente.',
+  relaxedLeg:
+    '{from} → {to}: nessun collegamento passa per tutte le stazioni o linee scelte; è mostrato il più vicino.',
 } satisfies Catalogue;

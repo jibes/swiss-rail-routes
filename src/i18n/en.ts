@@ -236,6 +236,8 @@ export const en = {
   stayMinutes: 'Minutes at {stop}',
   minUnit: 'min',
   syncUpdate: 'Update the app to sync: another device has a newer version.',
+  relaxedLeg:
+    '{from} → {to}: no connection takes every station or line you chose; the closest is shown.',
 };
 
 export type Catalogue = typeof en;

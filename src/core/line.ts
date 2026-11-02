@@ -1,7 +1,9 @@
 // The trip as you edit it (SPEC §3a, 0.4.0): the stations you entered, and between two of them
 // maybe a scenic line, whose must-pass stations ("rings") belong to the line, not to you.
 // Every edit works on entries and rebuilds the waypoints, so a line never survives a change to
-// the stations at its two ends.
+// the stations at its two ends. A line is recorded on its end (`Waypoint.line`): the station
+// it leads to. Its start is just the station before, so a station can end one line and start
+// the next.
 import { normalise } from './edit';
 import type { Tour, Waypoint } from './model';
 import { stopKey } from './stops';
@@ -19,7 +21,7 @@ export interface Entry {
  * (insertTemplate before 0.4.0), so it ends the first run too.
  */
 export function markRings(waypoints: Waypoint[]): Waypoint[] {
-  if (waypoints.some((w) => w.ring)) return waypoints;
+  if (waypoints.some((w) => w.ring || w.line)) return waypoints;
   const out = waypoints.map((w) => ({ ...w }));
   let i = 0;
   while (i < out.length) {
@@ -42,10 +44,35 @@ export function markRings(waypoints: Waypoint[]): Waypoint[] {
   return out;
 }
 
+/**
+ * The waypoints with each line on its end (`line`). Routes saved before 0.8.1 tagged both ends
+ * and the rings with the line's templateId: a line leads to a station when the one before it is
+ * one of the line's rings, or carries the same tag (a line without rings).
+ */
+export function withLines(waypoints: Waypoint[]): Waypoint[] {
+  if (waypoints.some((w) => w.line)) return waypoints;
+  const out = markRings(waypoints).map((w) => ({ ...w }));
+  for (let i = 1; i < out.length; i++) {
+    const w = out[i]!;
+    const prev = out[i - 1]!;
+    if (w.ring || !prev.templateId) continue;
+    if (prev.ring || w.templateId === prev.templateId) w.line = prev.templateId;
+  }
+  return out;
+}
+
+/** Every scenic line the route rides (by its rings or its end). */
+export const linesOf = (waypoints: Waypoint[]): Set<string> =>
+  new Set(
+    withLines(waypoints).flatMap((w) =>
+      w.ring && w.templateId ? [w.templateId] : w.line ? [w.line] : [],
+    ),
+  );
+
 export function entriesOf(tour: Pick<Tour, 'waypoints'>): Entry[] {
   const out: Entry[] = [];
   let rings: Waypoint[] = [];
-  for (const w of markRings(tour.waypoints)) {
+  for (const w of withLines(tour.waypoints)) {
     if (w.ring && out.length) rings.push(w);
     else {
       out.push({ w: { ...w, ring: undefined }, rings });
@@ -57,40 +84,39 @@ export function entriesOf(tour: Pick<Tour, 'waypoints'>): Entry[] {
 
 export function fromEntries<T extends Pick<Tour, 'waypoints'>>(tour: T, entries: Entry[]): T {
   const waypoints: Waypoint[] = [];
+  // The tags older versions read (both ends of a line): written, never read back here.
+  const tag = entries.map((): string | undefined => undefined);
   entries.forEach((e, k) => {
+    const line = k > 0 ? e.w.line : undefined;
+    if (line) {
+      tag[k] = line;
+      tag[k - 1] ??= line;
+    }
+  });
+  entries.forEach((e, k) => {
+    const line = k > 0 ? e.w.line : undefined;
     if (k > 0)
-      for (const r of e.rings) waypoints.push({ ...r, kind: 'via', dwellMin: 0, ring: true });
-    const { ring: _r, ...w } = e.w;
-    waypoints.push(w);
+      for (const r of line ? e.rings : [])
+        waypoints.push({ ...r, kind: 'via', dwellMin: 0, ring: true, templateId: line });
+    const { ring: _r, line: _l, templateId: _t, ...w } = e.w;
+    waypoints.push({
+      ...w,
+      ...(line ? { line } : {}),
+      ...(tag[k] ? { templateId: tag[k] } : {}),
+    });
   });
   return { ...tour, waypoints: normalise(waypoints) };
 }
 
-/**
- * The template id of the line that leads to entry `k`, if one does: its rings say so, or, for a
- * line without must-pass stations (Lake Lucerne), both its ends carry it.
- */
-export const lineTo = (entries: Entry[], k: number): string | undefined => {
-  if (k <= 0) return undefined;
-  const e = entries[k];
-  const id = e?.rings[0]?.templateId ?? e?.w.templateId;
-  return id && (e!.rings.length || entries[k - 1]?.w.templateId === id) ? id : undefined;
-};
+/** The template id of the line that leads to entry `k`, if one does. */
+export const lineTo = (entries: Entry[], k: number): string | undefined =>
+  k > 0 ? entries[k]?.w.line : undefined;
 
-/**
- * Cuts the line that leads to entry `k`: its rings go, and its template comes off its two ends
- * (else the planner would still apply the line's rules, and its highlights would still notify).
- */
+/** Cuts the line that leads to entry `k`: its rings and its mark on the end go. */
 const cut = (entries: Entry[], k: number) => {
   const e = entries[k];
   if (!e) return;
-  const id = lineTo(entries, k);
-  entries[k] = { ...e, rings: [] };
-  if (!id) return;
-  for (const j of [k - 1, k]) {
-    const x = entries[j];
-    if (x?.w.templateId === id) entries[j] = { ...x, w: { ...x.w, templateId: undefined } };
-  }
+  entries[k] = { w: { ...e.w, line: undefined }, rings: [] };
 };
 
 /** Moves entry `from` to position `to`; lines into it, out of it and across the gap it lands in go. */
@@ -101,8 +127,9 @@ export function moveEntry<T extends Pick<Tour, 'waypoints'>>(tour: T, from: numb
   cut(e, from + 1);
   cut(e, from);
   const [item] = e.splice(from, 1);
-  e.splice(to, 0, { ...item!, rings: [] });
-  cut(e, to + 1);
+  // The line across the gap it lands in goes too: the station after the gap is `to` now.
+  cut(e, to);
+  e.splice(to, 0, item!);
   return fromEntries(tour, e);
 }
 
@@ -132,7 +159,7 @@ export function insertEntries<T extends Pick<Tour, 'waypoints'>>(
   const after = e[k + 1];
   const last = list.at(-1)!;
   if (after && last.w.stopRef === after.w.stopRef) {
-    e[k + 1] = { w: { ...after.w, templateId: last.w.templateId }, rings: last.rings };
+    e[k + 1] = { w: { ...after.w, line: last.w.line }, rings: last.rings };
     list = list.slice(0, -1);
   }
   e.splice(k + 1, 0, ...list);
@@ -168,16 +195,15 @@ export function lineEntries(
       templateId: template.id,
       ring: true,
     }));
-  const end = (s: { ref: string; name: string }): Waypoint => ({
+  const at = (s: { ref: string; name: string }): Waypoint => ({
     stopRef: s.ref,
     name: s.name,
     kind: 'via',
     dwellMin: 0,
-    templateId: template.id,
   });
   return [
-    { w: end(first), rings: [] },
-    { w: end(last), rings },
+    { w: at(first), rings: [] },
+    { w: { ...at(last), line: template.id }, rings },
   ];
 }
 
@@ -193,7 +219,7 @@ export function replaceEntry<T extends Pick<Tour, 'waypoints'>>(
   cut(e, k);
   cut(e, k + 1);
   e[k] = {
-    w: { ...e[k]!.w, stopRef: stop.stopRef, name: stop.name, templateId: undefined },
+    w: { ...e[k]!.w, stopRef: stop.stopRef, name: stop.name },
     rings: [],
   };
   return fromEntries(tour, e);
@@ -227,16 +253,16 @@ export function dropLine<T extends Pick<Tour, 'waypoints'>>(tour: T, k: number):
 export function linesLostByMove(tour: Pick<Tour, 'waypoints'>, from: number, to: number): string[] {
   const before = entriesOf(tour);
   const after = entriesOf(moveEntry(tour, from, to));
-  const ids = (e: Entry[]) =>
-    new Set(e.flatMap((x) => (x.rings[0]?.templateId ? [x.rings[0].templateId] : [])));
+  const ids = (e: Entry[]) => new Set(e.flatMap((_, k) => lineTo(e, k) ?? []));
   const kept = ids(after);
   return [...ids(before)].filter((id) => !kept.has(id));
 }
 
 /** Same stations, same stays, same lines: the key that makes two routes one in search. */
 export const routeKey = (tour: Pick<Tour, 'waypoints'>) =>
-  markRings(tour.waypoints)
+  withLines(tour.waypoints)
     .map(
-      (w) => `${stopKey(w.stopRef)}|${w.kind}|${w.dwellMin}|${w.ring ? (w.templateId ?? '') : ''}`,
+      (w) =>
+        `${stopKey(w.stopRef)}|${w.kind}|${w.dwellMin}|${w.ring ? (w.templateId ?? '') : (w.line ?? '')}`,
     )
     .join(';');

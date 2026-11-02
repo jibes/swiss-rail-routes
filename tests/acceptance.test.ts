@@ -87,11 +87,13 @@ suite('acceptance tours', { timeout }, () => {
 
   it('T4 Rigi: up from Arth-Goldau, 45 min on top, down to Vitznau and on to Luzern', async () => {
     const r = await planned('T4');
+    expect(r.relaxed).toEqual([]);
     for (const c of chains(r)) {
       expect(stopsOf(c, 0).has(ref('Rigi Kulm'))).toBe(true);
-      // Luzern by train, or by boat to the pier and a walk through the station.
+      // Vitznau to Luzern by boat (the Lake Lucerne line), to the pier and a walk to the station.
       const down = visited(c.connections[1]!);
       expect(down.has(ref('Vitznau')) && down.has(ref('Luzern'))).toBe(true);
+      expect(c.connections[1]!.sections.some((s) => s.mode === 'boat')).toBe(true);
     }
     if (onFixtureDate)
       expect(r.recommended!.warnings.some((w) => w.type === 'seasonal')).toBe(true);

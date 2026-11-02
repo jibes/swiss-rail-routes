@@ -78,6 +78,22 @@ describe('trip share link', async () => {
     );
     expect((back as unknown as Record<string, unknown>).evil).toBeUndefined();
     expect(back.compact).toBeUndefined();
+    // Legs come from the route, not the link; a ride without its stops list is refused.
+    const junkLegs = { ...trip, legs: trip.legs.map((l) => ({ ...l, evil: 1, vias: 'x' })) };
+    const fromJunk = (await decodeTrip(await encodeTrip(junkLegs as unknown as typeof trip), 'z'))!;
+    expect(JSON.stringify(fromJunk.legs)).not.toContain('evil');
+    expect(fromJunk.legs!.every((l) => Array.isArray(l.vias))).toBe(true);
+    const noStops = {
+      ...trip,
+      chain: {
+        ...trip.chain,
+        connections: trip.chain.connections.map((c) => ({
+          ...c,
+          sections: c.sections.map(({ intermediate: _i, ...x }) => x),
+        })),
+      },
+    };
+    expect(await decodeTrip(await encodeTrip(noStops as unknown as typeof trip), 'z')).toBeNull();
     // A route the app could not use is refused.
     const noRoute = { ...trip, route: { ...trip.route, waypoints: [] } };
     expect(await decodeTrip(await encodeTrip(noRoute), 'z')).toBeNull();

@@ -17,6 +17,12 @@ export interface Waypoint {
   latestDep?: string;
   /** Set on the stops a route template inserted; its rules apply to the leg containing them. */
   templateId?: string;
+  /**
+   * The scenic line that leads here from the station before (0.8.1): set on the line's end
+   * only, so one station can end a line and start the next. Before, both ends carried the
+   * line's templateId; `withLines` (src/core/line.ts) reads those as well.
+   */
+  line?: string;
   /** A scenic line's must-pass station between the two you entered (0.4.0): part of the line. */
   ring?: boolean;
 }

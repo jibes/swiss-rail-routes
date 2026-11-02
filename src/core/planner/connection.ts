@@ -42,14 +42,28 @@ export const visited = (c: Connection) =>
   );
 
 /** Minutes between arriving with one ride and leaving with the next (walks count as transfer). */
-export function transferGaps(c: Connection): { afterSection: number; min: number }[] {
+/** A walk's minutes: OJP's own (its interchange time), else from its times, else 0. */
+export const walkMinutes = (s: Section): number =>
+  s.walkMin ?? (s.from.dep && s.to.arr ? Math.max(0, (ms(s.to.arr) - ms(s.from.dep)) / MIN) : 0);
+
+/** Tight below this many minutes, or below the walk between the two when that is longer. */
+export const TIGHT_TRANSFER_MIN = 4;
+
+/** One rule for the plan's warning and the live view: a change is tight when the time between
+ * the two vehicles is less than the walk between them or TIGHT_TRANSFER_MIN. */
+export const isTight = (gapMin: number, walkMin: number) =>
+  gapMin < Math.max(walkMin, TIGHT_TRANSFER_MIN);
+
+/** The changes of a connection: minutes between the rides, and the walk between them. */
+export function transferGaps(c: Connection): { afterSection: number; min: number; walk: number }[] {
   const r = rides(c);
-  const gaps: { afterSection: number; min: number }[] = [];
+  const gaps: { afterSection: number; min: number; walk: number }[] = [];
   for (let k = 0; k + 1 < r.length; k++) {
     const [a, i] = r[k]!;
-    const [b] = r[k + 1]!;
+    const [b, j] = r[k + 1]!;
+    const walk = c.sections.slice(i + 1, j).reduce((m, s) => m + walkMinutes(s), 0);
     if (a.to.arr && b.from.dep)
-      gaps.push({ afterSection: i, min: (ms(b.from.dep) - ms(a.to.arr)) / MIN });
+      gaps.push({ afterSection: i, min: (ms(b.from.dep) - ms(a.to.arr)) / MIN, walk });
   }
   return gaps;
 }

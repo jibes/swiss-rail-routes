@@ -62,6 +62,22 @@ describe('the line: entries and scenic lines', () => {
     expect(tags(moved)).toEqual(['Zurich', 'StGallen', 'Bern', 'Luzern']);
   });
 
+  it('a station moved into a line’s gap ends the line for good', () => {
+    let t = insertEntries(start(), 0, lineEntries(LAKE));
+    t = insertEntries(t, 2, [stationEntry(s('Bern'))]);
+    // Zurich, Vitznau, Luzern (lake), Bern → Bern between Vitznau and Luzern.
+    const moved = moveEntry(t, 3, 2);
+    expect(entriesOf(moved).map((e) => e.w.name)).toEqual(['Zurich', 'Vitznau', 'Bern', 'Luzern']);
+    expect(entriesOf(moved).map((_, k, e) => lineTo(e, k))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    // Taking Bern out again does not bring the line back.
+    expect(entriesOf(removeEntry(moved, 2)).some((_, k, e) => lineTo(e, k))).toBe(false);
+  });
+
   it('knows a line without must-pass stations by its two ends, and drops it', () => {
     const t = insertEntries(start(), 0, lineEntries(LAKE));
     const e = entriesOf(t);

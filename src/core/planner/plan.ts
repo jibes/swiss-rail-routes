@@ -4,6 +4,7 @@ import type { GaData, RouteTemplate } from '../data';
 import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
 import { zurichDateTime } from '../ojp/request';
+import { withLines } from '../line';
 import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
@@ -67,17 +68,14 @@ export interface PlanResult {
 }
 
 export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates'>): LegRules[] {
-  return expandLegs(tour).map((leg) => {
-    // The lines that run inside this leg: by their must-pass stations (rings), or by two
-    // stations in a row tagged with them (a line without rings). An end station alone is
-    // shared with the next leg and says nothing about it.
-    const stops = [leg.from, ...leg.vias, leg.to];
+  // Routes saved before 0.8.1 tag both ends of a line: read as lines on their ends.
+  return expandLegs({ ...tour, waypoints: withLines(tour.waypoints) }).map((leg) => {
+    // The lines that run inside this leg: those leading to one of its stations after the
+    // first (a line is marked on its end, its rings carry it too).
     const ids = new Set(
-      stops.flatMap((w, i) => {
-        const id = w.templateId;
-        if (!id) return [];
-        return w.ring || stops[i + 1]?.templateId === id ? [id] : [];
-      }),
+      [...leg.vias, leg.to].flatMap((w) =>
+        w.ring && w.templateId ? [w.templateId] : w.line ? [w.line] : [],
+      ),
     );
     const templates = deps.templates.filter((t) => ids.has(t.id));
     return {
@@ -104,6 +102,7 @@ export function mergeRepeats(tour: Tour): Tour {
         kind: out.length === 1 ? 'start' : keep.kind,
         dwellMin: Math.max(prev.dwellMin, w.dwellMin),
         templateId: w.templateId ?? prev.templateId,
+        line: w.line ?? prev.line,
       };
     } else out.push(w);
   }
@@ -180,7 +179,15 @@ const total = (b: Beam) => (lastArr(b) - firstDep(b)) / MIN + b.penalty;
 /** A plan from one start time, with every chain found (arrive-by picks among them). */
 type Planned = PlanResult & { chains: PlannedChain[] };
 
-async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Planned> {
+/** OJP answers by query: one plan's attempts (arrive-by asks again from earlier) share them. */
+type Answers = Map<string, Connection[]>;
+
+async function planFrom(
+  start: number,
+  input: Tour,
+  deps: PlanDeps,
+  cache: Answers = new Map(),
+): Promise<Planned> {
   const tour = splitLoops(mergeRepeats(input));
   const wt = DEFAULT_WEIGHTS;
   const width = BEAM_WIDTH;
@@ -190,7 +197,6 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
   // Every stop the same one (a round trip with nothing in between): nothing to plan.
   if (!legs.length) return { relaxed: [], legs, chains: [] };
   const relaxedOut: PlanResult['relaxed'] = [];
-  const cache = new Map<string, Connection[]>();
   const trace = deps.trace ?? (() => undefined);
   const hm = (t: number) => zurichLocal(t).slice(11, 16);
   trace('plan.from', {
@@ -341,10 +347,15 @@ async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Pla
  * Up to 3 options that leave at different times: the best-scored one, the earliest and the
  * latest other departure (each the best chain for its departure), sorted by departure.
  */
-export function pickOptions(chains: PlannedChain[]): Pick<PlanResult, 'options' | 'recommended'> {
+export function pickOptions(
+  chains: PlannedChain[],
+  /** Arrive by: of equally good ones, the one leaving last (not an hour early). */
+  late = false,
+): Pick<PlanResult, 'options' | 'recommended'> {
   if (!chains.length) return {};
   const perStart = new Map<string, PlannedChain>();
-  for (const c of [...chains].sort((a, b) => a.score - b.score))
+  const tie = (a: PlannedChain, b: PlannedChain) => (late ? ms(b.dep) - ms(a.dep) : 0);
+  for (const c of [...chains].sort((a, b) => a.score - b.score || tie(a, b)))
     if (!perStart.has(c.dep)) perStart.set(c.dep, c);
   const distinct = [...perStart.values()];
   const recommended = distinct[0]!;
@@ -377,12 +388,13 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   const dwell = tour.waypoints.reduce((s, w) => s + w.dwellMin, 0);
   let start = by - (dwell + 90 * legs) * MIN;
   let last: Planned = { relaxed: [], chains: [] };
+  const cache: Answers = new Map();
   for (let attempt = 0; attempt < 6; attempt++) {
-    last = await planFrom(start, tour, deps);
+    last = await planFrom(start, tour, deps, cache);
     // Every chain found, not only the three picked: a later one may still arrive in time.
     const inTime = last.chains.filter((c) => ms(c.arr) <= by);
     deps.trace?.('plan.arriveBy', { attempt, inTime: inTime.length });
-    if (inTime.length) return { ...result(last), ...pickOptions(inTime) };
+    if (inTime.length) return { ...result(last), ...pickOptions(inTime, true) };
     const earliest = Math.min(...last.chains.map((c) => ms(c.arr)));
     start -= Math.max(60 * MIN, Number.isFinite(earliest) ? earliest - by + 30 * MIN : 0);
   }

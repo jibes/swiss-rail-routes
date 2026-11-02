@@ -2,9 +2,8 @@
 // when known. Position comes from the timetable only (no GPS, SPEC "Now").
 import type { Connection, Section, StopCall } from './model';
 import type { JourneyStatus, LiveCall } from './ojp/journey';
+import { isTight, walkMinutes } from './planner/connection';
 import { stopKey } from './stops';
-
-export const MIN_TRANSFER_MIN = 2;
 
 export interface LiveStop {
   key: string;
@@ -88,15 +87,17 @@ export function liveRides(chain: Connection[], status: Map<string, JourneyStatus
   );
 }
 
-/** Minutes of planned walking between two rides of the same connection. */
+/** Minutes of planned walking between two rides, across a leg's end too (walks at the end of
+ * one connection and the start of the next, at a change without a stay). */
 function walkMin(chain: Connection[], a: LiveRide, b: LiveRide): number {
-  if (a.leg !== b.leg) return 0;
-  return chain[a.leg]!.sections.slice(a.section + 1, b.section).reduce((m, s) => {
-    if (s.mode !== 'walk') return m;
-    if (s.walkMin !== undefined) return m + s.walkMin;
-    if (!s.from.dep || !s.to.arr) return m;
-    return m + Math.max(0, (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000);
-  }, 0);
+  const walks =
+    a.leg === b.leg
+      ? chain[a.leg]!.sections.slice(a.section + 1, b.section)
+      : [
+          ...chain[a.leg]!.sections.slice(a.section + 1),
+          ...chain[b.leg]!.sections.slice(0, b.section),
+        ];
+  return walks.reduce((m, s) => m + (s.mode === 'walk' ? walkMinutes(s) : 0), 0);
 }
 
 const depOf = (r: LiveRide) => r.stops[0]!.dep ?? r.stops[0]!.depPlan ?? 0;
@@ -111,32 +112,40 @@ export function liveState(
 ): LiveState {
   const rides = liveRides(chain, status);
   const risks: Risk[] = [];
-  for (let i = 0; i < rides.length; i++) {
+  /**
+   * The first ride you cannot be on (missed, cancelled, or not stopping where you board): you
+   * stay where it would have left from until you replan, however late it gets, and nothing
+   * after it counts.
+   */
+  let stuck: number | undefined;
+  for (let i = 0; i < rides.length && stuck === undefined; i++) {
     const b = rides[i]!;
-    // A ride already over is no longer at risk.
-    if (arrOf(b) <= now) continue;
-    if (b.cancelled) {
-      risks.push({ ride: i, marginMin: 0, reason: 'cancelled' });
-      continue;
-    }
-    const gone = [b.stops[0]!, b.stops.at(-1)!].find((x) => x.cancelled);
-    if (gone) {
-      risks.push({ ride: i, marginMin: 0, reason: 'notServed', stop: gone.name });
-      continue;
-    }
     const a = rides[i - 1];
-    if (!a || (a.s.journey && a.s.journey === b.s.journey)) continue;
-    // Time needed: the planned walk between the two (if any) plus the minimum change time.
-    const need = walkMin(chain, a, b) + MIN_TRANSFER_MIN;
-    const margin = (depOf(b) - arrOf(a)) / 60_000;
-    // Missed stays missed after the train has left (you are still at the station); a change
-    // that was tight but made is no longer a risk once the train has left.
-    if (margin < 0) risks.push({ ride: i, marginMin: Math.round(margin), reason: 'missed' });
-    else if (margin < need && depOf(b) > now)
+    const sameVehicle = !!a && !!a.s.journey && a.s.journey === b.s.journey;
+    const walk = a && !sameVehicle ? walkMin(chain, a, b) : 0;
+    const margin = a && !sameVehicle ? (depOf(b) - arrOf(a)) / 60_000 : Infinity;
+    const boardGone = b.stops[0]!.cancelled;
+    if (b.cancelled || boardGone || margin < walk) {
+      // Before boarding, or never boarded: lost. A ride long over was ridden.
+      if (arrOf(b) <= now && !b.cancelled && !boardGone && margin >= 0) continue;
+      risks.push(
+        b.cancelled
+          ? { ride: i, marginMin: 0, reason: 'cancelled' }
+          : boardGone
+            ? { ride: i, marginMin: 0, reason: 'notServed', stop: b.stops[0]!.name }
+            : { ride: i, marginMin: Math.round(margin), reason: 'missed' },
+      );
+      stuck = i;
+      break;
+    }
+    if (arrOf(b) <= now) continue;
+    // The exit not served: said; you are on board (or will be) all the same.
+    if (b.stops.at(-1)!.cancelled)
+      risks.push({ ride: i, marginMin: 0, reason: 'notServed', stop: b.stops.at(-1)!.name });
+    // Tight only while the change is still ahead.
+    else if (a && !sameVehicle && depOf(b) > now && isTight(margin, walk))
       risks.push({ ride: i, marginMin: Math.round(margin), reason: 'tight' });
   }
-  /** Rides you cannot be on: missed, cancelled, or not stopping where you board. */
-  const lost = new Set(risks.filter((r) => r.reason !== 'tight').map((r) => r.ride));
   if (!rides.length) return { phase: 'done', rides, current: 0, progress: 1, risks };
 
   const start = depOf(rides[0]!);
@@ -167,7 +176,7 @@ export function liveState(
   for (let i = 0; i < rides.length; i++) {
     const r = rides[i]!;
     // A ride you cannot be on: you wait where it would have taken you from (replan from here).
-    if (now < depOf(r) || lost.has(i))
+    if (now < depOf(r) || i === stuck)
       return { phase: 'waiting', rides, current: i, progress, next: board(i), risks };
     if (now < arrOf(r)) {
       const times = r.stops.map((x) => x.dep ?? x.arr ?? 0);
@@ -202,7 +211,8 @@ export function journeysToWatch(state: LiveState, now: number): string[] {
   if (state.phase === 'done') return [];
   const soon = (r?: LiveRide) => {
     const d = r?.stops[0]?.dep;
-    return d !== undefined && d - now <= WATCH_NEXT_MIN * 60_000;
+    // Not one that has left (a train missed): nothing to watch there.
+    return d !== undefined && d > now && d - now <= WATCH_NEXT_MIN * 60_000;
   };
   // Waiting (a stay, or before the first train): the train to board only once it is close.
   if (state.phase !== 'riding' && !soon(state.rides[state.current])) return [];

@@ -190,4 +190,63 @@ describe('liveState', () => {
     ];
     expect(liveState(through, at('08:10')).risks).toEqual([]);
   });
+
+  const late = (arrEst: string): JourneyStatus => ({
+    cancelled: false,
+    calls: [
+      {
+        key: ref('Luzern'),
+        name: 'Luzern',
+        arr: iso('08:45'),
+        arrEst: iso(arrEst),
+        passed: false,
+        cancelled: false,
+      },
+    ],
+  });
+
+  it('a missed change holds you there, even after the missed train has arrived', () => {
+    // The onward 08:51 would arrive 10:41; at 11:00 you are still in Luzern.
+    const s = liveState(chain, at('11:00'), new Map([['j1', late('09:03')]]));
+    expect(s.phase).toBe('waiting');
+    expect(s.current).toBe(1);
+    expect(s.risks.map((r) => r.reason)).toEqual(['missed']);
+    // Nothing to ask about a train that has gone.
+    expect(journeysToWatch(s, at('11:00'))).toEqual([]);
+  });
+
+  it('on board when your exit is not served: still riding, and told', () => {
+    const skips: JourneyStatus = {
+      cancelled: false,
+      calls: [
+        {
+          key: ref('Interlaken Ost'),
+          name: 'Interlaken Ost',
+          arr: iso('10:41'),
+          passed: false,
+          cancelled: true,
+        },
+      ],
+    };
+    const s = liveState(chain, at('09:30'), new Map([['j2', skips]]));
+    expect(s.phase).toBe('riding');
+    expect(s.current).toBe(1);
+    expect(s.risks[0]).toMatchObject({ reason: 'notServed', stop: 'Interlaken Ost' });
+  });
+
+  it('a walk counts: too little time for it is missed; its own time is not tight', () => {
+    const walk = (min: number) => ({
+      mode: 'walk' as const,
+      walkMin: min,
+      from: { stopRef: ref('Luzern'), name: 'Luzern' },
+      to: { stopRef: ref('Luzern'), name: 'Luzern' },
+      intermediate: [],
+    });
+    const withWalk = (min: number) => [
+      conn(chain[0]!.sections[0]!, walk(min), chain[0]!.sections[1]!),
+    ];
+    // 6 min between the trains: a 4-min walk fits (not even tight), a 7-min one does not.
+    expect(liveState(withWalk(4), at('08:30')).risks).toEqual([]);
+    expect(liveState(withWalk(7), at('08:30')).risks[0]).toMatchObject({ reason: 'missed' });
+  });
 });

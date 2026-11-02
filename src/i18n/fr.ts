@@ -243,4 +243,6 @@ export const fr = {
   minUnit: 'min',
   syncUpdate:
     'Mettez l’app à jour pour synchroniser : un autre appareil a une version plus récente.',
+  relaxedLeg:
+    '{from} → {to} : aucune liaison ne passe par toutes les gares ou lignes choisies ; la plus proche est affichée.',
 } satisfies Catalogue;

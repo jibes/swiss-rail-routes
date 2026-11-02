@@ -62,6 +62,7 @@ export function sanitiseTour(
       dwellMin: Math.max(0, Math.min(24 * 60, Math.round(dwell))),
       ...(typeof w.templateId === 'string' ? { templateId: w.templateId } : {}),
       ...(w.ring === true && typeof w.templateId === 'string' ? { ring: true } : {}),
+      ...(typeof w.line === 'string' ? { line: w.line } : {}),
       ...(typeof w.earliestArr === 'string' && TIME.test(w.earliestArr)
         ? { earliestArr: w.earliestArr }
         : {}),
@@ -70,6 +71,8 @@ export function sanitiseTour(
         : {}),
     });
   }
+  // A ring is a line's station between two you entered: never the first or the last.
+  for (const w of [waypoints[0], waypoints.at(-1)]) if (w) delete w.ring;
   if (waypoints.length < minStops) return null;
   const a = (o.anchor ?? {}) as Record<string, unknown>;
   const anchor: Tour['anchor'] =

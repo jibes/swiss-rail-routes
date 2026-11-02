@@ -1,5 +1,6 @@
 // GeoJSON for the map screen: the tour's stops, its rides (track geometry when OJP sent it,
 // else straight lines through the calls) and the highlights of its templates.
+import { linesOf } from './line';
 import type { RouteTemplate } from './data';
 import type { Connection, LatLon, Tour } from './model';
 import { stopKey } from './stops';
@@ -75,7 +76,7 @@ export function mapData(
     });
   }
 
-  const ids = new Set(tour.waypoints.map((w) => w.templateId).filter(Boolean));
+  const ids = linesOf(tour.waypoints);
   const highlights = templates
     .filter((t) => ids.has(t.id))
     .flatMap((t) => t.highlights)

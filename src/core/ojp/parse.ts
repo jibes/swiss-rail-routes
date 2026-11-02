@@ -200,7 +200,7 @@ export function parseTrips(xml: string): Connection[] {
       return n * 60_000;
     };
     const shift = (iso: string | undefined, ms: number) =>
-      iso && ms ? new Date(Date.parse(iso) + ms).toISOString() : iso;
+      iso && ms ? new Date(Date.parse(iso) + ms).toISOString().replace('.000Z', 'Z') : iso;
     return [
       {
         legIndex: 0,

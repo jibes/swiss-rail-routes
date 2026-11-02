@@ -8,7 +8,14 @@ import {
   plan,
   type PlannedChain,
 } from '../src/core/planner/plan';
-import { insertEntries, lineEntries, setEntryStay, stationEntry } from '../src/core/line';
+import {
+  entriesOf,
+  insertEntries,
+  lineEntries,
+  lineTo,
+  setEntryStay,
+  stationEntry,
+} from '../src/core/line';
 import { DATE, conn, deps, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (name: string) => ({ stopRef: ref(name), name });
@@ -161,6 +168,25 @@ describe('arrive by, with long legs', () => {
   });
 });
 
+describe('arrive by, equally good trains', () => {
+  it('recommends the one leaving last, not an hour early', async () => {
+    const half = ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00'].map((d) => {
+      const [h, m] = d.split(':').map(Number) as [number, number];
+      const a = h * 60 + m + 30;
+      const arr = `${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
+      return conn(
+        ride('IR 70', [
+          ['Zürich HB', d],
+          ['Luzern', arr],
+        ]),
+      );
+    });
+    const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Luzern')));
+    const r = await plan({ ...t, anchor: { arriveBy: '18:00' } }, deps(half).deps);
+    expect(r.recommended!.dep).toBe(half[4]!.dep); // 17:30 → 18:00
+  });
+});
+
 describe('a route that collapses to one stop', () => {
   it('plans nothing instead of failing', async () => {
     const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Zürich HB')));
@@ -310,6 +336,58 @@ describe('round trips', () => {
 });
 
 describe('lines and legs', () => {
+  it('lines without rings, back to back, each on its own leg (a Rigi day)', () => {
+    let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Zürich HB'))]);
+    t = insertEntries(t, 0, lineEntries(tpl('rigi-arth')));
+    t = insertEntries(t, entriesOf(t).length - 1, lineEntries(tpl('rigi-vitznau')));
+    t = insertEntries(t, entriesOf(t).length - 1, lineEntries(tpl('lake-lucerne')));
+    t = insertEntries(t, entriesOf(t).length - 1, [stationEntry(stop('Zürich HB'))]);
+    const kulm = entriesOf(t).findIndex((e) => e.w.name === 'Rigi Kulm');
+    t = setEntryStay(t, kulm, 45);
+    // Rigi Kulm stays one of yours (never a ring of the Arth line), and every line counts.
+    expect(entriesOf(t).map((e) => e.w.name)).toContain('Rigi Kulm');
+    const rules = legRules({ ...t, anchor: { departAt: '08:00' } }, { templates });
+    expect(rules.map((r) => r.templates.map((x) => x.id).sort())).toEqual([
+      ['rigi-arth'],
+      ['lake-lucerne', 'rigi-vitznau'],
+    ]);
+  });
+
+  it('a line is ridden its way: Lake Lucerne by boat, the train beside it only relaxed', async () => {
+    let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Vitznau'))]);
+    t = insertEntries(t, 0, lineEntries(tpl('lake-lucerne')));
+    t = { ...t, anchor: { departAt: '09:00' } };
+    const train = conn(
+      ride('R 1', [
+        ['Vitznau', '09:10'],
+        ['Luzern', '09:50'],
+      ]),
+    );
+    const boat = conn(
+      ride(
+        'BAT 1',
+        [
+          ['Vitznau', '09:30'],
+          ['Luzern', '10:30'],
+        ],
+        { mode: 'boat' },
+      ),
+    );
+    const both = await plan(t, deps([train, boat]).deps);
+    expect(both.recommended!.connections[0]!.sections[0]!.mode).toBe('boat');
+    expect(both.relaxed).toEqual([]);
+    const trainOnly = await plan(t, deps([train]).deps);
+    expect(trainOnly.relaxed).toEqual([{ legIndex: 0, rule: 'mustPass' }]);
+  });
+
+  it('a line added from where you are is a line', () => {
+    let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Vitznau'))]);
+    t = insertEntries(t, 0, lineEntries(tpl('lake-lucerne')));
+    const e = entriesOf(t);
+    expect(e.map((x) => x.w.name)).toEqual(['Vitznau', 'Luzern']);
+    expect(lineTo(e, 1)).toBe('lake-lucerne');
+  });
+
   it('a line’s rules stay on its own leg, not the next one from its end station', () => {
     let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Chur'))]);
     t = insertEntries(t, 0, lineEntries(tpl('albula')));
