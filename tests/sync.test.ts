@@ -137,6 +137,33 @@ describe('planRound: one sync round', () => {
     expect(plan.merged.tours.find((e) => e.id === 'b')).toEqual({ id: 'b', at: 200 });
   });
 
+  it('a timetable planned here is no change: a newer route edit elsewhere still wins', () => {
+    const trip = (route: string, chain?: string) => ({
+      id: 't',
+      route: { stations: route },
+      ...(chain ? { chain: { dep: chain } } : {}),
+    });
+    const shared = [{ id: 't', at: 100, value: trip('A-B') }];
+    const stamps = { tours: {}, trips: stampsOf(shared) };
+    // Here: planned the old route (chain added). There: the route changed at 150.
+    const plan = planRound({
+      stamps,
+      local: { tours: [], trips: [trip('A-B', '08:00')] },
+      remote: { v: 1, tours: [], trips: [{ id: 't', at: 150, value: trip('A-C') }] },
+      now: 200,
+    });
+    expect(itemsOf(plan.merged.trips, [])).toEqual([trip('A-C')]);
+    // And the same route planned here keeps this device's timetable.
+    const same = planRound({
+      stamps,
+      local: { tours: [], trips: [trip('A-B', '08:00')] },
+      remote: { v: 1, tours: [], trips: shared },
+      now: 200,
+    });
+    expect(same.apply.trips).toBeUndefined();
+    expect(same.push).toBe(false);
+  });
+
   it('applies a deletion from the other side and pushes nothing back', () => {
     const before = [{ id: 'a', at: 100, value: item('a', 'A') }];
     const plan = planRound({

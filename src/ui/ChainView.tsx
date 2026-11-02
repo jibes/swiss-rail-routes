@@ -224,7 +224,7 @@ function Leg({
               <span />
               <span className="rail" />
               <span className="what">
-                {t('walk')} {r.min > 0 && `${r.min}′`}
+                {t('walk')} {r.min > 0 && `${r.min} min`}
               </span>
             </li>
           );

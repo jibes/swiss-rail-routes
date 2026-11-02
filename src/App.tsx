@@ -9,6 +9,7 @@ import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
+import { watchAutoPlan } from './io/autoplan';
 import { useSync, watchSync } from './io/sync';
 import { liveTrip, tripStatus } from './core/trip';
 import { retire } from './core/retire';
@@ -105,6 +106,8 @@ export function App() {
     void useTrips.getState().replaceAll(r.trips);
   }, [loaded, tripsLoaded, settled, now]);
   useEffect(() => watchBack(), []);
+  // Trips without a timetable (changed elsewhere, left before planning) are planned meanwhile.
+  useEffect(() => (loaded && tripsLoaded ? watchAutoPlan() : undefined), [loaded, tripsLoaded]);
   // Sync once both lists are loaded; then on return to the app and after changes.
   useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.

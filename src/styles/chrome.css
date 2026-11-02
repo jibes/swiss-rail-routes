@@ -86,10 +86,8 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .stop-tools,
   .options,
-  .tabs button,
-  .toggle-pill {
+  .tabs button {
     transition:
       background-color 160ms ease,
       color 160ms ease,
@@ -152,10 +150,6 @@
 
 .grip:active {
   cursor: grabbing;
-}
-
-.tours.past .tour-card {
-  opacity: 0.72;
 }
 
 .live-tag {

@@ -33,7 +33,10 @@ export function markRings(waypoints: Waypoint[]): Waypoint[] {
     // The run i..j; its end is j, or the station after it when that one starts another line.
     const next = out[j + 1];
     const end = next?.templateId && next.templateId !== id ? j + 1 : j;
-    for (let k = i + 1; k < end; k++) if (out[k]!.kind === 'via') out[k]!.ring = true;
+    // The same line out and back is one run too: where it turns (the stations on either side
+    // the same) is an end of its own, not one of the line's stations.
+    const turns = (k: number) => out[k - 1]?.stopRef === out[k + 1]?.stopRef;
+    for (let k = i + 1; k < end; k++) if (out[k]!.kind === 'via' && !turns(k)) out[k]!.ring = true;
     i = end > j ? end : j + 1;
   }
   return out;

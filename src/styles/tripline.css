@@ -1,0 +1,652 @@
+/* The trip line, its panel and notes, and the controls' final look (after trip.css). */
+
+/* The line */
+.trip-line {
+  position: relative;
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+}
+
+.trip-line > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px 30px minmax(0, 1fr);
+}
+
+.trip-line .station.open {
+  grid-template-columns: 50px 30px minmax(0, 1fr) 44px;
+}
+
+.trip-line .t {
+  text-align: right;
+  padding: 8px 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-line .t i {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink-3);
+}
+
+/* Arrival above: the departure stays level with the station's dot and name; the row makes
+   room for it. */
+.trip-line .station:has(.t i) {
+  padding-top: 10px;
+}
+
+.trip-line .station:has(.t i) .rail::before {
+  top: -10px;
+}
+
+/* Arrival above: the departure stays level with the station's dot and name. */
+.trip-line .t:has(i) {
+  padding-top: 0;
+  margin-top: -7px;
+}
+
+.trip-line .rail {
+  position: relative;
+}
+
+.trip-line .rail::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--rail);
+}
+
+.trip-line > li:first-child:not(.dropmark) .rail::before,
+.trip-line .dropmark + li .rail::before {
+  top: 18px;
+}
+
+.trip-line .dot {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--rail);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+
+.trip-line .station.pass .dot {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  background: var(--bg);
+  border: 2px solid var(--rail);
+  box-shadow: none;
+}
+
+.trip-line .station.ring .dot {
+  border-color: color-mix(in srgb, var(--rail) 55%, var(--bg));
+}
+
+.trip-line .station .m {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  align-content: start;
+  min-width: 0;
+  padding: 7px 0 9px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.trip-line button.m {
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.trip-line button.m:hover .n {
+  text-decoration: underline;
+  text-decoration-color: var(--hair);
+  text-underline-offset: 4px;
+}
+
+.trip-line .n {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.trip-line .station.pass .n {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.trip-line .station.ring .n {
+  font-size: 14px;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+
+.trip-line .station.pass .t {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+
+/* Dark is yours (tap: the panel); grey is the timetable's (tap: why it is not editable). */
+.trip-line .station.auto .n {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.trip-line .station.entry.pass .n {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.trip-line .station.auto.off .dot {
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+}
+
+.trip-line button.m.locked {
+  cursor: help;
+}
+
+.trip-line button.m.locked:hover .n {
+  text-decoration: none;
+}
+
+.trip-line .why {
+  grid-column: 3 / -1;
+  margin: -6px 0 8px 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.trip-line .station.open .n {
+  color: var(--rail-ink);
+}
+
+.trip-line .chip {
+  min-height: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  background: var(--rail-soft);
+  color: var(--rail-ink);
+  box-shadow: none;
+}
+
+.trip-line .chip.quiet {
+  background: none;
+  padding-left: 0;
+  color: var(--ink-3);
+}
+
+.trip-line .ride .m {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 0 10px 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .ride b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.trip-line .badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+  line-height: 1.1;
+  background: none;
+}
+
+.trip-line .badge.scenic {
+  background: var(--rail);
+  border-color: var(--rail);
+  color: var(--on-rail);
+}
+
+.trip-line .warn {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  width: 100%;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .warn::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--info);
+  transform: translateY(-1px);
+}
+
+.trip-line .warn.amber::before {
+  background: var(--amber);
+}
+
+.trip-line .warn.red::before {
+  background: var(--red);
+}
+
+.trip-line.planning .t .shim,
+.trip-line .t .shim {
+  display: inline-block;
+  width: 36px;
+  height: 11px;
+  border-radius: 6px;
+  background: var(--hair);
+}
+
+.trip-line .grip {
+  margin: 0;
+  width: 44px;
+  height: 44px;
+  align-self: start;
+}
+
+.trip-line .station.dragging {
+  z-index: 3;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.trip-line .station.losing {
+  opacity: 0.25;
+}
+
+.trip-line .dropmark {
+  position: absolute;
+  left: 66px;
+  right: 0;
+  height: 2px;
+  display: block;
+  background: var(--rail);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trip-line .dropmark::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rail);
+}
+
+/* The panel under the open station */
+.trip-line .panel {
+  grid-column: 3 / -1;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    var(--shadow);
+}
+
+.panel .chips,
+.panel .acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.panel .pill {
+  min-height: 34px;
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.panel .acts .sp {
+  flex: 1;
+}
+
+.panel .sq {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+}
+
+.panel .sq[disabled] {
+  opacity: 0.35;
+}
+
+.panel .sq.danger {
+  color: var(--rail-ink);
+}
+
+.panel .via-line {
+  background: var(--rail-soft);
+  box-shadow: none;
+  color: var(--rail-ink);
+}
+
+.panel .via-line button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+}
+
+/* The add row at the end of the line */
+.trip-line .addrow {
+  display: block;
+}
+
+.trip-line .addrow button {
+  display: grid;
+  grid-template-columns: 50px 30px minmax(0, 1fr);
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  text-align: left;
+  font: inherit;
+  font-weight: 650;
+}
+
+.trip-line .addrow .rail {
+  height: 100%;
+}
+
+.trip-line .addrow .rail::before {
+  bottom: 50%;
+  background: none;
+  border-left: 3px dashed var(--rail);
+  width: 0;
+  opacity: 0.6;
+}
+
+.trip-line .addrow .plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px;
+  border-radius: 50%;
+  border: 2px dashed var(--rail);
+  display: grid;
+  place-items: center;
+  color: var(--rail-ink);
+  background: var(--bg);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.trip-line .addrow .m {
+  padding-left: 8px;
+}
+
+.trip-line > li:only-child .rail::before,
+.trip-line .addrow:first-child .rail::before {
+  display: none;
+}
+
+/* A route station the plan does not reach */
+.trip-line .station.missed .n {
+  text-decoration: line-through;
+  text-decoration-color: var(--amber);
+  color: var(--ink-3);
+}
+
+.trip-line .station.missed .dot {
+  background: var(--bg);
+  border: 2px dashed var(--amber);
+  box-shadow: none;
+}
+
+.trip-line .missed-note {
+  grid-column: 3 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .missed-note .pill {
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* A disruption: the operator's message on a tap */
+.trip-line .warn-wrap {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.trip-line button.warn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trip-line button.warn svg {
+  flex: none;
+  align-self: center;
+}
+
+.trip-line button.warn[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.trip-line .warn-wrap .detail {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* Controls, plain (0.5.4): flat tonal fills instead of outlined pills; one radius. */
+.trip-screen .pill,
+.add-sheet .pill {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: none;
+}
+
+.trip-screen .pill.on,
+.trip-screen .pill[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.trip-screen .options-bar {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  box-shadow: none;
+}
+
+.opt {
+  border-radius: 9px;
+}
+
+.panel .sq {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: none;
+}
+
+.trip-line .panel {
+  border-radius: 14px;
+  box-shadow: none;
+  background: var(--surface);
+  outline: 1px solid var(--hair);
+}
+
+.trip-line .missed-note .text-button {
+  min-height: 32px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--rail-ink);
+}
+
+.facts .red-text {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* Options of the previous time, while the new ones are planned */
+.opt.stale {
+  opacity: 0.45;
+}
+
+/* Audit 0.5.5: no native border on pills; 44 px targets; a sheet that keeps its height */
+.pill {
+  border: 0;
+}
+
+.trip-screen .pill {
+  min-height: 40px;
+}
+
+.options-bar .shift {
+  width: 44px;
+}
+
+.options-bar .shift:disabled {
+  opacity: 0.3;
+}
+
+.eyebrow {
+  min-height: var(--tap);
+}
+
+.trip-line .missed-note .text-button {
+  min-height: var(--tap);
+}
+
+.add-sheet {
+  height: 86dvh;
+}
+
+.secondary.small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.notice.red {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.notice.red .secondary {
+  margin-left: auto;
+}
+
+/* The live view (ChainView) in the trip line's look: outlined badges, the same names and times */
+.chain .badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.chain .station .what b {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.chain .times-col {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* As on the trip line: the arrival small above, the departure (what you act on) big. */
+.chain .times-col time:not(:last-child) {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.chain .times-col time:last-child {
+  font-size: 15px;
+}
+
+.chain .passed .badge {
+  border-color: var(--ink-3);
+  color: var(--ink-3);
+}

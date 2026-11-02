@@ -1,4 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
+import { encodeTour } from '../src/core/export/share';
+import { FIXTURE_DATE } from '../tests/acceptance/ojp';
+import { acceptanceTours } from '../tests/acceptance/tours';
 import { BEFORE, expect, test } from './fixtures';
 
 const axe = async (page: import('@playwright/test').Page) =>
@@ -48,4 +51,14 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   await page.context().setOffline(true);
   await page.reload();
   await expect(card).toBeVisible();
+});
+
+test('a trip left before its plan came is planned in the background', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Left early' })}`);
+  await page.getByRole('button', { name: 'Plan this trip' }).click();
+  // Straight back, before the screen's own planner starts (it waits 400 ms for edits).
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  const card = page.getByRole('link', { name: /Left early/ });
+  await expect(card).toContainText('09:04', { timeout: 30_000 });
 });

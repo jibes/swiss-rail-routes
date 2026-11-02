@@ -74,7 +74,7 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
     .getByRole('button', { name: /^Wengen/ })
     .click();
   await rows.nth(1).getByRole('combobox', { name: 'Stay at Wengen' }).click();
-  await page.getByRole('option', { name: '30′' }).click();
+  await page.getByRole('option', { name: '30 min' }).click();
   await rows.nth(1).getByRole('combobox', { name: 'Instead of Wengen' }).press('Enter');
   await page.getByRole('button', { name: 'Find connections' }).click();
   await page.getByRole('button', { name: 'Update trip' }).click();

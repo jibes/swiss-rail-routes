@@ -14,10 +14,10 @@ import { StopPicker } from './StopPicker';
 
 export const DWELLS = [15, 30, 60, 90, 120] as const;
 
-/** 90 → "1h30", 60 → "1h", 30 → "30′". */
+/** 90 → "1h30", 60 → "1h", 30 → "30 min". */
 export const dwellLabel = (min: number) =>
   min < 60
-    ? `${min}′`
+    ? `${min} min`
     : `${Math.floor(min / 60)}h${min % 60 ? String(min % 60).padStart(2, '0') : ''}`;
 
 interface Props {

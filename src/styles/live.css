@@ -221,10 +221,6 @@
   border-color: var(--ink-3);
 }
 
-.stop-change {
-  padding: 0 0 8px;
-}
-
 /* Replan: the travelled part, grey and fixed, runs into the line from here. */
 .line.past .stop {
   opacity: 0.55;

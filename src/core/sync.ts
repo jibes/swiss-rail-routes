@@ -164,7 +164,18 @@ function stable(v: unknown): string {
  * FNV-1a over key-sorted JSON: enough to notice a change, not a security property. Key order
  * does not count (a route rebuilt on loading is the same route).
  */
-export const hashOf = (value: unknown): string => fnv(stable(value));
+export const hashOf = (value: unknown): string => fnv(stable(planless(value)));
+
+/**
+ * A trip without its timetable: planning one (on any device) is no change of the trip, so it
+ * never outdates a newer route edit made elsewhere meanwhile (0.5.6). Each device plans what
+ * it holds; a received trip without a timetable gets one there.
+ */
+function planless(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || !('route' in value)) return value;
+  const { chain: _c, legs: _l, compact: _p, ...rest } = value as Record<string, unknown>;
+  return rest;
+}
 
 /** The hash before key order stopped counting: stamps saved with it still match once. */
 const legacyHashOf = (value: unknown): string => fnv(JSON.stringify(value));
@@ -221,7 +232,13 @@ export const joinStamps = <T extends { id: string }>(items: T[]): Stamps =>
 /** The items to keep: new ones first, then this device's order. */
 export function itemsOf<T extends { id: string }>(entries: Entry<T>[], order: T[]): T[] {
   const live = new Map(entries.filter((e) => e.value).map((e) => [e.id, e.value!]));
-  const known = order.filter((x) => live.has(x.id)).map((x) => live.get(x.id)!);
+  // The same item here (a trip planned on this device, say) keeps this device's copy.
+  const known = order
+    .filter((x) => live.has(x.id))
+    .map((x) => {
+      const v = live.get(x.id)!;
+      return hashOf(v) === hashOf(x) ? x : v;
+    });
   const fresh = [...live.values()].filter((x) => !order.some((o) => o.id === x.id));
   return [...fresh, ...known];
 }

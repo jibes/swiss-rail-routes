@@ -82,6 +82,18 @@ describe('the line: entries and scenic lines', () => {
     ]);
   });
 
+  it('reads an old out-and-back line: the turnaround stays yours', () => {
+    let old: Tour = {
+      ...newTour('t', '2026-11-07'),
+      waypoints: [{ ...s('StGallen'), kind: 'start', dwellMin: 0 }],
+    };
+    old = insertTemplate(old, VAE);
+    old = insertTemplate(old, VAE, true);
+    const rings = markRings(old.waypoints).map((w) => `${w.name}${w.ring ? '°' : ''}`);
+    expect(rings).toContain('Luzern');
+    expect(rings.filter((n) => n.endsWith('°')).length).toBeGreaterThan(0);
+  });
+
   it('moving a station switches off the lines it touches, and only those', () => {
     const t = trip();
     // Bern (4) up between StGallen and Luzern: the Voralpen line (into Luzern) goes, Brünig stays?

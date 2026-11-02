@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { addWaypoint, moveWaypoint, removeWaypoint, replaceWaypoint, setStay } from '../core/edit';
+import {
+  entriesOf,
+  insertEntries,
+  lineTo,
+  moveEntry,
+  removeEntry,
+  replaceEntry,
+  setEntryStay,
+  stationEntry,
+} from '../core/line';
 import type { Tour } from '../core/model';
 import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
@@ -14,7 +23,6 @@ import { ChainView } from './ChainView';
 import { hhmm } from './format';
 import { Icon } from './icons';
 import { OptionTabs } from './OptionTabs';
-import { PlanSettings } from './PlanSettings';
 import { StopPicker } from './StopPicker';
 import { StopRow } from './StopRow';
 import { TEMPLATES } from './TemplatePicker';
@@ -68,7 +76,7 @@ export function EditTrip({ id }: { id: string }) {
   const { listRef, grip, rowStyle, dragging } = useDragList((from, to) => {
     // Under way the start is where you are: it stays first.
     if (!whole && (from === 0 || to === 0)) return;
-    edit((x) => moveWaypoint(x, from, to));
+    edit((x) => moveEntry(x, from, to));
   });
 
   if (!trip || (!point && !whole) || !draft)
@@ -94,7 +102,10 @@ export function EditTrip({ id }: { id: string }) {
     .filter((x, i, all) => x.name !== point?.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
   const options = result?.options ?? [];
   const chain = options.find((c) => c.dep === picked) ?? result?.recommended;
-  const wps = draft.waypoints;
+  // The stations you entered (as on the trip screen): a scenic line's stations are part of the
+  // line, said under the station it leads to, never a row of their own.
+  const entries = entriesOf(draft);
+  const lineName = (k: number) => TEMPLATES.find((x) => x.id === lineTo(entries, k))?.name;
 
   const run = async () => {
     setStatus('planning');
@@ -156,7 +167,6 @@ export function EditTrip({ id }: { id: string }) {
       </header>
 
       <p className="muted">{point ? t('replanHint') : t('editTripHint')}</p>
-      {whole && <PlanSettings tour={draft} edit={edit} />}
 
       <div>
         {travelled.length > 0 && (
@@ -177,20 +187,26 @@ export function EditTrip({ id }: { id: string }) {
           </ol>
         )}
         <ol className="line" aria-label={t('stops')} ref={listRef}>
-          {wps.map((w, i) => (
+          {entries.map(({ w }, i) => (
             <StopRow
               key={`${i}-${w.stopRef}`}
               w={w}
               index={i}
-              last={i === wps.length - 1}
+              last={i === entries.length - 1}
               fixed={!!point && i === 0}
-              caption={point && i === 0 ? t('fromHere', { time: hhmm(point.at) }) : undefined}
-              onStay={(m) => edit((x) => setStay(x, i, m))}
+              caption={
+                point && i === 0
+                  ? t('fromHere', { time: hhmm(point.at) })
+                  : lineName(i)
+                    ? t('viaLine', { line: lineName(i)! })
+                    : undefined
+              }
+              onStay={(m) => edit((x) => setEntryStay(x, i, m > 0 ? m : null))}
               onRemove={() => {
                 if (point && i === 0) return;
-                edit((x) => removeWaypoint(x, i));
+                edit((x) => removeEntry(x, i));
               }}
-              onReplace={(stop) => (!point || i > 0) && edit((x) => replaceWaypoint(x, i, stop))}
+              onReplace={(stop) => (!point || i > 0) && edit((x) => replaceEntry(x, i, stop))}
               grip={grip(i)}
               style={rowStyle(i)}
               dragging={dragging === i}
@@ -202,7 +218,11 @@ export function EditTrip({ id }: { id: string }) {
           <StopPicker
             label={t('addStop')}
             onPick={(s) =>
-              edit((x) => addWaypoint(x, { stopRef: s.ref, name: s.name }, x.waypoints.length - 1))
+              edit((x) =>
+                insertEntries(x, entriesOf(x).length - 2, [
+                  stationEntry({ stopRef: s.ref, name: s.name }),
+                ]),
+              )
             }
           />
         </div>
@@ -234,7 +254,7 @@ export function EditTrip({ id }: { id: string }) {
             <button
               type="button"
               className="primary wide"
-              disabled={status === 'planning' || wps.length < 2}
+              disabled={status === 'planning' || entries.length < 2}
               onClick={() => void run()}
             >
               {status === 'planning' ? t('planning') : t('findConnections')}

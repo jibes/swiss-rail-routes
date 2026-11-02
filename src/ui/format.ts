@@ -9,7 +9,7 @@ export const minutesBetween = (a: string, b: string) =>
   Math.round((Date.parse(b) - Date.parse(a)) / 60_000);
 
 export const duration = (min: number) =>
-  min < 60 ? `${min}′` : `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
+  min < 60 ? `${min} min` : `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
 
 export function longDate(date: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {

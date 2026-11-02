@@ -2,12 +2,11 @@
 // quiet; the result goes into the trip (the recommended option, or the one picked), and the
 // options are kept with the last plan (srr.plans.v1) for when the screen opens again.
 import { useEffect, useState } from 'react';
-import { plan, type PlanResult, type PlannedChain } from '../core/planner/plan';
+import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { compactTrip, type Trip } from '../core/trip';
-import { GA, SEGMENTS, TEMPLATES } from '../data';
-import { PlanningUnavailable, WorkerError, fetchTrips } from '../io/ojp';
-import { stopSearch } from '../io/stops';
-import { loadPlans, savePlans } from '../io/tours';
+import { PlanningUnavailable, WorkerError } from '../io/ojp';
+import { keepPlan, planRoute, routeJson } from '../io/planTrip';
+import { loadPlans } from '../io/tours';
 import { useTrips } from '../trips';
 import { askNotifications } from '../io/notifications';
 
@@ -15,8 +14,6 @@ export type PlanStatus = 'idle' | 'planning' | 'done' | 'unavailable' | 'error';
 
 /** Edits come in bursts (a chip, then another): plan once they settle. */
 const QUIET_MS = 400;
-
-const routeJson = (t: Trip) => JSON.stringify(t.route);
 
 export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const update = useTrips((s) => s.update);
@@ -52,26 +49,14 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
         }
         setStatus('planning');
         try {
-          const index = await stopSearch();
-          const tour = JSON.parse(json) as Trip['route'];
-          const r = await plan(tour, {
-            fetchTrips: (q) => fetchTrips(q, ctrl.signal),
-            templates: TEMPLATES,
-            segments: SEGMENTS,
-            ga: GA,
-            stop: (ref) => index.byRef(ref),
-          });
+          const current = useTrips.getState().trips.find((t) => t.id === id);
+          if (!current) return;
+          // Shared with the background planner: the same route is asked once.
+          const r = await planRoute(current, ctrl.signal);
           if (ctrl.signal.aborted) return;
           setResult(r, json);
           setStatus('done');
           keep(r);
-          // Kept for trips that still exist only, so the cache does not grow for good.
-          const plans = await loadPlans();
-          const ids = new Set(useTrips.getState().trips.map((t) => t.id));
-          await savePlans({
-            ...Object.fromEntries(Object.entries(plans).filter(([k]) => ids.has(k))),
-            [id]: { tourJson: json, at: new Date().toISOString(), result: r },
-          });
         } catch (e) {
           if (ctrl.signal.aborted) return;
           setDetail(
@@ -88,15 +73,8 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     );
     // The trip takes the recommended option, unless its route changed meanwhile.
     function keep(r: PlanResult) {
-      const chain = r.recommended ?? r.options?.[0];
-      if (!chain || !r.legs) return;
       // A trip with a timetable is what notifications are for: ask once (Android; no-op on the web).
-      void askNotifications();
-      update(id!, (t) =>
-        routeJson(t) === json && !t.chain
-          ? compactTrip({ ...t, chain, legs: r.legs!, compact: undefined })
-          : t,
-      );
+      if (keepPlan(id!, json, r)) void askNotifications();
     }
     return () => {
       ctrl.abort();

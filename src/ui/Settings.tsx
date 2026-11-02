@@ -207,8 +207,8 @@ export function Settings({ join }: { join?: string }) {
         <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
           <Icon name="back" />
         </button>
-        <h1>{t('settings')}</h1>
       </header>
+      <h1 className="page-title">{t('settings')}</h1>
 
       <section className="setting">
         <h2 className="section-label">{t('language')}</h2>
