@@ -34,7 +34,6 @@ function setup(over: Partial<Deps> = {}) {
       return syncHandle(req, {
         get: async () => boxes.get(id),
         put: async (r) => void boxes.set(id, r),
-        delete: async () => void boxes.delete(id),
       });
     },
     ...over,
@@ -194,7 +193,6 @@ describe('sync mailbox', () => {
     const store = {
       get: async () => box.get('x'),
       put: async (r: SyncRecord) => void box.set('x', r),
-      delete: async () => void box.delete('x'),
       touch: async () => void touched.push('t'),
     };
     const call = (q = '') => syncHandle(new Request(`https://w/sync/x${q}`), store);

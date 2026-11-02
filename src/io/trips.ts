@@ -1,15 +1,9 @@
-import { get, set } from 'idb-keyval';
 import type { Trip } from '../core/trip';
+import { savedList } from './listStore';
 
-const TRIPS = 'srr.trips.v1';
-
-/** Saved trips; storage that cannot be opened (blocked site data) gives none. */
-export async function loadTrips(): Promise<Trip[]> {
-  try {
-    const raw = await get<Trip[]>(TRIPS);
-    return Array.isArray(raw) ? raw : [];
-  } catch {
-    return [];
-  }
-}
-export const saveTrips = (trips: Trip[]) => set(TRIPS, trips);
+/** Saved trips (`srr.trips.v1`), shared by every tab. */
+export const tripsList = savedList<Trip>('srr.trips.v1', (raw) =>
+  Array.isArray(raw)
+    ? (raw as Trip[]).filter((t) => t && typeof t.id === 'string' && !!t.route)
+    : [],
+);

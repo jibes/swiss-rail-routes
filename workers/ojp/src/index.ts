@@ -14,7 +14,10 @@ interface Env {
 /** Boxes nobody wrote to for this long are deleted (a lost key, an abandoned device). */
 const KEEP_MS = 180 * 86_400_000;
 
-/** One sync id's blob. A Durable Object runs one request at a time, so the version check holds. */
+/**
+ * One sync id's blob. Storage calls are serialised by the Durable Object's input gates; the
+ * version check and write in syncHandle await nothing else in between, so it holds.
+ */
 export class SyncBox extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const s = this.ctx.storage;
@@ -22,9 +25,11 @@ export class SyncBox extends DurableObject<Env> {
       get: () => s.get<SyncRecord>('r'),
       put: async (r) => {
         await s.put('r', r);
-        await s.setAlarm(Date.now() + KEEP_MS);
+        // A closed box's marker stays for good (tiny): a device on the old key that comes
+        // back later must still be told, not fill it again.
+        if (r.revoked) await s.deleteAlarm();
+        else await s.setAlarm(Date.now() + KEEP_MS);
       },
-      delete: () => s.deleteAll(),
       // Read daily by its devices: keep it (moved on at most once a day).
       touch: async () => {
         const due = await s.getAlarm();

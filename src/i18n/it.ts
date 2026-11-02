@@ -253,4 +253,6 @@ export const it = {
   debugLogCopied: 'Registro copiato',
   debugLogClear: 'Svuota',
   debugLogFailed: 'Impossibile salvare il registro',
+  storageFailed:
+    'Non è stato possibile leggere i tuoi viaggi salvati. Nulla viene salvato fino alla prossima apertura dell’app.',
 } satisfies Catalogue;

@@ -8,6 +8,8 @@ import { isNative } from '../native';
 import { stopSearch } from './stops';
 import { stopKey } from '../core/stops';
 import { log } from './log';
+import { usePrefs } from '../store';
+import { useTrips } from '../trips';
 
 const CHANNEL = 'trip';
 
@@ -93,6 +95,9 @@ export async function askNotifications(): Promise<void> {
   if (perm?.display === 'prompt') {
     const got = await LocalNotifications.requestPermissions().catch(() => null);
     log('notify.ask', { result: got?.display });
+    // Allowed just now: the trips were scheduled (skipped) before the answer came.
+    if (got?.display === 'granted')
+      await scheduleTrips(useTrips.getState().trips, usePrefs.getState().lang);
   }
 }
 

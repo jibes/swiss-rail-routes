@@ -249,6 +249,8 @@ export const en = {
   debugLogCopied: 'Log copied',
   debugLogClear: 'Clear',
   debugLogFailed: 'Could not save the log',
+  storageFailed:
+    'Your saved trips could not be read. Nothing is saved until the app is opened again.',
 };
 
 export type Catalogue = typeof en;

@@ -52,6 +52,18 @@ describe('sync key', () => {
     const other = (await deriveKeys(parseKey(newKey())!)).aes;
     await expect(open(data, other)).rejects.toThrow();
   });
+
+  it('seals a large copy (more than 500 KB after compression) without overflowing', async () => {
+    const { aes } = await deriveKeys(parseKey(newKey())!);
+    // Random text barely compresses: about 900 KB sealed.
+    const noise = Array.from({ length: 10 }, () =>
+      Array.from(crypto.getRandomValues(new Uint8Array(60_000)), (b) => b.toString(36)).join(''),
+    ).join('');
+    const doc = { v: 1, tours: [], trips: [{ id: 'a', at: 1, value: { noise } }] };
+    const data = await seal(doc, aes);
+    expect(data.length).toBeGreaterThan(500_000);
+    expect(await open(data, aes)).toEqual(doc);
+  });
 });
 
 describe('scanned codes', () => {

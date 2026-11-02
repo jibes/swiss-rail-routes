@@ -2,7 +2,7 @@
 // Worker. Runs on opening, when the app comes back into view, every minute while it is in view
 // and a few seconds after a change. The decisions are planRound's (pure, tested); this file
 // only reads, applies and writes.
-import { del, get, set } from 'idb-keyval';
+import { del, get, set, update } from 'idb-keyval';
 import { create } from 'zustand';
 import type { Tour } from '../core/model';
 import {
@@ -21,8 +21,6 @@ import { compactTrip, type Trip } from '../core/trip';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { log } from './log';
-import { loadTours } from './tours';
-import { loadTrips } from './trips';
 
 const KEY = 'srr.sync.v1';
 /** The last key's stamps after turning off, for turning on again with the same key. */
@@ -36,6 +34,22 @@ interface Saved {
   v: number;
   stamps: { tours: Stamps; trips: Stamps };
   at?: number;
+  /** A write was due and has not been confirmed: the next round downloads the copy in full
+   * (never "unchanged" from stamps) and so writes again. */
+  unsent?: boolean;
+}
+
+/** Sync was turned off or given another key while a round ran: that round keeps nothing. */
+class Stopped extends Error {}
+
+/** Saves `next` only while sync still runs on `key` (one transaction); otherwise stops. */
+async function keepFor(key: string, next: Saved) {
+  let ok = false;
+  await update<Saved | undefined>(KEY, (cur) => {
+    ok = cur?.key === key;
+    return ok ? next : cur;
+  });
+  if (!ok) throw new Stopped();
 }
 
 type Doc = SyncDoc<Tour, Trip>;
@@ -140,13 +154,6 @@ function asShared(stamps: Saved['stamps'], local: { tours: Tour[]; trips: Trip[]
   return { v: 1, tours: side(stamps.tours, local.tours), trips: side(stamps.trips, local.trips) };
 }
 
-/** Other tabs of the app reload their lists when one tab applied a sync. */
-const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('srr-sync');
-channel?.addEventListener('message', () => {
-  void loadTours().then((tours) => useTours.setState({ tours }));
-  void loadTrips().then((trips) => useTrips.setState({ trips }));
-});
-
 /** One round: read, merge with what this device has now, apply, then write if needed. */
 async function round(start: Saved): Promise<Saved> {
   const bytes = parseKey(start.key);
@@ -154,7 +161,7 @@ async function round(start: Saved): Promise<Saved> {
   const { id, aes } = await deriveKeys(bytes);
   let saved = start;
   for (let attempt = 0; ; attempt++) {
-    const got = await remote(id, aes, saved.v);
+    const got = await remote(id, aes, saved.unsent ? 0 : saved.v);
     log('sync.read', {
       attempt,
       v: got.v,
@@ -193,18 +200,18 @@ async function round(start: Saved): Promise<Saved> {
       plan.apply.tours && useTours.getState().replaceAll(plan.apply.tours),
       trips && useTrips.getState().replaceAll(trips),
     ]);
-    if (plan.apply.tours || plan.apply.trips) channel?.postMessage('applied');
     // What this device now holds is the merge: remember it before writing, so a failed or
-    // conflicting write never makes received items look like new local changes.
-    saved = { ...saved, v, stamps: plan.stamps };
-    await set(KEY, saved);
+    // conflicting write never makes received items look like new local changes. Until the
+    // write is confirmed it is `unsent`, so a failed one is tried again.
+    saved = { ...saved, v, stamps: plan.stamps, unsent: !!plan.push };
+    await keepFor(start.key, saved);
     if (!plan.push) return { ...saved, at: now };
     try {
       const data = await seal({ v: 1, ...plan.merged } satisfies Doc, aes);
       if (data.length > MAX_DATA) throw new SyncProblem('tooBig');
       const next = await push(id, v, data);
       log('sync.write', { v: next, chars: data.length });
-      return { ...saved, v: next, at: now };
+      return { ...saved, v: next, at: now, unsent: false };
     } catch (e) {
       log('sync.write.fail', { attempt, conflict: e instanceof Conflict, e });
       if (e instanceof Conflict && attempt < 3) continue;
@@ -240,6 +247,8 @@ const exclusive = (f: () => Promise<void>) =>
 async function once() {
   if (!syncAvailable()) return;
   if (!useTours.getState().loaded || !useTrips.getState().loaded) return;
+  // Lists that could not be read look empty: syncing them would delete everything elsewhere.
+  if (useTours.getState().failed || useTrips.getState().failed) return;
   await exclusive(async () => {
     // Read inside the lock: another tab may just have synced and saved newer stamps.
     const saved = await get<Saved>(KEY);
@@ -247,17 +256,18 @@ async function once() {
     useSync.setState({ status: 'syncing' });
     try {
       const next = await round(saved);
-      // Turned off or given a new key meanwhile: keep what that did.
-      if ((await get<Saved>(KEY))?.key !== saved.key) return;
-      await set(KEY, { ...next, status: 'ok' });
-      useSync.setState({ status: 'ok', at: next.at ?? null });
+      await keepFor(saved.key, { ...next, status: 'ok' });
+      // The first round that reached the server: retiring may run now.
+      useSync.setState({ status: 'ok', at: next.at ?? null, settled: true });
       log('sync.ok', { v: next.v });
     } catch (e) {
+      // Turned off or given a new key meanwhile: keep what that did.
+      if (e instanceof Stopped) return;
       const now = await get<Saved>(KEY);
       if (now?.key !== saved.key) return;
       const status = e instanceof SyncProblem ? e.status : 'error';
       log('sync.fail', { status, e });
-      await set(KEY, { ...now, status });
+      await keepFor(saved.key, { ...now, status }).catch(() => undefined);
       useSync.setState({ status });
     }
   });
@@ -310,7 +320,7 @@ export async function stopSync() {
   if (saved) await set(LAST, { key: saved.key, stamps: saved.stamps });
   log('sync.stop');
   await del(KEY);
-  useSync.setState({ key: null, status: 'off', at: null });
+  useSync.setState({ key: null, status: 'off', at: null, settled: true });
 }
 
 /**
@@ -342,10 +352,14 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Syncs on start, back in view, every minute in view, and 3 s after the last change. */
 export function watchSync() {
+  // Retiring waits for the first round that reaches the server (`settled`), so a trip moved to
+  // a later day on another device is seen first; without sync it may run at once.
   void loadSync()
-    .then(syncNow)
-    .catch(() => undefined)
-    .finally(() => useSync.setState({ settled: true }));
+    .then(() => {
+      if (!useSync.getState().key || !syncAvailable()) useSync.setState({ settled: true });
+      return syncNow();
+    })
+    .catch(() => undefined);
   const later = () => {
     if (!useSync.getState().key) return;
     clearTimeout(timer);

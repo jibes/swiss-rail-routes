@@ -18,7 +18,7 @@ import { expectedArrival } from './core/live';
 import { useLiveStatus } from './ui/useLive';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
-import { useTrips } from './trips';
+import { tripsLoaded as tripsRead, useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
 import { useNow } from './ui/useNow';
@@ -90,7 +90,14 @@ export function App() {
   useEffect(() => {
     if (!tripsLoaded) return;
     const timer = setTimeout(() => void scheduleTrips(trips, lang), 500);
-    return () => clearTimeout(timer);
+    // Back in the app: notifications may have been allowed in the system settings meanwhile.
+    const back = () =>
+      document.visibilityState === 'visible' && void scheduleTrips(useTrips.getState().trips, lang);
+    document.addEventListener('visibilitychange', back);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', back);
+    };
   }, [trips, tripsLoaded, lang]);
   // A trip whose day is over leaves the list and waits in search (your trips), checked as the
   // clock moves on.
@@ -98,6 +105,8 @@ export function App() {
   const settled = useSync((s) => s.settled);
   useEffect(() => {
     if (!loaded || !tripsLoaded || !settled) return;
+    // Lists that could not be read are never written.
+    if (useTrips.getState().failed || useTours.getState().failed) return;
     const live = useLiveStatus.getState().status;
     const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
       t.chain ? expectedArrival(t.chain.connections, live) : undefined,
@@ -125,7 +134,10 @@ export function App() {
   useEffect(
     () =>
       onNotificationTap((id) => {
-        location.hash = useTrips.getState().trips.some((t) => t.id === id) ? `/trip/${id}` : '/';
+        // On a cold start the tap comes before the trips are read: wait for them.
+        void tripsRead().then(() => {
+          location.hash = useTrips.getState().trips.some((t) => t.id === id) ? `/trip/${id}` : '/';
+        });
       }),
     [],
   );

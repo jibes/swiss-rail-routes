@@ -2,6 +2,8 @@
 // ~100 m and polyline-encoded, deflated, base64url. Opening it never replans (decision
 // 2026-11-01: an exact snapshot).
 import { decodePolyline, encodePolyline, simplify } from '../polyline';
+import { fromB64Url, toB64Url } from '../b64';
+import { sanitiseTour } from '../tour';
 import type { Section } from '../model';
 import type { PlannedTrip, Trip } from '../trip';
 
@@ -10,15 +12,6 @@ import type { PlannedTrip, Trip } from '../trip';
 const TRACK_TOL = 0.001;
 
 const PREFIX = '#/j/';
-
-const toB64Url = (bytes: Uint8Array) => {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000)
-    s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
-};
-const fromB64Url = (s: string) =>
-  Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), (c) => c.charCodeAt(0));
 
 async function pipe(
   bytes: Uint8Array<ArrayBuffer>,
@@ -97,7 +90,28 @@ export async function decodeTrip(hash: string, id: string): Promise<Trip | null>
         ),
     );
     if (!sound || data.legs.length !== data.chain.connections.length) return null;
-    return { ...full(data), id, version: 1 } as Trip;
+    const route = sanitiseTour(data.route, data.route.date);
+    const time = (x: unknown) => typeof x === 'string' && !Number.isNaN(Date.parse(x));
+    if (!route || !time(data.chain.dep) || !time(data.chain.arr)) return null;
+    const f = full(data);
+    // Built from the fields a trip has, nothing else: a link is someone else's data, and the
+    // trip is saved and synced (no `previous`, `compact` or unknown keys come along).
+    return {
+      id,
+      version: 1,
+      schema: 1,
+      name: typeof data.name === 'string' ? data.name.slice(0, 120) : '',
+      savedAt: time(data.savedAt) ? data.savedAt : new Date().toISOString(),
+      route: { ...route, id: typeof data.route.id === 'string' ? data.route.id : id },
+      legs: f.legs,
+      chain: {
+        connections: f.chain.connections,
+        warnings: Array.isArray(f.chain.warnings) ? f.chain.warnings : [],
+        score: typeof f.chain.score === 'number' ? f.chain.score : 0,
+        dep: f.chain.dep,
+        arr: f.chain.arr,
+      },
+    } as Trip;
   } catch {
     return null;
   }

@@ -8,15 +8,46 @@ import { useTrips } from '../trips';
 import { log } from './log';
 import { fetchTrips } from './ojp';
 import { stopSearch } from './stops';
-import { loadPlans, savePlans } from './tours';
+import { savePlan } from './tours';
 
 export const routeJson = (t: Trip) => JSON.stringify(t.route);
 
-const running = new Map<string, Promise<PlanResult>>();
+/** A plan under way, shared by everyone who asked for it; stopped once all of them gave up. */
+interface Running {
+  p: Promise<PlanResult>;
+  ctrl: AbortController;
+  users: number;
+}
+const running = new Map<string, Running>();
+
+/** `p` for one caller: rejects when that caller's own signal aborts, and lets go of the plan. */
+function join(key: string, r: Running, signal?: AbortSignal): Promise<PlanResult> {
+  r.users++;
+  if (!signal) return r.p;
+  const drop = () => {
+    if (--r.users > 0 || running.get(key) !== r) return;
+    // Nobody waits for it any more: stop its requests, and the next ask starts afresh.
+    running.delete(key);
+    r.ctrl.abort();
+  };
+  if (signal.aborted) {
+    drop();
+    return Promise.reject(signal.reason);
+  }
+  return new Promise((resolve, reject) => {
+    const leave = () => {
+      drop();
+      reject(signal.reason);
+    };
+    signal.addEventListener('abort', leave, { once: true });
+    r.p.then(resolve, reject).finally(() => signal.removeEventListener('abort', leave));
+  });
+}
 
 /**
  * Plans `trip`'s route (the same route asked twice shares one request). `keep: false` asks
- * without saving (more options from another time, the trip itself unchanged).
+ * without saving (more options from another time, the trip itself unchanged). `signal` stops
+ * only this caller; the requests stop once every caller has.
  */
 export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promise<PlanResult> {
   const json = routeJson(trip);
@@ -24,8 +55,9 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
   const known = running.get(key);
   if (known) {
     log('plan.shared', { trip: trip.id, keep });
-    return known;
+    return join(key, known, signal);
   }
+  const ctrl = new AbortController();
   const t0 = performance.now();
   const route = trip.route;
   log('plan.start', {
@@ -42,7 +74,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
     const index = await stopSearch();
     const r = await plan(JSON.parse(json) as Trip['route'], {
       trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
-      fetchTrips: (q) => fetchTrips(q, signal),
+      fetchTrips: (q) => fetchTrips(q, ctrl.signal),
       templates: TEMPLATES,
       segments: SEGMENTS,
       ga: GA,
@@ -58,12 +90,11 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
     });
     if (!keep) return r;
     // Kept for trips that still exist only, so the cache does not grow for good.
-    const plans = await loadPlans();
-    const ids = new Set(useTrips.getState().trips.map((t) => t.id));
-    await savePlans({
-      ...Object.fromEntries(Object.entries(plans).filter(([k]) => ids.has(k))),
-      [trip.id]: { tourJson: json, at: new Date().toISOString(), result: r },
-    });
+    await savePlan(
+      trip.id,
+      { tourJson: json, at: new Date().toISOString(), result: r },
+      new Set(useTrips.getState().trips.map((t) => t.id)),
+    );
     return r;
   })()
     .catch((e: unknown) => {
@@ -72,13 +103,16 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
         keep,
         ms: Math.round(performance.now() - t0),
         e,
-        aborted: signal?.aborted,
+        aborted: ctrl.signal.aborted,
       });
       throw e;
     })
-    .finally(() => running.delete(key));
-  running.set(key, p);
-  return p;
+    .finally(() => {
+      if (running.get(key) === entry) running.delete(key);
+    });
+  const entry: Running = { p, ctrl, users: 0 };
+  running.set(key, entry);
+  return join(key, entry, signal);
 }
 
 /** The trip takes the recommended option, unless its route changed or it was planned since. */

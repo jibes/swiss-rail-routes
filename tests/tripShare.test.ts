@@ -68,4 +68,19 @@ describe('trip share link', async () => {
     expect(await decodeTrip('#/j/AAAA', 'x')).toBeNull();
     expect(await decodeTrip('#/t/abc', 'x')).toBeNull();
   });
+
+  it('keeps only what a trip has: no history, flags or unknown keys from a crafted link', async () => {
+    // encodeTrip drops `previous`; a hand-made link can carry anything.
+    const crafted = { ...trip, compact: true, evil: 'x', previous: { savedAt: 'x' } };
+    const back = (await decodeTrip(await encodeTrip(crafted as unknown as typeof trip), 'z'))!;
+    expect(back).not.toBeNull();
+    expect(Object.keys(back).sort()).toEqual(
+      ['chain', 'id', 'legs', 'name', 'route', 'savedAt', 'schema', 'version'].sort(),
+    );
+    expect((back as unknown as Record<string, unknown>).evil).toBeUndefined();
+    expect(back.compact).toBeUndefined();
+    // A route the app could not use is refused.
+    const noRoute = { ...trip, route: { ...trip.route, waypoints: [] } };
+    expect(await decodeTrip(await encodeTrip(noRoute), 'z')).toBeNull();
+  });
 });

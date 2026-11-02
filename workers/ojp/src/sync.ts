@@ -20,7 +20,6 @@ export interface SyncRecord {
 export interface SyncStore {
   get(): Promise<SyncRecord | undefined>;
   put(r: SyncRecord): Promise<void>;
-  delete(): Promise<void>;
   /** A device read it: the box is in use, so it does not expire. */
   touch?(): Promise<void>;
 }
@@ -37,6 +36,10 @@ const json = (status: number, body: unknown) =>
   });
 
 export async function syncHandle(req: Request, store: SyncStore): Promise<Response> {
+  // A write's body is read before the record: reading a body lets other requests in (Durable
+  // Object input gates cover storage only), so the version check and the write must follow
+  // the read of the record with nothing awaited in between.
+  if (req.method === 'PUT') return write(req, store);
   const cur = await store.get();
   if (cur?.revoked) return json(410, { revoked: true });
   if (req.method === 'GET') {
@@ -50,7 +53,10 @@ export async function syncHandle(req: Request, store: SyncStore): Promise<Respon
     await store.put({ v: (cur?.v ?? 0) + 1, data: '', revoked: true });
     return new Response(null, { status: 204 });
   }
-  if (req.method !== 'PUT') return json(405, { error: 'method' });
+  return json(405, { error: 'method' });
+}
+
+async function write(req: Request, store: SyncStore): Promise<Response> {
   // Refuse a body too large before reading it.
   if (Number(req.headers.get('Content-Length') ?? 0) > MAX_DATA + 100)
     return json(413, { error: 'size' });
@@ -65,6 +71,8 @@ export async function syncHandle(req: Request, store: SyncStore): Promise<Respon
     return json(400, { error: 'shape' });
   if (data.length > MAX_DATA) return json(413, { error: 'size' });
   if (!/^[\w-]+$/.test(data)) return json(400, { error: 'data' });
+  const cur = await store.get();
+  if (cur?.revoked) return json(410, { revoked: true });
   if ((cur?.v ?? 0) !== v) return json(409, cur ?? { v: 0 });
   const next = { v: (v as number) + 1, data };
   await store.put(next);

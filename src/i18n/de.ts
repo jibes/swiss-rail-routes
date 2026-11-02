@@ -258,4 +258,6 @@ export const de = {
   debugLogCopied: 'Protokoll kopiert',
   debugLogClear: 'Leeren',
   debugLogFailed: 'Protokoll konnte nicht gespeichert werden',
+  storageFailed:
+    'Deine gespeicherten Reisen konnten nicht gelesen werden. Bis zum nächsten Öffnen der App wird nichts gespeichert.',
 } satisfies Catalogue;

@@ -5,7 +5,7 @@ import { stopKey } from '../core/stops';
 import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
-import { defaultDate } from '../tours';
+import { defaultDate, useTours } from '../tours';
 import { useTrips } from '../trips';
 import { duration, hhmm, minutesBetween, nextHalfHour } from './format';
 import { Icon } from './icons';
@@ -69,6 +69,9 @@ function Card({
 export function Home() {
   const t = useT();
   const trips = useTrips((s) => s.trips);
+  const tripsFailed = useTrips((s) => s.failed);
+  const toursFailed = useTours((s) => s.failed);
+  const storageFailed = tripsFailed || toursFailed;
   const add = useTrips((s) => s.add);
   const remove = useTrips((s) => s.remove);
   const deleted = useDeleted((s) => s.trip);
@@ -104,6 +107,11 @@ export function Home() {
             ? t('underWay')
             : t('nothingPlanned')}
       </h1>
+      {storageFailed && (
+        <p role="alert" className="notice red">
+          {t('storageFailed')}
+        </p>
+      )}
       {!current.length && <p className="muted empty">{t('noTripsYet')}</p>}
       {live.length > 0 && (
         <section>

@@ -1,12 +1,15 @@
-// Saved trips in memory, persisted to IndexedDB on every change (debounced).
+// Saved trips in memory, saved item by item to IndexedDB (src/io/listStore.ts): edits after
+// 300 ms of quiet, adds and removes at once. Other tabs' saves come in as they happen.
 import { create } from 'zustand';
 import type { Tour } from './core/model';
 import type { Trip } from './core/trip';
 import { log } from './io/log';
-import { loadTrips, saveTrips } from './io/trips';
+import { tripsList } from './io/trips';
 
 interface TripsState {
   loaded: boolean;
+  /** The saved trips could not be read: nothing is saved or synced this visit. */
+  failed: boolean;
   trips: Trip[];
   load: () => Promise<void>;
   add: (t: Trip) => void;
@@ -18,48 +21,30 @@ interface TripsState {
   replaceAll: (list: Trip[]) => Promise<unknown>;
 }
 
-let timer: ReturnType<typeof setTimeout> | undefined;
-let pending: (() => Promise<unknown>) | undefined;
-/** Edits are saved after 300 ms of quiet; adds and removes, and the page going away, at once. */
-const flush = () => {
-  clearTimeout(timer);
-  const p = pending;
-  pending = undefined;
-  return p?.();
-};
-if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', () => void flush());
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void flush();
-  });
-}
-const persistNow = (list: Parameters<typeof saveTrips>[0]) => {
-  pending = () => saveTrips(list);
-  return flush();
-};
-const persist = (trips: Trip[]) => {
-  clearTimeout(timer);
-  pending = () => saveTrips(trips);
-  timer = setTimeout(() => void flush(), 300);
-};
-
 export const useTrips = create<TripsState>()((set, get) => ({
   loaded: false,
+  failed: false,
   trips: [],
   load: async () => {
     if (get().loaded) return;
-    const trips = await loadTrips();
-    log('trips.load', { count: trips.length });
-    set({ trips, loaded: true });
+    try {
+      const trips = await tripsList.load();
+      log('trips.load', { count: trips.length });
+      set({ trips, loaded: true });
+    } catch {
+      set({ loaded: true, failed: true });
+    }
   },
   add: (t) => {
     log('trip.add', { trip: t.id, date: t.route.date, stops: t.route.waypoints.length });
-    const trips = [t, ...get().trips];
+    const before = get().trips;
+    const trips = [t, ...before];
     set({ trips });
-    void persistNow(trips);
+    void tripsList.save(before, trips, true);
   },
   update: (id, edit) => {
-    const trips = get().trips.map((t) => {
+    const before = get().trips;
+    const trips = before.map((t) => {
       if (t.id !== id) return t;
       const next = edit(t);
       if (next !== t)
@@ -71,10 +56,11 @@ export const useTrips = create<TripsState>()((set, get) => ({
       return next;
     });
     set({ trips });
-    persist(trips);
+    void tripsList.save(before, trips);
   },
   editRoute: (id, edit) => {
-    const trips = get().trips.map((t) => {
+    const before = get().trips;
+    const trips = before.map((t) => {
       if (t.id !== id) return t;
       const route = edit(t.route);
       if (JSON.stringify(route) === JSON.stringify(t.route)) return t;
@@ -90,17 +76,35 @@ export const useTrips = create<TripsState>()((set, get) => ({
     });
     set({ trips });
     // A tap, not a keystroke: saved at once.
-    void persistNow(trips);
+    void tripsList.save(before, trips, true);
   },
   remove: (id) => {
     log('trip.remove', { trip: id });
-    const trips = get().trips.filter((t) => t.id !== id);
+    const before = get().trips;
+    const trips = before.filter((t) => t.id !== id);
     set({ trips });
-    void persistNow(trips);
+    void tripsList.save(before, trips, true);
   },
   replaceAll: (trips) => {
     log('trips.replaceAll', { count: trips.length });
+    const before = get().trips;
     set({ trips });
-    return Promise.resolve(persistNow(trips));
+    return tripsList.save(before, trips, true);
   },
 }));
+
+/** Resolves once the saved trips are in (at once when they are). */
+export const tripsLoaded = () =>
+  new Promise<void>((resolve) => {
+    if (useTrips.getState().loaded) return resolve();
+    const off = useTrips.subscribe((s) => {
+      if (!s.loaded) return;
+      off();
+      resolve();
+    });
+  });
+
+tripsList.onOtherTab((trips) => {
+  log('trips.otherTab', { count: trips.length });
+  useTrips.setState({ trips });
+});

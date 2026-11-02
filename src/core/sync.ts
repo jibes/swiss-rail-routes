@@ -6,6 +6,8 @@
 //
 // Pure apart from WebCrypto and CompressionStream (both in browsers and Node).
 
+import { fromB64Url, toB64Url } from './b64';
+
 export interface Stamp {
   /** Hash of the item's JSON; '' once deleted. */
   h: string;
@@ -72,15 +74,6 @@ export function parseKey(text: string): Uint8Array<ArrayBuffer> | null {
 
 export const newKey = () => formatKey(crypto.getRandomValues(new Uint8Array(32)));
 
-const b64url = (b: Uint8Array) =>
-  btoa(String.fromCharCode(...b))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/, '');
-
-const fromB64url = (s: string) =>
-  Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), (c) => c.charCodeAt(0));
-
 /** Where the data lives (43 characters) and the key that encrypts it, both from the sync key. */
 export async function deriveKeys(
   key: Uint8Array<ArrayBuffer>,
@@ -103,7 +96,7 @@ export async function deriveKeys(
     false,
     ['encrypt', 'decrypt'],
   );
-  return { id: b64url(id), aes };
+  return { id: toB64Url(id), aes };
 }
 
 async function pipe(
@@ -125,12 +118,12 @@ export async function seal(doc: unknown, aes: CryptoKey): Promise<string> {
   const all = new Uint8Array(12 + ct.length);
   all.set(iv);
   all.set(ct, 12);
-  return b64url(all);
+  return toB64Url(all);
 }
 
 /** The document back; throws if the key is wrong or the data was changed. */
 export async function open<T>(data: string, aes: CryptoKey): Promise<T> {
-  const all = fromB64url(data);
+  const all = fromB64Url(data);
   const plain = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: all.slice(0, 12) },
     aes,

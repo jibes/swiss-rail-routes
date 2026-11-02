@@ -19,20 +19,27 @@ export function watchAutoPlan() {
     t.route.waypoints.length >= 2 &&
     tripStatus(t, now) === 'upcoming' &&
     (failed.get(`${t.id}|${routeJson(t)}`) ?? 0) <= now - RETRY_MS;
-  const next = () => {
+  const next = (ms = GAP_MS) => {
     clearTimeout(timer);
-    timer = setTimeout(() => void step(), GAP_MS);
+    timer = setTimeout(() => void step(), ms);
   };
   async function step() {
     if (busy || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
     const now = Date.now();
     const t = useTrips.getState().trips.find((x) => due(x, now));
-    if (!t) return;
+    if (!t) {
+      // Nothing due now: wake for the first failed trip whose ten minutes are up.
+      const first = Math.min(...failed.values());
+      if (Number.isFinite(first)) next(Math.max(GAP_MS, first + RETRY_MS - now));
+      return;
+    }
     busy = true;
     const json = routeJson(t);
     log('autoplan', { trip: t.id, date: t.route.date });
     try {
+      // No connection found is a failure too, tried again later; not at once, in a loop.
       if (keepPlan(t.id, json, await planRoute(t))) void askNotifications();
+      else failed.set(`${t.id}|${json}`, Date.now());
     } catch (e) {
       log('autoplan.fail', { trip: t.id, e, retryMin: RETRY_MS / 60_000 });
       failed.set(`${t.id}|${json}`, Date.now());

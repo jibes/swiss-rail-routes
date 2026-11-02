@@ -5,6 +5,13 @@ import { log } from './log';
 
 export const ojpConfigured = () => !!import.meta.env.VITE_OJP_URL;
 
+/** A request that hangs (a stalled mobile connection) ends after 30 s, like any failure. */
+const TIMEOUT_MS = 30_000;
+const withTimeout = (signal?: AbortSignal) => {
+  const t = AbortSignal.timeout(TIMEOUT_MS);
+  return signal && 'any' in AbortSignal ? AbortSignal.any([signal, t]) : (signal ?? t);
+};
+
 export class PlanningUnavailable extends Error {}
 
 /** The Worker answered with an error; `detail` is its status and short text. */
@@ -33,7 +40,7 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(q),
-        signal,
+        signal: withTimeout(signal),
       });
     } catch (e) {
       log('ojp.trip.fail', { ...what, attempt, e, aborted: signal?.aborted });
@@ -44,6 +51,7 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
     if ((res.status === 429 || res.status === 503) && attempt < 2) {
       log('ojp.trip.retry', { ...what, status: res.status, attempt, ms });
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
+      signal?.throwIfAborted();
       continue;
     }
     if (!res.ok) {
@@ -78,7 +86,7 @@ export async function fetchJourney(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(q),
-      signal,
+      signal: withTimeout(signal),
     }),
     import('../core/ojp/journey'),
   ]);
