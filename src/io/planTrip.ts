@@ -6,7 +6,7 @@ import { compactTrip, type Trip } from '../core/trip';
 import { GA, TEMPLATES } from '../data';
 import { useTrips } from '../trips';
 import { log } from './log';
-import { fetchTrips } from './ojp';
+import { cachedTrips } from './answers';
 import { stopSearch } from './stops';
 import { savePlan } from './tours';
 
@@ -74,7 +74,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
     const index = await stopSearch();
     const r = await plan(JSON.parse(json) as Trip['route'], {
       trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
-      fetchTrips: (q) => fetchTrips(q, ctrl.signal),
+      fetchTrips: (q) => cachedTrips(q, ctrl.signal),
       templates: TEMPLATES,
       ga: GA,
       stop: (ref) => index.byRef(ref),

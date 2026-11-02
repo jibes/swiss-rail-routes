@@ -2,6 +2,8 @@
 // quiet; the result goes into the trip (the recommended option, or the one picked), and the
 // options are kept with the last plan (srr.plans.v1) for when the screen opens again.
 import { useEffect, useState } from 'react';
+import { optionsKey } from '../core/answers';
+import type { Tour } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { compactTrip, type Trip } from '../core/trip';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
@@ -12,6 +14,15 @@ import { askNotifications } from '../io/notifications';
 import { log } from '../io/log';
 
 export type PlanStatus = 'idle' | 'planning' | 'done' | 'unavailable' | 'error';
+
+/** Two routes (JSON) with the same options: the same stations, day and ticket. */
+function sameOptions(a: string, b: string): boolean {
+  try {
+    return optionsKey(JSON.parse(a) as Tour) === optionsKey(JSON.parse(b) as Tour);
+  } catch {
+    return false;
+  }
+}
 
 /** Edits come in bursts (a chip, then another): plan once they settle. */
 const QUIET_MS = 400;
@@ -42,7 +53,13 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
       async () => {
         const saved = (await loadPlans())[id];
         if (ctrl.signal.aborted) return;
-        if (saved?.tourJson === json && saved.result.legs && saved.result.options) {
+        // The plan of this very route, or, once a connection is chosen, of the same stations
+        // asked from another time or under another name: its options are still the options.
+        if (
+          saved?.result.legs &&
+          saved.result.options &&
+          (saved.tourJson === json || (planned && sameOptions(saved.tourJson, json)))
+        ) {
           log('planner.cached', { trip: id, at: saved.at });
           setResult(saved.result, json);
           setSt({ json, status: 'done', detail: '' });

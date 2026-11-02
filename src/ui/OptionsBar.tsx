@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { optionsKey } from '../core/answers';
 import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { dayOf, type Trip } from '../core/trip';
 import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
+import { loadOptions, saveOptions } from '../io/tours';
+import { useTrips } from '../trips';
 import { useT } from '../store';
 import { duration, hhmm, minutesBetween, zurichHm } from './format';
 import { Icon } from './icons';
@@ -14,8 +17,6 @@ interface Option {
   legs: Leg[];
 }
 
-/** The route without its time: options of one route, whatever time they were asked from. */
-const baseOf = (t: Trip) => JSON.stringify({ w: t.route.waypoints, d: t.route.date });
 const keyOf = (c: PlannedChain) => `${c.dep}|${c.arr}`;
 
 /**
@@ -45,9 +46,30 @@ export function OptionsBar({
   move: (min: number) => void;
 }) {
   const t = useT();
-  const base = baseOf(trip);
-  // Options loaded with the arrows, for this route and day; kept while you choose among them.
-  const [more, setMore] = useState<{ base: string; list: Option[] }>({ base, list: [] });
+  // The route without its name or time: options of one route, whatever time they were asked from.
+  const base = optionsKey(trip.route);
+  // Options loaded with the arrows, for this route and day; kept while you choose among them,
+  // and on the device until they have left (`srr.options.v1`), so opening the trip again shows
+  // them without asking.
+  const [more, setMoreNow] = useState<{ base: string; list: Option[] }>({ base, list: [] });
+  const setMore = (m: { base: string; list: Option[] }) => {
+    setMoreNow(m);
+    void saveOptions(
+      trip.id,
+      { key: m.base, list: m.list },
+      new Set(useTrips.getState().trips.map((x) => x.id)),
+    );
+  };
+  useEffect(() => {
+    let on = true;
+    void loadOptions(trip.id, base).then((list) => {
+      if (on && list.length)
+        setMoreNow((m) => (m.base === base && m.list.length ? m : { base, list }));
+    });
+    return () => {
+      on = false;
+    };
+  }, [trip.id, base]);
   const [busy, setBusy] = useState<'earlier' | 'later' | null>(null);
   const [none, setNone] = useState<{
     base: string;

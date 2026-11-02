@@ -1,10 +1,10 @@
 // Saved tours and their last plan in IndexedDB. Keys follow srr.<name>.v<N>.
 import { get, update } from 'idb-keyval';
-import type { Tour } from '../core/model';
+import type { Leg, Tour } from '../core/model';
 import { sanitiseTour } from '../core/tour';
 import { dayOf } from '../core/trip';
 import { savedList } from './listStore';
-import type { PlanResult } from '../core/planner/plan';
+import type { PlanResult, PlannedChain } from '../core/planner/plan';
 
 const TOURS = 'srr.tours.v1';
 const PLANS = 'srr.plans.v1';
@@ -47,4 +47,44 @@ export function savePlan(id: string, plan: SavedPlan, trips: Set<string>): Promi
     ...Object.fromEntries(Object.entries(all).filter(([k]) => trips.has(k))),
     [id]: plan,
   })).catch(() => undefined);
+}
+
+const OPTIONS = 'srr.options.v1';
+
+/** Connections loaded with the strip's arrows, kept with the route they are for. */
+export interface KeptOptions {
+  /** `optionsKey` of the route. */
+  key: string;
+  list: { c: PlannedChain; legs: Leg[] }[];
+}
+
+/** Options not left yet: those gone are of no use to choose. */
+const ahead = (list: KeptOptions['list'], now: number) =>
+  list.filter((o) => Date.parse(o.c.dep) > now);
+
+/** The options loaded for trip `id` and this route, those still ahead. */
+export async function loadOptions(id: string, key: string): Promise<KeptOptions['list']> {
+  try {
+    const kept = (await get<Record<string, KeptOptions>>(OPTIONS))?.[id];
+    return kept?.key === key && Array.isArray(kept.list) ? ahead(kept.list, Date.now()) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Keeps them, and drops those of trips gone or with nothing left ahead (one transaction). */
+export function saveOptions(
+  id: string,
+  kept: KeptOptions,
+  trips: Set<string>,
+  now = Date.now(),
+): Promise<void> {
+  return update<Record<string, KeptOptions>>(OPTIONS, (all = {}) => {
+    const next: Record<string, KeptOptions> = {};
+    for (const [k, v] of Object.entries({ ...all, [id]: kept })) {
+      const list = trips.has(k) && Array.isArray(v?.list) ? ahead(v.list, now) : [];
+      if (list.length) next[k] = { key: v.key, list };
+    }
+    return next;
+  }).catch(() => undefined);
 }

@@ -65,6 +65,20 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   await expect(page.locator('.hero-times')).toContainText(now);
   await opts.filter({ hasText: was }).click();
   await expect(page.locator('.hero-times')).toContainText(was);
+  // Opened again, the options loaded are there and nothing is asked: they are kept on the
+  // device until they leave, and so are the timetable's answers.
+  const shown = await opts.count();
+  const asked: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().endsWith('/trip')) asked.push(r.postData() ?? '');
+  });
+  await page.reload();
+  await expect(opts).toHaveCount(shown);
+  await expect(page.locator('.hero-times')).toContainText(was);
+  await opts.filter({ hasText: now }).click();
+  await expect(page.locator('.hero-times')).toContainText(now);
+  await opts.filter({ hasText: was }).click();
+  expect(asked).toEqual([]);
 
   // On the list with its day and times, and readable offline.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
