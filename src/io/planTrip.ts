@@ -13,10 +13,13 @@ export const routeJson = (t: Trip) => JSON.stringify(t.route);
 
 const running = new Map<string, Promise<PlanResult>>();
 
-/** Plans `trip`'s route (the same route asked twice shares one request). */
-export function planRoute(trip: Trip, signal?: AbortSignal): Promise<PlanResult> {
+/**
+ * Plans `trip`'s route (the same route asked twice shares one request). `keep: false` asks
+ * without saving (more options from another time, the trip itself unchanged).
+ */
+export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promise<PlanResult> {
   const json = routeJson(trip);
-  const key = `${trip.id}|${json}`;
+  const key = `${trip.id}|${json}|${keep}`;
   const known = running.get(key);
   if (known) return known;
   const p = (async () => {
@@ -28,6 +31,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal): Promise<PlanResult>
       ga: GA,
       stop: (ref) => index.byRef(ref),
     });
+    if (!keep) return r;
     // Kept for trips that still exist only, so the cache does not grow for good.
     const plans = await loadPlans();
     const ids = new Set(useTrips.getState().trips.map((t) => t.id));

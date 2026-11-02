@@ -94,9 +94,6 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   return {
     status: needs ? status : 'idle',
     result: needs ? result : null,
-    /** The last options shown, kept (dimmed) while the next ones are planned: the bar does not
-     * empty and jump under the finger. */
-    shown: needs ? (result ?? (status === 'planning' ? (planned_?.result ?? null) : null)) : null,
     detail,
     retry: () => setAttempt((a) => a + 1),
     pick,

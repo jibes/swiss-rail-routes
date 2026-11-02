@@ -17,7 +17,7 @@ import { autoName } from '../core/naming';
 import { plannedRows, routeRows } from '../core/rows';
 import { stopKey } from '../core/stops';
 import { encodeTrip } from '../core/export/tripShare';
-import { isPlanned, newTrip, tripStatus } from '../core/trip';
+import { compactTrip, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, type Picked } from './AddSheet';
@@ -26,6 +26,7 @@ import { duration, hhmm, longDate, minutesBetween, nextHalfHour, zurichHm } from
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
+import { OptionsBar } from './OptionsBar';
 import { ChainView } from './ChainView';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
@@ -123,32 +124,7 @@ export function TripScreen({ id }: { id: string }) {
   const chain = trip.chain;
   const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
   const planning = !chain && planner.status === 'planning';
-  const options = planner.shown?.options ?? [];
-  const stale = !planner.result && options.length > 0;
-  const sameArr = options.length > 1 && options.every((c) => c.arr === options[0]!.arr);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
-  // Earlier/Later step in whole hours, as many as it takes to pass the options found: Later
-  // to just after the last, Earlier back by as much as the options span. With trains two hours
-  // apart one hour often brought the same options back.
-  const minutesOf = (hm: string) => {
-    const [h, m] = hm.split(':').map(Number) as [number, number];
-    return h * 60 + m;
-  };
-  const later = () => {
-    const last = options.at(-1);
-    if (!last) return shifted(anchor, 60);
-    const past = minutesOf(zurichHm(Date.parse(last.dep))) - minutesOf(anchor);
-    return shifted(anchor, 60 * Math.max(1, Math.floor(past / 60) + 1));
-  };
-  const earlier = () => {
-    const first = options[0];
-    const last = options.at(-1);
-    if (!first || !last) return shifted(anchor, -60);
-    const span = (Date.parse(last.dep) - Date.parse(first.dep)) / 60_000;
-    return shifted(anchor, -60 * Math.max(1, Math.ceil((span + 1) / 60)));
-  };
-  const shift = (min: number) =>
-    edit((r) => ({ ...r, anchor: { departAt: min > 0 ? later() : earlier() } }));
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
   // Disruptions are on the rides they concern; their number is said at the top.
   const disruptions = chain ? chain.warnings.filter((w) => w.type === 'disruption').length : 0;
@@ -416,62 +392,26 @@ export function TripScreen({ id }: { id: string }) {
             ))}
 
           {route.waypoints.length >= 2 && (
-            <div className="options-bar">
-              <button
-                type="button"
-                className="shift"
-                aria-label={t('earlier')}
-                disabled={earlier() === anchor}
-                onClick={() => shift(-60)}
-              >
-                <Icon name="back" size={18} />
-              </button>
-              <div className="opts" role="group" aria-label={t('alternatives')}>
-                {options.length > 1 ? (
-                  options.map((c) => {
-                    const on = chain?.dep === c.dep && chain.arr === c.arr;
-                    return (
-                      <button
-                        key={`${c.dep}-${c.arr}`}
-                        type="button"
-                        className={`opt ${stale ? 'stale' : ''}`}
-                        aria-pressed={on && !stale}
-                        disabled={stale}
-                        onClick={() => planner.pick(c)}
-                      >
-                        <b>
-                          {hhmm(c.dep)}
-                          {c === planner.result?.recommended && (
-                            <span className="best" aria-label={t('recommended')} />
-                          )}
-                        </b>
-                        <span>
-                          {
-                            // The same arrival for all: their length tells them apart.
-                            sameArr
-                              ? duration(minutesBetween(c.dep, c.arr))
-                              : t('backAt', { time: hhmm(c.arr) })
-                          }
-                        </span>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <span className="single muted">
-                    {chain ? t('onlyOneShort') : t('fromTime', { time: anchor })}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                className="shift"
-                aria-label={t('later')}
-                disabled={later() === anchor}
-                onClick={() => shift(60)}
-              >
-                <Icon name="next" size={18} />
-              </button>
-            </div>
+            <OptionsBar
+              trip={trip}
+              result={planner.result}
+              planning={planning}
+              from={anchor}
+              move={(min) => edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }))}
+              choose={(c, legs) =>
+                // The trip takes it, and its time becomes the trip's: planning again (after
+                // an edit) starts there.
+                update(id, (x) =>
+                  compactTrip({
+                    ...x,
+                    route: { ...x.route, anchor: { departAt: zurichHm(Date.parse(c.dep)) } },
+                    chain: c,
+                    legs,
+                    compact: undefined,
+                  }),
+                )
+              }
+            />
           )}
 
           <TripLine
@@ -495,7 +435,7 @@ export function TripScreen({ id }: { id: string }) {
               dropLine: (k) => edit((r) => dropLine(r, k)),
               addAfter: (k) => setSheet({ after: k }),
               add: () => setSheet({ after: entries.length - 1 }),
-              later: () => shift(60),
+              later: () => edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, 60) } })),
             }}
           />
         </>

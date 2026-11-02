@@ -650,3 +650,36 @@
   border-color: var(--ink-3);
   color: var(--ink-3);
 }
+
+/* The options strip (0.5.7): it scrolls when more are loaded; few fill the bar */
+.options-bar .opts {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  gap: 2px;
+}
+
+.options-bar .opts::-webkit-scrollbar {
+  display: none;
+}
+
+.options-bar .opt {
+  flex: 1 0 84px;
+  scroll-snap-align: center;
+}
+
+.options-bar .shift[aria-busy='true'] {
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+.options-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  text-align: center;
+}

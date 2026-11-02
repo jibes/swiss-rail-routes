@@ -29,7 +29,8 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   await expect(page.locator('.hero-times:not(.busy)').or(page.getByRole('alert'))).toBeVisible({
     timeout: 30_000,
   });
-  await page.getByRole('button', { name: 'Later' }).click();
+  await expect(page.getByText('Nothing found from 08:00')).toBeVisible();
+  await page.getByRole('button', { name: 'Later connections' }).click();
   await expect(page.locator('.hero-times:not(.busy)')).toContainText('09:04', { timeout: 30_000 });
   await expect(page.locator('.opt[aria-pressed="true"]')).toHaveCount(1);
   await expect(

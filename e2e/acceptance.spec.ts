@@ -45,19 +45,28 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
   });
 }
 
-test('Later starts after the last option, in whole hours; the options stay while it plans', async ({
+test('the arrows load more options without changing the trip; a tap chooses one', async ({
   page,
 }) => {
   await page.clock.install({ time: BEFORE });
   await planShared(page, encodeTour({ ...tours.T5!, name: 'T5' }));
   const opts = page.getByRole('group', { name: 'Alternatives' }).getByRole('button');
-  const times = (await opts.allInnerTexts()).map((x) => x.split('\n')[0]!.trim());
-  const [h, m] = times.at(-1)!.split(':').map(Number) as [number, number];
-  // From 09:00, the first whole hour after the last option found.
-  const next = `${String(Math.floor((h * 60 + m - 9 * 60) / 60) + 10).padStart(2, '0')}:00`;
-  await page.getByRole('button', { name: 'Later' }).click();
-  // Nothing is recorded for that time: the plan fails, and the bar says from when it looked.
-  await expect(page.locator('.options-bar .single')).toHaveText(`from ${next}`, {
+  const n = await opts.count();
+  const hero = (await page.locator('.hero-times').textContent()) ?? '';
+  // Nothing recorded after the last option: the bar says it could not load more, and the trip
+  // and its options stay as they were.
+  await page.getByRole('button', { name: 'Later connections' }).click();
+  await expect(page.getByText('Could not load more connections. Try again.')).toBeVisible({
     timeout: 30_000,
   });
+  await expect(opts).toHaveCount(n);
+  await expect(page.locator('.hero-times')).toHaveText(hero);
+  // Another option becomes the trip at once (no new request), the others stay to choose from.
+  if (n > 1) {
+    const other = opts.filter({ hasNot: page.locator('.best') }).first();
+    const time = (await other.innerText()).split('\n')[0]!.trim();
+    await other.click();
+    await expect(page.locator('.hero-times')).toContainText(time);
+    await expect(opts).toHaveCount(n);
+  }
 });

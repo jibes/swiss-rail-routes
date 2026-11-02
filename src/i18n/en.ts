@@ -64,8 +64,6 @@ export const en = {
   timeline: 'Timetable',
   mapOffline: 'Map tiles could not be loaded.',
   transfer1: '1 change',
-  earlier: 'Earlier',
-  later: 'Later',
   onlyOne: 'Only one connection works for this trip at this time.',
   planned: '{min} planned',
   stop1: '1 stop',
@@ -218,7 +216,6 @@ export const en = {
   undo: 'Undo',
   notReached: 'No connection passes here at this time: the trip goes without it.',
   tryLater: 'Try an hour later',
-  onlyOneShort: 'Only connection at this time',
   relaxedAvoidAt: '{from} → {to}: only through a tunnel you wanted to avoid.',
   forgotten: 'Forgotten: {name}',
   notReachedDisrupted:
@@ -233,8 +230,13 @@ export const en = {
   noStop: 'No stop',
   planOffline: 'No connection to the timetable. Try again when you are online.',
   planServer: 'The timetable service is not answering right now.',
-  fromTime: 'from {time}',
   underWay: 'Under way',
+  earlierOptions: 'Earlier connections',
+  laterOptions: 'Later connections',
+  noLater: 'No later connection on this day.',
+  noEarlier: 'No earlier connection on this day.',
+  moreFailed: 'Could not load more connections. Try again.',
+  noneFrom: 'Nothing found from {time}',
 };
 
 export type Catalogue = typeof en;

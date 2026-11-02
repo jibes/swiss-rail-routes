@@ -66,8 +66,6 @@ export const de = {
   timeline: 'Fahrplan',
   mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
   transfer1: '1 Umstieg',
-  earlier: 'Früher',
-  later: 'Später',
   onlyOne: 'Zu dieser Zeit passt nur eine Verbindung für diese Reise.',
   planned: '{min} geplant',
   stop1: '1 Halt',
@@ -226,7 +224,6 @@ export const de = {
   notReached:
     'Zu dieser Zeit fährt keine Verbindung hier durch: die Reise geht ohne diese Station.',
   tryLater: 'Eine Stunde später versuchen',
-  onlyOneShort: 'Einzige Verbindung zu dieser Zeit',
   relaxedAvoidAt: '{from} → {to}: nur durch einen Tunnel, den du meiden wolltest.',
   forgotten: 'Vergessen: {name}',
   notReachedDisrupted:
@@ -242,6 +239,11 @@ export const de = {
   noStop: 'Kein Halt',
   planOffline: 'Keine Verbindung zum Fahrplan. Versuche es wieder, wenn du online bist.',
   planServer: 'Der Fahrplandienst antwortet gerade nicht.',
-  fromTime: 'ab {time}',
   underWay: 'Unterwegs',
+  earlierOptions: 'Frühere Verbindungen',
+  laterOptions: 'Spätere Verbindungen',
+  noLater: 'Keine spätere Verbindung an diesem Tag.',
+  noEarlier: 'Keine frühere Verbindung an diesem Tag.',
+  moreFailed: 'Weitere Verbindungen konnten nicht geladen werden. Versuche es nochmals.',
+  noneFrom: 'Nichts gefunden ab {time}',
 } satisfies Catalogue;
