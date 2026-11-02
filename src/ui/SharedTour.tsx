@@ -7,9 +7,10 @@ import { useStopIndex } from './useStopIndex';
 import { useT } from '../store';
 import { defaultDate } from '../tours';
 import { useTrips } from '../trips';
-import { newTrip } from '../core/trip';
+import { dayOf, newTrip } from '../core/trip';
 import { markRings } from '../core/line';
 import { go } from './useHash';
+import { Icon } from './icons';
 
 /**
  * A route someone shared: `#/r/<stops>?…` (or a route's address from another device), or the
@@ -53,6 +54,11 @@ export function SharedTour({
   const { id: _id, ...rest } = tour;
   return (
     <main className="page">
+      <header className="bar">
+        <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
+          <Icon name="back" />
+        </button>
+      </header>
       <header className="hero">
         <h1>{tour.name || t('untitled')}</h1>
         <p>{t('sharedTour')}</p>
@@ -80,7 +86,7 @@ export function SharedTour({
             // Replace: Back must not offer the same route to save again.
             onClick={() => {
               const id = crypto.randomUUID();
-              const today = new Date().toLocaleDateString('sv-SE');
+              const today = dayOf(Date.now()); // in the tap, not in render
               const date = rest.date >= today ? rest.date : defaultDate();
               add(
                 newTrip(

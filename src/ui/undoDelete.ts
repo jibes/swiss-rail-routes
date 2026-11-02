@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import type { Trip } from '../core/trip';
 
-export const UNDO_MS = 6000;
+export const UNDO_MS = 10_000;
 
 export const useDeleted = create<{ trip: Trip | null }>()(() => ({ trip: null }));
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
   dropLine,
@@ -30,8 +30,22 @@ import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { usePlanner } from './usePlanner';
+import { useLayer } from './layers';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
+
+const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
+  timeZone: 'Europe/Zurich',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+/** The next full or half hour in Zurich, `HH:MM` (the day's last, 23:30, at most). */
+function nextHalfHour(now: number): string {
+  const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];
+  const t = Math.min(23 * 60 + 30, Math.ceil((h * 60 + m + 1) / 30) * 30);
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
 
 /** Earlier/Later move the departure by an hour, within the day. */
 function shifted(time: string, min: number): string {
@@ -87,6 +101,22 @@ export function TripScreen({ id }: { id: string }) {
   const [menu, setMenu] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [dates, setDates] = useState(false);
+  // Escape and Android's Back close what is open on top first.
+  const closeSheet = useCallback(() => setSheet(null), []);
+  const closePanel = useCallback(() => setOpen(null), []);
+  const closeMenu = useCallback(() => setMenu(false), []);
+  const closeDates = useCallback(() => setDates(false), []);
+  useLayer(open !== null, closePanel);
+  useLayer(dates, closeDates);
+  useLayer(menu, closeMenu);
+  const strip = useRef<HTMLDivElement>(null);
+  // The date strip opens at the trip's day, not at today.
+  useEffect(() => {
+    if (dates)
+      strip.current
+        ?.querySelector('[aria-pressed="true"]')
+        ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [dates]);
 
   if (!trip)
     return (
@@ -178,6 +208,8 @@ export function TripScreen({ id }: { id: string }) {
                 const copy = crypto.randomUUID();
                 const r = {
                   ...structuredClone(route),
+                  // The name you gave it comes along.
+                  name: trip.name,
                   id: copy,
                   date: addDays(route.date < today ? today : route.date, 7),
                 };
@@ -214,7 +246,11 @@ export function TripScreen({ id }: { id: string }) {
           defaultValue={name}
           autoFocus
           onFocus={(e) => e.target.select()}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === 'Escape') && e.currentTarget.blur()}
+          onKeyDown={(e) => {
+            // Escape cancels: the name as it was.
+            if (e.key === 'Escape') e.currentTarget.value = name;
+            if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
+          }}
           onBlur={(e) => {
             const v = e.target.value.trim();
             update(id, (x) => ({ ...x, name: v === autoName(route, stop) ? '' : v }));
@@ -243,7 +279,7 @@ export function TripScreen({ id }: { id: string }) {
             <Icon name="chevron" size={16} />
           </button>
           {dates && (
-            <div className="dates" role="group" aria-label={t('date')}>
+            <div className="dates" role="group" aria-label={t('date')} ref={strip}>
               {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d, i) => (
                 <button
                   key={d}
@@ -251,7 +287,13 @@ export function TripScreen({ id }: { id: string }) {
                   className={`pill ${d === route.date ? 'on' : ''}`}
                   aria-pressed={d === route.date}
                   onClick={() => {
-                    edit((r) => ({ ...r, date: d }));
+                    // Today: from the next half hour, not from a time already gone.
+                    const soon = d === today ? nextHalfHour(now) : '';
+                    edit((r) => ({
+                      ...r,
+                      date: d,
+                      ...(soon && soon > anchor ? { anchor: { departAt: soon } } : {}),
+                    }));
                     setDates(false);
                   }}
                 >
@@ -342,6 +384,7 @@ export function TripScreen({ id }: { id: string }) {
                 type="button"
                 className="shift"
                 aria-label={t('earlier')}
+                disabled={shifted(anchor, -60) === anchor}
                 onClick={() => shift(-60)}
               >
                 <Icon name="back" size={18} />
@@ -349,10 +392,10 @@ export function TripScreen({ id }: { id: string }) {
               <div className="opts" role="group" aria-label={t('alternatives')}>
                 {options.length > 1 ? (
                   options.map((c) => {
-                    const on = chain?.dep === c.dep;
+                    const on = chain?.dep === c.dep && chain.arr === c.arr;
                     return (
                       <button
-                        key={c.dep}
+                        key={`${c.dep}-${c.arr}`}
                         type="button"
                         className="opt"
                         aria-pressed={on}
@@ -376,6 +419,7 @@ export function TripScreen({ id }: { id: string }) {
                 type="button"
                 className="shift"
                 aria-label={t('later')}
+                disabled={shifted(anchor, 60) === anchor}
                 onClick={() => shift(60)}
               >
                 <Icon name="next" size={18} />
@@ -420,7 +464,7 @@ export function TripScreen({ id }: { id: string }) {
           after={entries[sheet.after]?.w}
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
           onPick={pick}
-          onClose={() => setSheet(null)}
+          onClose={closeSheet}
         />
       )}
     </main>

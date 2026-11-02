@@ -11,6 +11,11 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
     await page.clock.install({ time: BEFORE });
     await planShared(page, encodeTour({ ...tour, name: id }));
     await expect(page.getByRole('alert')).toHaveCount(0);
+    // T1's Vereina stations are not reached at this time: on the line, struck, with Try later.
+    if (id === 'T1') {
+      await expect(page.locator('.trip-line .station.missed').first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Try an hour later' }).first()).toBeVisible();
+    }
 
     // 2–3 options with different times, the recommended one chosen; or one with a note.
     const opts = page.getByRole('group', { name: 'Alternatives' }).getByRole('button');

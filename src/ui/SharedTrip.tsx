@@ -6,6 +6,7 @@ import { useTrips } from '../trips';
 import { ChainView } from './ChainView';
 import { hhmm, longDate } from './format';
 import { go } from './useHash';
+import { Icon } from './icons';
 
 /** `#/j/<data>`: a trip someone shared, as they planned it. Saving copies it to this device. */
 export function SharedTrip({ hash }: { hash: string }) {
@@ -36,6 +37,11 @@ export function SharedTrip({ hash }: { hash: string }) {
     );
   return (
     <main className="page">
+      <header className="bar">
+        <button type="button" className="icon" aria-label={t('back')} onClick={() => go('/')}>
+          <Icon name="back" />
+        </button>
+      </header>
       <header className="hero">
         <h1>{trip.name || t('untitled')}</h1>
         <p>{t('sharedTrip')}</p>

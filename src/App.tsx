@@ -10,7 +10,7 @@ import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
 import { watchSync } from './io/sync';
-import { liveTrip } from './core/trip';
+import { liveTrip, tripStatus } from './core/trip';
 import { retire } from './core/retire';
 import { expectedArrival } from './core/live';
 import { useLiveStatus } from './ui/useLive';
@@ -27,6 +27,21 @@ const OPENED = 'srr.opened.v1';
 
 const MapView = lazy(() => import('./ui/MapView'));
 
+/** `#/trip/<id>/edit`: Replan from here while the trip is under way, else the trip itself. */
+function EditOrTrip({ id }: { id: string }) {
+  const now = useNow();
+  const status = useLiveStatus((s) => s.status);
+  const live = useTrips((s) => {
+    const t = s.trips.find((x) => x.id === id);
+    return (
+      !!t &&
+      tripStatus(t, now, t.chain ? expectedArrival(t.chain.connections, status) : undefined) ===
+        'live'
+    );
+  });
+  return live ? <EditTrip id={id} /> : <TripScreen key={id} id={id} />;
+}
+
 function Route({ hash: full }: { hash: string }) {
   const [hash = '/', q = ''] = full.split('?');
   if (hash.startsWith('/t/')) return <SharedTour legacy={hash} />;
@@ -40,7 +55,8 @@ function Route({ hash: full }: { hash: string }) {
   if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;
   // `now` and `replan` are older addresses of the same screens.
   const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
-  if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditTrip id={tr[1]!} />;
+  // Changing the rest is for a trip under way; before, the trip screen edits it in place.
+  if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditOrTrip id={tr[1]!} />;
   if (tr?.[3] === 'map')
     return (
       <Suspense fallback={null}>

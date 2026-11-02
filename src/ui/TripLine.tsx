@@ -229,13 +229,6 @@ export function TripLine({
               >
                 <span className="n">{r.name}</span>
                 {label && <span className="chip quiet">{label}</span>}
-                {hint === i && (
-                  <span className="why" role="status">
-                    {r.ring && lineName(r.line)
-                      ? t('partOfLine', { line: lineName(r.line) })
-                      : t('timetableStop')}
-                  </span>
-                )}
               </button>
             ) : (
               <button
@@ -247,6 +240,13 @@ export function TripLine({
                 <span className="n">{r.name}</span>
                 {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
               </button>
+            )}
+            {hint === i && (
+              <span className="why" role="status">
+                {r.ring && lineName(r.line)
+                  ? t('partOfLine', { line: lineName(r.line) })
+                  : t('timetableStop')}
+              </span>
             )}
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
               <div className="missed-note">

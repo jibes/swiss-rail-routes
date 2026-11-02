@@ -488,6 +488,8 @@ svg.mini-line circle.via {
 }
 
 .trip-line .why {
+  grid-column: 3 / -1;
+  margin: -6px 0 8px 8px;
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink-2);

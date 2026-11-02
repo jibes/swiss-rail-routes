@@ -9,6 +9,9 @@ import { Icon } from './icons';
 import { MiniLine } from './MiniLine';
 import { directionFrom, TEMPLATES } from './TemplatePicker';
 import { useStopIndex } from './useStopIndex';
+import { useNow } from './useNow';
+import { dayOf } from '../core/trip';
+import { useLayer } from './layers';
 
 export type Picked =
   | { kind: 'station'; stop: Pick<Waypoint, 'stopRef' | 'name'> }
@@ -42,11 +45,7 @@ export function AddSheet({
   const [q, setQ] = useState('');
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onClose]);
+  useLayer(true, onClose);
 
   const f = fold(q.trim());
   const stop = (r: string) => index?.byRef(stopKey(r));
@@ -65,7 +64,11 @@ export function AddSheet({
   const lines = TEMPLATES.filter((tp) => has([tp.name, ...tp.chain.map((c) => c.name)]));
   const stations: Stop[] = index && f.length >= 2 ? index.search(q, 8) : [];
   const back = !f && first && after && after.stopRef !== first.stopRef ? first : undefined;
-  const today = new Date().toLocaleDateString('sv-SE');
+  const today = dayOf(useNow());
+  const titleOf = (x: Tour) => x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`;
+  // Forgotten just now: one tap brings it back.
+  const [forgot, setForgot] = useState<Tour | null>(null);
+  const addMine = useTours((s) => s.replaceAll);
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -118,6 +121,21 @@ export function AddSheet({
               <span className="r-sub">{t('station')}</span>
             </button>
           ))}
+          {forgot && (
+            <p className="forgot" role="status">
+              <span>{t('forgotten', { name: titleOf(forgot) })}</span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  void addMine([forgot, ...useTours.getState().tours]);
+                  setForgot(null);
+                }}
+              >
+                {t('undo')}
+              </button>
+            </p>
+          )}
           {trips.length > 0 && <h3 className="section-label">{t('yourTrips')}</h3>}
           {trips.map((x) => (
             <div key={x.id} className="result-row">
@@ -126,9 +144,7 @@ export function AddSheet({
                 className="result trip"
                 onClick={() => onPick({ kind: 'trip', tour: x })}
               >
-                <span className="r-name">
-                  {x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`}
-                </span>
+                <span className="r-name">{titleOf(x)}</span>
                 <MiniLine tour={x} />
                 <span className="r-sub">
                   {x.date < today
@@ -139,8 +155,11 @@ export function AddSheet({
               <button
                 type="button"
                 className="icon forget"
-                aria-label={t('forgetTrip', { name: x.name || x.waypoints[0]!.name })}
-                onClick={() => removeMine(x.id)}
+                aria-label={t('forgetTrip', { name: titleOf(x) })}
+                onClick={() => {
+                  setForgot(x);
+                  removeMine(x.id);
+                }}
               >
                 <Icon name="close" size={18} />
               </button>
@@ -168,7 +187,7 @@ export function AddSheet({
             );
           })}
           {f.length >= 2 && !stations.length && !trips.length && !lines.length && (
-            <p className="muted">{t('noStops')}</p>
+            <p className="muted">{index ? t('noStops') : t('stopsLoading')}</p>
           )}
         </div>
       </div>

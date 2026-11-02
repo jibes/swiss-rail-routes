@@ -146,8 +146,40 @@ test('delete at once, with Undo for a few seconds', async ({ page }) => {
   await page.getByRole('button', { name: 'More' }).click();
   await page.getByRole('menuitem', { name: 'Delete trip' }).click();
   await expect(page.getByText('Deleted: Chur → Arosa')).toBeVisible();
-  await page.clock.runFor(7000);
+  await page.clock.runFor(11_000);
   await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0);
   await page.reload();
   await expect(card).toHaveCount(0);
+});
+
+test('Escape closes what is on top first; renaming cancels; /edit before departure is the trip', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await add(page, 'Bern');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await add(page, 'Thun');
+  const entries = page.locator('.trip-line .station.entry');
+  await entries.first().getByRole('button').first().click();
+  await expect(page.locator('.panel')).toBeVisible();
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.locator('.panel')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.panel')).toHaveCount(0);
+
+  await page.locator('h1 .title').click();
+  const name = page.getByRole('textbox', { name: 'Name' });
+  await name.fill('Changed my mind');
+  await name.press('Escape');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bern → Thun');
+
+  // The old whole-trip editor (with its ticket choice) is gone before departure.
+  await page.goto(page.url() + '/edit');
+  await expect(page.locator('.trip-line')).toBeVisible();
+  await expect(page.getByText('Ticket', { exact: true })).toHaveCount(0);
 });
