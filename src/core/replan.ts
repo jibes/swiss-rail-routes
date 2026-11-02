@@ -5,7 +5,7 @@ import type { Connection, Leg, Section, Tour, Waypoint } from './model';
 import type { PlannedChain } from './planner/plan';
 import { normalise } from './edit';
 import { stopKey } from './stops';
-import type { Trip, TripVersion } from './trip';
+import type { PlannedTrip as Trip, TripVersion } from './trip';
 
 export interface ReplanPoint {
   stop: { stopRef: string; name: string };
@@ -172,7 +172,7 @@ export function mergeReplan(
   point: ReplanPoint,
   newLegs: Leg[],
   chain: PlannedChain,
-): Omit<TripVersion, 'savedAt'> {
+): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
   const keptLegs: Leg[] = trip.legs.slice(0, point.keep.length).map((l, i) =>
     i === point.leg
       ? {

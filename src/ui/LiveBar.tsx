@@ -1,5 +1,5 @@
 import { expectedArrival, liveState } from '../core/live';
-import { liveTrip } from '../core/trip';
+import { isPlanned, liveTrip } from '../core/trip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { badge } from './ChainView';
@@ -14,8 +14,10 @@ export function LiveBar() {
   const trips = useTrips((s) => s.trips);
   // The same live data as the trip screen: delays, new platforms, a late last train.
   const status = useLiveStatus((s) => s.status);
-  const trip = liveTrip(trips, now, (x) => expectedArrival(x.chain.connections, status));
-  if (!trip) return null;
+  const trip = liveTrip(trips.filter(isPlanned), now, (x) =>
+    x.chain ? expectedArrival(x.chain.connections, status) : undefined,
+  );
+  if (!trip || !isPlanned(trip)) return null;
   const s = liveState(trip.chain.connections, now, status);
   const n = s.next;
   const ride = n ? s.rides[n.ride] : undefined;

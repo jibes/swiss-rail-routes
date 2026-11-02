@@ -1,16 +1,17 @@
-# The logo, C1 "Warm", and every file made from it. One geometry for every size:
+# The logo, V13, and every file made from it. A train front seen head-on, in white on a flat
+# red tile; drawn in a 100-unit box (the design), placed into 108-unit tiles by `k`, `dx`, `dy`:
 #
-#   ring        the round trip         centre (54, 48.6), radius 20, line 8
-#   start dot   start and end          (54, 68.6), radius 12.7
-#   stop dot    where you get off      42.5° from the top (137.5° from the start: the golden
-#                                      angle), radius 7.8
+#   body          the train front          rect (24, 10) 52 × 68, corners 15
+#   windscreen    the window seat          rect (31, 19) 38 × 31, corners 6, a hole in the body
+#   mountains     the Alps in that window  M33 50 L44 35 L50 42 L57 32 L67 50 Z, white in the hole
+#   headlights    two                      (35, 64) and (65, 64), radius 5, holes in the body
+#   rails         two                      36,82 → 26,94 and 64,82 → 74,94, line 6, round caps
 #
-# Proportions ring : start : stop = φ² : φ : 1 (21 : 13 : 8), the group lifted so its optical
-# centre sits just above the middle, white dots 2 % smaller against irradiation. Colour: a warm
-# vermilion gradient, cream mark (white dots, not a yellow sun: it held up better small). One colour (status bar, Android themed icon,
-# notification): the same shapes in white.
+# Colour: flat red #D40000 tile, white #FFFFFF mark. The windscreen and headlights are holes
+# (even-odd), so the tile shows through them, and the one-colour versions (status bar, Android
+# themed icon, notification) are the very same shapes in one colour.
 #
-#   python3 scripts/logo-sets.py           docs/design/logos/c1-warm/
+#   python3 scripts/logo-sets.py           docs/design/logos/v13/
 #   python3 scripts/logo-sets.py --apply   public/icons/{icon,maskable}.svg and the Android
 #                                          launcher, themed, background and notification vectors
 #   then: npm run icons                    the PNGs
@@ -18,56 +19,84 @@ import math
 import os
 import sys
 
-TOP, BOTTOM = '#E8330F', '#C80303'
-CREAM = '#FFF6EC'
-SUN = CREAM  # the stop dot; C2 had a yellow sun here (#FFC94D), too faint when small
+RED = '#D40000'
+WHITE = '#FFFFFF'
 ROOT = os.path.join(os.path.dirname(__file__), '..')
-DOCS = os.path.join(ROOT, 'docs', 'design', 'logos', 'c1-warm')
+DOCS = os.path.join(ROOT, 'docs', 'design', 'logos', 'v13')
 RES = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res', 'drawable')
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {v} {v}">{body}</svg>\n'
 
-RING = (54, 48.6, 20)
-LINE = 8
-START = (54, 68.6, 12.7)
-STOP_DEG = 42.5
-STOP_R = SUN_R = 7.8
+BODY = (24, 10, 52, 68, 15)
+WINDSCREEN = (31, 19, 38, 31, 6)
+LIGHTS = ((35, 64, 5), (65, 64, 5))
+MOUNTAINS = 'M33,50 L44,35 L50,42 L57,32 L67,50 Z'
+RAILS = 'M36,82 L26,94 M64,82 L74,94'
+RAIL = 6
+# Optical centre: the body carries the weight, the thin rails below it less.
+CENTRE = (50, 52)
+# Adaptive icons: everything within the 66 dp safe circle (radius 33 of 108).
+SAFE_R = 33
 
 
-def stop_xy():
-    cx, cy, r = RING
-    a = math.radians(STOP_DEG)
-    return round(cx + r * math.sin(a), 2), round(cy - r * math.cos(a), 2)
+def rounded(x, y, w, h, r):
+    return (f'M{x + r},{y} H{x + w - r} A{r},{r} 0 0 1 {x + w},{y + r} V{y + h - r} '
+            f'A{r},{r} 0 0 1 {x + w - r},{y + h} H{x + r} A{r},{r} 0 0 1 {x},{y + h - r} '
+            f'V{y + r} A{r},{r} 0 0 1 {x + r},{y} Z')
 
 
-def mark(ring, start, sun, line=LINE, sun_r=SUN_R):
-    cx, cy, r = RING
-    sx, sy = stop_xy()
-    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{ring}" stroke-width="{line}"/>'
-            f'<circle cx="{sx}" cy="{sy}" r="{sun_r}" fill="{sun}"/>'
-            f'<circle cx="{START[0]}" cy="{START[1]}" r="{START[2]}" fill="{start}"/>')
+def circle(cx, cy, r):
+    return f'M{cx - r},{cy} A{r},{r} 0 1 0 {cx + r},{cy} A{r},{r} 0 1 0 {cx - r},{cy} Z'
 
 
-GRAD = (f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-        f'<stop offset="0" stop-color="{TOP}"/><stop offset="1" stop-color="{BOTTOM}"/></linearGradient></defs>')
-TILE = GRAD + '<rect width="108" height="108" fill="url(#g)"/>'
-ROUNDED = GRAD + '<rect width="108" height="108" rx="24" fill="url(#g)"/>'
+# The body with its holes, filled even-odd.
+FRONT = ' '.join([rounded(*BODY), rounded(*WINDSCREEN)] + [circle(*c) for c in LIGHTS])
 
 
-def scaled(body, k):
-    return f'<g transform="translate(54 54) scale({k}) translate(-54 -54)">{body}</g>'
+def reach():
+    """The farthest the mark gets from CENTRE: a rail's round end or a top corner's curve."""
+    cx, cy = CENTRE
+    far = 0.0
+    for x, y in ((26, 94), (74, 94)):
+        far = max(far, math.hypot(x - cx, y - cy) + RAIL / 2)
+    x, y, w, h, r = BODY
+    for ox, oy in ((x + r, y + r), (x + w - r, y + r), (x + r, y + h - r), (x + w - r, y + h - r)):
+        far = max(far, math.hypot(ox - cx, oy - cy) + r)
+    return far
+
+
+def place(k, size=108):
+    """Scale k and the offset that puts CENTRE in the middle of a `size` box."""
+    return k, size / 2 - CENTRE[0] * k, size / 2 - CENTRE[1] * k
+
+
+SAFE = place(SAFE_R / reach())
+# Rounded tile and favicon: the design as drawn, 100 units on 108.
+FULL = (1.08, 0.0, 0.0)
+
+
+def mark(colour, at, rail=RAIL):
+    k, dx, dy = at
+    return (f'<g transform="translate({dx:.2f} {dy:.2f}) scale({k:.4f})">'
+            f'<path d="{FRONT}" fill="{colour}" fill-rule="evenodd"/>'
+            f'<path d="{MOUNTAINS}" fill="{colour}"/>'
+            f'<path d="{RAILS}" fill="none" stroke="{colour}" stroke-width="{rail}" stroke-linecap="round"/>'
+            '</g>')
+
+
+TILE = f'<rect width="108" height="108" fill="{RED}"/>'
+ROUNDED = f'<rect width="108" height="108" rx="24" fill="{RED}"/>'
 
 
 def docs():
     os.makedirs(DOCS, exist_ok=True)
-    colour = mark(CREAM, CREAM, SUN)
     files = {
-        'icon': TILE + colour,
-        'maskable': TILE + colour,
-        'adaptive-foreground': colour,
+        'icon': TILE + mark(WHITE, FULL),
+        'maskable': TILE + mark(WHITE, SAFE),
+        'adaptive-foreground': mark(WHITE, SAFE),
         'adaptive-background': TILE,
-        'monochrome': mark('#000', '#000', '#000', sun_r=STOP_R),
-        # Small sizes: no safe zone in a tab, and a heavier line so it holds at 16 px.
-        'favicon': ROUNDED + scaled(mark(CREAM, CREAM, SUN, line=10.8), 1.25),
+        'monochrome': mark('#000', SAFE),
+        # Small sizes: no safe zone in a tab, and heavier rails so they hold at 16 px.
+        'favicon': ROUNDED + mark(WHITE, FULL, rail=7.5),
     }
     for name, body in files.items():
         with open(os.path.join(DOCS, f'{name}.svg'), 'w') as f:
@@ -76,57 +105,45 @@ def docs():
 
 # ── Android vector drawables ───────────────────────────────────────────────────────────────
 
-def circle_path(cx, cy, r):
-    return f'M{cx - r:.2f},{cy:.2f} a{r:.2f},{r:.2f} 0 1,0 {2 * r:.2f},0 a{r:.2f},{r:.2f} 0 1,0 {-2 * r:.2f},0 Z'
-
-
-def vector(body, size=108, aapt=False):
-    ns = ' xmlns:aapt="http://schemas.android.com/aapt"' if aapt else ''
+def vector(body, size=108):
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
-            '<!-- Logo C1, generated by scripts/logo-sets.py; do not edit by hand. -->\n'
-            f'<vector xmlns:android="http://schemas.android.com/apk/res/android"{ns}\n'
+            '<!-- Logo V13, generated by scripts/logo-sets.py; do not edit by hand. -->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
             f'    android:width="{size}dp" android:height="{size}dp" '
             f'android:viewportWidth="{size}" android:viewportHeight="{size}">\n{body}</vector>\n')
 
 
-def android_mark(ring, start, sun, k=1.0, dx=0.0, dy=0.0, line=LINE, sun_r=SUN_R):
-    t = lambda x, y: (x * k + dx, y * k + dy)  # noqa: E731
-    cx, cy = t(RING[0], RING[1])
-    sx, sy = t(*stop_xy())
-    bx, by = t(START[0], START[1])
-    return (f'    <path android:pathData="{circle_path(cx, cy, RING[2] * k)}" android:strokeColor="{ring}" '
-            f'android:strokeWidth="{line * k:.2f}" android:fillColor="#00000000"/>\n'
-            f'    <path android:pathData="{circle_path(sx, sy, sun_r * k)}" android:fillColor="{sun}"/>\n'
-            f'    <path android:pathData="{circle_path(bx, by, START[2] * k)}" android:fillColor="{start}"/>\n')
+def android_mark(colour, at, rail=RAIL):
+    k, dx, dy = at
+    return (f'    <group android:translateX="{dx:.2f}" android:translateY="{dy:.2f}" '
+            f'android:scaleX="{k:.4f}" android:scaleY="{k:.4f}">\n'
+            f'        <path android:pathData="{FRONT}" android:fillColor="{colour}" '
+            'android:fillType="evenOdd"/>\n'
+            f'        <path android:pathData="{MOUNTAINS}" android:fillColor="{colour}"/>\n'
+            f'        <path android:pathData="{RAILS}" android:strokeColor="{colour}" '
+            f'android:strokeWidth="{rail}" android:strokeLineCap="round" '
+            'android:fillColor="#00000000"/>\n'
+            '    </group>\n')
 
 
 def apply():
     icons = os.path.join(ROOT, 'public', 'icons')
     with open(os.path.join(icons, 'icon.svg'), 'w') as f:
-        f.write(SVG.format(v=108, body=ROUNDED + scaled(mark(CREAM, CREAM, SUN, line=10.8), 1.25)))
+        f.write(SVG.format(v=108, body=ROUNDED + mark(WHITE, FULL, rail=7.5)))
     with open(os.path.join(icons, 'maskable.svg'), 'w') as f:
-        f.write(SVG.format(v=108, body=TILE + mark(CREAM, CREAM, SUN)))
+        f.write(SVG.format(v=108, body=TILE + mark(WHITE, SAFE)))
     with open(os.path.join(RES, 'ic_launcher_foreground.xml'), 'w') as f:
-        f.write(vector(android_mark(CREAM, CREAM, SUN)))
+        f.write(vector(android_mark(WHITE, SAFE)))
     with open(os.path.join(RES, 'ic_launcher_monochrome.xml'), 'w') as f:
-        f.write(vector(android_mark('#FFFFFF', '#FFFFFF', '#FFFFFF', sun_r=STOP_R)))
-    gradient = ('    <path android:pathData="M0,0 H108 V108 H0 Z">\n'
-                '        <aapt:attr name="android:fillColor">\n'
-                '            <gradient android:type="linear" android:startX="0" android:startY="0" '
-                'android:endX="0" android:endY="108">\n'
-                f'                <item android:offset="0" android:color="{TOP}"/>\n'
-                f'                <item android:offset="1" android:color="{BOTTOM}"/>\n'
-                '            </gradient>\n        </aapt:attr>\n    </path>\n')
+        f.write(vector(android_mark(WHITE, SAFE)))
     with open(os.path.join(RES, 'ic_launcher_background.xml'), 'w') as f:
-        f.write(vector(gradient, aapt=True))
-    # Status bar, 24 dp: the mark fills the icon (1 dp margin), line rounded up to 3.3 dp.
-    top = RING[1] - RING[2] - LINE / 2
-    bottom = START[1] + START[2]
+        f.write(vector(f'    <path android:pathData="M0,0 H108 V108 H0 Z" android:fillColor="{RED}"/>\n'))
+    # Status bar, 24 dp: the mark fills the icon's height (1 dp margin), centred on its box.
+    top, bottom = BODY[1], 94 + RAIL / 2
     k = 22 / (bottom - top)
-    dx = 12 - 54 * k
-    dy = 12 - (top + bottom) / 2 * k
+    at = (k, 12 - 50 * k, 12 - (top + bottom) / 2 * k)
     with open(os.path.join(RES, 'ic_stat_rail.xml'), 'w') as f:
-        f.write(vector(android_mark('#FFFFFF', '#FFFFFF', '#FFFFFF', k, dx, dy, line=3.3 / k, sun_r=STOP_R), size=24))
+        f.write(vector(android_mark(WHITE, at), size=24))
 
 
 if __name__ == '__main__':

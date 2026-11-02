@@ -77,3 +77,18 @@ export const test = base.extend<{ pageErrors: string[] }>({
 });
 
 export { expect };
+
+/** A day before the recorded trips (FIXTURE_DATE, Sat 7 Nov 2026): trips dated then are ahead. */
+export const BEFORE = new Date('2026-11-02T08:00:00Z');
+
+/** Opens a route link (old `#/t/` share) and makes it a trip; waits for its timetable. */
+export async function planShared(page: Page, hash: string) {
+  await page.goto(`./${hash}`);
+  await page.getByRole('button', { name: 'Plan this trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
+  await expect(
+    page.locator('.hero-times:not(.busy)').or(page.locator('.trip-progress')),
+  ).toBeVisible({
+    timeout: 30_000,
+  });
+}

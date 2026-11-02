@@ -59,7 +59,7 @@ describe('versions', () => {
     );
     expect(r.version).toBe(2);
     expect(r.chain.arr).toContain('19:00');
-    expect(r.previous?.chain.arr).toContain('18:00');
+    expect(r.previous?.chain?.arr).toContain('18:00');
     const u = undo(r);
     expect(u.chain.arr).toContain('18:00');
     expect(u.previous).toBeUndefined();
@@ -107,7 +107,7 @@ describe('compact trips', () => {
       },
     } as Trip);
     expect(withTrack.compact).toBe(true);
-    expect(withTrack.chain.connections[0]!.sections[0]!.geometry!.length).toBe(2);
+    expect(withTrack.chain!.connections[0]!.sections[0]!.geometry!.length).toBe(2);
     expect(compactTrip(withTrack)).toBe(withTrack);
   });
 });

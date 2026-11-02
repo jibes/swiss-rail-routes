@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { newTour, addWaypoint, setRoundTrip } from '../src/core/edit';
-import { toGpx } from '../src/core/export/gpx';
 import { toIcs } from '../src/core/export/ics';
 import { decodeTour, encodeTour } from '../src/core/export/share';
 import type { Connection } from '../src/core/model';
@@ -66,15 +65,6 @@ describe('ics', () => {
     expect(ics).toContain('LOCATION:Zürich HB (14)');
     expect(ics).toContain('DESCRIPTION:Graubünden\\; loop');
     expect(ics.split('\r\n').every((l) => l.length <= 75)).toBe(true);
-  });
-});
-
-describe('gpx', () => {
-  it('writes one segment per section with geometry', () => {
-    const gpx = toGpx('A & B', chain);
-    expect(gpx.match(/<trkseg>/g)).toHaveLength(1);
-    expect(gpx).toContain('<trkpt lat="47.378000" lon="8.540000"/>');
-    expect(gpx).toContain('<name>A &amp; B</name>');
   });
 });
 

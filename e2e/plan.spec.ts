@@ -1,66 +1,49 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from './fixtures';
+import { BEFORE, expect, test } from './fixtures';
 
-test('plans T5 and shows the GA warning, alternatives and exports', async ({ page }) => {
+const axe = async (page: import('@playwright/test').Page) =>
+  (await new AxeBuilder({ page }).analyze()).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+
+test('a new trip plans itself: T5 with the GA warning, options, and stays on the list', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
   await page.goto('./');
   await page.getByRole('button', { name: 'New trip' }).click();
-  const search = page.locator('.picker input');
+  // A new trip opens with the search: where it starts.
+  const search = page.getByPlaceholder('Station, scenic line or past trip');
+  await expect(search).toBeFocused();
   await search.fill('Interlaken Ost');
-  await search.press('Enter');
+  await page.getByRole('button', { name: /^Interlaken Ost Station/ }).click();
+  await page.getByRole('button', { name: 'Add a station' }).click();
   await search.fill('Kleine Scheidegg');
   await search.press('Enter');
-  await page.getByRole('button', { name: 'Plan' }).click();
-  // A click anywhere on the date or time pill opens the browser's picker (not just its icon).
-  await page.evaluate(() => {
-    (window as unknown as { picked: string[] }).picked = [];
-    HTMLInputElement.prototype.showPicker = function () {
-      (window as unknown as { picked: string[] }).picked.push(this.type);
-    };
-  });
-  await page.getByLabel('Date').click({ position: { x: 12, y: 12 } });
-  await page.getByLabel('Time', { exact: true }).click({ position: { x: 8, y: 12 } });
-  expect(await page.evaluate(() => (window as unknown as { picked: string[] }).picked)).toEqual([
-    'date',
-    'time',
-  ]);
-  // When is set on the planning screen.
-  await page.getByLabel('Date').fill('2026-11-07');
-  await page.getByLabel('Time', { exact: true }).fill('09:00');
 
-  await expect(page.getByRole('tab', { selected: true })).toContainText('Recommended');
+  // Next Saturday, 08:00 by default; Later asks for 09:00, the recorded plan.
+  await expect(page.getByRole('button', { name: /Sat, Nov 7, 2026/ })).toBeVisible();
+  await expect(page.locator('.hero-times:not(.busy)').or(page.getByRole('alert'))).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: 'Later' }).click();
+  await expect(page.locator('.hero-times:not(.busy)')).toContainText('09:04', { timeout: 30_000 });
+  await expect(page.locator('.opt[aria-pressed="true"]')).toHaveCount(1);
   await expect(
     page.getByText(/Not covered by GA or day pass .*Kleine Scheidegg: 50 % with them/).first(),
   ).toBeVisible();
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('CC 63', { exact: true }).first()).toBeVisible();
-  const blocking = (await new AxeBuilder({ page }).analyze()).violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(
-    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
-  ).toEqual([]);
-
+  expect(await axe(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: 'dark' });
-  const dark = (await new AxeBuilder({ page }).analyze()).violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  );
-  expect(dark.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual(
-    [],
-  );
-
-  // Save the recommended option as a trip: its timetable, tickets and exports.
+  expect(await axe(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.getByRole('button', { name: 'Save trip' }).click();
-  await expect(page).toHaveURL(/#\/trip\//);
-  await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /Open Interlaken Ost → Kleine Scheidegg on sbb.ch/ }),
-  ).toBeVisible();
 
-  // Listed under Trips, and readable offline.
+  // On the list with its day and times, and readable offline.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ })).toBeVisible();
+  const card = page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ });
+  await expect(card).toContainText('09:04');
   await page.context().setOffline(true);
   await page.reload();
-  await expect(page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ })).toBeVisible();
+  await expect(card).toBeVisible();
 });

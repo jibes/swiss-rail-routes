@@ -17,6 +17,8 @@ export interface Waypoint {
   latestDep?: string;
   /** Set on the stops a route template inserted; its rules apply to the leg containing them. */
   templateId?: string;
+  /** A scenic line's must-pass station between the two you entered (0.4.0): part of the line. */
+  ring?: boolean;
 }
 
 export interface LegConstraint {

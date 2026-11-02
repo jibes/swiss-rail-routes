@@ -2,7 +2,7 @@
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** One list of trips (an idea until planned: builder with drag and drop, route templates; planning with options and Earlier/Later; then one screen through the day: timetable, live delays, connections at risk, position on the line, edit before departure, replan from here, undo; copy as idea; tickets, calendar, GPX, exact share links), map, sync between your own devices, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
+**Status:** 0.4.0: one list of dated trips and one screen per trip: the trip is one line, edited in place (stations, scenic lines, stays; a panel per station, drag to move) and planned while you edit (three options, Earlier/Later); under way live delays, connections at risk, position on the line, replan from here, undo; a finished trip waits in search to go again. Calendar (.ics), exact share links, map, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 
@@ -44,7 +44,7 @@ SHA-256 (release certificate): FA:B7:AC:4C:B6:4F:D1:BE:7A:AC:EC:7B:F6:46:E5:CE:4
 
 ## OJP Worker
 
-`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
+`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`) and still answers the sync endpoints of 0.3 (`GET/PUT/DELETE /sync/<id>`, Durable Objects; the app no longer uses them), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
 
 One-time setup:
 
@@ -61,7 +61,7 @@ A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d
 
 ## Privacy
 
-Tours stay on the device. Leg queries, stop searches and, during a trip, the ids of the train you are on (and of the next one shortly before it leaves) (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers (trips and stop searches 10 min, live train data 30 s), keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. With sync on (Settings), routes and trips are encrypted on the device with a key only your devices hold and stored as ciphertext by the Worker (one blob per key, in a Cloudflare Durable Object); see [`docs/SPEC.md`](docs/SPEC.md) §3b. The Android app schedules its notifications on the phone. The camera is used only while scanning a sync code; frames are read on the device and never sent.
+Trips stay on the device. Leg queries, stop searches and, during a trip, the ids of the train you are on (and of the next one shortly before it leaves) (stop names and ids, date, time, journey ids) go to this app's Cloudflare Worker, which forwards them to opentransportdata.swiss (OJP). The Worker keeps no logs (observability off) and caches answers (trips and stop searches 10 min, live train data 30 s), keyed by the query only. Map tiles come from OpenFreeMap (only on the map screen). No accounts, analytics or tracking. The Android app schedules its notifications on the phone.
 
 ## Third-party data and code
 

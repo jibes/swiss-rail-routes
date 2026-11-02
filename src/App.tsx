@@ -1,46 +1,40 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { usePrefs } from './store';
 import { useTours } from './tours';
-import { Builder } from './ui/Builder';
 import { Home } from './ui/Home';
 import { SharedTour } from './ui/SharedTour';
 import { SharedTrip } from './ui/SharedTrip';
-import { Timeline } from './ui/Timeline';
-import { TripView } from './ui/TripView';
+import { TripScreen } from './ui/TripScreen';
 import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
-import { watchSync } from './io/sync';
 import { watchBack } from './io/back';
 import { liveTrip } from './core/trip';
+import { retire } from './core/retire';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
 import { isNative } from './native';
 import { useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
+import { useNow } from './ui/useNow';
+import { NotFound } from './ui/NotFound';
 
 /** Set once the app opened in this tab (srr.<name>.v<N>). */
 const OPENED = 'srr.opened.v1';
-/** Set once routes covered by a trip were folded into it (one list, 0.3.0). */
-const ONE_LIST = 'srr.oneList.v1';
 
 const MapView = lazy(() => import('./ui/MapView'));
 
 function Route({ hash: full }: { hash: string }) {
   const [hash = '/', q = ''] = full.split('?');
-  const tourId = /^\/tour\/([\w-]+)/.exec(hash)?.[1];
-  const known = useTours((s) => s.tours.some((x) => x.id === tourId));
   if (hash.startsWith('/t/')) return <SharedTour legacy={hash} />;
   if (hash.startsWith('/r/')) return <SharedTour stops={hash.slice(3)} query={q} />;
-  // Someone else's route address (the address bar is a share link): the route to save.
-  const foreign = tourId && !known && new URLSearchParams(q).get('s');
-  if (foreign) return <SharedTour stops={foreign} query={q} />;
+  // A route's address from another device (0.3 and earlier): the route, to plan as a trip.
+  const stops = /^\/tour\//.test(hash) && new URLSearchParams(q).get('s');
+  if (stops) return <SharedTour stops={stops} query={q} />;
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
-  // One list now (Ideas and Trips together); the old Trips tab's address opens it.
-  if (hash === '/trips') return <Home />;
+  if (hash === '/trips' || hash === '/') return <Home />;
   if (hash === '/settings') return <Settings />;
-  if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;
-  // `now` and `replan` are older addresses of the same two screens.
+  // `now` and `replan` are older addresses of the same screens.
   const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
   if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditTrip id={tr[1]!} />;
   if (tr?.[3] === 'map')
@@ -49,17 +43,8 @@ function Route({ hash: full }: { hash: string }) {
         <MapView id={tr[1]!} trip />
       </Suspense>
     );
-  if (tr) return <TripView id={tr[1]!} />;
-  const m = /^\/tour\/([\w-]+)(\/(plan|templates|map))?$/.exec(hash);
-  if (m?.[3] === 'plan') return <Timeline id={m[1]!} />;
-  if (m?.[3] === 'map')
-    return (
-      <Suspense fallback={null}>
-        <MapView id={m[1]!} />
-      </Suspense>
-    );
-  if (m) return <Builder key={m[1]} id={m[1]!} showTemplates={m[3] === 'templates'} />;
-  return <Home />;
+  if (tr) return <TripScreen key={tr[1]} id={tr[1]!} />;
+  return hash.startsWith('/tour/') || hash.startsWith('/sync/') ? <Home /> : <NotFound />;
 }
 
 export function App() {
@@ -85,30 +70,19 @@ export function App() {
     const timer = setTimeout(() => void scheduleTrips(trips, lang), 500);
     return () => clearTimeout(timer);
   }, [trips, tripsLoaded, lang]);
-  // One list (0.3.0): a route that a saved trip was planned from, unchanged since, was the same
-  // thing twice; the trip stays, the route goes. Once per device; other routes stay as ideas.
+  // A trip whose day is over leaves the list and waits in search (your trips), checked as the
+  // clock moves on.
+  const now = useNow();
   useEffect(() => {
     if (!loaded || !tripsLoaded) return;
-    try {
-      if (localStorage.getItem(ONE_LIST)) return;
-      localStorage.setItem(ONE_LIST, '1');
-    } catch {
-      return;
-    }
-    const trips = useTrips.getState().trips;
-    for (const idea of useTours.getState().tours)
-      if (
-        trips.some(
-          (x) =>
-            x.routeId === idea.id &&
-            JSON.stringify(x.route.waypoints) === JSON.stringify(idea.waypoints),
-        )
-      )
-        useTours.getState().remove(idea.id);
-  }, [loaded, tripsLoaded]);
+    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, () =>
+      crypto.randomUUID(),
+    );
+    if (!r.changed) return;
+    void useTours.getState().replaceAll(r.tours);
+    void useTrips.getState().replaceAll(r.trips);
+  }, [loaded, tripsLoaded, now]);
   useEffect(() => watchBack(), []);
-  // Sync once both lists are loaded; then on return to the app and after changes.
-  useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.
   useEffect(() => {
     if (loaded && tripsLoaded) console.info('srr:ready');

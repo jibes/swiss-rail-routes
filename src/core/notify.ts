@@ -5,7 +5,7 @@ import type { RouteTemplate } from './data';
 import type { LatLon } from './model';
 import { liveRides } from './live';
 import { sunset } from './sun';
-import type { Trip } from './trip';
+import type { PlannedTrip as Trip } from './trip';
 
 export const BEFORE_DEPARTURE_MIN = 10;
 export const BEFORE_EXIT_MIN = 5;

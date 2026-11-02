@@ -1,16 +1,13 @@
 import { encodeTour } from '../src/core/export/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { expect, test } from './fixtures';
+import { expect, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
 test('a trip under way: next step, progress, the marker on the line', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // 08:50 in Zürich
-  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save as idea' }).click();
-  await page.getByRole('button', { name: 'Plan' }).click();
-  await page.getByRole('button', { name: 'Save trip' }).click();
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
 
   // Before departure.
   await expect(page.getByText('Departure', { exact: true })).toBeVisible();
@@ -57,15 +54,12 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.goto('./#/trips');
   await page.goto('./#/');
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Trips');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('1 ahead');
 });
 
 test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15, on the R62
-  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save as idea' }).click();
-  await page.getByRole('button', { name: 'Plan' }).click();
-  await page.getByRole('button', { name: 'Save trip' }).click();
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
 
   await page.getByRole('link', { name: 'Replan from here' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
@@ -93,44 +87,22 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page.locator('.chain .leg')).toHaveCount(1);
 });
 
-test('one object: an idea planned becomes the trip; edit before departure; copy as idea after', async ({
-  page,
-}) => {
+test('before departure: edited in place; after its day: in search', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) }); // 06:00, hours before
-  await page.goto(`./${encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' })}`);
-  await page.getByRole('button', { name: 'Save as idea' }).click();
-  await page.getByRole('button', { name: 'Plan' }).click();
-  await page.getByRole('button', { name: 'Save trip' }).click();
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
 
-  // Before departure: the timetable, and editing covers everything (start, date, time).
-  await expect(page.locator('.summary .big')).toContainText('09:04');
+  // Before departure: the timetable, every station a button for the panel; nothing live.
+  await expect(page.locator('.hero-times')).toContainText('09:04');
   await expect(page.getByRole('progressbar')).toHaveCount(0);
-  await page.getByRole('link', { name: 'Edit trip' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Edit trip');
-  const rows = page.getByRole('list', { name: 'Stops' }).getByRole('listitem');
-  await expect(rows.first().getByRole('button', { name: /^Move/ })).toBeVisible();
-  await expect(page.getByLabel('Date')).toBeVisible();
-  await page.getByRole('button', { name: 'Find connections' }).click();
-  await page.getByRole('button', { name: 'Update trip' }).click();
-  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  await expect(page.getByText('Replanned', { exact: false })).toBeVisible();
-
-  // The idea it was planned from became this trip: the list holds it once.
+  await page.locator('.trip-line .station.entry').first().getByRole('button').first().click();
+  await expect(page.getByRole('button', { name: 'Add after' })).toBeVisible();
   await page.goto('./');
-  await expect(page.getByRole('list', { name: 'Ideas' })).toHaveCount(0);
   await expect(page.getByRole('list', { name: 'Upcoming' }).getByRole('link')).toHaveCount(1);
 
-  // Afterwards: the record, under Past; Copy as idea makes it a new idea to plan again.
-  await page.clock.runFor('10:00:00');
+  // The day after: gone from the list, T5 waits in search.
+  await page.clock.setSystemTime(new Date(`2026-11-08T08:00:00Z`));
   await page.reload();
-  await page.getByRole('list', { name: 'Past' }).getByRole('link').first().click();
-  await page.getByRole('button', { name: 'Copy as idea' }).click();
-  await expect(page).toHaveURL(/#\/tour\//);
-  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('T5');
-  await expect(
-    page.getByRole('list', { name: 'Stops' }).getByRole('listitem').first(),
-  ).toContainText('Interlaken Ost');
-  await page.goto('./');
-  await expect(page.getByRole('list', { name: 'Ideas' }).getByRole('link')).toHaveCount(1);
-  await expect(page.getByRole('list', { name: 'Past' }).getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('list', { name: 'Upcoming' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await expect(page.getByRole('button', { name: /^T5/ })).toBeVisible();
 });

@@ -3,7 +3,7 @@
 // 2026-11-01: an exact snapshot).
 import { decodePolyline, encodePolyline, simplify } from '../polyline';
 import type { Section } from '../model';
-import type { Trip } from '../trip';
+import type { PlannedTrip, Trip } from '../trip';
 
 /** About 100 m (75 m east–west): on the track at the zooms the map is used at, and the
  * timetable stays most of the link (a 3-leg trip: ~4.2k characters, ~6.5k with tracks). */
@@ -31,7 +31,7 @@ async function pipe(
 type Shared = Omit<Section, 'geometry'> & { track?: string };
 
 /** The trip as shared: no id, no history; tracks simplified and encoded (`track`). */
-function slim(t: Trip) {
+function slim(t: PlannedTrip) {
   const { id: _id, previous: _p, routeId: _r, ...rest } = t;
   return {
     ...rest,
@@ -65,7 +65,7 @@ function full(data: ReturnType<typeof slim>) {
   };
 }
 
-export async function encodeTrip(t: Trip): Promise<string> {
+export async function encodeTrip(t: PlannedTrip): Promise<string> {
   const json = new TextEncoder().encode(JSON.stringify(slim(t)));
   return PREFIX + toB64Url(await pipe(json, new CompressionStream('deflate-raw')));
 }

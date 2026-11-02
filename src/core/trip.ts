@@ -4,12 +4,18 @@ import { simplify } from './polyline';
 import type { PlannedChain } from './planner/plan';
 
 export interface TripVersion {
-  /** The route as planned (waypoints, date, anchor, ticket). */
+  /** The route (waypoints, date, anchor). */
   route: Tour;
-  legs: Leg[];
-  chain: PlannedChain;
+  /** The legs and chain planned for this route; absent until it has been planned (0.4.0: a trip
+   * is planned while you edit it, so a new one, or one just changed, has none for a moment). */
+  legs?: Leg[];
+  chain?: PlannedChain;
   savedAt: string;
 }
+
+/** A trip with its timetable. */
+export type PlannedTrip = Trip & { legs: Leg[]; chain: PlannedChain };
+export const isPlanned = (t: Trip): t is PlannedTrip => !!t.chain && !!t.legs;
 
 export interface Trip extends TripVersion {
   id: string;
@@ -30,20 +36,21 @@ export interface Trip extends TripVersion {
  */
 export const TRACK_KEEP = 0.0003;
 
-const compactChain = (c: PlannedChain): PlannedChain => ({
-  ...c,
-  connections: c.connections.map((x) => ({
-    ...x,
-    sections: x.sections.map((s) =>
-      s.geometry && s.geometry.length > 2
-        ? { ...s, geometry: simplify(s.geometry, TRACK_KEEP) }
-        : s,
-    ),
-  })),
-});
+const compactChain = (c: PlannedChain | undefined): PlannedChain | undefined =>
+  c && {
+    ...c,
+    connections: c.connections.map((x) => ({
+      ...x,
+      sections: x.sections.map((s) =>
+        s.geometry && s.geometry.length > 2
+          ? { ...s, geometry: simplify(s.geometry, TRACK_KEEP) }
+          : s,
+      ),
+    })),
+  };
 
 /** The trip with its tracks (and its undo version's) simplified, once. */
-export function compactTrip(t: Trip): Trip {
+export function compactTrip<T extends Trip>(t: T): T {
   if (t.compact) return t;
   return {
     ...t,
@@ -59,8 +66,19 @@ export type TripStatus = 'upcoming' | 'live' | 'past';
 export const LIVE_BEFORE_MIN = 30;
 export const LIVE_AFTER_MIN = 15;
 
-/** `arrival`: the expected arrival with live delays, so a late last train keeps it live. */
-export function tripStatus(t: Pick<Trip, 'chain'>, now: number, arrival?: number): TripStatus {
+/** Local calendar day of a time, `YYYY-MM-DD`. */
+export const dayOf = (now: number) => new Date(now).toLocaleDateString('sv-SE');
+
+/**
+ * `arrival`: the expected arrival with live delays, so a late last train keeps it live. A trip
+ * not planned yet is upcoming until its day is over.
+ */
+export function tripStatus(
+  t: Pick<Trip, 'chain'> & { route?: Pick<Tour, 'date'> },
+  now: number,
+  arrival?: number,
+): TripStatus {
+  if (!t.chain) return t.route && t.route.date < dayOf(now) ? 'past' : 'upcoming';
   const dep = Date.parse(t.chain.dep);
   const arr = Math.max(Date.parse(t.chain.arr), arrival ?? 0);
   if (now < dep - LIVE_BEFORE_MIN * 60_000) return 'upcoming';
@@ -73,6 +91,20 @@ export function newTrip(
   route: Tour,
   legs: Leg[],
   chain: PlannedChain,
+  now: Date,
+): PlannedTrip;
+export function newTrip(
+  id: string,
+  route: Tour,
+  legs: Leg[] | undefined,
+  chain: PlannedChain | undefined,
+  now: Date,
+): Trip;
+export function newTrip(
+  id: string,
+  route: Tour,
+  legs: Leg[] | undefined,
+  chain: PlannedChain | undefined,
   now: Date,
 ): Trip {
   return compactTrip({
@@ -89,7 +121,11 @@ export function newTrip(
 }
 
 /** A new version of the trip; the current one is kept for undo. */
-export function revise(t: Trip, next: Omit<TripVersion, 'savedAt'>, now: Date): Trip {
+export function revise(
+  t: Trip,
+  next: Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain },
+  now: Date,
+): PlannedTrip {
   const { route, legs, chain, savedAt } = t;
   return compactTrip({
     ...t,
@@ -102,7 +138,7 @@ export function revise(t: Trip, next: Omit<TripVersion, 'savedAt'>, now: Date): 
 }
 
 /** Back to the version before the last replan (only one step is kept). */
-export function undo(t: Trip): Trip {
+export function undo<T extends Trip>(t: T): T {
   if (!t.previous) return t;
   return { ...t, ...t.previous, version: t.version + 1, previous: undefined };
 }
@@ -116,7 +152,7 @@ export function sortTrips(
   now: number,
   arrivalOf: ArrivalOf = () => undefined,
 ): { current: Trip[]; past: Trip[] } {
-  const dep = (t: Trip) => Date.parse(t.chain.dep);
+  const dep = (t: Trip) => departure(t);
   const past = (t: Trip) => tripStatus(t, now, arrivalOf(t)) === 'past';
   return {
     current: trips.filter((t) => !past(t)).sort((a, b) => dep(a) - dep(b)),
@@ -124,8 +160,15 @@ export function sortTrips(
   };
 }
 
+/** When it leaves: the planned departure, else its day and anchor time. */
+export function departure(t: Trip): number {
+  if (t.chain) return Date.parse(t.chain.dep);
+  const time = 'departAt' in t.route.anchor ? t.route.anchor.departAt : t.route.anchor.arriveBy;
+  return Date.parse(`${t.route.date}T${time}:00`);
+}
+
 /** The trip under way now, if any (the one that started last). */
 export const liveTrip = (trips: Trip[], now: number, arrivalOf: ArrivalOf = () => undefined) =>
   trips
     .filter((t) => tripStatus(t, now, arrivalOf(t)) === 'live')
-    .sort((a, b) => Date.parse(b.chain.dep) - Date.parse(a.chain.dep))[0];
+    .sort((a, b) => departure(b) - departure(a))[0];

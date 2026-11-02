@@ -5,12 +5,15 @@ import { TEMPLATES } from '../data';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
 import { useT } from '../store';
-import { defaultDate, useTours } from '../tours';
+import { defaultDate } from '../tours';
+import { useTrips } from '../trips';
+import { newTrip } from '../core/trip';
+import { markRings } from '../core/line';
 import { go } from './useHash';
 
 /**
  * A route someone shared: `#/r/<stops>?…` (or a route's address from another device), or the
- * older `#/t/<data>`. Saving makes it a new route of this device.
+ * older `#/t/<data>`. It becomes a new trip on this device, planned on its date (or next Saturday).
  */
 export function SharedTour({
   stops,
@@ -22,7 +25,7 @@ export function SharedTour({
   legacy?: string;
 }) {
   const t = useT();
-  const create = useTours((s) => s.create);
+  const add = useTrips((s) => s.add);
   const index = useStopIndex();
   const now = useNow();
   const tour =
@@ -75,9 +78,23 @@ export function SharedTour({
             type="button"
             className="primary wide"
             // Replace: Back must not offer the same route to save again.
-            onClick={() => location.replace(`#/tour/${create(rest)}`)}
+            onClick={() => {
+              const id = crypto.randomUUID();
+              const today = new Date().toLocaleDateString('sv-SE');
+              const date = rest.date >= today ? rest.date : defaultDate();
+              add(
+                newTrip(
+                  id,
+                  { ...rest, id, date, waypoints: markRings(rest.waypoints) },
+                  undefined,
+                  undefined,
+                  new Date(),
+                ),
+              );
+              location.replace(`#/trip/${id}`);
+            }}
           >
-            {t('importTour')}
+            {t('planSharedRoute')}
           </button>
         </div>
       </div>

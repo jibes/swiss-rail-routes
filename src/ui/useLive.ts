@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import { journeysToWatch, liveState } from '../core/live';
 import type { JourneyStatus } from '../core/ojp/journey';
 import { journeyQueryOf } from '../core/ojp/request';
-import type { Trip } from '../core/trip';
+import type { PlannedTrip as Trip } from '../core/trip';
 import { fetchJourney, ojpConfigured } from '../io/ojp';
 import { refreshNow, useNow } from './useNow';
 

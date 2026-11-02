@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
-const sets = [['c1-warm', 'C1 · Warm']];
+const sets = [['v13', 'V13']];
 const width = 380;
 const read = (k, f) =>
   'data:image/svg+xml;base64,' +

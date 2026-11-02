@@ -37,13 +37,13 @@ describe('trip share link', async () => {
     expect(back.previous).toBeUndefined();
     expect(back.routeId).toBeUndefined();
     expect(back.name).toBe('Voralpen + Brünig');
-    expect(back.chain.dep).toBe(trip.chain.dep);
-    expect(back.chain.connections.map((c) => c.sections.map((s) => s.journey))).toEqual(
+    expect(back.chain!.dep).toBe(trip.chain.dep);
+    expect(back.chain!.connections.map((c) => c.sections.map((s) => s.journey))).toEqual(
       trip.chain.connections.map((c) => c.sections.map((s) => s.journey)),
     );
     // Tracks come along, simplified: the map follows the rails, not straight lines.
     const sent = trip.chain.connections.flatMap((c) => c.sections);
-    const got = back.chain.connections.flatMap((c) => c.sections);
+    const got = back.chain!.connections.flatMap((c) => c.sections);
     got.forEach((s, i) => {
       const g = sent[i]!.geometry;
       if (!g || g.length < 2) return expect(s.geometry).toBeUndefined();

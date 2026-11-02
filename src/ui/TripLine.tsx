@@ -1,0 +1,344 @@
+import { useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import type { RouteTemplate } from '../core/data';
+import { entriesOf, lineTo, linesLostByMove } from '../core/line';
+import type { Tour } from '../core/model';
+import type { LineRow, StationRow } from '../core/rows';
+import type { Warning } from '../core/warnings';
+import { usePrefs, useT } from '../store';
+import { badge } from './ChainView';
+import { duration, hhmm, minutesBetween } from './format';
+import { Icon } from './icons';
+import { StopPicker } from './StopPicker';
+import { TEMPLATES } from './TemplatePicker';
+
+export interface LineActions {
+  replace: (k: number, stop: { stopRef: string; name: string }) => void;
+  stay: (k: number, min: number | null) => void;
+  move: (from: number, to: number) => void;
+  remove: (k: number) => void;
+  dropLine: (k: number) => void;
+  addAfter: (k: number) => void;
+  add: () => void;
+}
+
+const STAYS = [0, 30, 60, 90, 120];
+const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
+
+function stayLabel(t: ReturnType<typeof useT>, r: StationRow) {
+  if (r.role === 'change') return t('changeTrains');
+  if (r.role !== 'stop') return '';
+  return r.stay ? t('stayFor', { min: r.stay }) : t('changeTrains');
+}
+
+/**
+ * The trip as one line (SPEC §3a): what you entered are buttons that open the one panel (name,
+ * stay, its scenic line, add after, up, down, remove; drag its grip); a line's stations are rings.
+ */
+export function TripLine({
+  route,
+  rows,
+  warnings,
+  planning,
+  open,
+  setOpen,
+  act,
+}: {
+  route: Pick<Tour, 'waypoints'>;
+  rows: LineRow[];
+  warnings: Warning[];
+  planning: boolean;
+  open: number | null;
+  setOpen: (k: number | null) => void;
+  act: LineActions;
+}) {
+  const t = useT();
+  const lang = usePrefs((s) => s.lang);
+  const entries = entriesOf(route);
+  const n = entries.length;
+  const box = useRef<HTMLOListElement>(null);
+  const [drag, setDrag] = useState<{
+    from: number;
+    dy: number;
+    to: number;
+    lost: string[];
+    markY: number;
+  } | null>(null);
+
+  const lineName = (id?: string) => {
+    const tp: RouteTemplate | undefined = TEMPLATES.find((x) => x.id === id);
+    return tp?.name ?? '';
+  };
+  const warnsFor = (leg: number, section: number, first: boolean) =>
+    warnings.filter(
+      (w) =>
+        w.legIndex === leg &&
+        (w.sectionIndex === section || (first && w.sectionIndex === undefined)),
+    );
+
+  const startDrag = (k: number, e: RPointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const list = box.current;
+    if (!list) return;
+    const y0 = e.clientY;
+    const grip = e.currentTarget;
+    grip.setPointerCapture(e.pointerId);
+    let moved = false;
+    let to = k;
+    const others = () =>
+      [...list.querySelectorAll<HTMLElement>('[data-entry]')].filter(
+        (el) => Number(el.dataset.entry) !== k,
+      );
+    const move = (ev: PointerEvent) => {
+      const dy = ev.clientY - y0;
+      if (!moved && Math.abs(dy) < 4) return;
+      moved = true;
+      const rest = others();
+      const below = rest.filter((el) => {
+        const b = el.getBoundingClientRect();
+        return ev.clientY > b.top + b.height / 2;
+      }).length;
+      to = below;
+      const top = list.getBoundingClientRect().top;
+      const at =
+        rest[below]?.getBoundingClientRect().top ??
+        rest.at(-1)?.getBoundingClientRect().bottom ??
+        top;
+      setDrag({ from: k, dy, to, lost: linesLostByMove(route, k, to), markY: at - top });
+    };
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      grip.removeEventListener('pointercancel', up);
+      setDrag(null);
+      if (moved && to !== k) act.move(k, to);
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  };
+
+  return (
+    <ol className={`trip-line ${planning ? 'planning' : ''}`} ref={box} aria-label={t('theLine')}>
+      {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
+      {rows.map((r, i) => {
+        if (r.type === 'ride') {
+          const first = !rows.slice(0, i).some((x) => x.type === 'ride' && x.leg === r.leg);
+          const s = r.section;
+          const ws = warnsFor(r.leg, r.sectionIndex, first);
+          const min = s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0;
+          return (
+            <li key={i} className="ride">
+              <span className="t" />
+              <span className="rail" />
+              <div className="m">
+                {s.mode === 'walk' ? (
+                  <span>{t('walkMin', { n: min })}</span>
+                ) : (
+                  <>
+                    <span className="badge">{badge(s)}</span>
+                    {s.product && <b>{s.product}</b>}
+                    {s.from.platform && <span>{t('platform', { p: s.from.platform })}</span>}
+                    {min > 0 && <span>{duration(min)}</span>}
+                  </>
+                )}
+                {ws.map((w, j) => (
+                  <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
+                    {w.type === 'seasonal'
+                      ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
+                        t(w.key, w.params))
+                      : t(w.key, w.params)}
+                  </span>
+                ))}
+              </div>
+            </li>
+          );
+        }
+        const k = r.entry;
+        const isOpen = k !== undefined && open === k;
+        const time =
+          r.role === 'start'
+            ? r.dep && hhmm(r.dep)
+            : r.role === 'end'
+              ? r.arr && hhmm(r.arr)
+              : r.role === 'pass'
+                ? (r.dep ?? r.arr) && hhmm((r.dep ?? r.arr)!)
+                : r.arr && hhmm(r.arr);
+        const second = (r.role === 'stop' || r.role === 'change') && r.dep ? hhmm(r.dep) : '';
+        const big = r.role !== 'pass';
+        const label = stayLabel(t, r);
+        const dragging = drag && k === drag.from;
+        return (
+          <li
+            key={i}
+            className={[
+              'station',
+              big ? 'off' : 'pass',
+              r.ring ? 'ring' : '',
+              k === undefined ? 'auto' : 'entry',
+              isOpen ? 'open' : '',
+              dragging ? 'dragging' : '',
+              drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
+            ].join(' ')}
+            style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
+            {...(k !== undefined ? { 'data-entry': k } : {})}
+          >
+            <span className="t">
+              {planning ? <span className="shim" /> : time}
+              {second && !planning && <i>{second}</i>}
+            </span>
+            <span className="rail">
+              <span className="dot" />
+            </span>
+            {k === undefined ? (
+              <div className="m">
+                <span className="n">{r.name}</span>
+                {label && <span className="chip quiet">{label}</span>}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="m"
+                aria-expanded={isOpen}
+                onClick={() => setOpen(isOpen ? null : k)}
+              >
+                <span className="n">{r.name}</span>
+                {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
+              </button>
+            )}
+            {isOpen && n > 1 && (
+              <button
+                type="button"
+                className="grip"
+                aria-label={t('dragToMove', { stop: r.name })}
+                onPointerDown={(e) => startDrag(k, e)}
+              >
+                <Icon name="grip" size={18} />
+              </button>
+            )}
+            {isOpen && !drag && (
+              <Panel
+                k={k}
+                n={n}
+                name={r.name}
+                stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
+                line={lineName(lineTo(entries, k))}
+                act={act}
+              />
+            )}
+          </li>
+        );
+      })}
+      <li className="addrow">
+        <button type="button" onClick={act.add}>
+          <span className="t" />
+          <span className="rail">
+            <span className="plus" aria-hidden="true">
+              +
+            </span>
+          </span>
+          <span className="m">{n ? t('addStation') : t('chooseStart')}</span>
+        </button>
+      </li>
+    </ol>
+  );
+}
+
+function Panel({
+  k,
+  n,
+  name,
+  stay,
+  line,
+  act,
+}: {
+  k: number;
+  n: number;
+  name: string;
+  stay: number | null;
+  line: string;
+  act: LineActions;
+}) {
+  const t = useT();
+  const inner = k > 0 && k < n - 1;
+  return (
+    <div className="panel">
+      <StopPicker
+        label={t('replaceStation')}
+        initial={name}
+        onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
+      />
+      {inner && (
+        <div className="chips" role="group" aria-label={t('atThisStation')}>
+          <button
+            type="button"
+            className={`pill ${stay === null ? 'on' : ''}`}
+            aria-pressed={stay === null}
+            onClick={() => act.stay(k, null)}
+          >
+            {t('passThrough')}
+          </button>
+          {STAYS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`pill ${stay === m ? 'on' : ''}`}
+              aria-pressed={stay === m}
+              onClick={() => act.stay(k, m)}
+            >
+              {m ? t('minutes', { n: m }) : t('change')}
+            </button>
+          ))}
+        </div>
+      )}
+      {line && (
+        <div className="chips">
+          <span className="pill via-line">
+            {t('viaLine', { line })}
+            <button
+              type="button"
+              aria-label={t('withoutLine', { line })}
+              onClick={() => act.dropLine(k)}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </span>
+        </div>
+      )}
+      <div className="acts">
+        <button type="button" className="pill" onClick={() => act.addAfter(k)}>
+          <Icon name="plus" size={16} />
+          {t('addAfter')}
+        </button>
+        <span className="sp" />
+        <button
+          type="button"
+          className="sq"
+          aria-label={t('moveUp', { name })}
+          disabled={k === 0}
+          onClick={() => act.move(k, k - 1)}
+        >
+          <Icon name="up" size={18} />
+        </button>
+        <button
+          type="button"
+          className="sq"
+          aria-label={t('moveDown', { name })}
+          disabled={k === n - 1}
+          onClick={() => act.move(k, k + 1)}
+        >
+          <Icon name="down" size={18} />
+        </button>
+        {n > 1 && (
+          <button
+            type="button"
+            className="sq danger"
+            aria-label={t('removeStation', { stop: name })}
+            onClick={() => act.remove(k)}
+          >
+            <Icon name="trash" size={18} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

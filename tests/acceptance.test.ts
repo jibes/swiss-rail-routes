@@ -142,8 +142,8 @@ suite('acceptance tours', { timeout }, () => {
     });
     expect(again.relaxed).toEqual([]);
     const v = mergeReplan(trip, point, again.legs!, again.recommended!);
-    expect(v.chain.connections).toHaveLength(3); // travelled, to Wengen, on to Kleine Scheidegg
-    const [, toWengen, onward] = v.chain.connections;
+    expect(v.chain!.connections).toHaveLength(3); // travelled, to Wengen, on to Kleine Scheidegg
+    const [, toWengen, onward] = v.chain!.connections;
     expect(Date.parse(onward!.dep) - Date.parse(toWengen!.arr)).toBeGreaterThanOrEqual(30 * 60_000);
   });
 

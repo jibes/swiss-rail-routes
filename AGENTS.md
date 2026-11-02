@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: one object (ideas and trips in one list, one time-aware trip screen, one edit screen; SPEC §3a) complete; Android shell with trip notifications. Next: SPEC §3 Should/Could items.
+Status: 0.4.0, one object, one screen, one line (SPEC §3a): every trip dated, planned while edited; finished trips wait in search. Android shell with trip notifications. Next: SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -25,29 +25,28 @@ Status: one object (ideas and trips in one list, one time-aware trip screen, one
   - Cog railways come as PtMode `telecabin`/`funicular` with category `CC`; replacement buses as `EV`.
 - Acceptance tests (`tests/acceptance.test.ts`) replay the planner's own OJP requests from `tests/fixtures/ojp/<tour>/<sha1>.xml.gz` (tracks thinned to every 20th point). A planner change that alters its requests needs a re-record: `NODE_USE_ENV_PROXY=1 npm run record:ojp` with `OJP_API_KEY` set.
 - e2e (`e2e/fixtures.ts`): every test fails on an uncaught page error or `console.error`; the Worker URL is answered from the recorded acceptance answers. `e2e/acceptance.spec.ts` plans T1–T6 through the UI (every option, export, map), so planner changes that break a screen fail before release.
-- Ideas and Trips (SPEC §3a): `src/ui/Home.tsx` (the one list), the idea is the builder (`Builder.tsx`, `Timeline.tsx`; Save trip removes the idea), `src/ui/TripView.tsx` (before / under way / after), `src/ui/EditTrip.tsx` (whole trip before departure, from here under way), `src/core/trip.ts` (versions, status), `src/core/live.ts` (pure live state), `src/core/replan.ts`, `src/core/export/tripShare.ts`; stores `src/tours.ts` (ideas, `srr.tours.v1`; code still says tour) and `src/trips.ts` (`srr.trips.v1`). Adds and removes save at once, edits after 300 ms, everything when the page hides.
-- Links (`src/core/export/routeLink.ts`): `#/r/<stops>?<settings>` is a route anywhere (`slug.<SLOID number>` plus modifiers, `@<template>` inserts one); a route's own address `#/tour/<id>[/plan]?s=<stops>&…` follows edits (`useAddress`, replaceState) and opens as that route on a device that lacks the id. `#/t/<base64>` stays readable (older links). Trips share as `#/j/` snapshots; their address stays local.
-- Sync (SPEC §3b): `src/core/sync.ts` (pure: key, HKDF, AES-GCM, stamps, merge), `src/io/sync.ts` (engine; `srr.sync.v1`), `src/ui/Settings.tsx`, `src/ui/QrScanner.tsx` (BarcodeDetector, else lazy jsQR; e2e feeds a fake camera from an MJPEG, `e2e/scan.spec.ts`); Worker `workers/ojp/src/sync.ts` + Durable Object `SyncBox`. e2e answers `/sync/` from a shared in-memory mailbox (`answerWorker` in `e2e/fixtures.ts`).
+- Trips (SPEC §3a, 0.4.0): `src/ui/Home.tsx` (the list), `src/ui/TripScreen.tsx` (the one screen), `src/ui/TripLine.tsx` (the line and its panel, drag by the open station's grip), `src/ui/AddSheet.tsx` (stations, scenic lines, your past trips), `src/ui/usePlanner.ts` (plans while you edit; the trip's `chain`/`legs` are absent until planned: `isPlanned`), `src/ui/TripLive.tsx` (under way), `src/ui/EditTrip.tsx` (replan from here). Core: `src/core/line.ts` (entries: what you entered; a scenic line's must-pass stations are `ring`s and go when its ends change), `src/core/rows.ts` (route + timetable → rows), `src/core/retire.ts` (a past trip → your trips), `src/core/trip.ts`, `src/core/live.ts`, `src/core/replan.ts`, `src/core/export/tripShare.ts`. Stores: `src/trips.ts` (`srr.trips.v1`; route edits save at once and drop the timetable) and `src/tours.ts` (your trips, `srr.tours.v1`; code still says tour).
+- Links: `#/j/<data>` a trip with its times; route links (`#/r/<stops>?…`, `src/core/export/routeLink.ts`; older `#/t/<base64>`; a 0.3 route address `#/tour/<id>?s=…`) open as a route to plan as a new trip (`SharedTour`).
+- The Worker's `/sync/` endpoints and `SyncBox` (0.3) stay deployed and unused; removing them needs a Durable Object deletion migration in `wrangler.toml`.
 - Render code never reads `Date.now()` (React purity): use `useNow()` (`src/ui/useNow.ts`), a shared 15 s clock. Tests drive it with `page.clock`.
 - `src/ui/` may import from `core/`, never the other way round.
 - Keep each file under 800 lines; split before adding to it.
 
 - Curated data: `src/data/templates.json`, `segments.json` (types in `src/core/data.ts`). `ga.json` is generated (`npm run data:ga`) from SBB's OSDM fares; it covers fares SBB sells, so other operators' summit lines (Niesen, Harder…) are missing, never guessed. Must-pass stops must be stops trains call at (OJP lists only those): Wassen, for one, is not.
-- `src/core/export/sbb.ts` uses the old sbb.ch timetable URL; unverified, check when touching exports.
 
 ## Android
 
 - Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only.
 - Back button: `src/io/back.ts` (`@capacitor/app`) goes up one screen (`parentOf`, `src/core/parent.ts`), replacing the address; on the main list the app goes to the background.
 - Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight) and `src/io/notifications.ts` (cancels and reschedules all on every trips change; no-op on the web). Texts in i18n (`n*`).
-- Logo C1 (`docs/design/logos/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
+- Logo V13 (`docs/design/logos/v13/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` includes `https://localhost` for the app.
 - Owner's rule: every push to `main` releases. Bump `package.json` `version` in the same push (`npm version X.Y.Z --no-git-tag-version`): patch for fixes, minor for features. A push without a bump does not release.
 
 ## Invariants
 
-- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`, `srr.sync.v1`, `srr.syncLast.v1`; localStorage: `srr.prefs.v1`, `srr.oneList.v1` (routes folded into trips once, 0.3.0); sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
-- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device, except with sync on: routes and trips, encrypted on the device with a key only the devices hold (`src/core/sync.ts`; the Worker stores ciphertext under an id derived from the key). Never send the key, or anything decrypted, anywhere. CSP `connect-src` lists only the Worker and the tile host.
+- Storage keys follow `srr.<name>.v<N>` (IndexedDB: `srr.tours.v1`, `srr.trips.v1`, `srr.plans.v1`; retired, kept on devices: `srr.sync.v1`, `srr.syncLast.v1`; localStorage: `srr.prefs.v1`; retired: `srr.oneList.v1`; sessionStorage: `srr.opened.v1`, set when the app opened in this tab, so a reload never jumps to the trip under way). Never rename an existing key: bump the version and migrate.
+- Leg queries (stops, date, time) go to the Worker; nothing else leaves the device. CSP `connect-src` lists only the Worker and the tile host.
 - API keys exist only as Worker secrets.
 - Curated data in `src/data/` is schema-checked by a test; a template change needs a fixture run of T1–T6.
 - Tests never hit the network: OJP answers are recorded fixtures. Live checks run only in `live.yml`.

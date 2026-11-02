@@ -1,12 +1,12 @@
-# Logo: C1 · Warm
+# Logo: V13
 
 ![Logo on every surface](comparison.png)
 
-A round trip as a loop of rail: the start, which is also the end, the big dot at the bottom; the smaller dot where you get off. Chosen 1 Nov 2026 (C1; its sibling C2 had a yellow sun for the stop, which faded at small sizes).
+A train front seen head-on: its windscreen is the window seat with the Alps in it, two headlights below, two rails leading towards you. Chosen 2 Nov 2026 (V13), replacing C1 (a ring with two dots).
 
-- **Geometry:** ring : start : stop = φ² : φ : 1 (21 : 13 : 8). The stop sits at the golden angle from the start (137.5°, i.e. 42.5° from the top). The group is lifted so its optical centre is just above the middle, and the white dots are 2 % smaller against irradiation.
-- **Colour:** warm vermilion gradient (`#E8330F` → `#C80303`), cream mark (`#FFF6EC`) for ring and both dots.
-- **One colour** (status bar, notifications, Android 13 themed icon): the same three shapes in white, so the silhouette never changes.
-- **Small sizes:** the favicon draws the mark larger with a heavier line (holds at 16 px); the 24 dp notification icon fills its box with a 3.3 dp line.
+- **Geometry** (100-unit box): body 52 × 68 with 15 corners; windscreen 38 × 31 with 6 corners; three peaks standing on the windscreen's bottom edge; headlights radius 5; rails 6 wide with round ends.
+- **Colour:** flat red tile (`#D40000`), white mark (`#FFFFFF`). Windscreen and headlights are holes in the body (even-odd), so the tile shows through.
+- **One colour** (status bar, notifications, Android 13 themed icon): the same shapes in one colour, the holes left open, the mountains solid inside the windscreen.
+- **Placement:** the rounded icon and favicon draw the design as is (the favicon with 7.5-wide rails, so they hold at 16 px); maskable and adaptive icons keep the whole mark inside the 66 dp safe circle around its optical centre (50, 52); the 24 dp notification icon fills its height with a 1 dp margin.
 
-One source, `scripts/logo-sets.py`: without arguments it writes `c1-warm/` here; `--apply` writes `public/icons/{icon,maskable}.svg` and the Android launcher (gradient background, foreground), themed and notification vectors; then `npm run icons` for the PNGs. Sheet: `CHROMIUM_PATH=… node scripts/logo-sheet.mjs`.
+One source, `scripts/logo-sets.py`: without arguments it writes `v13/` here; `--apply` writes `public/icons/{icon,maskable}.svg` and the Android launcher (red background, foreground), themed and notification vectors; then `npm run icons` for the PNGs. Sheet: `CHROMIUM_PATH=… node scripts/logo-sheet.mjs`.

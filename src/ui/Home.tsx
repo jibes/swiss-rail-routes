@@ -1,69 +1,60 @@
 import { useEffect } from 'react';
-import type { Tour } from '../core/model';
-import { isRoundTrip, totalDwellMin } from '../core/tour';
-import { useT } from '../store';
-import { madeHere, useTours } from '../tours';
-import { dwellLabel } from './StopRow';
-import { Icon } from './icons';
-import { LiveBar } from './LiveBar';
-import { TripCard } from './TripCard';
-import { useLiveStatus } from './useLive';
-import { useNow } from './useNow';
 import { expectedArrival } from '../core/live';
-import { sortTrips } from '../core/trip';
-import { useTrips } from '../trips';
-import { go } from './useHash';
-import { useStopIndex } from './useStopIndex';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
+import { departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
+import { newTour } from '../core/edit';
+import { usePrefs, useT } from '../store';
+import { defaultDate } from '../tours';
+import { useTrips } from '../trips';
+import { duration, hhmm, minutesBetween } from './format';
+import { Icon } from './icons';
+import { LiveBar } from './LiveBar';
+import { Logo } from './Logo';
+import { MiniLine } from './MiniLine';
+import { go } from './useHash';
+import { useLiveStatus } from './useLive';
+import { useNow } from './useNow';
+import { useStopIndex } from './useStopIndex';
 
-/** The tour drawn as a tiny line: solid dots where you get off, rings where you ride through. */
-export function MiniLine({ tour }: { tour: Tour }) {
-  const pts = tour.waypoints;
-  return (
-    <span className="mini-line" aria-hidden="true">
-      {pts.map((w, i) => (
-        <span key={i} style={{ display: 'contents' }}>
-          {i > 0 && <i />}
-          <b className={w.kind === 'via' ? 'via' : ''} />
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function EmptyLine() {
-  return (
-    <svg width="160" height="40" viewBox="0 0 160 40" aria-hidden="true">
-      <path d="M12 20h136" stroke="currentColor" strokeWidth="2" />
-      <circle cx="12" cy="20" r="7" fill="currentColor" />
-      <circle cx="62" cy="20" r="5" fill="var(--bg)" stroke="currentColor" strokeWidth="2" />
-      <circle cx="104" cy="20" r="5" fill="var(--bg)" stroke="currentColor" strokeWidth="2" />
-      <circle cx="148" cy="20" r="7" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** An idea as a card: its line, where it goes, how long the stays add up to. */
-function IdeaCard({ tour, stop }: { tour: Tour; stop: Parameters<typeof autoName>[1] }) {
+/** A trip on the list: its day, name, line and times. */
+function Card({
+  trip,
+  live,
+  stop,
+}: {
+  trip: Trip;
+  live: boolean;
+  stop: Parameters<typeof autoName>[1];
+}) {
   const t = useT();
-  const first = tour.waypoints[0]?.name;
-  const last = tour.waypoints.at(-1)?.name;
-  const route = !first
-    ? ''
-    : isRoundTrip(tour)
-      ? `${first} ↺`
-      : last && last !== first
-        ? `${first} → ${last}`
-        : first;
+  const lang = usePrefs((s) => s.lang);
+  const d = new Date(`${trip.route.date}T12:00:00Z`);
+  const fmt = (o: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(lang, { ...o, timeZone: 'UTC' }).format(d);
+  const c = trip.chain;
   return (
     <li>
-      <a href={`#/tour/${tour.id}`} className="tour-card idea">
-        <strong>{tour.name || autoName(tour, stop) || t('untitled')}</strong>
-        {tour.waypoints.length > 1 && <MiniLine tour={tour} />}
-        <span className="meta">
-          {route}
-          {totalDwellMin(tour) > 0 && ` · ${t('staysFor', { d: dwellLabel(totalDwellMin(tour)) })}`}
+      <a href={`#/trip/${trip.id}`} className={`card ${live ? 'live' : ''}`}>
+        <span className="day" aria-hidden="true">
+          <b>{d.getUTCDate()}</b>
+          <i>{fmt({ month: 'short' })}</i>
+          <i>{fmt({ weekday: 'short' })}</i>
+        </span>
+        <span className="cbody">
+          <span className="name">{trip.name || autoName(trip.route, stop) || t('newTour')}</span>
+          {trip.route.waypoints.length > 1 && <MiniLine tour={trip.route} />}
+          <span className="sub num">
+            <span className="sr-only">
+              {fmt({ weekday: 'long', day: 'numeric', month: 'long' })} ·{' '}
+            </span>
+            {live && <em>{t('liveNow')} · </em>}
+            {c
+              ? `${hhmm(c.dep)} – ${hhmm(c.arr)} · ${duration(minutesBetween(c.dep, c.arr))}`
+              : trip.route.waypoints.length > 1
+                ? t('notPlanned')
+                : t('addStations')}
+          </span>
         </span>
       </a>
     </li>
@@ -71,69 +62,57 @@ function IdeaCard({ tour, stop }: { tour: Tour; stop: Parameters<typeof autoName
 }
 
 /**
- * The one list (SPEC §3a): a trip is an idea until it is planned. Upcoming trips (the one
- * under way first), ideas (no timetable yet), past trips.
+ * The one list (SPEC §3a, 0.4.0): every trip has a date; under way first, then coming up. A trip
+ * whose day is over waits in search (New trip → your trips).
  */
 export function Home() {
   const t = useT();
-  const tours = useTours((s) => s.tours);
   const trips = useTrips((s) => s.trips);
+  const add = useTrips((s) => s.add);
+  const remove = useTrips((s) => s.remove);
   const liveStatus = useLiveStatus((s) => s.status);
   const now = useNow();
-  const removeTour = useTours((s) => s.remove);
-  // "New trip" and then Back leaves an empty idea: tidy it away on coming back (only one this
-  // device made, with neither a station nor a name).
-  useEffect(() => {
-    for (const x of useTours.getState().tours)
-      if (madeHere.has(x.id) && !x.waypoints.length && !x.name.trim()) removeTour(x.id);
-  }, [removeTour]);
-  const create = useTours((s) => s.create);
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));
-  const { current, past } = sortTrips(trips, now, (x) =>
-    expectedArrival(x.chain.connections, liveStatus),
-  );
+  // "New trip" and then Back leaves an empty trip: tidy it away on coming back.
+  useEffect(() => {
+    for (const x of useTrips.getState().trips) if (!x.route.waypoints.length) remove(x.id);
+  }, [remove]);
+  const arrivalOf = (x: Trip) =>
+    x.chain ? expectedArrival(x.chain.connections, liveStatus) : undefined;
+  const { current } = sortTrips(trips, now, arrivalOf);
+  const live = current.filter((x) => tripStatus(x, now, arrivalOf(x)) === 'live');
+  const ahead = current
+    .filter((x) => !live.includes(x))
+    .sort((a, b) => departure(a) - departure(b));
 
   return (
     <main className="page home">
       <LiveBar />
-      <header className="hero">
-        <h1>{t('trips')}</h1>
-        <p>{t('tagline')}</p>
-      </header>
-
-      {!tours.length && !trips.length && (
-        <div className="empty">
-          <EmptyLine />
-          <p>{t('noTours')}</p>
-        </div>
+      <div className="brand">
+        <Logo />
+        <span>{t('appName')}</span>
+      </div>
+      <h1 className="h1">
+        {current.length ? t('tripsAhead', { n: current.length }) : t('nothingPlanned')}
+      </h1>
+      {!current.length && <p className="muted empty">{t('noTripsYet')}</p>}
+      {live.length > 0 && (
+        <section>
+          <h2 className="section-label">{t('nowSection')}</h2>
+          <ul className="cards">
+            {live.map((x) => (
+              <Card key={x.id} trip={x} live stop={stop} />
+            ))}
+          </ul>
+        </section>
       )}
-      {current.length > 0 && (
+      {ahead.length > 0 && (
         <section>
           <h2 className="section-label">{t('upcoming')}</h2>
-          <ul className="tours" aria-label={t('upcoming')}>
-            {current.map((x) => (
-              <TripCard key={x.id} trip={x} now={now} />
-            ))}
-          </ul>
-        </section>
-      )}
-      {tours.length > 0 && (
-        <section>
-          <h2 className="section-label">{t('savedTours')}</h2>
-          <ul className="tours" aria-label={t('savedTours')}>
-            {tours.map((x) => (
-              <IdeaCard key={x.id} tour={x} stop={stop} />
-            ))}
-          </ul>
-        </section>
-      )}
-      {past.length > 0 && (
-        <section>
-          <h2 className="section-label">{t('past')}</h2>
-          <ul className="tours past" aria-label={t('past')}>
-            {past.map((x) => (
-              <TripCard key={x.id} trip={x} now={now} />
+          <ul className="cards" aria-label={t('upcoming')}>
+            {ahead.map((x) => (
+              <Card key={x.id} trip={x} live={false} stop={stop} />
             ))}
           </ul>
         </section>
@@ -151,12 +130,13 @@ export function Home() {
         <div className="dock-inner">
           <button
             type="button"
-            className="secondary"
-            onClick={() => go(`/tour/${create()}/templates`)}
+            className="primary wide"
+            onClick={() => {
+              const id = crypto.randomUUID();
+              add(newTrip(id, newTour(id, defaultDate()), undefined, undefined, new Date()));
+              go(`/trip/${id}`);
+            }}
           >
-            {t('fromTemplate')}
-          </button>
-          <button type="button" className="primary wide" onClick={() => go(`/tour/${create()}`)}>
             <Icon name="plus" />
             {t('newTour')}
           </button>

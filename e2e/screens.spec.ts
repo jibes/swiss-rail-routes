@@ -2,7 +2,7 @@
 import { encodeTour } from '../src/core/export/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { expect, test } from './fixtures';
+import { BEFORE, expect, planShared, test } from './fixtures';
 
 const dir = process.env.SCREENSHOTS;
 test.skip(!dir, 'only with SCREENSHOTS=<dir>');
@@ -12,17 +12,16 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     const shot = (name: string, full = false) =>
       page.screenshot({ path: `${dir}/${scheme}-${name}.png`, fullPage: full });
+    await page.clock.install({ time: BEFORE });
     const t3 = { ...acceptanceTours(FIXTURE_DATE).T3!, name: 'Voralpen-Express + Brünig' };
-    await page.goto(`./${encodeTour(t3)}`);
-    await page.getByRole('button', { name: 'Save as idea' }).click();
+    await planShared(page, encodeTour(t3));
     await page.waitForTimeout(300);
-    await shot('2-builder');
-    await shot('2-builder-full', true);
-    await page.getByRole('button', { name: 'Plan' }).click();
-    await page.locator('.chain > .leg').first().waitFor();
-    await page.waitForTimeout(300);
-    await shot('3-timeline');
-    await shot('3-timeline-full', true);
+    await shot('2-trip');
+    await shot('2-trip-full', true);
+    await page.locator('.trip-line .station.entry').nth(2).getByRole('button').first().click();
+    await shot('3-panel');
+    await page.getByRole('button', { name: 'Add a station' }).click();
+    await shot('3-add');
     await page.goto('./');
     await page.waitForTimeout(300);
     await shot('1-home');
@@ -32,19 +31,16 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:15:00Z`) }); // 09:15 Zürich
     const t5 = { ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Kleine Scheidegg' };
-    await page.goto(`./${encodeTour(t5)}`);
-    await page.getByRole('button', { name: 'Save as idea' }).click();
-    await page.getByRole('button', { name: 'Plan' }).click();
-    await page.getByRole('button', { name: 'Save trip' }).click();
+    await planShared(page, encodeTour(t5));
     await page.locator('.row.ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
     await page.getByRole('link', { name: 'Replan from here' }).click();
     await page.locator('.line.past').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
     await page.goBack();
-    await page.goto('./#/trips');
+    await page.goto('./#/');
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${dir}/${scheme}-5-trips.png` });
+    await page.screenshot({ path: `${dir}/${scheme}-5-list-live.png` });
     expect(true).toBe(true);
   });
 }

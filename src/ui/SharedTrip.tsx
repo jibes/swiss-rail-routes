@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { decodeTrip } from '../core/export/tripShare';
-import type { Trip } from '../core/trip';
+import { isPlanned, type PlannedTrip } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { ChainView } from './ChainView';
@@ -12,11 +12,13 @@ export function SharedTrip({ hash }: { hash: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const add = useTrips((s) => s.add);
-  const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
+  const [trip, setTrip] = useState<PlannedTrip | null | undefined>(undefined);
 
   useEffect(() => {
     let gone = false;
-    decodeTrip(`#${hash}`, crypto.randomUUID()).then((x) => !gone && setTrip(x));
+    decodeTrip(`#${hash}`, crypto.randomUUID()).then(
+      (x) => !gone && setTrip(x && isPlanned(x) ? x : null),
+    );
     return () => {
       gone = true;
     };
@@ -56,7 +58,7 @@ export function SharedTrip({ hash }: { hash: string }) {
                 .getState()
                 .trips.find(
                   (x) =>
-                    x.chain.dep === trip.chain.dep &&
+                    x.chain?.dep === trip.chain.dep &&
                     JSON.stringify(x.legs) === JSON.stringify(trip.legs),
                 );
               if (same) return location.replace(`#/trip/${same.id}`);

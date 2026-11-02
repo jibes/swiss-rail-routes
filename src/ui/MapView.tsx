@@ -10,7 +10,7 @@ import { loadPlans } from '../io/tours';
 import { useT } from '../store';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
-import { NotFound } from './Builder';
+import { NotFound } from './NotFound';
 import { TEMPLATES } from './TemplatePicker';
 import { Icon } from './icons';
 import { go } from './useHash';
@@ -26,7 +26,7 @@ export default function MapView({ id, trip: tripId }: { id: string; trip?: boole
   const route = useTours((s) => s.tours.find((x) => x.id === id));
   const trip = useTrips((s) => (tripId ? s.trips.find((x) => x.id === id) : undefined));
   const tour = tripId ? trip?.route : route;
-  const tripChain = trip?.chain.connections;
+  const tripChain = trip?.chain?.connections;
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.

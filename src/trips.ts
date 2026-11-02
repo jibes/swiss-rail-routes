@@ -1,5 +1,6 @@
 // Saved trips in memory, persisted to IndexedDB on every change (debounced).
 import { create } from 'zustand';
+import type { Tour } from './core/model';
 import type { Trip } from './core/trip';
 import { loadTrips, saveTrips } from './io/trips';
 
@@ -9,6 +10,8 @@ interface TripsState {
   load: () => Promise<void>;
   add: (t: Trip) => void;
   update: (id: string, edit: (t: Trip) => Trip) => void;
+  /** Changes the route; its timetable goes and is planned again (usePlanner). */
+  editRoute: (id: string, edit: (r: Tour) => Tour) => void;
   remove: (id: string) => void;
   /** Everything at once, saved at once (sync). */
   replaceAll: (list: Trip[]) => Promise<unknown>;
@@ -55,6 +58,18 @@ export const useTrips = create<TripsState>()((set, get) => ({
     const trips = get().trips.map((t) => (t.id === id ? edit(t) : t));
     set({ trips });
     persist(trips);
+  },
+  editRoute: (id, edit) => {
+    const trips = get().trips.map((t) => {
+      if (t.id !== id) return t;
+      const route = edit(t.route);
+      if (JSON.stringify(route) === JSON.stringify(t.route)) return t;
+      const { chain: _c, legs: _l, compact: _p, ...rest } = t;
+      return { ...rest, route };
+    });
+    set({ trips });
+    // A tap, not a keystroke: saved at once.
+    void persistNow(trips);
   },
   remove: (id) => {
     const trips = get().trips.filter((t) => t.id !== id);

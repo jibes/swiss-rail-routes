@@ -20,18 +20,17 @@ All colours, radii and spacing are CSS custom properties in `src/styles/base.css
 
 ## Navigation
 
-One list, no tabs: Upcoming, Ideas, Past (SPEC §3a). An idea is a trip without a timetable; planning turns it into the trip. Under way a trip shows itself live: a live bar on the list, and the app opens to it.
+One list (Now, Coming up) and one trip screen (SPEC §3a, 0.4.0). Every trip has a date; a finished one waits in search. Under way a trip shows itself live: a live bar on the list, and the app opens to it.
 
 ## Screens
 
-- **Home:** large title, tour cards with their mini line, dock: From template · New tour.
-- **Builder (route):** the name is the title; share and map top right; the round-trip pill; the line with a grip per station (drag or arrow keys); an "add a station" row continuing the line; route chips. Dock: legs and stays, Plan.
-- **Planning:** pills for date, depart/back by + time, ticket; options as a segmented control with Earlier/Later chevrons; departure–arrival summary; the rail with times. Dock: Save trip.
-- **Trip** (one screen, following the time): before, date, departure–arrival and the rail, dock "Edit trip"; under way, a progress bar, the next step as a card (what, big time with "+N" late, "in N min", line and platform), connections at risk in red, the rail with the travelled part grey and a pulsing marker where you are, dock "Replan from here" (red when at risk); after, the record, dock "Save as route" ("Open route" when its route still exists unchanged; before and under way the same as a text button). Tickets, calendar, GPX and share below.
-- **Edit trip:** the builder's line. Before departure all of it plus date, time and ticket; under way the travelled part grey, the start fixed ("From here · hh:mm"). Find connections, options, Update trip.
-- **Rides:** "N stops" expands the intermediate stops in place, everywhere.
+- **List:** the mark and the app's name, the count as the large title ("2 ahead"), cards with the day as a big number (month and weekday under it), the name, the mini line and departure–arrival. Dock: New trip.
+- **Trip:** header back · map · share · ⋯ (calendar, duplicate, delete). The name (tap to rename), the date as a red label (tap: 14 day pills and Other day), departure → arrival as the headline (52 px), duration · trains · changes, the options as one segmented control with Earlier/Later chevrons (the chosen one dark, a dot on the recommended one). Then the line: times left, big dots where you get off, rings where the train passes (a scenic line's own stations lighter), the train's badge, platform and duration under each departure, warnings as a coloured dot and one line. The dashed end adds a station.
+- **Panel** (tap a station you entered): name field, Pass through · Change · 30–120 min pills, "Via <line> ×", Add after, ↑, ↓, remove; a grip beside the name drags it.
+- **Add sheet:** one search for stations, scenic lines and your past trips (each with its mini line and × to forget).
+- **Under way:** progress bar, the next step as a card, connections at risk in red, Replan from here, the timetable live with the travelled part grey and a pulsing marker.
 - **Map:** full screen, floating back and "Timetable" controls.
 
 ## Reviewing a change
 
-`SCREENSHOTS=/tmp/shots npx playwright test e2e/screens.spec.ts --project=phone` (after a build with `VITE_OJP_URL=https://ojp.invalid`) renders routes, builder, planning, a trip under way and Trips in light and dark from recorded data.
+`SCREENSHOTS=/tmp/shots npx playwright test e2e/screens.spec.ts --project=phone` (after a build with `VITE_OJP_URL=https://ojp.invalid`) renders the list, a trip, its panel, the add sheet and a trip under way in light and dark from recorded data.

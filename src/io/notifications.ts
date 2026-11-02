@@ -1,7 +1,7 @@
 // Trip notifications in the Android app (local, scheduled from the timetable; none on the web).
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { noticesFor, type Notice } from '../core/notify';
-import type { Trip } from '../core/trip';
+import { isPlanned, type Trip } from '../core/trip';
 import { TEMPLATES } from '../data';
 import { translate, type Lang } from '../i18n';
 import { isNative } from '../native';
@@ -44,9 +44,9 @@ export function scheduleTrips(trips: Trip[], lang: Lang, now = Date.now()): Prom
 async function reschedule(trips: Trip[], lang: Lang, now: number) {
   if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
   const index = await stopSearch();
-  const notices = trips.flatMap((t) =>
-    noticesFor(t, now, TEMPLATES, (r) => index.byRef(stopKey(r))),
-  );
+  const notices = trips
+    .filter(isPlanned)
+    .flatMap((t) => noticesFor(t, now, TEMPLATES, (r) => index.byRef(stopKey(r))));
   await LocalNotifications.createChannel({
     id: CHANNEL,
     name: translate(lang, 'nChannel'),

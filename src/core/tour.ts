@@ -69,6 +69,7 @@ export function sanitiseTour(
       kind: KINDS.includes(w.kind as Waypoint['kind']) ? (w.kind as Waypoint['kind']) : 'via',
       dwellMin: Math.max(0, Math.min(24 * 60, Math.round(dwell))),
       ...(typeof w.templateId === 'string' ? { templateId: w.templateId } : {}),
+      ...(w.ring === true && typeof w.templateId === 'string' ? { ring: true } : {}),
       ...(typeof w.earliestArr === 'string' && TIME.test(w.earliestArr)
         ? { earliestArr: w.earliestArr }
         : {}),

@@ -3,7 +3,7 @@ import { addWaypoint, moveWaypoint, removeWaypoint, replaceWaypoint, setStay } f
 import type { Tour } from '../core/model';
 import { plan, type PlanResult } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
-import { revise, tripStatus } from '../core/trip';
+import { isPlanned, revise, tripStatus } from '../core/trip';
 import { stopKey } from '../core/stops';
 import { GA, SEGMENTS } from '../data';
 import { fetchTrips, WorkerError } from '../io/ojp';
@@ -32,7 +32,11 @@ import { expectedArrival } from '../core/live';
  */
 export function EditTrip({ id }: { id: string }) {
   const t = useT();
-  const trip = useTrips((s) => s.trips.find((x) => x.id === id));
+  // Only a planned trip has a timetable to change from here.
+  const trip = useTrips((s) => {
+    const x = s.trips.find((y) => y.id === id);
+    return x && isPlanned(x) ? x : undefined;
+  });
   const update = useTrips((s) => s.update);
   const nowOpen = useNow();
   const liveStatus = useLiveStatus((s) => s.status);
@@ -261,23 +265,25 @@ export function EditTrip({ id }: { id: string }) {
                   )
                     return setStatus('changed');
                   update(id, (x) =>
-                    revise(
-                      x,
-                      point
-                        ? mergeReplan(
-                            x,
-                            (opened.state &&
-                              replanPoint(x, opened.state, opened.now, (key) => {
-                                const st = index?.byRef(key);
-                                return st ? [st.lon, st.lat] : undefined;
-                              })) ||
-                              point,
-                            result.legs ?? [],
-                            chain,
-                          )
-                        : { route: draft, legs: result.legs ?? [], chain },
-                      new Date(),
-                    ),
+                    !isPlanned(x)
+                      ? x
+                      : revise(
+                          x,
+                          point
+                            ? mergeReplan(
+                                x,
+                                (opened.state &&
+                                  replanPoint(x, opened.state, opened.now, (key) => {
+                                    const st = index?.byRef(key);
+                                    return st ? [st.lon, st.lat] : undefined;
+                                  })) ||
+                                  point,
+                                result.legs ?? [],
+                                chain,
+                              )
+                            : { route: draft, legs: result.legs ?? [], chain },
+                          new Date(),
+                        ),
                   );
                   go(`/trip/${id}`);
                 }}

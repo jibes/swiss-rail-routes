@@ -94,55 +94,35 @@ Must = MVP; Should = v1.1; Could = later.
 
 - [Must] Timeline: every section with dep/arr, platform, line, dwell blocks.
 - [Must] Map: tour on real track geometry (OJP leg projection), highlights as stars.
-- [Must] Export: "open leg in SBB app" per leg (https link that the app claims; web fallback), `.ics` with one event per section, GPX/KML, share link (tour in the URL hash, no server).
+- [Must] Export: `.ics` with one event per section, share link (in the URL hash, no server). (sbb.ch links and GPX were removed in 0.4.0.)
 - [Should] Offline: saved tours fully readable without network (tour + last plan stored together; map corridor tiles cached, kOSMos IndexedDB tile-store pattern).
 - [Should] Day-of mode: live delays, replan the rest from the current position.
 - [Should] One-page printout via print CSS (instead of a PDF library).
 - [Could] Notifications before each transfer and before a sunset-critical leg. Needs the Capacitor shell (local notifications); not possible reliably in a PWA.
 
-## 3a. One object: a trip, idea first (added 1 Nov 2026; one list since 0.3.0)
+## 3a. One object, one screen, one line (0.4.0; an idea first in 0.3.0)
 
-There is one kind of thing, the **trip**, in two states that cannot overlap. Under way and done are not states: they are a planned trip at a certain time, and its screen follows the clock.
+There is one kind of thing, the **trip**, and it always has a date. It is one line on one screen: before it leaves you edit it in place and it plans itself; under way it shows where you are; when its day is over it leaves the list and waits in search. Ideas (0.3.0) are gone: an idea was a trip without a date, and a date costs nothing to change.
 
-| State    | Holds                                                                                       | Its actions                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Idea** | Stations, stays, templates, round trip; no timetable                                        | **Plan** (date, time, ticket, an option): the idea becomes the trip and is gone; Share; Delete |
-| **Trip** | The idea frozen with its date, time, ticket and the chosen connections; one version to undo | **Edit** (see below); **Copy as idea** (stations and stays as a new idea); Share; Delete       |
-
-- **One list**, no tabs: Upcoming (a trip under way first), Ideas, Past. "New trip" and "From template" start an idea. To repeat a trip: Past → Copy as idea → Plan.
-- **Share** sends what it is: an idea as a route link (`#/r/`, opens as an idea), a trip with its times (`#/j/`, opens as a trip). A recipient who wants only the idea uses Copy as idea.
-- Upgrading to 0.3.0 removes, once per device, routes that a saved trip was planned from and that are unchanged since (the same thing twice); other routes stay as ideas. Storage and sync are unchanged: ideas are `srr.tours.v1`, trips `srr.trips.v1`.
-
-The trip screen follows the trip's time:
-
-| State                                                       | Shows                                                                               | Its one action                                                 |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Before (until 30 min before departure)                      | Date, departure–arrival, the timetable                                              | **Edit trip**: stations, stays, date, time, ticket, all of it  |
-| Under way (30 min before departure to 15 min after arrival) | Progress, the next step, connections at risk, the timetable live with where you are | **Replan from here**: the rest; the travelled part fixed, grey |
-| After                                                       | The record                                                                          | **Copy as idea**                                               |
-
-- **Save as route** (any time; the main action afterwards): the trip's stations and stays become a route, without date, time or ticket, the general from the specific (planning is the other way). If the route it came from still exists unchanged, it says **Open route** and opens that instead of making a copy.
-- Both edits use the same edit screen (`#/trip/<id>/edit`); the result is a new version of the trip, undo restores the previous one. Old `…/now` and `…/replan` addresses still open the trip and its edit.
+- **The list**: Now (a trip under way), Coming up (by date). Each card has its day, name, line and times. "New trip" opens the trip with the search open.
+- **The trip screen** (`#/trip/<id>`): its name (tap to rename), the date (tap: the next 14 days, or another), departure → arrival, the three options with Earlier/Later (an hour), and the line. No Plan button: every change plans again after 400 ms of quiet (`usePlanner`); the options are kept with the plan (`srr.plans.v1`). New trips start next Saturday at 08:00; the ticket is always GA (the GA warnings stay).
+- **The line**: the stations you entered and the timetable laid over them (`src/core/rows.ts`): times on the left, a big dot where you get off (a change or a stay), a ring where the train passes, a badge, platform and duration per train, warnings under the train they concern. Changes the timetable needs on its own are dots too, not editable.
+- **What you entered** (`src/core/line.ts`): stations, and scenic lines picked in search. A line is its two end stations (yours) and its must-pass stations between them (rings, part of the line: `Waypoint.ring`). Only what you entered opens **the panel**: the station's name (type to replace it), pass through / change / stay 30–120 min, the line that leads there (× goes without it), Add after, up, down, remove; while it is open, its grip drags it among the stations you entered. A move, a removal or a new station between a line's two ends switches the line off (dragging shows which by fading it).
+- **Adding**: the dashed end of the line, or Add after in a panel, opens the one search: your past trips, scenic lines (run from where you are), stations; and "Back to <start>" for a round trip.
+- **Under way** (30 min before departure to 15 min after the expected arrival): progress, the next step, connections at risk, the timetable live with where you are; **Replan from here** (`#/trip/<id>/edit`) changes the rest, the travelled part fixed, with undo.
+- **When its day is over** a trip leaves the list (`src/core/retire.ts`): its stations, stays and lines are kept in search under Your trips (`srr.tours.v1`, the former ideas), without times; the same stations once, the most recent first; × forgets one. Repeating a trip: New trip → pick it. Ideas from 0.3.0 are there too.
+- **Menu (⋯)**: Add to calendar (.ics, one event per train), Duplicate (a week later), Delete. **Share** sends the trip with its times (`#/j/`); route links (`#/r/`, `#/t/`, a 0.3 route's address) open as a route to plan as a new trip.
 - **Position** comes from the timetable plus live delays, never GPS (owner's decision).
-- **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min, when its delay or cancellation can break the connection (`journeysToWatch`). About a quarter of the requests of polling both every minute.
+- **Live delays**: OJP TripInfo every 2 min while the screen is visible and the trip is under way, through the Worker (`/journey`, cached 30 s, shared by everyone on that train). Only the train you are on or about to board; on board also the next one once it leaves within 20 min (`journeysToWatch`).
 - **Connections at risk**: an expected arrival leaves under 2 min to the next train (not the same vehicle), or the next train is cancelled.
-- **Replan from here** starts at the next stop the train calls at (or the station you are at).
-- **Sharing**: a route as `#/r/…` (stops only; the recipient plans when); a trip as `#/j/…`, the exact timetable with its tracks simplified to ~100 m (polyline-encoded, deflated; a 3-leg trip ~6.5k characters; the recipient never replans). Trips are mostly for the owner alone, so there is no live link for followers: a changed trip is shared again.
-- **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip). The two: where you get off, longest stay first; then spread out (farthest from the start and from the one picked). Shown as the placeholder; a saved trip keeps it as its name.
-- **Intermediate stops** expand on every ride; under way the ride being travelled shows them, the marker between the last stop passed and the next.
+- **Sharing a trip**: `#/j/…`, the exact timetable with its tracks simplified to ~100 m (polyline-encoded, deflated; the recipient never replans).
+- **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip): where you get off first, longest stay first; then spread out.
 
-## 3b. Sync between one's own devices (added 1 Nov 2026)
+Removed in 0.4.0: ideas as a state, the ticket choice, sync between devices (§3b), GPX and the sbb.ch links. The Worker still answers `/sync/` for copies stored before; nothing sends to it.
 
-Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start sync** makes a random 256-bit key, shown as 13 groups of four characters and as a QR code (a link `#/sync/<key>` that opens Settings to confirm); **I have a key** joins: **Scan code** reads the QR code with the camera (asked for only then; the browser's BarcodeDetector where it reads QR codes, else jsQR on the device; frames never leave it), or the key is typed (any case, spaces or dashes; O/0 and I/L/1 read alike). The phone's own camera app opens the link in the browser, not the Android app (no verified app links on github.io).
+## 3b. Sync between one's own devices (1 Nov 2026 – 0.3.x; removed in 0.4.0)
 
-- From the key each device derives (HKDF-SHA-256) an id and an AES-GCM key. The Worker stores one blob per id in a Durable Object: the routes and trips, deflated and encrypted. It never sees the key, names, stops or times.
-- Writes are compare-and-swap on a version: a device that read an old version gets the current one back (409), merges and tries again.
-- Merge per route and trip (`planRound`, pure): the newer change wins (a local edit always gets a time after the one it replaces, so a device whose clock runs behind still wins with its own edit; ties pick the same winner everywhere); deletions travel as tombstones for 90 days, and a device away longer drops items it did not change that the shared copy no longer has. Changes are noticed by hashing each item, so the stores need no timestamps. Joining counts what the device had as older than the shared copy.
-- Each round reads the lists only after the server answered (edits made meanwhile are part of it) and remembers the merge before writing, so a failed write never turns received items into local changes. Rounds of several tabs run one at a time; other tabs reload when one applied a sync.
-- Sync runs on opening, when the app comes back into view, every minute while it is in view, and 3 s after a change. A device sends the version it has (`?v=`); unchanged, the Worker answers without the data. Requests give up after 20 s (offline), so a dead connection never blocks turning sync off.
-- Trips are stored and synced compactly: tracks simplified to ~30 m once per trip (`compactTrip`), so a few hundred trips fit the 1 MB the Worker takes; a copy larger than that is refused on the device ("too much data").
-- **New key** moves everything to a new key and closes the old copy: the Worker keeps a marker and answers 410, so devices still on the old key say "replaced" instead of refilling it; they join again. **Turn off on this device** keeps its data. Boxes no device read or wrote for 180 days are deleted (Durable Object alarm, moved on by reads at most daily); a device finding its copy gone that way writes it again. Turning sync off keeps that key's stamps, so turning it on again with the same key keeps edits made meanwhile.
-- Without the key nothing can be recovered; every device keeps its own copy either way.
+Removed by the owner's decision in 0.4.0, with the camera scanner. Data stays on each device.
 
 ## 4. Data sources
 
@@ -183,13 +163,7 @@ Edge cases: out-and-back (same track twice only on a turnaround), cog and cable-
 
 ## 6. UX and screens
 
-Five screens, hash routes; mobile portrait first, one-handed, light/dark from the system, en/de/fr/it.
-
-1. **Home:** saved tours as cards (name, date, total h, warning chips); "New tour" and "From template"; template gallery (Albula, Bernina, Oberalp, Voralpen-Express, Brünig, Rigi…) with photo, duration from Zürich and a season note. Photos self-hosted, licences in `THIRD_PARTY_NOTICES.md`.
-2. **Tour builder:** vertical waypoint list with drag handles; each row: station, ride/stop toggle, dwell stepper; "+ add route" inserts a template; round-trip switch; date and depart / back-by picker; live total-duration footer.
-3. **Result timeline:** tabs for the options (one: a note instead), Earlier/Later buttons; per section: time, platform, line badge, operator; dwell blocks shaded; chips inline (red disruption, amber after-sunset, grey non-GA); seat-side tip; a sunset line across the timeline.
-4. **Map:** tour coloured per template, highlights as stars, sunset-critical ones marked; tapping a section jumps to the timeline.
-5. **Export sheet:** SBB link per leg, calendar (.ics), GPX/KML, share link, print.
+Since 0.4.0 one list and one trip screen (§3a), hash routes; mobile portrait first, one-handed, light/dark from the system, en/de/fr/it. The map (`#/trip/<id>/map`) shows the trip on its tracks; Replan from here (`#/trip/<id>/edit`) changes the rest of a trip under way; Settings holds the language.
 
 Interaction rules: replan on every edit, debounced 500 ms; never block the UI on the network; say in plain language which constraint failed a leg ("No regular train Thusis–Preda on 07.11. — replacement bus").
 
@@ -217,7 +191,7 @@ e2e/                    Playwright, canned Worker answers
 ```
 
 - **App:** TypeScript strict, React 19, Vite, vite-plugin-pwa (prompt update), zustand, MapLibre GL, idb-keyval, fast-xml-parser. Node pinned by `.nvmrc`.
-- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, `POST /journey` (live calls of one train), `GET/PUT/DELETE /sync/<id>` (§3b), typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
+- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, `POST /journey` (live calls of one train), `GET/PUT/DELETE /sync/<id>` (§3b, no longer used by the app), typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
 - **CSP:** `connect-src` = the Worker, OpenFreeMap; nothing else.
 - **Native:** Capacitor shell for Android (`android/`, Obtainium), `android.yml` per standard; local trip notifications.
 

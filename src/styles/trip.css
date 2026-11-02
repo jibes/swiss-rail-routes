@@ -1,0 +1,903 @@
+/* ─── 0.4.0: one list, one screen, one line ──────────────────────────────────
+   The list (cards with the day), the trip screen (date, departure → arrival,
+   options, the line with its panel), the add sheet and the menu. */
+
+/* The list */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.home .h1 {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  margin: 26px 0 6px;
+  text-wrap: balance;
+}
+
+.home .empty {
+  margin: 4px 0 0;
+  max-width: 34ch;
+  line-height: 1.5;
+}
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cards .card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hair);
+  color: inherit;
+  text-decoration: none;
+  align-items: start;
+}
+
+.card .day {
+  display: grid;
+  justify-items: start;
+  line-height: 1;
+}
+
+.card .day b {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.card .day i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 5px;
+}
+
+.card .day i + i {
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+
+.card .cbody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card .name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.card .sub {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.card .sub em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--rail-ink);
+}
+
+svg.mini-line {
+  width: 100%;
+  height: 12px;
+  overflow: visible;
+  color: var(--rail);
+}
+
+svg.mini-line line {
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+svg.mini-line circle {
+  fill: currentColor;
+}
+
+svg.mini-line circle.via {
+  fill: var(--bg);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* The trip screen */
+.trip-screen .bar .sp {
+  flex: 1;
+}
+
+.trip-screen h1 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+
+.trip-screen h1 .title {
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: text;
+}
+
+.title-input {
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid var(--rail);
+  padding: 2px 0;
+  margin-top: 4px;
+  outline: none;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rail-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.trip-screen .dates {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--pad));
+  padding: 4px var(--pad) 8px;
+  scrollbar-width: none;
+}
+
+.trip-screen .dates .pill {
+  min-height: 36px;
+  font-size: 14px;
+}
+
+.pill.on,
+.pill[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+
+.other-date input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hero-times {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 0;
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-times svg {
+  color: var(--ink-3);
+  flex: none;
+}
+
+.hero-times.busy {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  min-height: 52px;
+}
+
+.facts {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-screen .options-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 18px;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+.options-bar .shift {
+  flex: none;
+  width: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  border-radius: 12px;
+}
+
+.options-bar .opts {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.options-bar .single {
+  margin: auto;
+  font-size: 14px;
+}
+
+.opt {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 7px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  text-align: center;
+}
+
+.opt b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.opt span {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.opt[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.opt[aria-pressed='true'] span {
+  color: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+.opt .best {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-radius: 3px;
+  background: var(--rail);
+  vertical-align: middle;
+}
+
+.opt[aria-pressed='true'] .best {
+  background: var(--bg);
+}
+
+/* The line */
+.trip-line {
+  position: relative;
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+}
+
+.trip-line > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 50px 30px minmax(0, 1fr);
+}
+
+.trip-line .station.open {
+  grid-template-columns: 50px 30px minmax(0, 1fr) 44px;
+}
+
+.trip-line .t {
+  text-align: right;
+  padding: 8px 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-line .t i {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.trip-line .rail {
+  position: relative;
+}
+
+.trip-line .rail::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--rail);
+}
+
+.trip-line > li:first-child:not(.dropmark) .rail::before,
+.trip-line .dropmark + li .rail::before {
+  top: 18px;
+}
+
+.trip-line .dot {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--rail);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+
+.trip-line .station.pass .dot {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  background: var(--bg);
+  border: 2px solid var(--rail);
+  box-shadow: none;
+}
+
+.trip-line .station.ring .dot {
+  border-color: color-mix(in srgb, var(--rail) 55%, var(--bg));
+}
+
+.trip-line .station .m {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  align-content: start;
+  min-width: 0;
+  padding: 7px 0 9px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.trip-line button.m {
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.trip-line button.m:hover .n {
+  text-decoration: underline;
+  text-decoration-color: var(--hair);
+  text-underline-offset: 4px;
+}
+
+.trip-line .n {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+.trip-line .station.pass .n {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.trip-line .station.ring .n {
+  font-size: 14px;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+
+.trip-line .station.pass .t {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+
+.trip-line .station.auto .n {
+  font-weight: 600;
+}
+
+.trip-line .station.open .n {
+  color: var(--rail-ink);
+}
+
+.trip-line .chip {
+  min-height: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  background: var(--rail-soft);
+  color: var(--rail-ink);
+  box-shadow: none;
+}
+
+.trip-line .chip.quiet {
+  background: none;
+  padding-left: 0;
+  color: var(--ink-3);
+}
+
+.trip-line .ride .m {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 0 10px 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .ride b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.trip-line .badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+  line-height: 1.1;
+  background: none;
+}
+
+.trip-line .badge.scenic {
+  background: var(--rail);
+  border-color: var(--rail);
+  color: var(--on-rail);
+}
+
+.trip-line .warn {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  width: 100%;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .warn::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--info);
+  transform: translateY(-1px);
+}
+
+.trip-line .warn.amber::before {
+  background: var(--amber);
+}
+
+.trip-line .warn.red::before {
+  background: var(--red);
+}
+
+.trip-line.planning .t .shim,
+.trip-line .t .shim {
+  display: inline-block;
+  width: 36px;
+  height: 11px;
+  border-radius: 6px;
+  background: var(--hair);
+}
+
+.trip-line .grip {
+  margin: 0;
+  width: 44px;
+  height: 44px;
+  align-self: start;
+}
+
+.trip-line .station.dragging {
+  z-index: 3;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.trip-line .station.losing {
+  opacity: 0.25;
+}
+
+.trip-line .dropmark {
+  position: absolute;
+  left: 66px;
+  right: 0;
+  height: 2px;
+  display: block;
+  background: var(--rail);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trip-line .dropmark::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rail);
+}
+
+/* The panel under the open station */
+.trip-line .panel {
+  grid-column: 3 / -1;
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    var(--shadow);
+}
+
+.panel .chips,
+.panel .acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.panel .pill {
+  min-height: 34px;
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.panel .acts .sp {
+  flex: 1;
+}
+
+.panel .sq {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+}
+
+.panel .sq[disabled] {
+  opacity: 0.35;
+}
+
+.panel .sq.danger {
+  color: var(--rail-ink);
+}
+
+.panel .via-line {
+  background: var(--rail-soft);
+  box-shadow: none;
+  color: var(--rail-ink);
+}
+
+.panel .via-line button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+}
+
+/* The add row at the end of the line */
+.trip-line .addrow {
+  display: block;
+}
+
+.trip-line .addrow button {
+  display: grid;
+  grid-template-columns: 50px 30px minmax(0, 1fr);
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  text-align: left;
+  font: inherit;
+  font-weight: 650;
+}
+
+.trip-line .addrow .rail {
+  height: 100%;
+}
+
+.trip-line .addrow .rail::before {
+  bottom: 50%;
+  background: none;
+  border-left: 3px dashed var(--rail);
+  width: 0;
+  opacity: 0.6;
+}
+
+.trip-line .addrow .plus {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px;
+  border-radius: 50%;
+  border: 2px dashed var(--rail);
+  display: grid;
+  place-items: center;
+  color: var(--rail-ink);
+  background: var(--bg);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.trip-line .addrow .m {
+  padding-left: 8px;
+}
+
+.trip-line > li:only-child .rail::before,
+.trip-line .addrow:first-child .rail::before {
+  display: none;
+}
+
+/* Under way */
+.live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+/* The menu */
+.menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+}
+
+.menu {
+  position: absolute;
+  right: max(12px, calc(50% - 268px));
+  top: calc(56px + env(safe-area-inset-top));
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    0 12px 32px rgb(0 0 0 / 20%);
+}
+
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.menu button:hover {
+  background: var(--bg);
+}
+
+.menu .danger {
+  color: var(--rail-ink);
+}
+
+/* The add sheet */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 35%);
+}
+
+.add-sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 86dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px var(--pad) calc(18px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: var(--bg);
+}
+
+.add-sheet .grab {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 2px;
+  border-radius: 3px;
+  background: var(--hair);
+}
+
+.add-sheet .sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.add-sheet h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.add-sheet .search {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.add-sheet .results {
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+}
+
+.add-sheet .section-label {
+  margin: 14px 0 2px;
+}
+
+.add-sheet .result {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.add-sheet .result.trip {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  border-bottom: 0;
+}
+
+.add-sheet .r-icon {
+  grid-row: span 2;
+  justify-self: center;
+}
+
+.add-sheet .r-icon.r-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--rail);
+}
+
+.add-sheet .r-icon.r-line {
+  width: 22px;
+  height: 3px;
+  background: var(--rail);
+  position: relative;
+}
+
+.add-sheet .r-icon.r-line::before,
+.add-sheet .r-icon.r-line::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rail);
+}
+
+.add-sheet .r-icon.r-line::before {
+  left: -3px;
+}
+
+.add-sheet .r-icon.r-line::after {
+  right: -3px;
+}
+
+.add-sheet .r-name {
+  font-weight: 650;
+}
+
+.add-sheet .r-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.add-sheet .result-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  border-bottom: 1px solid var(--hair);
+}
+
+.add-sheet .forget {
+  color: var(--ink-3);
+}
