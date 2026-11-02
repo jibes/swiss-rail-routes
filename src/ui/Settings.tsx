@@ -12,7 +12,9 @@ import {
   type SyncStatus,
 } from '../io/sync';
 import { clearLog, copyLog, log, saveLog, setLogging, useLog } from '../io/log';
+import type { Reservations } from '../core/planner/plan';
 import { publicUrl } from '../native';
+import { useTrips } from '../trips';
 import { usePrefs, useT } from '../store';
 import { hhmm } from './format';
 import { Icon } from './icons';
@@ -253,6 +255,9 @@ export function Settings({ join }: { join?: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const setLang = usePrefs((s) => s.setLang);
+  const reservations = usePrefs((s) => s.reservations);
+  const setReservations = usePrefs((s) => s.setReservations);
+  const replanUpcoming = useTrips((s) => s.replanUpcoming);
   const { key, status, at, loaded } = useSync();
   // Kept here: the address bar loses the key at once (below), the screen may render again first.
   const [offered] = useState(join);
@@ -282,6 +287,25 @@ export function Settings({ join }: { join?: string }) {
             setLang(l as Lang);
           }}
         />
+      </section>
+
+      <section className="setting">
+        <h2 className="section-label">{t('reservations')}</h2>
+        <Select
+          className="pill"
+          label={t('reservations')}
+          value={reservations}
+          options={(['avoid', 'include', 'never'] as const).map((r) => ({
+            value: r,
+            label: t(`reservations_${r}`),
+          }))}
+          onChange={(r) => {
+            log('settings.reservations', { reservations: r });
+            setReservations(r as Reservations);
+            replanUpcoming(Date.now());
+          }}
+        />
+        <p className="muted">{t('reservationsHint')}</p>
       </section>
 
       <section className="setting">

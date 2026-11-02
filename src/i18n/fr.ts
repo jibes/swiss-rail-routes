@@ -4,6 +4,12 @@ export const fr = {
   appName: 'Viadukt',
   newTour: 'Nouveau voyage',
   language: 'Langue',
+  reservations: 'Trains avec réservation',
+  reservations_avoid: 'Éviter si un train régulier circule',
+  reservations_include: 'Traiter comme les autres trains',
+  reservations_never: 'Ne jamais les utiliser',
+  reservationsHint:
+    'Trains avec réservation ou supplément obligatoire, comme le Bernina Express. Un changement replanifie les voyages pas encore commencés : une liaison choisie peut donc changer.',
   updateReady: 'Une nouvelle version est prête.',
   reload: 'Recharger',
   dismiss: 'Fermer',
@@ -34,6 +40,8 @@ export const fr = {
   planFailed: 'La planification a échoué.',
   retry: 'Réessayer',
   legFailed: 'Aucune liaison pour le tronçon {n} ({from} → {to}).',
+  reservationsLeftOut:
+    'Les trains à réservation obligatoire sont exclus (Réglages). Les autoriser permettrait peut-être de trouver une meilleure liaison.',
   alternatives: 'Variantes',
   recommended: 'Recommandé',
   transfers: '{n} changements',

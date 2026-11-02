@@ -11,11 +11,19 @@ import { isSupplement, warningsFor, type Warning } from '../warnings';
 import { MIN, ms, rides, visited } from './connection';
 import { passesVias, stitched, type Query } from './stitch';
 
+/**
+ * Trains that need a reservation or supplement. Avoid: only when no regular train runs, or none
+ * arrives in time. Include: like any other. Never: not even when that leaves no connection.
+ */
+export type Reservations = 'avoid' | 'include' | 'never';
+
 export interface PlanDeps {
   fetchTrips: (q: TripQuery) => Promise<Connection[]>;
   templates: RouteTemplate[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
+  /** Absent: avoid. */
+  reservations?: Reservations;
   /** Debug log (io/log.ts); the planner says what it asked, kept and gave up. */
   trace?: (event: string, data?: unknown) => void;
 }
@@ -67,6 +75,8 @@ export interface PlanResult {
   /** The legs actually planned (after merging repeated stops and turning loops); index i of
    * every chain's connections belongs to legs[i]. Absent in plans saved before 2026-11-01. */
   legs?: Leg[];
+  /** The choice it was planned under, said by the app (io/planTrip.ts). Absent: avoid. */
+  reservations?: Reservations;
 }
 
 export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates'>): LegRules[] {
@@ -189,8 +199,7 @@ async function planFrom(
   input: Tour,
   deps: PlanDeps,
   cache: Answers = new Map(),
-  /** Arrive by: panorama/supplement trains count even when regular ones run. */
-  anyTrain = false,
+  reservations: Reservations = deps.reservations ?? 'avoid',
 ): Promise<Planned> {
   const tour = splitLoops(mergeRepeats(input));
   const wt = DEFAULT_WEIGHTS;
@@ -285,13 +294,17 @@ async function planFrom(
         mustPass: rules.leg.vias.map((v) => v.name),
       });
       // Regular trains over panorama/supplement trains when both run.
-      const regular = pool.filter((c) => !rides(c).some(([s]) => isSupplement(s, deps.ga)));
-      if (regular.length && !anyTrain) pool = regular;
+      const isRegular = (c: Connection) => !rides(c).some(([s]) => isSupplement(s, deps.ga));
+      const regular = pool.filter(isRegular);
+      if (reservations === 'never' || (reservations === 'avoid' && regular.length)) pool = regular;
       for (const b of beams) {
         let opts = pool.filter((c) => ms(c.dep) >= b.ready);
         if (!opts.length && b.ready > ready) {
           opts = (await fetchAt(rules, b.ready, relaxed)).filter(
-            (c) => !rejectReason(c, rules, relaxed) && ms(c.dep) >= b.ready,
+            (c) =>
+              !rejectReason(c, rules, relaxed) &&
+              ms(c.dep) >= b.ready &&
+              (reservations !== 'never' || isRegular(c)),
           );
         }
         for (const c of opts) {
@@ -403,8 +416,8 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
     // Every chain found, not only the three picked: a later one may still arrive in time.
     let inTime = last.chains.filter((c) => ms(c.arr) <= by);
     // Regular trains are too late: one that needs a reservation beats leaving in the night.
-    if (!inTime.length && start === dayStart) {
-      last = await planFrom(start, tour, deps, cache, true);
+    if (!inTime.length && start === dayStart && (deps.reservations ?? 'avoid') === 'avoid') {
+      last = await planFrom(start, tour, deps, cache, 'include');
       inTime = last.chains.filter((c) => ms(c.arr) <= by);
     }
     deps.trace?.('plan.arriveBy', { attempt, inTime: inTime.length });

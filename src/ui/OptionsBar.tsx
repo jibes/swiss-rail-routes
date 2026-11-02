@@ -8,7 +8,7 @@ import { planRoute } from '../io/planTrip';
 import { loadOptions, saveOptions } from '../io/tours';
 import { useTrips } from '../trips';
 import { useNow } from './useNow';
-import { useT } from '../store';
+import { usePrefs, useT } from '../store';
 import { duration, hhmm, minutesBetween, zurichHm } from './format';
 import { Icon } from './icons';
 import { RailLoader } from './RailLoader';
@@ -48,7 +48,8 @@ export function OptionsBar({
 }) {
   const t = useT();
   // The route without its name or time: options of one route, whatever time they were asked from.
-  const base = optionsKey(trip.route);
+  const reservations = usePrefs((s) => s.reservations);
+  const base = optionsKey(trip.route, reservations);
   // Options loaded with the arrows, for this route and day; kept while you choose among them,
   // and on the device until they have left (`srr.options.v1`), so opening the trip again shows
   // them without asking.

@@ -100,6 +100,12 @@ export function tripStatus(
   return 'live';
 }
 
+/** The trip without its timetable: the route stays, and is planned again. */
+export function withoutTimetable(t: Trip): Trip {
+  const { chain: _c, legs: _l, compact: _p, ...rest } = t;
+  return rest;
+}
+
 export function newTrip(
   id: string,
   route: Tour,

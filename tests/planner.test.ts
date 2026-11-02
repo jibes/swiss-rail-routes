@@ -288,6 +288,78 @@ describe('arrive by, a day trip', () => {
   });
 });
 
+describe('reservation trains, your choice', () => {
+  const line = (from: string, to: string, category: string) => (dep: string, arr: string) =>
+    conn(
+      ride(category, [
+        [from, dep],
+        [to, arr],
+      ]),
+    );
+  const out = line('Zürich HB', 'Lugano', 'IC 2');
+  const back = line('Lugano', 'Zürich HB', 'IC 21');
+  const panorama = (dep: string, arr: string): Connection => {
+    const c = back(dep, arr);
+    return { ...c, sections: [{ ...c.sections[0]!, reservationRequired: true }] };
+  };
+  const stay = (anchor: Tour['anchor']): Tour => {
+    const x = setRoundTrip(
+      addWaypoint(newTour('t', DATE, stop('Zürich HB')), stop('Lugano')),
+      true,
+    );
+    const i = x.waypoints.findLastIndex((w) => w.name === 'Lugano');
+    return { ...setDwell(setStop(x, i, true), i, 120), anchor };
+  };
+  const pe = panorama('14:30', '19:30');
+  const regular = back('15:00', '21:00');
+  // From the afternoon the next train back is tomorrow's, as OJP answers.
+  const tomorrow = JSON.parse(
+    JSON.stringify(back('12:00', '17:22')).replaceAll(DATE, '2026-11-08'),
+  ) as Connection;
+  const list = [out('07:07', '12:00'), out('17:07', '22:00'), pe, regular, tomorrow];
+  const backOf = (r: PlanResult) => r.recommended?.connections[1]?.dep;
+
+  it('avoid is the default, and takes the regular train that also arrives in time', async () => {
+    const t = stay({ arriveBy: '21:30' });
+    const plain = await plan(t, deps(list).deps);
+    const avoid = await plan(t, { ...deps(list).deps, reservations: 'avoid' });
+    expect(backOf(plain)).toBe(regular.dep);
+    expect(backOf(avoid)).toBe(regular.dep);
+  });
+
+  it('include lets it compete: the shorter chain wins', async () => {
+    const t = stay({ departAt: '07:00' });
+    const r = await plan(t, { ...deps(list).deps, reservations: 'include' });
+    expect(backOf(r)).toBe(pe.dep);
+    expect(r.recommended!.warnings.some((w) => w.type === 'reservation')).toBe(true);
+  });
+
+  it('never leaves it out, even when that leaves no connection', async () => {
+    const r = await plan(stay({ departAt: '07:00' }), {
+      ...deps([out('07:07', '12:00'), pe]).deps,
+      reservations: 'never',
+    });
+    expect(r.options).toBeUndefined();
+    expect(r.failedLeg).toBe(1);
+  });
+
+  it('never also holds when a chain asks again from its own time', async () => {
+    // 06:07 has the regular 13:30; for 07:07 that has left, and asking again finds only the
+    // reservation train.
+    const trains = [out('06:07', '11:00'), out('07:07', '12:00'), back('13:30', '18:30'), pe];
+    const t = stay({ departAt: '06:00' });
+    const r = await plan(t, { ...deps(trains).deps, reservations: 'never' });
+    expect(r.options!.map((c) => c.dep)).toEqual([trains[0]!.dep]);
+  });
+
+  it('only avoid falls back on reservation trains when regular ones are too late', async () => {
+    const t = stay({ arriveBy: '20:00' });
+    expect(backOf(await plan(t, deps(list).deps))).toBe(pe.dep);
+    const never = await plan(t, { ...deps(list).deps, reservations: 'never' });
+    expect(never.options).toBeUndefined();
+  });
+});
+
 describe('a route that collapses to one stop', () => {
   it('plans nothing instead of failing', async () => {
     const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Zürich HB')));

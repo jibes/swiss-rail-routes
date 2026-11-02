@@ -82,7 +82,7 @@ Must = MVP; Should = v1.1; Could = later.
 **Validation and warnings**
 
 - [Must] GA validity per section against the curated GA area (incl. Domodossola, Tirano); non-GA sections (e.g. Wengen–Kleine Scheidegg) get the hint "50 % with GA".
-- [Must] Reservation-required / supplement trains flagged, with the regular train on the same line offered.
+- [Must] Reservation-required / supplement trains flagged, with the regular train on the same line offered. Settings choose: avoid them (default), treat them like any other, or never use them.
 - [Must] Disruptions: situations from the TripResult per section; red chip with text ("Thusis–Preda replacement bus until 13.11.").
 - [Must] Daylight: sunset per highlight coords and date; warn when a sunlight-required highlight is passed after sunset − 15 min.
 - [Should] Seasonal closures (Oberalp / Furka winter limits, cable-car revision weeks) from template metadata.
@@ -162,7 +162,7 @@ The planner never trusts the fastest result: it fetches candidates per leg, filt
 1. **Expand** the tour into legs: split at every `stop` / `turnaround`; `via` waypoints and template stop chains become forced vias of their leg.
 2. **Must-pass stops** per leg from templates (Albula = Thusis, Filisur, Bergün, Preda; Gotthard-Bergstrecke = Wassen, Göschenen; Voralpen-Express = Wattwil, Biberbrugg). Checked against intermediate stops, not sent as transfer points.
 3. **Query** each leg once: all forced vias as `Via`, `NotVia` for avoided nodes, intermediate stops and projection on, 6 results, departure = the earliest arrival among the current beam + dwell + minTransfer. One request per leg serves all beams, so a 4-leg tour costs 4 sequential requests, not 10.
-4. **Filter:** drop candidates that miss a must-pass stop or a line's mode, use a reservation-only train when a regular one exists, or leave the GA area when ticket = GA (unless the user allows paid sections).
+4. **Filter:** drop candidates that miss a must-pass stop or a line's mode, use a reservation-only train when a regular one exists (Settings can include or forbid them), or leave the GA area when ticket = GA (unless the user allows paid sections).
 5. **Score** (lower = better):
    `duration_min + 15·transfers + 60·highlights_after_sunset + 30·disrupted_sections + 10·transfers_under_4_min`.
    Weights in `src/core/planner/weights.ts`, tuned on T1–T4.

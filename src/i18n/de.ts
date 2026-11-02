@@ -4,6 +4,12 @@ export const de = {
   appName: 'Viadukt',
   newTour: 'Neue Reise',
   language: 'Sprache',
+  reservations: 'Züge mit Reservation',
+  reservations_avoid: 'Meiden, wenn ein regulärer Zug fährt',
+  reservations_include: 'Wie alle anderen Züge behandeln',
+  reservations_never: 'Nie benutzen',
+  reservationsHint:
+    'Züge mit Reservations- oder Zuschlagspflicht, etwa der Bernina Express. Eine Änderung plant noch nicht begonnene Reisen neu, eine gewählte Verbindung kann sich also ändern.',
   updateReady: 'Eine neue Version ist bereit.',
   reload: 'Neu laden',
   dismiss: 'Schliessen',
@@ -34,6 +40,8 @@ export const de = {
   planFailed: 'Planen fehlgeschlagen.',
   retry: 'Erneut versuchen',
   legFailed: 'Keine Verbindung für Abschnitt {n} ({from} → {to}).',
+  reservationsLeftOut:
+    'Züge mit Reservationspflicht sind ausgeschlossen (Einstellungen). Lässt du sie zu, findet sich vielleicht eine bessere Verbindung.',
   alternatives: 'Varianten',
   recommended: 'Empfohlen',
   transfers: '{n} Umstiege',

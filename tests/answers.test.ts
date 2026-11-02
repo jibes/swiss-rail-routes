@@ -42,6 +42,9 @@ describe('when a kept answer still stands', () => {
       optionsKey(t),
     );
     expect(optionsKey({ ...t, date: '2026-11-08' })).not.toBe(optionsKey(t));
+    // Options kept before the choice existed stay valid under the default; another has its own.
+    expect(optionsKey(t, 'avoid')).toBe(optionsKey(t));
+    expect(optionsKey(t, 'never')).not.toBe(optionsKey(t));
   });
 });
 

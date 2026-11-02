@@ -3,6 +3,7 @@
 // an answer is still good, and which go when there are too many.
 import type { Connection, Tour } from './model';
 import type { TripQuery } from './ojp/request';
+import type { Reservations } from './planner/plan';
 import { dayOf } from './trip';
 
 export interface KeptAnswer {
@@ -60,7 +61,17 @@ export function toDrop(all: [string, Meta][], now: number, max = ANSWERS_MAX): s
 
 /**
  * A route as its options depend on it: its stations, day and ticket, not its name or the time
- * it was asked from. Options found for one time stay options when another is chosen.
+ * it was asked from. Options found for one time stay options when another is chosen. The default
+ * choice of reservation trains is left out, so options kept before it existed still count.
  */
-export const optionsKey = (t: Pick<Tour, 'waypoints' | 'date' | 'ticket' | 'travelClass'>) =>
-  JSON.stringify({ w: t.waypoints, d: t.date, t: t.ticket, c: t.travelClass });
+export const optionsKey = (
+  t: Pick<Tour, 'waypoints' | 'date' | 'ticket' | 'travelClass'>,
+  reservations: Reservations = 'avoid',
+) =>
+  JSON.stringify({
+    w: t.waypoints,
+    d: t.date,
+    t: t.ticket,
+    c: t.travelClass,
+    ...(reservations === 'avoid' ? {} : { r: reservations }),
+  });

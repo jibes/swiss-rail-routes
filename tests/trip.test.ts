@@ -11,6 +11,7 @@ import {
   sortTrips,
   tripStatus,
   undo,
+  withoutTimetable,
   type Trip,
 } from '../src/core/trip';
 
@@ -24,6 +25,17 @@ const chain = (dep: string, arr: string): PlannedChain => ({
 const at = (hhmm: string) => Date.parse(`2026-11-07T${hhmm}:00Z`);
 const trip = (id: string, dep: string, arr: string) =>
   newTrip(id, { ...newTour('r', '2026-11-07'), name: id }, [], chain(dep, arr), new Date(0));
+
+describe('without its timetable', () => {
+  it('keeps the route and is planned again', () => {
+    const t = trip('a', '08:00', '18:00');
+    const x = withoutTimetable(t);
+    expect(x.route).toEqual(t.route);
+    expect(x.chain).toBeUndefined();
+    expect(x.legs).toBeUndefined();
+    expect(tripStatus(x, at('09:00'))).toBe('upcoming');
+  });
+});
 
 describe('trip status', () => {
   const t = trip('a', '08:00', '18:00');

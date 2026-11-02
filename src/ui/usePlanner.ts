@@ -9,6 +9,7 @@ import { compactTrip, type Trip } from '../core/trip';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
 import { keepPlan, planRoute, routeJson } from '../io/planTrip';
 import { loadPlans } from '../io/tours';
+import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { askNotifications } from '../io/notifications';
 import { log } from '../io/log';
@@ -29,6 +30,7 @@ const QUIET_MS = 400;
 
 export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const update = useTrips((s) => s.update);
+  const reservations = usePrefs((s) => s.reservations);
   // The status with the route it is about: after an edit an old error or "done" never shows
   // for the new route (it is planning until said otherwise).
   const [st, setSt] = useState<{ json: string; status: PlanStatus; detail: string }>({
@@ -58,6 +60,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
         if (
           saved?.result.legs &&
           saved.result.options &&
+          (saved.result.reservations ?? 'avoid') === reservations &&
           (saved.tourJson === json || (planned && sameOptions(saved.tourJson, json)))
         ) {
           log('planner.cached', { trip: id, at: saved.at });
@@ -108,7 +111,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
       ctrl.abort();
       clearTimeout(timer);
     };
-  }, [id, json, needs, planned, attempt, update]);
+  }, [id, json, needs, planned, attempt, update, reservations]);
 
   const result = planned_?.json === json ? planned_.result : null;
   const pick = (c: PlannedChain) => {

@@ -4,6 +4,7 @@
 import { plan, type PlanResult } from '../core/planner/plan';
 import { compactTrip, dayOf, type Trip } from '../core/trip';
 import { GA, TEMPLATES } from '../data';
+import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { cachedTrips } from './answers';
@@ -62,7 +63,8 @@ function join(key: string, r: Running, signal?: AbortSignal): Promise<PlanResult
  */
 export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promise<PlanResult> {
   const json = routeJson(trip);
-  const key = `${trip.id}|${json}|${keep}`;
+  const reservations = usePrefs.getState().reservations;
+  const key = `${trip.id}|${json}|${keep}|${reservations}`;
   const known = running.get(key);
   if (known) {
     log('plan.shared', { trip: trip.id, keep });
@@ -76,6 +78,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
     keep,
     date: route.date,
     anchor: route.anchor,
+    reservations,
     stops: route.waypoints.map(
       (w) =>
         `${w.name}${w.kind === 'stop' ? ` (${w.dwellMin} min)` : w.kind === 'via' ? ' (via)' : ''}${w.ring ? ' ring' : ''}${w.templateId ? ` [${w.templateId}]` : ''}`,
@@ -83,13 +86,15 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
   });
   const p = (async () => {
     const index = await stopSearch();
-    const r = await plan(fromNow(JSON.parse(json) as Trip['route'], Date.now()), {
+    const planned = await plan(fromNow(JSON.parse(json) as Trip['route'], Date.now()), {
       trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
       fetchTrips: (q) => cachedTrips(q, ctrl.signal),
       templates: TEMPLATES,
       ga: GA,
       stop: (ref) => index.byRef(ref),
+      reservations,
     });
+    const r: PlanResult = { ...planned, reservations };
     log('plan.done', {
       trip: trip.id,
       keep,
@@ -127,6 +132,11 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
 
 /** The trip takes the recommended option, unless its route changed or it was planned since. */
 export function keepPlan(id: string, json: string, r: PlanResult): boolean {
+  // Planned before the setting changed: the trip waits for the plan under the new one.
+  if ((r.reservations ?? 'avoid') !== usePrefs.getState().reservations) {
+    log('plan.keep.outdated', { trip: id });
+    return true;
+  }
   const chain = r.recommended ?? r.options?.[0];
   if (!chain || !r.legs) {
     log('plan.keep.none', { trip: id });
