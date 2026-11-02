@@ -20,8 +20,9 @@ const keyOf = (c: PlannedChain) => `${c.dep}|${c.arr}`;
 
 /**
  * The connections found for the trip, as one strip (0.5.7). The arrows load more, earlier or
- * later, into the strip; the trip changes only when you tap one. The timetable service answers
- * leg by leg, so "more" means planning again from just before the first or after the last.
+ * later, into the strip, and the nearest one loaded becomes the trip (0.8.3), so the line shows
+ * it at once; a tap goes back to any other. The timetable service answers leg by leg, so "more"
+ * means planning again from just before the first or after the last.
  */
 export function OptionsBar({
   trip,
@@ -64,6 +65,11 @@ export function OptionsBar({
   const noMore = none?.base === base && !none.failed ? none.dir : null;
   const failed = none?.base === base && none.failed;
   const strip = useRef<HTMLDivElement>(null);
+  /** The route as it is now, for an answer that comes after an edit. */
+  const current = useRef(base);
+  useEffect(() => {
+    current.current = base;
+  }, [base]);
   const chosenKey = trip.chain ? keyOf(trip.chain) : '';
   // The chosen one in view, also after more were loaded around it. Only the strip scrolls
   // (scrollIntoView would move the page too).
@@ -107,6 +113,7 @@ export function OptionsBar({
         dir === 'later'
           ? found.filter((c) => Date.parse(c.dep) > Date.parse(last.c.dep))
           : found.filter((c) => Date.parse(c.dep) < Date.parse(first.c.dep));
+      fresh.sort((a, b) => Date.parse(a.dep) - Date.parse(b.dep));
       log('options.more.done', {
         trip: trip.id,
         dir,
@@ -114,11 +121,16 @@ export function OptionsBar({
         fresh: fresh.map((c) => `${hhmm(c.dep)}-${hhmm(c.arr)}`),
       });
       if (!fresh.length || !r.legs) setNone({ base, dir });
-      else
-        setMore({
-          base,
-          list: [...extra, ...fresh.map((c) => ({ c, legs: r.legs! }))],
-        });
+      else {
+        const loaded = fresh.map((c) => ({ c, legs: r.legs! }));
+        // The route changed while they came: they are another route's.
+        if (current.current !== base) return;
+        // Kept with the route, then the one next to where you were becomes the trip.
+        setMore({ base, list: [...all, ...loaded] });
+        const next = dir === 'later' ? loaded[0]! : loaded.at(-1)!;
+        log('options.more.choose', { trip: trip.id, dep: next.c.dep, arr: next.c.arr });
+        choose(next.c, next.legs);
+      }
     } catch (e) {
       log('options.more.fail', { trip: trip.id, dir, e });
       // Not none: the service did not answer (offline, busy). Say so; the arrow stays usable.

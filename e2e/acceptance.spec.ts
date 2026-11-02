@@ -48,22 +48,20 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
   });
 }
 
-test('the arrows load more options without changing the trip; a tap chooses one', async ({
-  page,
-}) => {
+test('more options that fail to load change nothing; a tap chooses one', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
   await planShared(page, encodeTour({ ...tours.T5!, name: 'T5' }));
   const opts = page.getByRole('group', { name: 'Alternatives' }).getByRole('button');
   const n = await opts.count();
   const hero = (await page.locator('.hero-times').textContent()) ?? '';
-  // Nothing recorded after the last option: the bar says it could not load more, and the trip
-  // and its options stay as they were. While it loads, the strip grows: it scrolls itself,
-  // never the page sideways.
+  // The service not answering: the bar says it could not load more, and the trip and its
+  // options stay as they were (a load that comes becomes the trip: plan.spec). While it loads,
+  // the strip grows: it scrolls itself, never the page sideways.
   let release = () => {};
   const held = new Promise<void>((r) => (release = r));
   await page.route(/\/trip$/, async (route) => {
     await held;
-    await route.fallback();
+    await route.abort();
   });
   await page.getByRole('button', { name: 'Later connections' }).click();
   await expect(page.locator('.opt.loading')).toBeVisible();

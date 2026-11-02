@@ -53,6 +53,19 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
   expect(await axe(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: 'light' });
 
+  // Later loads the next ones into the strip and the nearest becomes the trip: the line shows
+  // it at once, and a tap goes back.
+  const opts = page.getByRole('group', { name: 'Alternatives' }).getByRole('button');
+  const before = await opts.count();
+  const was = (await page.locator('.opt[aria-pressed="true"] b').innerText()).trim();
+  await page.getByRole('button', { name: 'Later connections' }).click();
+  await expect(opts).not.toHaveCount(before, { timeout: 30_000 });
+  const now = (await page.locator('.opt[aria-pressed="true"] b').innerText()).trim();
+  expect(now > was).toBe(true);
+  await expect(page.locator('.hero-times')).toContainText(now);
+  await opts.filter({ hasText: was }).click();
+  await expect(page.locator('.hero-times')).toContainText(was);
+
   // On the list with its day and times, and readable offline.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   const card = page.getByRole('link', { name: /Interlaken Ost → Kleine Scheidegg/ });
