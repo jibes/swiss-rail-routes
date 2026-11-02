@@ -29,6 +29,8 @@ export interface Weights {
 /** Chains kept per leg, and the shortest change planned (minutes). */
 const BEAM_WIDTH = 6;
 const MIN_TRANSFER_MIN = 3;
+/** Arrive by: a trip's day starts here; leaving before it is only for when nothing else arrives. */
+const DAY_START = '05:00';
 
 export const DEFAULT_WEIGHTS: Weights = {
   transfer: 15,
@@ -187,6 +189,8 @@ async function planFrom(
   input: Tour,
   deps: PlanDeps,
   cache: Answers = new Map(),
+  /** Arrive by: panorama/supplement trains count even when regular ones run. */
+  anyTrain = false,
 ): Promise<Planned> {
   const tour = splitLoops(mergeRepeats(input));
   const wt = DEFAULT_WEIGHTS;
@@ -282,7 +286,7 @@ async function planFrom(
       });
       // Regular trains over panorama/supplement trains when both run.
       const regular = pool.filter((c) => !rides(c).some(([s]) => isSupplement(s, deps.ga)));
-      if (regular.length) pool = regular;
+      if (regular.length && !anyTrain) pool = regular;
       for (const b of beams) {
         let opts = pool.filter((c) => ms(c.dep) >= b.ready);
         if (!opts.length && b.ready > ready) {
@@ -371,7 +375,8 @@ export function pickOptions(
 
 /**
  * Plans a tour. Depart-at plans forward from the anchor. Arrive-by starts early enough for the
- * dwell plus 90 min a leg, keeps chains back in time, and moves an hour earlier up to 3 times.
+ * dwell plus 90 min a leg, keeps chains back in time, and moves earlier while none is: to the
+ * start of the trip's day, and into the night before only when that day has nothing in time.
  */
 export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   if (tour.waypoints.length < 2) return { relaxed: [] };
@@ -382,21 +387,35 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
     );
 
   // Arrive by: start early enough for the stays and 90 min a leg, then, while nothing arrives
-  // in time, earlier by as much as the earliest arrival was late (at least an hour).
+  // in time, earlier by as much as the earliest arrival was late (at least an hour). A miss can
+  // be a whole night (the way back runs next morning), so the day's start is always tried.
   const by = ms(zurichDateTime(`${tour.date}T${tour.anchor.arriveBy}`));
+  const dayStart = ms(zurichDateTime(`${tour.date}T${DAY_START}`));
   const legs = expandLegs(tour).length;
   const dwell = tour.waypoints.reduce((s, w) => s + w.dwellMin, 0);
-  let start = by - (dwell + 90 * legs) * MIN;
+  // Not before the day's start while that is an option (an arrival before it has none).
+  const inDayFrom = (was: number, t: number) => (was > dayStart ? Math.max(t, dayStart) : t);
+  let start = inDayFrom(by, by - (dwell + 90 * legs) * MIN);
   let last: Planned = { relaxed: [], chains: [] };
   const cache: Answers = new Map();
   for (let attempt = 0; attempt < 6; attempt++) {
     last = await planFrom(start, tour, deps, cache);
     // Every chain found, not only the three picked: a later one may still arrive in time.
-    const inTime = last.chains.filter((c) => ms(c.arr) <= by);
+    let inTime = last.chains.filter((c) => ms(c.arr) <= by);
+    // Regular trains are too late: one that needs a reservation beats leaving in the night.
+    if (!inTime.length && start === dayStart) {
+      last = await planFrom(start, tour, deps, cache, true);
+      inTime = last.chains.filter((c) => ms(c.arr) <= by);
+    }
     deps.trace?.('plan.arriveBy', { attempt, inTime: inTime.length });
-    if (inTime.length) return { ...result(last), ...pickOptions(inTime, true) };
+    if (inTime.length) {
+      const inDay = inTime.filter((c) => ms(c.dep) >= dayStart);
+      return { ...result(last), ...pickOptions(inDay.length ? inDay : inTime, true) };
+    }
     const earliest = Math.min(...last.chains.map((c) => ms(c.arr)));
-    start -= Math.max(60 * MIN, Number.isFinite(earliest) ? earliest - by + 30 * MIN : 0);
+    const earlier =
+      start - Math.max(60 * MIN, Number.isFinite(earliest) ? earliest - by + 30 * MIN : 0);
+    start = inDayFrom(start, earlier);
   }
   return { ...result(last), options: undefined, recommended: undefined };
 }

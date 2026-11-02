@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from './helpers/edit';
-import type { Tour } from '../src/core/model';
+import {
+  addWaypoint,
+  insertTemplate,
+  newTour,
+  setDwell,
+  setRoundTrip,
+  setStop,
+} from './helpers/edit';
+import type { Connection, Tour } from '../src/core/model';
 import {
   legRules,
   mergeRepeats,
   pickOptions,
   plan,
+  zurichLocal,
   type PlannedChain,
+  type PlanResult,
 } from '../src/core/planner/plan';
 import {
   entriesOf,
@@ -184,6 +193,98 @@ describe('arrive by, equally good trains', () => {
     const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Luzern')));
     const r = await plan({ ...t, anchor: { arriveBy: '18:00' } }, deps(half).deps);
     expect(r.recommended!.dep).toBe(half[4]!.dep); // 17:30 → 18:00
+  });
+});
+
+describe('arrive by, a day trip', () => {
+  const onDay = (c: Connection, date: string): Connection =>
+    JSON.parse(JSON.stringify(c).replaceAll(DATE, date)) as Connection;
+  const line = (from: string, to: string, category: string) => (dep: string, arr: string) =>
+    conn(
+      ride(category, [
+        [from, dep],
+        [to, arr],
+      ]),
+    );
+  const out = line('Zürich HB', 'Lugano', 'IC 2');
+  const back = line('Lugano', 'Zürich HB', 'IC 21');
+  const panorama = (dep: string, arr: string): Connection => {
+    const c = back(dep, arr);
+    return { ...c, sections: [{ ...c.sections[0]!, reservationRequired: true }] };
+  };
+  const leaves = (r: PlanResult) => r.options?.map((c) => zurichLocal(Date.parse(c.dep)));
+  const stay = (arriveBy: string, min = 120): Tour => {
+    const x = setRoundTrip(
+      addWaypoint(newTour('t', DATE, stop('Zürich HB')), stop('Lugano')),
+      true,
+    );
+    const i = x.waypoints.findLastIndex((w) => w.name === 'Lugano');
+    return { ...setDwell(setStop(x, i, true), i, min), anchor: { arriveBy } };
+  };
+  // From the afternoon the next train back is tomorrow's: the first try is most of a day late.
+  const outs = [
+    onDay(out('20:00', '23:30'), '2026-11-06'),
+    out('01:05', '09:00'),
+    out('06:07', '11:00'),
+    out('07:07', '12:00'),
+    out('17:07', '22:00'),
+  ];
+  const tomorrow = onDay(back('12:00', '17:22'), '2026-11-08');
+
+  it('stays on the day although the first try is a whole night late', async () => {
+    const d = deps([...outs, back('14:00', '19:00'), back('15:00', '20:00'), tomorrow]);
+    const r = await plan(stay('21:00'), d.deps);
+    expect(leaves(r)).toEqual([`${DATE}T06:07`, `${DATE}T07:07`]);
+    expect(zurichLocal(Date.parse(r.recommended!.dep))).toBe(`${DATE}T07:07`);
+    expect(d.tt.calls.every((q) => q.time >= `${DATE}T05:00`)).toBe(true);
+  });
+
+  it('asks from the day’s start when the stay would put the first try before it', async () => {
+    const d = deps([out('06:07', '07:00'), back('12:15', '12:55')]);
+    const r = await plan(stay('13:00', 310), d.deps);
+    expect(d.tt.calls[0]!.time).toBe(`${DATE}T05:00`);
+    expect(leaves(r)).toEqual([`${DATE}T06:07`]);
+  });
+
+  it('takes a train that needs a reservation before leaving in the night', async () => {
+    const pe = panorama('14:30', '19:30');
+    const r = await plan(stay('19:45'), deps([...outs, pe, back('15:00', '20:00'), tomorrow]).deps);
+    expect(leaves(r)).toEqual([`${DATE}T06:07`, `${DATE}T07:07`]);
+    expect(r.recommended!.connections[1]!.dep).toBe(pe.dep);
+  });
+
+  it('keeps to regular trains when they arrive in time', async () => {
+    const pe = panorama('14:30', '19:30');
+    const r = await plan(stay('21:00'), deps([...outs, pe, back('15:00', '20:00'), tomorrow]).deps);
+    expect(r.options!.length).toBeGreaterThan(0);
+    for (const c of r.options!) expect(c.connections[1]!.dep).not.toBe(pe.dep);
+  });
+
+  it('leaves in the night when nothing else arrives in time', async () => {
+    const d = deps([...outs, back('11:00', '14:00'), back('14:00', '19:00'), tomorrow]);
+    const r = await plan(stay('15:00'), d.deps);
+    expect(leaves(r)).toEqual([`${DATE}T01:05`]);
+  });
+
+  it('drops a night departure when the same try also finds one by day', async () => {
+    const luzern = line('Zürich HB', 'Luzern', 'IC 2');
+    const found = [luzern('03:30', '04:30'), luzern('06:07', '07:00')];
+    const x = addWaypoint(newTour('t', DATE, stop('Zürich HB')), stop('Luzern'));
+    const r = await plan(
+      { ...x, anchor: { arriveBy: '08:00' } },
+      {
+        ...deps([]).deps,
+        fetchTrips: async (q) => (q.time < `${DATE}T03:30` ? found : []),
+      },
+    );
+    expect(leaves(r)).toEqual([`${DATE}T06:07`]);
+  });
+
+  it('an arrival before the day’s start may leave the evening before', async () => {
+    const late = onDay(out('22:00', '23:30'), '2026-11-06');
+    const x = addWaypoint(newTour('t', DATE, stop('Zürich HB')), stop('Lugano'));
+    const r = await plan({ ...x, anchor: { arriveBy: '00:30' } }, deps([late]).deps);
+    expect(r.recommended?.dep).toBe(late.dep);
   });
 });
 
