@@ -151,11 +151,11 @@ export const en = {
   settings: 'Settings',
   syncTitle: 'Sync between your devices',
   syncIntro:
-    'Your ideas and trips on every device, without an account: a key you keep links them. Only encrypted data leaves this device; nobody else can read it.',
+    'Your trips on every device, without an account: a key you keep links them. Only encrypted data leaves this device; nobody else can read it.',
   syncStart: 'Start sync',
   syncJoin: 'I have a key',
   syncKeyLabel: 'Key from your other device',
-  syncJoinHint: 'Ideas and trips on this device are kept and merged with the others.',
+  syncJoinHint: 'Trips on this device are kept and merged with the others.',
   syncJoinButton: 'Join sync',
   syncUnavailable: "Sync needs the app's server, which this build does not have.",
   syncing: 'Syncing…',
@@ -169,12 +169,11 @@ export const en = {
     'Scan the code with the other device, or type the key there under Settings → I have a key.',
   qrLabel: 'QR code with the sync key',
   copyKey: 'Copy key',
-  keySecret:
-    'Whoever has this key can read and change your ideas and trips. If it got out, make a new key.',
+  keySecret: 'Whoever has this key can read and change your trips. If it got out, make a new key.',
   renewKey: 'New key',
   renewConfirm: 'New key? Other devices must join again',
   syncOff: 'Turn off on this device',
-  syncOffConfirm: 'Turn off? Ideas and trips stay here',
+  syncOffConfirm: 'Turn off? Trips stay here',
   lang_en: 'English',
   lang_de: 'Deutsch',
   lang_fr: 'Français',
@@ -199,7 +198,7 @@ export const en = {
   tripChangedMeanwhile:
     'This trip was changed meanwhile (on another device or in another window). Open it again and replan from there.',
   lateBy: '{n} min late',
-  screenFailed: 'Something went wrong on this screen. Your ideas and trips are kept.',
+  screenFailed: 'Something went wrong on this screen. Your trips are kept.',
   toStart: 'Back to the start',
   syncOtherKey:
     'This device already syncs with another key. To use the one from the link, turn sync off here first, then join with it.',

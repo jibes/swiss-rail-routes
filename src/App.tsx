@@ -9,6 +9,7 @@ import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
+import { watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
 import { retire } from './core/retire';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
@@ -34,6 +35,7 @@ function Route({ hash: full }: { hash: string }) {
   if (hash.startsWith('/j/')) return <SharedTrip hash={hash} />;
   if (hash === '/trips' || hash === '/') return <Home />;
   if (hash === '/settings') return <Settings />;
+  if (hash.startsWith('/sync/')) return <Settings join={decodeURIComponent(hash.slice(6))} />;
   // `now` and `replan` are older addresses of the same screens.
   const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
   if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditTrip id={tr[1]!} />;
@@ -44,7 +46,7 @@ function Route({ hash: full }: { hash: string }) {
       </Suspense>
     );
   if (tr) return <TripScreen key={tr[1]} id={tr[1]!} />;
-  return hash.startsWith('/tour/') || hash.startsWith('/sync/') ? <Home /> : <NotFound />;
+  return hash.startsWith('/tour/') ? <Home /> : <NotFound />;
 }
 
 export function App() {
@@ -83,6 +85,8 @@ export function App() {
     void useTrips.getState().replaceAll(r.trips);
   }, [loaded, tripsLoaded, now]);
   useEffect(() => watchBack(), []);
+  // Sync once both lists are loaded; then on return to the app and after changes.
+  useEffect(() => (loaded && tripsLoaded ? watchSync() : undefined), [loaded, tripsLoaded]);
   // Android smoke test (scripts/android-smoke.sh) waits for this line in the system log.
   useEffect(() => {
     if (loaded && tripsLoaded) console.info('srr:ready');

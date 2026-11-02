@@ -154,12 +154,11 @@ export const de = {
   settings: 'Einstellungen',
   syncTitle: 'Zwischen deinen Geräten synchronisieren',
   syncIntro:
-    'Deine Ideen und Reisen auf jedem Gerät, ohne Konto: ein Schlüssel, den nur du hast, verbindet sie. Nur verschlüsselte Daten verlassen dieses Gerät; niemand sonst kann sie lesen.',
+    'Deine Reisen auf jedem Gerät, ohne Konto: ein Schlüssel, den nur du hast, verbindet sie. Nur verschlüsselte Daten verlassen dieses Gerät; niemand sonst kann sie lesen.',
   syncStart: 'Synchronisierung starten',
   syncJoin: 'Ich habe einen Schlüssel',
   syncKeyLabel: 'Schlüssel von deinem anderen Gerät',
-  syncJoinHint:
-    'Ideen und Reisen auf diesem Gerät bleiben und werden mit den anderen zusammengeführt.',
+  syncJoinHint: 'Reisen auf diesem Gerät bleiben und werden mit den anderen zusammengeführt.',
   syncJoinButton: 'Synchronisierung beitreten',
   syncUnavailable: 'Die Synchronisierung braucht den Server der App, den dieser Build nicht hat.',
   syncing: 'Wird synchronisiert …',
@@ -174,11 +173,11 @@ export const de = {
   qrLabel: 'QR-Code mit dem Synchronisierungsschlüssel',
   copyKey: 'Schlüssel kopieren',
   keySecret:
-    'Wer diesen Schlüssel hat, kann deine Ideen und Reisen lesen und ändern. Ist er nach aussen gelangt, erstelle einen neuen.',
+    'Wer diesen Schlüssel hat, kann deine Reisen lesen und ändern. Ist er nach aussen gelangt, erstelle einen neuen.',
   renewKey: 'Neuer Schlüssel',
   renewConfirm: 'Neuer Schlüssel? Andere Geräte müssen neu beitreten',
   syncOff: 'Auf diesem Gerät ausschalten',
-  syncOffConfirm: 'Ausschalten? Ideen und Reisen bleiben hier',
+  syncOffConfirm: 'Ausschalten? Reisen bleiben hier',
   lang_en: 'English',
   lang_de: 'Deutsch',
   lang_fr: 'Français',
@@ -205,8 +204,7 @@ export const de = {
   tripChangedMeanwhile:
     'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Öffne sie neu und plane von dort aus.',
   lateBy: '{n} Min. verspätet',
-  screenFailed:
-    'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Ideen und Reisen bleiben erhalten.',
+  screenFailed: 'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Reisen bleiben erhalten.',
   toStart: 'Zurück zum Start',
   syncOtherKey:
     'Dieses Gerät synchronisiert bereits mit einem anderen Schlüssel. Um den aus dem Link zu nutzen, schalte die Synchronisierung hier zuerst aus und tritt dann bei.',

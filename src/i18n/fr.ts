@@ -153,11 +153,11 @@ export const fr = {
   settings: 'Réglages',
   syncTitle: 'Synchroniser entre vos appareils',
   syncIntro:
-    'Vos idées et voyages sur chaque appareil, sans compte : une clé que vous gardez les relie. Seules des données chiffrées quittent cet appareil ; personne d’autre ne peut les lire.',
+    'Vos voyages sur chaque appareil, sans compte : une clé que vous gardez les relie. Seules des données chiffrées quittent cet appareil ; personne d’autre ne peut les lire.',
   syncStart: 'Démarrer la synchro',
   syncJoin: 'J’ai une clé',
   syncKeyLabel: 'Clé de votre autre appareil',
-  syncJoinHint: 'Les idées et voyages de cet appareil sont conservés et fusionnés avec les autres.',
+  syncJoinHint: 'Les voyages de cet appareil sont conservés et fusionnés avec les autres.',
   syncJoinButton: 'Rejoindre la synchro',
   syncUnavailable: 'La synchro a besoin du serveur de l’app, absent de cette version.',
   syncing: 'Synchronisation…',
@@ -172,11 +172,11 @@ export const fr = {
   qrLabel: 'Code QR avec la clé de synchro',
   copyKey: 'Copier la clé',
   keySecret:
-    'Qui a cette clé peut lire et modifier vos idées et voyages. Si elle a fuité, créez-en une nouvelle.',
+    'Qui a cette clé peut lire et modifier vos voyages. Si elle a fuité, créez-en une nouvelle.',
   renewKey: 'Nouvelle clé',
   renewConfirm: 'Nouvelle clé ? Les autres appareils devront rejoindre',
   syncOff: 'Désactiver sur cet appareil',
-  syncOffConfirm: 'Désactiver ? Idées et voyages restent ici',
+  syncOffConfirm: 'Désactiver ? Les voyages restent ici',
   lang_en: 'English',
   lang_de: 'Deutsch',
   lang_fr: 'Français',
@@ -201,7 +201,7 @@ export const fr = {
   tripChangedMeanwhile:
     'Ce voyage a été modifié entre-temps (sur un autre appareil ou dans une autre fenêtre). Rouvrez-le et replanifiez.',
   lateBy: '{n} min de retard',
-  screenFailed: 'Un problème est survenu sur cet écran. Vos idées et voyages sont conservés.',
+  screenFailed: 'Un problème est survenu sur cet écran. Vos voyages sont conservés.',
   toStart: 'Retour à l’accueil',
   syncOtherKey:
     'Cet appareil se synchronise déjà avec une autre clé. Pour utiliser celle du lien, désactivez d’abord la synchro ici, puis rejoignez.',

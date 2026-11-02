@@ -118,11 +118,20 @@ There is one kind of thing, the **trip**, and it always has a date. It is one li
 - **Sharing a trip**: `#/j/…`, the exact timetable with its tracks simplified to ~100 m (polyline-encoded, deflated; the recipient never replans).
 - **Default names**: start, at most two stations in between, end (`Start ↺ A · B` for a round trip): where you get off first, longest stay first; then spread out.
 
-Removed in 0.4.0: ideas as a state, the ticket choice, sync between devices (§3b), GPX and the sbb.ch links. The Worker still answers `/sync/` for copies stored before; nothing sends to it.
+Removed in 0.4.0: ideas as a state, the ticket choice, GPX and the sbb.ch links. Sync (§3b), removed in 0.4.0 by a misread choice, is back in 0.5.0: trips and your past trips sync.
 
-## 3b. Sync between one's own devices (1 Nov 2026 – 0.3.x; removed in 0.4.0)
+## 3b. Sync between one's own devices (added 1 Nov 2026; back in 0.5.0)
 
-Removed by the owner's decision in 0.4.0, with the camera scanner. Data stays on each device.
+Like Brave Sync: no account, a key links the devices. Settings → Sync: **Start sync** makes a random 256-bit key, shown as 13 groups of four characters and as a QR code (a link `#/sync/<key>` that opens Settings to confirm); **I have a key** joins: **Scan code** reads the QR code with the camera (asked for only then; the browser's BarcodeDetector where it reads QR codes, else jsQR on the device; frames never leave it), or the key is typed (any case, spaces or dashes; O/0 and I/L/1 read alike). The phone's own camera app opens the link in the browser, not the Android app (no verified app links on github.io).
+
+- From the key each device derives (HKDF-SHA-256) an id and an AES-GCM key. The Worker stores one blob per id in a Durable Object: your trips (planned and past), deflated and encrypted. It never sees the key, names, stops or times.
+- Writes are compare-and-swap on a version: a device that read an old version gets the current one back (409), merges and tries again.
+- Merge per route and trip (`planRound`, pure): the newer change wins (a local edit always gets a time after the one it replaces, so a device whose clock runs behind still wins with its own edit; ties pick the same winner everywhere); deletions travel as tombstones for 90 days, and a device away longer drops items it did not change that the shared copy no longer has. Changes are noticed by hashing each item, so the stores need no timestamps. Joining counts what the device had as older than the shared copy.
+- Each round reads the lists only after the server answered (edits made meanwhile are part of it) and remembers the merge before writing, so a failed write never turns received items into local changes. Rounds of several tabs run one at a time; other tabs reload when one applied a sync.
+- Sync runs on opening, when the app comes back into view, every minute while it is in view, and 3 s after a change. A device sends the version it has (`?v=`); unchanged, the Worker answers without the data. Requests give up after 20 s (offline), so a dead connection never blocks turning sync off.
+- Trips are stored and synced compactly: tracks simplified to ~30 m once per trip (`compactTrip`), so a few hundred trips fit the 1 MB the Worker takes; a copy larger than that is refused on the device ("too much data").
+- **New key** moves everything to a new key and closes the old copy: the Worker keeps a marker and answers 410, so devices still on the old key say "replaced" instead of refilling it; they join again. **Turn off on this device** keeps its data. Boxes no device read or wrote for 180 days are deleted (Durable Object alarm, moved on by reads at most daily); a device finding its copy gone that way writes it again. Turning sync off keeps that key's stamps, so turning it on again with the same key keeps edits made meanwhile.
+- Without the key nothing can be recovered; every device keeps its own copy either way.
 
 ## 4. Data sources
 
@@ -191,7 +200,7 @@ e2e/                    Playwright, canned Worker answers
 ```
 
 - **App:** TypeScript strict, React 19, Vite, vite-plugin-pwa (prompt update), zustand, MapLibre GL, idb-keyval, fast-xml-parser. Node pinned by `.nvmrc`.
-- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, `POST /journey` (live calls of one train), `GET/PUT/DELETE /sync/<id>` (§3b, no longer used by the app), typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
+- **Worker `workers/ojp/`:** endpoints `POST /trip`, `POST /stops`, `POST /journey` (live calls of one train), `GET/PUT/DELETE /sync/<id>` (§3b), typed JSON in, OJP XML out (gzip). It builds the XML with `src/core/ojp/request.ts`, so the key can only be spent on the app's own request shapes. Cache API keyed by the normalised request (10 min); per-IP `ratelimit` binding; `ALLOWED_ORIGINS`; secrets `OJP_API_KEY` (+ others when used). Parsing happens on the device, so the Worker stays within the free plan's CPU limit.
 - **CSP:** `connect-src` = the Worker, OpenFreeMap; nothing else.
 - **Native:** Capacitor shell for Android (`android/`, Obtainium), `android.yml` per standard; local trip notifications.
 

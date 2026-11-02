@@ -74,6 +74,9 @@ test('drag the open station by its grip; rename the trip', async ({ page }) => {
   }
   const entries = page.locator('.trip-line .station.entry');
   await expect(entries).toHaveText([/^Bern/, /^Thun/, /^Spiez/, /^Brig/]);
+  // Nothing recorded for this trip: its planning ends in a notice above the line. Wait for it,
+  // so the line does not move under the pointer.
+  await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await entries.nth(3).getByRole('button').first().click();
   const grip = page.getByRole('button', { name: 'Drag to move Brig' });
   const from = (await grip.boundingBox())!;

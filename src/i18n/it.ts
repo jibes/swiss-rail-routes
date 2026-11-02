@@ -154,11 +154,11 @@ export const it = {
   settings: 'Impostazioni',
   syncTitle: 'Sincronizza tra i tuoi dispositivi',
   syncIntro:
-    'Le tue idee e i tuoi viaggi su ogni dispositivo, senza account: una chiave che tieni tu li collega. Solo dati cifrati lasciano questo dispositivo; nessun altro può leggerli.',
+    'I tuoi viaggi su ogni dispositivo, senza account: una chiave che tieni tu li collega. Solo dati cifrati lasciano questo dispositivo; nessun altro può leggerli.',
   syncStart: 'Avvia sincronizzazione',
   syncJoin: 'Ho una chiave',
   syncKeyLabel: 'Chiave dell’altro dispositivo',
-  syncJoinHint: 'Idee e viaggi di questo dispositivo restano e vengono uniti agli altri.',
+  syncJoinHint: 'I viaggi di questo dispositivo restano e vengono uniti agli altri.',
   syncJoinButton: 'Unisciti alla sincronizzazione',
   syncUnavailable: 'La sincronizzazione richiede il server dell’app, assente in questa versione.',
   syncing: 'Sincronizzazione…',
@@ -173,11 +173,11 @@ export const it = {
   qrLabel: 'Codice QR con la chiave di sincronizzazione',
   copyKey: 'Copia chiave',
   keySecret:
-    'Chi ha questa chiave può leggere e modificare idee e viaggi. Se è trapelata, creane una nuova.',
+    'Chi ha questa chiave può leggere e modificare i tuoi viaggi. Se è trapelata, creane una nuova.',
   renewKey: 'Nuova chiave',
   renewConfirm: 'Nuova chiave? Gli altri dispositivi dovranno unirsi di nuovo',
   syncOff: 'Disattiva su questo dispositivo',
-  syncOffConfirm: 'Disattivare? Idee e viaggi restano qui',
+  syncOffConfirm: 'Disattivare? I viaggi restano qui',
   lang_en: 'English',
   lang_de: 'Deutsch',
   lang_fr: 'Français',
@@ -202,7 +202,7 @@ export const it = {
   tripChangedMeanwhile:
     'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Riaprilo e ripianifica.',
   lateBy: '{n} min di ritardo',
-  screenFailed: 'Qualcosa è andato storto in questa schermata. Idee e viaggi sono conservati.',
+  screenFailed: 'Qualcosa è andato storto in questa schermata. I viaggi sono conservati.',
   toStart: 'Torna all’inizio',
   syncOtherKey:
     'Questo dispositivo si sincronizza già con un’altra chiave. Per usare quella del link, disattiva prima la sincronizzazione qui e poi unisciti.',
