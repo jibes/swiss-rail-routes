@@ -56,11 +56,6 @@
   box-shadow: none;
 }
 
-.stop-top {
-  display: flex;
-  align-items: center;
-}
-
 .stop-head {
   flex: 1;
   min-width: 0;
@@ -93,17 +88,6 @@
 .stop-name small {
   font-size: 13px;
   color: var(--ink-2);
-}
-
-.dwell-tag {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--rail-soft);
-  color: var(--rail-ink);
 }
 
 .chip {

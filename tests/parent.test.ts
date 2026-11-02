@@ -8,8 +8,8 @@ describe('parentOf', () => {
     expect(parentOf('/trips')).toBeUndefined();
   });
   it('goes up one level from a screen of an idea or a trip', () => {
-    expect(parentOf('/tour/a1/plan')).toBe('/tour/a1');
-    expect(parentOf('/tour/a1/map?s=x')).toBe('/tour/a1');
+    expect(parentOf('/trip/b2/replan')).toBe('/trip/b2');
+    expect(parentOf('/tour/a1/map?s=x')).toBe('/');
     expect(parentOf('/trip/b2/edit')).toBe('/trip/b2');
     expect(parentOf('/trip/b2/map')).toBe('/trip/b2');
   });

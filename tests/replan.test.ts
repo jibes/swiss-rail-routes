@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newTour, setStop } from '../src/core/edit';
+import { newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import type { Leg, Waypoint } from '../src/core/model';
 import { zurichDateTime } from '../src/core/ojp/request';

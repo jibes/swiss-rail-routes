@@ -4,13 +4,10 @@ import {
   dropLine,
   entriesOf,
   insertEntries,
-  lineEntries,
   moveEntry,
   removeEntry,
   replaceEntry,
   setEntryStay,
-  stationEntry,
-  type Entry,
 } from '../core/line';
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
@@ -20,9 +17,17 @@ import { encodeTrip } from '../core/export/tripShare';
 import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
-import { AddSheet, type Picked } from './AddSheet';
+import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { downloadIcs, ShareButton } from './ExportSheet';
-import { duration, hhmm, longDate, minutesBetween, nextHalfHour, zurichHm } from './format';
+import {
+  duration,
+  hhmm,
+  longDate,
+  minutesBetween,
+  nextHalfHour,
+  shiftHm,
+  zurichHm,
+} from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
@@ -38,13 +43,6 @@ import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
 
-/** Earlier/Later move the departure by an hour, within the day. */
-function shifted(time: string, min: number): string {
-  const [h, m] = time.split(':').map(Number) as [number, number];
-  const t = Math.min(23 * 60 + 59, Math.max(0, h * 60 + m + min));
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-}
-
 const addDays = (date: string, n: number) => {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -52,11 +50,6 @@ const addDays = (date: string, n: number) => {
 };
 
 /** The entries a pick adds. */
-function entriesFor(p: Picked): Entry[] {
-  if (p.kind === 'station') return [stationEntry(p.stop)];
-  if (p.kind === 'line') return lineEntries(p.template, p.reversed);
-  return entriesOf(p.tour);
-}
 
 /**
  * The one screen (SPEC §3a, 0.4.0): a trip is one line, always with a date. Before it leaves you
@@ -431,7 +424,7 @@ export function TripScreen({ id }: { id: string }) {
               from={anchor}
               move={(min) => {
                 log('options.move', { trip: id, min });
-                edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, min) } }));
+                edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, min) } }));
               }}
               choose={(c, legs) =>
                 // The trip takes it, and its time becomes the trip's: planning again (after
@@ -478,7 +471,7 @@ export function TripScreen({ id }: { id: string }) {
               dropLine: (k) => edit((r) => dropLine(r, k)),
               addAfter: (k) => setSheet({ after: k }),
               add: () => setSheet({ after: entries.length - 1 }),
-              later: () => edit((r) => ({ ...r, anchor: { departAt: shifted(anchor, 60) } })),
+              later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
             })}
           />
         </>

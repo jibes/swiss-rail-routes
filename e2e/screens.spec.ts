@@ -1,5 +1,5 @@
 // Screenshots for design review: SCREENSHOTS=dir npx playwright test e2e/screens.spec.ts --project=phone
-import { encodeTour } from '../src/core/export/share';
+import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { BEFORE, expect, planShared, test } from './fixtures';
@@ -35,7 +35,13 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.locator('.row.ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
     await page.getByRole('link', { name: 'Replan from here' }).click();
-    await page.locator('.line.past').waitFor();
+    await page.locator('.trip-line.past').waitFor();
+    // Planned at once (the rest from here may have no recorded answer: then its notice).
+    await page
+      .getByRole('button', { name: 'Update trip' })
+      .or(page.getByRole('alert'))
+      .first()
+      .waitFor({ timeout: 30_000 });
     await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
     await page.goBack();
     await page.goto('./#/');

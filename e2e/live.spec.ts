@@ -1,4 +1,4 @@
-import { encodeTour } from '../src/core/export/share';
+import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { expect, planShared, test } from './fixtures';
@@ -63,21 +63,21 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
 
   await page.getByRole('link', { name: 'Replan from here' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
-  const search = page.locator('.picker input');
+  // The same line as the trip screen; where you are is fixed: only "Add after".
+  const line = page.getByRole('list', { name: 'The trip', exact: true });
+  await line.locator('.station.entry').first().getByRole('button').first().click();
+  await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add after' }).click();
+  const search = page.getByPlaceholder('Station, scenic line or past trip');
   await search.fill('Wengen');
-  await search.press('Enter'); // the first match: Wengen station
+  await search.press('Enter');
 
-  const rows = page.getByRole('list', { name: 'Stops' }).getByRole('listitem');
-  await expect(rows.nth(1)).toContainText('Wengen');
-  await rows
-    .nth(1)
-    .getByRole('button', { name: /^Wengen/ })
-    .click();
-  await rows.nth(1).getByRole('combobox', { name: 'Stay at Wengen' }).click();
-  await page.getByRole('option', { name: '30 min' }).click();
-  await rows.nth(1).getByRole('combobox', { name: 'Instead of Wengen' }).press('Enter');
-  await page.getByRole('button', { name: 'Find connections' }).click();
-  await page.getByRole('button', { name: 'Update trip' }).click();
+  const wengen = line.locator('.station.entry', { hasText: 'Wengen' });
+  await wengen.getByRole('button', { name: /^Wengen/ }).click();
+  await page.getByRole('button', { name: '30 min' }).click();
+  // Planned as you edit: no Find button, Update once the plan is there.
+  await expect(page.getByRole('button', { name: 'Find connections' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Update trip' }).click({ timeout: 30_000 });
 
   // Back on Now: the new plan (via Wengen), undo available.
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);

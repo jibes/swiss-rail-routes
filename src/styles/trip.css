@@ -567,3 +567,14 @@ svg.mini-line circle.via {
     transparent
   );
 }
+
+/* Replan: the travelled part, grey and fixed, above where you are */
+.trip-line.past {
+  margin-bottom: 0;
+  opacity: 0.55;
+}
+
+/* Where you are follows straight on from where you have been. */
+.trip-line.past + .trip-line {
+  margin-top: 4px;
+}

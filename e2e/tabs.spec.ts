@@ -1,4 +1,4 @@
-import { encodeTour } from '../src/core/export/share';
+import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { BEFORE, expect, guard, planShared, test } from './fixtures';

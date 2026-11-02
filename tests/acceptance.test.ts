@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
-import { addWaypoint, setStop } from '../src/core/edit';
+import { addWaypoint, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';

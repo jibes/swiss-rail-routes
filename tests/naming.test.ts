@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from '../src/core/edit';
+import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from './helpers/edit';
 import { autoName } from '../src/core/naming';
 import { index, ref, templates } from './helpers/timetable';
 

@@ -10,7 +10,7 @@ import {
   setStop,
   insertTemplate,
   replaceWaypoint,
-} from '../src/core/edit';
+} from './helpers/edit';
 import { isRoundTrip } from '../src/core/tour';
 
 const s = (name: string) => ({ stopRef: `ch:1:sloid:${name}`, name });

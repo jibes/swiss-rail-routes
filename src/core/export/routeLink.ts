@@ -12,78 +12,12 @@
 import type { RouteTemplate } from '../data';
 import { insertTemplate, normalise } from '../edit';
 import type { TicketType, Tour, Waypoint } from '../model';
-import { fold } from '../stops';
 
-const SLOID = /^ch:1:sloid:(\d+)$/;
 const TICKETS: TicketType[] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-const slug = (name: string) => fold(name).replaceAll(' ', '-');
-const hhmm = (time: string) => time.replace(':', '');
 const time = (s: string) => `${s.slice(0, 2)}:${s.slice(2, 4)}`;
-
-function code(ref: string): string {
-  const m = SLOID.exec(ref);
-  return m ? m[1]! : 'x' + encodeURIComponent(ref).replaceAll('.', '%2E').replaceAll('~', '%7E');
-}
-
-function token(w: Waypoint): string {
-  const mods: string[] = [];
-  if (w.kind === 'stop') mods.push(String(w.dwellMin));
-  if (w.kind === 'turnaround') mods.push(`t${w.dwellMin}`);
-  if (w.templateId) mods.push(`@${w.templateId}`);
-  if (w.earliestArr) mods.push(`a${hhmm(w.earliestArr)}`);
-  if (w.latestDep) mods.push(`b${hhmm(w.latestDep)}`);
-  return [slug(w.name), code(w.stopRef), ...mods].join('.');
-}
-
-/**
- * The route's stops and settings as link parts (defaults left out). A route is where you go;
- * `when` adds date, time and ticket (the plan screen's address).
- */
-export function routeParts(tour: Tour, when = false): { stops: string; query: URLSearchParams } {
-  const q = new URLSearchParams();
-  if (when) {
-    q.set('d', tour.date);
-    if ('arriveBy' in tour.anchor) q.set('arr', tour.anchor.arriveBy);
-    else if (tour.anchor.departAt !== '08:00') q.set('dep', tour.anchor.departAt);
-    if (tour.ticket !== 'GA') q.set('ticket', tour.ticket);
-    if (tour.travelClass !== 2) q.set('class', String(tour.travelClass));
-  }
-  if (tour.name) q.set('name', tour.name);
-  if (tour.notes) q.set('notes', tour.notes);
-  return { stops: tour.waypoints.map(token).join('~'), query: q };
-}
-
-/** Like URLSearchParams.toString, but leaves `~ @ : /` readable (all allowed in a fragment). */
-const qs = (pairs: Iterable<[string, string]>) =>
-  [...pairs]
-    .map(
-      ([k, v]) =>
-        `${k}=${encodeURIComponent(v).replace(/%(7E|40|3A|2F)/g, (m) => decodeURIComponent(m))}`,
-    )
-    .join('&');
-
-const withQuery = (path: string, q: URLSearchParams) => {
-  const s = qs(q);
-  return s ? `${path}?${s}` : path;
-};
-
-/** The share link's hash: the route on any device (with `when`, also date, time, ticket). */
-export function routeHash(tour: Tour, when = false): string {
-  const { stops, query } = routeParts(tour, when);
-  return withQuery(`#/r/${stops}`, query);
-}
-
-/**
- * The address of a route on this device (`#/tour/<id><sub>?s=…`): opens it here, and anywhere
- * else as the same route to save, so the address bar is a share link too.
- */
-export function tourHash(tour: Tour, sub = ''): string {
-  const { stops, query } = routeParts(tour, sub === '/plan');
-  return `#/tour/${tour.id}${sub}?${qs([['s', stops], ...query])}`;
-}
 
 export interface LinkContext {
   templates: RouteTemplate[];

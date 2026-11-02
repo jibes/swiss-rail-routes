@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from '../src/core/edit';
+import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from './helpers/edit';
 import type { Tour } from '../src/core/model';
 import {
   legRules,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insertTemplate, newTour } from '../src/core/edit';
+import { insertTemplate, newTour } from './helpers/edit';
 import { mapData } from '../src/core/mapdata';
 import { conn, index, ref, ride, templates } from './helpers/timetable';
 

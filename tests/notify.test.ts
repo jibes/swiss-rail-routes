@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insertTemplate, newTour } from '../src/core/edit';
+import { insertTemplate, newTour } from './helpers/edit';
 import { noticesFor } from '../src/core/notify';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { newTrip } from '../src/core/trip';
@@ -61,5 +61,39 @@ describe('noticesFor', () => {
     const exitId = (l: typeof early) => l.find((n) => n.kind === 'exit')!.id;
     expect(exitId(later)).toBe(exitId(early));
     expect(new Set(early.map((n) => n.id)).size).toBe(early.length);
+  });
+
+  it('a change of trains: each train its own departure and exit, ids distinct and 31-bit', () => {
+    const two = [
+      conn(
+        ride('IR 70', [
+          ['Zürich HB', '08:04'],
+          ['Luzern', '08:45'],
+        ]),
+        ride('PE LIX', [
+          ['Luzern', '08:51'],
+          ['Interlaken Ost', '10:41'],
+        ]),
+      ),
+    ];
+    const t = newTrip(
+      'trip-two',
+      newTour('r2', DATE, { stopRef: ref('Zürich HB'), name: 'Zürich HB' }),
+      [],
+      { connections: two, warnings: [], score: 0, dep: two[0]!.dep, arr: two[0]!.arr },
+      new Date(0),
+    );
+    const list = noticesFor(t, at('07:00'), templates, stop);
+    expect(list.filter((n) => n.kind === 'depart').map((n) => n.params.time)).toEqual([
+      '08:04',
+      '08:51',
+    ]);
+    expect(list.filter((n) => n.kind === 'exit').map((n) => n.at)).toEqual([
+      at('08:40'),
+      at('10:36'),
+    ]);
+    expect(new Set(list.map((n) => n.id)).size).toBe(list.length);
+    // Android notification ids are 32-bit signed integers.
+    for (const n of list) expect(n.id > 0 && n.id < 2 ** 31).toBe(true);
   });
 });

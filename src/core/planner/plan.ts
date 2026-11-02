@@ -15,9 +15,6 @@ export interface PlanDeps {
   templates: RouteTemplate[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
-  weights?: Partial<Weights>;
-  minTransferMin?: number;
-  beamWidth?: number;
   /** Debug log (io/log.ts); the planner says what it asked, kept and gave up. */
   trace?: (event: string, data?: unknown) => void;
 }
@@ -28,6 +25,10 @@ export interface Weights {
   disruption: number;
   tightTransfer: number;
 }
+/** Chains kept per leg, and the shortest change planned (minutes). */
+const BEAM_WIDTH = 6;
+const MIN_TRANSFER_MIN = 3;
+
 export const DEFAULT_WEIGHTS: Weights = {
   transfer: 15,
   afterSunset: 60,
@@ -181,9 +182,9 @@ type Planned = PlanResult & { chains: PlannedChain[] };
 
 async function planFrom(start: number, input: Tour, deps: PlanDeps): Promise<Planned> {
   const tour = splitLoops(mergeRepeats(input));
-  const wt = { ...DEFAULT_WEIGHTS, ...deps.weights };
-  const width = deps.beamWidth ?? 6;
-  const minTransfer = deps.minTransferMin ?? 3;
+  const wt = DEFAULT_WEIGHTS;
+  const width = BEAM_WIDTH;
+  const minTransfer = MIN_TRANSFER_MIN;
   const rulesList = legRules(tour, deps);
   const legs = rulesList.map((r) => r.leg);
   // Every stop the same one (a round trip with nothing in between): nothing to plan.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Tour, Waypoint } from '../src/core/model';
-import { expandLegs, isRoundTrip, totalDwellMin } from '../src/core/tour';
+import { expandLegs, isRoundTrip } from '../src/core/tour';
 
 const wp = (name: string, kind: Waypoint['kind'], dwellMin = 0): Waypoint => ({
   stopRef: `ch:1:sloid:${name}`,
@@ -54,12 +54,5 @@ describe('isRoundTrip', () => {
     expect(isRoundTrip(t3)).toBe(true);
     expect(isRoundTrip(tour([wp('A', 'start'), wp('B', 'end')]))).toBe(false);
     expect(isRoundTrip(tour([wp('A', 'start')]))).toBe(false);
-  });
-});
-
-describe('totalDwellMin', () => {
-  it('sums stops and turnarounds only', () => {
-    expect(totalDwellMin(t3)).toBe(120);
-    expect(totalDwellMin(tour([wp('A', 'via', 30), wp('B', 'turnaround', 30)]))).toBe(30);
   });
 });

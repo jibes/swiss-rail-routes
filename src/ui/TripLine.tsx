@@ -50,7 +50,10 @@ export function TripLine({
   open,
   setOpen,
   act,
+  fixedFirst = false,
 }: {
+  /** Replan from here: the first station is where you are; only "Add after" it. */
+  fixedFirst?: boolean;
   route: Pick<Tour, 'waypoints'>;
   rows: LineRow[];
   warnings: Warning[];
@@ -271,7 +274,7 @@ export function TripLine({
                 </button>
               </div>
             )}
-            {isOpen && n > 1 && (
+            {isOpen && n > 1 && !(fixedFirst && k === 0) && (
               <button
                 type="button"
                 className="grip"
@@ -285,6 +288,7 @@ export function TripLine({
               <Panel
                 k={k}
                 n={n}
+                fixed={fixedFirst ? 1 : 0}
                 name={r.name}
                 stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
                 line={lineName(lineTo(entries, k))}
@@ -312,6 +316,7 @@ export function TripLine({
 function Panel({
   k,
   n,
+  fixed,
   name,
   stay,
   line,
@@ -319,6 +324,8 @@ function Panel({
 }: {
   k: number;
   n: number;
+  /** How many stations at the start stay where they are (replan: the one you are at). */
+  fixed: number;
   name: string;
   stay: number | null;
   line: string;
@@ -326,6 +333,17 @@ function Panel({
 }) {
   const t = useT();
   const inner = k > 0 && k < n - 1;
+  if (k < fixed)
+    return (
+      <div className="panel">
+        <div className="acts">
+          <button type="button" className="pill" onClick={() => act.addAfter(k)}>
+            <Icon name="plus" size={16} />
+            {t('addAfter')}
+          </button>
+        </div>
+      </div>
+    );
   return (
     <div className="panel">
       <StopPicker
@@ -380,7 +398,7 @@ function Panel({
           type="button"
           className="sq"
           aria-label={t('moveUp', { name })}
-          disabled={k === 0}
+          disabled={k <= fixed}
           onClick={() => act.move(k, k - 1)}
         >
           <Icon name="up" size={18} />

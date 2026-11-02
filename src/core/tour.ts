@@ -31,14 +31,6 @@ export function expandLegs(tour: Tour): Leg[] {
   return legs;
 }
 
-/** Total planned dwell, in minutes, at stops and turnarounds. */
-export function totalDwellMin(tour: Tour): number {
-  return tour.waypoints.reduce(
-    (sum, w) => sum + (w.kind === 'stop' || w.kind === 'turnaround' ? w.dwellMin : 0),
-    0,
-  );
-}
-
 const TICKETS: Tour['ticket'][] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
 const KINDS: Waypoint['kind'][] = ['start', 'via', 'stop', 'turnaround', 'end'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

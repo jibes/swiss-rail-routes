@@ -2,7 +2,7 @@
 // route alone (before it is planned: no times) or from the route and its planned connections.
 // Stations you entered carry their entry index (they are the ones you can edit); a scenic line's
 // stations are rings; a change the timetable needs on its own is a station without an entry.
-import { entriesOf, markRings } from './line';
+import { markRings } from './line';
 import type { Connection, Section, Tour, Waypoint } from './model';
 import { stopKey } from './stops';
 
@@ -179,6 +179,3 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
   for (; p < route.length; p++) out.push({ ...route[p]!, missed: true });
   return out;
 }
-
-/** How many entries the route has (the stations you can edit). */
-export const entryCount = (tour: Pick<Tour, 'waypoints'>) => entriesOf(tour).length;

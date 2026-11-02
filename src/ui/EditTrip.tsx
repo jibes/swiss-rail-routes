@@ -1,48 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  dropLine,
   entriesOf,
   insertEntries,
-  lineTo,
   moveEntry,
   removeEntry,
   replaceEntry,
   setEntryStay,
-  stationEntry,
 } from '../core/line';
+import { expectedArrival } from '../core/live';
 import type { Tour } from '../core/model';
-import { plan, type PlanResult } from '../core/planner/plan';
+import { plan, type PlanResult, type PlannedChain } from '../core/planner/plan';
 import { mergeReplan, remainingRoute, replanPoint, type ReplanPoint } from '../core/replan';
-import { isPlanned, revise, tripStatus } from '../core/trip';
+import { plannedRows, routeRows } from '../core/rows';
 import { stopKey } from '../core/stops';
-import { GA } from '../data';
-import { fetchTrips, WorkerError } from '../io/ojp';
+import { isPlanned, revise, tripStatus } from '../core/trip';
+import { GA, TEMPLATES } from '../data';
+import { log } from '../io/log';
+import { fetchTrips, PlanningUnavailable, WorkerError } from '../io/ojp';
 import { stopSearch } from '../io/stops';
 import { useT } from '../store';
 import { useTrips } from '../trips';
-import { ChainView } from './ChainView';
-import { hhmm } from './format';
+import { AddSheet, entriesFor, type Picked } from './AddSheet';
+import { hhmm, shiftHm } from './format';
 import { Icon } from './icons';
-import { OptionTabs } from './OptionTabs';
-import { StopPicker } from './StopPicker';
+import { NotFound } from './NotFound';
+import { OptionsBar } from './OptionsBar';
 import { RailLoader } from './RailLoader';
-import { StopRow } from './StopRow';
-import { TEMPLATES } from './TemplatePicker';
-import { useDragList } from './useDragList';
+import { TripLine } from './TripLine';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
-import { log } from '../io/log';
-import { expectedArrival } from '../core/live';
+
+/** Edits come in bursts (a stay, then another): plan once they settle, as on the trip screen. */
+const QUIET_MS = 400;
+
+type Status = 'planning' | 'done' | 'error' | 'unavailable' | 'changed';
 
 /**
- * Editing a saved trip, the one place for it. Before departure all of it: stations, stays, date,
- * time, ticket. Under way the rest from the next point, the travelled part grey and fixed.
- * Either way the new plan becomes a new version (undo keeps the last).
+ * Replan from here, while a trip is under way (before it, the trip screen edits it in place).
+ * The same line and options strip as the trip screen, planned as you edit; the station you are
+ * at is fixed, the travelled part grey above it. Updating makes a new version (undo keeps one).
  */
 export function EditTrip({ id }: { id: string }) {
   const t = useT();
-  // Only a planned trip has a timetable to change from here.
   const trip = useTrips((s) => {
     const x = s.trips.find((y) => y.id === id);
     return x && isPlanned(x) ? x : undefined;
@@ -50,71 +52,36 @@ export function EditTrip({ id }: { id: string }) {
   const update = useTrips((s) => s.update);
   const nowOpen = useNow();
   const liveStatus = useLiveStatus((s) => s.status);
-  const tripState = trip
-    ? tripStatus(trip, nowOpen, expectedArrival(trip.chain.connections, liveStatus))
-    : 'past';
-  // Live answers (shared with the trip screen) only while it is under way.
-  const { state, now } = useLive(tripState === 'live' ? trip : undefined);
-  // Decided when the screen opens, so the plan matches what was shown.
-  const [whole] = useState(() => tripState === 'upcoming');
+  const live =
+    !!trip &&
+    tripStatus(trip, nowOpen, expectedArrival(trip.chain.connections, liveStatus)) === 'live';
+  const { state, now } = useLive(live ? trip : undefined);
   // The live state and time it was opened with: the cut is made again at saving, with stop
   // positions, so the travelled train keeps its track up to the stop.
   const [opened, setOpened] = useState(() => ({ state, now, version: trip?.version }));
   const [point, setPoint] = useState<ReplanPoint | null>(() =>
-    trip && state && !whole ? replanPoint(trip, state, now) : null,
+    trip && state ? replanPoint(trip, state, now) : null,
   );
   const index = useStopIndex();
   const [draft, setDraft] = useState<Tour | null>(() =>
-    !trip ? null : whole ? structuredClone(trip.route) : point ? remainingRoute(trip, point) : null,
+    trip && point ? remainingRoute(trip, point) : null,
   );
-  const [result, setResult] = useState<PlanResult | null>(null);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'planning' | 'error' | 'changed'>('idle');
-  const [detail, setDetail] = useState('');
-  const edit = (f: (x: Tour) => Tour) => {
-    setDraft((d) => (d ? f(d) : d));
-    setResult(null);
-  };
-  const { listRef, grip, rowStyle, dragging } = useDragList((from, to) => {
-    // Under way the start is where you are: it stays first.
-    if (!whole && (from === 0 || to === 0)) return;
-    edit((x) => moveEntry(x, from, to));
-  });
+  const [planned, setPlanned] = useState<{ json: string; result: PlanResult } | null>(null);
+  const [status, setStatus] = useState<Status>('planning');
+  const [picked, setPicked] = useState<PlannedChain | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<{ after: number } | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const json = draft ? JSON.stringify(draft) : '';
 
-  if (!trip || (!point && !whole) || !draft)
-    return (
-      <main className="page">
-        <p>{t('notFound')}</p>
-        <button type="button" className="secondary" onClick={() => go(`/trip/${id}`)}>
-          {t('back')}
-        </button>
-      </main>
-    );
-
-  // Where the trip has been: the stations of the kept part, in order, with their times.
-  const travelled = (point?.keep ?? [])
-    .flatMap((c) =>
-      c.sections
-        .filter((x) => x.mode !== 'walk')
-        .flatMap((x) => [
-          { name: x.from.name, at: Date.parse(x.from.dep ?? x.from.arr ?? '') },
-          { name: x.to.name, at: Date.parse(x.to.arr ?? x.to.dep ?? '') },
-        ]),
-    )
-    .filter((x, i, all) => x.name !== point?.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
-  const options = result?.options ?? [];
-  const chain = options.find((c) => c.dep === picked) ?? result?.recommended;
-  // The stations you entered (as on the trip screen): a scenic line's stations are part of the
-  // line, said under the station it leads to, never a row of their own.
-  const entries = entriesOf(draft);
-  const lineName = (k: number) => TEMPLATES.find((x) => x.id === lineTo(entries, k))?.name;
-
-  const run = async () => {
-    setStatus('planning');
-    // Under way the train moved on while the rest was edited: plan from where it is now.
-    let from = draft;
-    if (point && state && trip) {
-      const p = replanPoint(trip, state, now);
+  // Plans the rest whenever it changes. Under way the train moves on while you edit: the rest
+  // then starts from where it is now.
+  useEffect(() => {
+    if (!draft || !trip || !point) return;
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      let from = draft;
+      const p = state ? replanPoint(trip, state, now) : null;
       if (p && p.stop.stopRef !== point.stop.stopRef) {
         const key = stopKey(p.stop.stopRef);
         const at = draft.waypoints.findIndex((w) => stopKey(w.stopRef) === key);
@@ -125,44 +92,111 @@ export function EditTrip({ id }: { id: string }) {
           anchor: fresh.anchor,
           waypoints: [fresh.waypoints[0]!, ...draft.waypoints.slice(at > 0 ? at + 1 : 1)],
         };
-      } else if (p) {
-        const fresh = remainingRoute(trip, p);
-        from = { ...draft, date: fresh.date, anchor: fresh.anchor };
-      }
-      if (p) {
         setPoint(p);
         setOpened({ state, now, version: opened.version });
         setDraft(from);
+        return; // planned again for the new draft
       }
-    }
-    log('replan.start', {
-      trip: id,
-      from: point?.stop.name,
-      anchor: from.anchor,
-      stops: from.waypoints.map((w) => w.name),
-    });
-    try {
-      const index = await stopSearch();
-      const r = await plan(from, {
-        fetchTrips: (q) => fetchTrips(q),
-        templates: TEMPLATES,
-        ga: GA,
-        stop: (x) => index.byRef(x),
-        trace: (event, data) => log(event, { trip: id, ...(data as object) }),
+      setStatus('planning');
+      log('replan.start', {
+        trip: id,
+        from: point.stop.name,
+        stops: from.waypoints.map((w) => w.name),
       });
-      log('replan.done', { trip: id, options: r.options?.length ?? 0, failedLeg: r.failedLeg });
-      setResult(r);
-      setPicked(null);
-      setStatus('idle');
-    } catch (e) {
-      log('replan.fail', { trip: id, e });
-      setDetail(e instanceof WorkerError ? e.detail : e instanceof Error ? e.message : '');
-      setStatus('error');
-    }
+      try {
+        const stops = await stopSearch();
+        const r = await plan(from, {
+          fetchTrips: (q) => fetchTrips(q, ctrl.signal),
+          templates: TEMPLATES,
+          ga: GA,
+          stop: (x) => stops.byRef(x),
+          trace: (event, data) => log(event, { trip: id, ...(data as object) }),
+        });
+        if (ctrl.signal.aborted) return;
+        log('replan.done', { trip: id, options: r.options?.length ?? 0, failedLeg: r.failedLeg });
+        setPlanned({ json: JSON.stringify(from), result: r });
+        setPicked(null);
+        setStatus('done');
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        log('replan.fail', { trip: id, e });
+        setStatus(e instanceof PlanningUnavailable ? 'unavailable' : 'error');
+        setError(e);
+      }
+    }, QUIET_MS);
+    return () => {
+      ctrl.abort();
+      clearTimeout(timer);
+    };
+    // The live state moves every poll; planning follows the draft, not each poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [json]);
+
+  if (!trip || !point || !draft) return <NotFound />;
+
+  const result = planned?.json === json ? planned.result : null;
+  const chain = picked ?? result?.recommended ?? null;
+  const planning = !result && status !== 'error' && status !== 'unavailable';
+  const entries = entriesOf(draft);
+  const rows = chain ? plannedRows(draft, chain.connections) : routeRows(draft);
+  const edit = (f: (x: Tour) => Tour) => {
+    setDraft((d) => (d ? f(d) : d));
+    setPicked(null);
+  };
+  const detail =
+    error instanceof WorkerError ? error.detail : error instanceof Error ? `${error.name}` : '';
+  const anchor = 'departAt' in draft.anchor ? draft.anchor.departAt : draft.anchor.arriveBy;
+
+  // Where the trip has been: the stations of the kept part, in order, with their times.
+  const travelled = point.keep
+    .flatMap((c) =>
+      c.sections
+        .filter((x) => x.mode !== 'walk')
+        .flatMap((x) => [
+          { name: x.from.name, at: x.from.dep ?? x.from.arr },
+          { name: x.to.name, at: x.to.arr ?? x.to.dep },
+        ]),
+    )
+    .filter((x, i, all) => x.name !== point.stop.name && (i === 0 || all[i - 1]!.name !== x.name));
+
+  const save = () => {
+    if (!chain || !result) return;
+    // Changed meanwhile (another device, another tab, undo): its legs and trains are not the
+    // ones this plan was cut from.
+    if (useTrips.getState().trips.find((x) => x.id === id)?.version !== opened.version)
+      return setStatus('changed');
+    log('replan.save', { trip: id, dep: chain.dep, arr: chain.arr });
+    update(id, (x) =>
+      !isPlanned(x)
+        ? x
+        : revise(
+            x,
+            mergeReplan(
+              x,
+              (opened.state &&
+                replanPoint(x, opened.state, opened.now, (key) => {
+                  const st = index?.byRef(key);
+                  return st ? [st.lon, st.lat] : undefined;
+                })) ||
+                point,
+              result.legs ?? [],
+              chain,
+            ),
+            new Date(),
+          ),
+    );
+    go(`/trip/${id}`);
+  };
+
+  const pick = (p: Picked) => {
+    const at = sheet?.after ?? entries.length - 1;
+    edit((r) => insertEntries(r, at, entriesFor(p)));
+    setSheet(null);
+    setOpen(null);
   };
 
   return (
-    <main className="page replan">
+    <main className="page trip-screen replan">
       <header className="bar">
         <button
           type="button"
@@ -172,160 +206,129 @@ export function EditTrip({ id }: { id: string }) {
         >
           <Icon name="back" />
         </button>
-        <h1>{point ? t('replanFrom', { stop: point.stop.name }) : t('editTrip')}</h1>
       </header>
-
-      <p className="muted">{point ? t('replanHint') : t('editTripHint')}</p>
-
-      <div>
-        {travelled.length > 0 && (
-          <ol className="line past" aria-label={t('travelled')}>
-            {travelled.map((x, i) => (
-              <li key={i} className="stop via">
-                <span className="dot" aria-hidden="true" />
-                <div className="stop-top">
-                  <span className="stop-head">
-                    <span className="stop-name">
-                      <span>{x.name}</span>
-                      <small className="num">{hhmm(x.at)}</small>
-                    </span>
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-        <ol className="line" aria-label={t('stops')} ref={listRef}>
-          {entries.map(({ w }, i) => (
-            <StopRow
-              key={`${i}-${w.stopRef}`}
-              w={w}
-              index={i}
-              last={i === entries.length - 1}
-              fixed={!!point && i === 0}
-              caption={
-                point && i === 0
-                  ? t('fromHere', { time: hhmm(point.at) })
-                  : lineName(i)
-                    ? t('viaLine', { line: lineName(i)! })
-                    : undefined
-              }
-              onStay={(m) => edit((x) => setEntryStay(x, i, m > 0 ? m : null))}
-              onRemove={() => {
-                if (point && i === 0) return;
-                edit((x) => removeEntry(x, i));
-              }}
-              onReplace={(stop) => (!point || i > 0) && edit((x) => replaceEntry(x, i, stop))}
-              grip={grip(i)}
-              style={rowStyle(i)}
-              dragging={dragging === i}
-            />
-          ))}
-        </ol>
-        <div className="stop add">
-          <span className="dot" aria-hidden="true" />
-          <StopPicker
-            label={t('addStop')}
-            onPick={(s) =>
-              edit((x) =>
-                insertEntries(x, entriesOf(x).length - 2, [
-                  stationEntry({ stopRef: s.ref, name: s.name }),
-                ]),
-              )
-            }
-          />
-        </div>
-      </div>
+      <h1 className="page-title">{t('replanFrom', { stop: point.stop.name })}</h1>
+      <p className="muted">{t('replanHint')}</p>
 
       {status === 'changed' && (
         <p role="alert" className="notice red">
-          {t('tripChangedMeanwhile')}
+          <span>{t('tripChangedMeanwhile')}</span>
+        </p>
+      )}
+      {status === 'unavailable' && (
+        <p role="status" className="notice">
+          {t('planUnavailable')}
         </p>
       )}
       {status === 'error' && (
         <p role="alert" className="notice red">
-          {t('planFailed')} {detail && <code className="muted">{detail}</code>}
+          <span>
+            {/fetch|network|TypeError/i.test(detail)
+              ? t('planOffline')
+              : /^5\d\d/.test(detail)
+                ? t('planServer')
+                : t('planFailed')}
+          </span>
         </p>
       )}
       {result?.failedLeg !== undefined && (
         <p role="alert" className="notice red">
-          {t('legFailed', {
-            n: result.failedLeg + 1,
-            from: result.legs?.[result.failedLeg]?.from.name ?? '',
-            to: result.legs?.[result.failedLeg]?.to.name ?? '',
-          })}
+          <span>
+            {t('legFailed', {
+              n: result.failedLeg + 1,
+              from: result.legs?.[result.failedLeg]?.from.name ?? '',
+              to: result.legs?.[result.failedLeg]?.to.name ?? '',
+            })}
+          </span>
         </p>
       )}
+      {planning && (
+        <div className="hero-loading" role="status">
+          <RailLoader />
+          <span className="muted">{t('planning')}</span>
+        </div>
+      )}
 
-      {!result && (
+      {entries.length >= 2 && (
+        <OptionsBar
+          trip={{
+            ...trip,
+            id: `${trip.id}-replan`,
+            route: draft,
+            chain: chain ?? undefined,
+            legs: chain ? result?.legs : undefined,
+          }}
+          result={result}
+          planning={planning}
+          failed={status === 'error' || status === 'unavailable'}
+          from={anchor}
+          move={(min) => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, min) } }))}
+          choose={(c) => setPicked(c)}
+        />
+      )}
+
+      {travelled.length > 0 && (
+        <ol className="trip-line past" aria-label={t('travelled')}>
+          {travelled.map((x, i) => (
+            <li key={i} className="station pass">
+              <span className="t">{x.at && hhmm(x.at)}</span>
+              <span className="rail">
+                <span className="dot" />
+              </span>
+              <span className="m">
+                <span className="n">{x.name}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <TripLine
+        route={draft}
+        rows={rows}
+        warnings={chain?.warnings ?? []}
+        planning={planning}
+        open={open}
+        setOpen={setOpen}
+        fixedFirst
+        act={{
+          // The first station is where you are: nothing moves before it.
+          replace: (k, s) => k > 0 && edit((r) => replaceEntry(r, k, s)),
+          stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
+          move: (from, to) => {
+            if (from === 0 || to === 0) return;
+            edit((r) => moveEntry(r, from, to));
+            setOpen(to);
+          },
+          remove: (k) => {
+            if (k === 0) return;
+            edit((r) => removeEntry(r, k));
+            setOpen(null);
+          },
+          dropLine: (k) => edit((r) => dropLine(r, k)),
+          addAfter: (k) => setSheet({ after: k }),
+          add: () => setSheet({ after: entries.length - 1 }),
+          later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
+        }}
+      />
+
+      {chain && (
         <div className="dock">
           <div className="dock-inner">
-            <button
-              type="button"
-              className="primary wide"
-              disabled={status === 'planning' || entries.length < 2}
-              onClick={() => void run()}
-            >
-              {status === 'planning' ? (
-                <RailLoader label={t('planning')} small />
-              ) : (
-                t('findConnections')
-              )}
+            <button type="button" className="primary wide" onClick={save}>
+              {t('updateTrip')}
             </button>
           </div>
         </div>
       )}
 
-      {result && chain && (
-        <>
-          <OptionTabs
-            options={options}
-            recommended={result.recommended}
-            shown={chain}
-            onPick={setPicked}
-          />
-          <ChainView chain={chain} dwell={(result.legs ?? []).map((l) => l.to.dwellMin)} />
-          <div className="dock">
-            <div className="dock-inner">
-              <button
-                type="button"
-                className="primary wide"
-                onClick={() => {
-                  // Changed meanwhile (another device, another tab, undo): its legs and trains
-                  // are not the ones this plan was cut from.
-                  if (
-                    useTrips.getState().trips.find((x) => x.id === id)?.version !== opened.version
-                  )
-                    return setStatus('changed');
-                  update(id, (x) =>
-                    !isPlanned(x)
-                      ? x
-                      : revise(
-                          x,
-                          point
-                            ? mergeReplan(
-                                x,
-                                (opened.state &&
-                                  replanPoint(x, opened.state, opened.now, (key) => {
-                                    const st = index?.byRef(key);
-                                    return st ? [st.lon, st.lat] : undefined;
-                                  })) ||
-                                  point,
-                                result.legs ?? [],
-                                chain,
-                              )
-                            : { route: draft, legs: result.legs ?? [], chain },
-                          new Date(),
-                        ),
-                  );
-                  go(`/trip/${id}`);
-                }}
-              >
-                {t('updateTrip')}
-              </button>
-            </div>
-          </div>
-        </>
+      {sheet && (
+        <AddSheet
+          title={t('addAfterStop', { stop: entries[sheet.after]?.w.name ?? '' })}
+          after={entries[sheet.after]?.w}
+          onPick={pick}
+          onClose={() => setSheet(null)}
+        />
       )}
     </main>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { RouteTemplate } from '../core/data';
+import { entriesOf, lineEntries, stationEntry, type Entry } from '../core/line';
 import type { Tour, Waypoint } from '../core/model';
 import { fold, stopKey, type Stop } from '../core/stops';
 import { usePrefs, useT } from '../store';
@@ -199,4 +200,11 @@ export function AddSheet({
       </div>
     </div>
   );
+}
+
+/** What a pick adds to the line: a station, a scenic line's two ends, a past trip's stations. */
+export function entriesFor(p: Picked): Entry[] {
+  if (p.kind === 'station') return [stationEntry(p.stop)];
+  if (p.kind === 'line') return lineEntries(p.template, p.reversed);
+  return entriesOf(p.tour);
 }

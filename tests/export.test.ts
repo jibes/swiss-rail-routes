@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { newTour, addWaypoint, setRoundTrip } from '../src/core/edit';
+import { newTour, addWaypoint, setRoundTrip } from './helpers/edit';
 import { toIcs } from '../src/core/export/ics';
-import { decodeTour, encodeTour } from '../src/core/export/share';
+import { decodeTour } from '../src/core/export/share';
+import { encodeTour } from './helpers/share';
 import type { Connection } from '../src/core/model';
 
 const chain: Connection[] = [

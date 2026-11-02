@@ -5,7 +5,8 @@
 export function parentOf(full: string): string | undefined {
   const hash = full.split('?')[0] || '/';
   if (hash === '/' || hash === '/trips') return undefined;
-  const sub = /^\/(tour|trip)\/([\w-]+)\/(plan|templates|map|edit|now|replan)$/.exec(hash);
-  if (sub) return `/${sub[1]}/${sub[2]}`;
+  // A trip's map and replan (older addresses: now, edit) go up to the trip.
+  const sub = /^\/trip\/([\w-]+)\/(map|edit|now|replan)$/.exec(hash);
+  if (sub) return `/trip/${sub[1]}`;
   return '/';
 }

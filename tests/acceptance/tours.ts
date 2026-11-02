@@ -6,7 +6,7 @@ import {
   setDwell,
   setRoundTrip,
   setStop,
-} from '../../src/core/edit';
+} from '../helpers/edit';
 import type { Tour } from '../../src/core/model';
 import { index, templates } from '../helpers/timetable';
 

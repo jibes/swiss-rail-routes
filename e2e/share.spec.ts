@@ -1,4 +1,4 @@
-import { encodeTour } from '../src/core/export/share';
+import { encodeTour } from '../tests/helpers/share';
 import { encodeTrip } from '../src/core/export/tripShare';
 import { plan } from '../src/core/planner/plan';
 import { newTrip } from '../src/core/trip';

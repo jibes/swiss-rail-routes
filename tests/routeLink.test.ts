@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from '../src/core/edit';
-import { parseRoute, routeHash, tourHash } from '../src/core/export/routeLink';
+import { addWaypoint, insertTemplate, newTour, setRoundTrip, setStop } from './helpers/edit';
+import { parseRoute } from '../src/core/export/routeLink';
+import { routeHash, tourHash } from './helpers/routeLink';
 import type { Tour } from '../src/core/model';
 import { TEMPLATES } from '../src/data';
 

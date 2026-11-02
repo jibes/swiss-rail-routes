@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newTour } from '../src/core/edit';
+import { newTour } from './helpers/edit';
 import type { PlannedChain } from '../src/core/planner/plan';
 import {
   compactTrip,

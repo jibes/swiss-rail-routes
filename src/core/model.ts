@@ -88,11 +88,3 @@ export interface Connection {
   transfers: number;
   sections: Section[];
 }
-
-export interface Highlight {
-  id: string;
-  name: string;
-  at: LatLon;
-  side?: 'L' | 'R';
-  sunlightRequired: boolean;
-}

@@ -75,38 +75,6 @@
   bottom: calc(100% + 6px);
 }
 
-/* The stay beside a station being edited: a chip, red once you get off; list aligned right. */
-.select.stay > button {
-  min-height: 36px;
-  padding: 0 10px 0 12px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hair);
-  font-size: 15px;
-}
-
-.select.stay.on > button {
-  background: var(--rail-soft);
-  box-shadow: none;
-  color: var(--rail-ink);
-  font-weight: 600;
-}
-
-.select.stay > button svg {
-  color: inherit;
-}
-
-.select.stay .select-list {
-  left: auto;
-  right: 0;
-}
-
-/* ─── A station being edited: the field, its clear button, the stay ─── */
-
-.stop.editing .stop-top {
-  min-height: 52px;
-}
-
 .picker.editing {
   flex: 1;
   display: grid;

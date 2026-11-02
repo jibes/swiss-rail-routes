@@ -46,3 +46,10 @@ export function nextHalfHour(now: number): string {
   const t = Math.min(23 * 60 + 30, Math.ceil((h * 60 + m + 1) / 30) * 30);
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
+
+/** `HH:MM` moved by `min` minutes, within the day (Earlier/Later, Try an hour later). */
+export function shiftHm(hm: string, min: number): string {
+  const [h, m] = hm.split(':').map(Number) as [number, number];
+  const t = Math.min(23 * 60 + 59, Math.max(0, h * 60 + m + min));
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insertTemplate, newTour } from '../src/core/edit';
+import { insertTemplate, newTour } from './helpers/edit';
 import {
   dropLine,
   entriesOf,
@@ -455,6 +455,32 @@ describe('a finished trip waits in search', () => {
     expect(dayOf(Date.parse('2026-11-07T22:30:00Z'))).toBe('2026-11-07');
     expect(zurichTime('2026-11-07', '08:00')).toBe(Date.parse('2026-11-07T07:00:00Z'));
     expect(zurichTime('2026-07-04', '08:00')).toBe(Date.parse('2026-07-04T06:00:00Z'));
+  });
+
+  it('puts the newest past trip first when the routes differ', () => {
+    const other = insertEntries(start(), 0, [stationEntry(s('Bern'))]);
+    const r = retire(
+      [tripOn('older', '2026-11-01', other), tripOn('newer', '2026-11-07')],
+      [],
+      Date.parse('2026-11-10T12:00:00Z'),
+    );
+    expect(r.tours.map((t) => t.name)).toEqual(['newer', 'older']);
+  });
+
+  it('keeps a trip whose last train runs late past midnight, until it has arrived', () => {
+    const t = tripOn('late', '2026-11-07');
+    // Planned to arrive 18:00Z on the 7th; live data says 00:20 Zurich on the 8th.
+    const late = Date.parse('2026-11-07T23:20:00Z');
+    const at = Date.parse('2026-11-07T23:10:00Z'); // 00:10 on the 8th in Zurich
+    expect(retire([t], [], at, () => late).changed).toBe(false);
+    expect(retire([t], [], late + 60 * 60_000, () => late).changed).toBe(true);
+  });
+
+  it('drops a past trip of a single station without keeping it', () => {
+    const one = tripOn('one', '2026-11-01', start());
+    const r = retire([one], [], Date.parse('2026-11-10T12:00:00Z'));
+    expect(r.trips).toEqual([]);
+    expect(r.tours).toEqual([]);
   });
 
   it('retires a trip never planned once its day is over, and nothing early', () => {
