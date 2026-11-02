@@ -258,6 +258,32 @@ describe('remainingRoute: round trips', () => {
 });
 
 describe('mergeReplan: the route follows the replan', () => {
+  it('a station already passed on the current leg stays on the line', () => {
+    // 08:35: past Zug, next Luzern. Replanned from Luzern: Zug stays a via of the kept leg.
+    const p = replanPoint(trip, liveState(chain, at('08:35')), at('08:35'))!;
+    expect(p.stop.name).toBe('Luzern');
+    const rest = conn(
+      ride('IR', [
+        ['Luzern', '09:50'],
+        ['Interlaken Ost', '11:40'],
+      ]),
+    );
+    const newLeg: Leg = {
+      index: 0,
+      from: w('Luzern', 'start'),
+      vias: [],
+      to: w('Interlaken Ost', 'end'),
+    };
+    const v = mergeReplan(trip, p, [newLeg], {
+      connections: [rest],
+      warnings: [],
+      score: 0,
+      dep: rest.dep,
+      arr: rest.arr,
+    });
+    expect(v.legs[0]!.vias.map((x) => x.name)).toEqual(['Zug']);
+  });
+
   it('travelled stations, then the new rest: the map and shares show what runs', () => {
     const p = replanPoint(trip, liveState(chain, at('08:15')), at('08:15'))!; // on the IR, next Zug
     const newLeg: Leg = {

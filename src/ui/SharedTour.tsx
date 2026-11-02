@@ -5,9 +5,8 @@ import { TEMPLATES } from '../data';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
 import { useT } from '../store';
-import { defaultDate } from '../tours';
 import { useTrips } from '../trips';
-import { dayOf, newTrip } from '../core/trip';
+import { dayOf, defaultDate, newTrip } from '../core/trip';
 import { markRings } from '../core/line';
 import { go } from './useHash';
 import { Icon } from './icons';
@@ -38,7 +37,7 @@ export function SharedTour({
             name: (ref) =>
               index?.byRef(stopKey(ref))?.name ??
               TEMPLATES.flatMap((x) => x.chain).find((c) => c.ref === ref)?.name,
-            today: defaultDate(new Date(now)),
+            today: defaultDate(now),
           });
           return r && { ...r, id: 'shared' };
         })();

@@ -251,6 +251,7 @@ export const en = {
   debugLogFailed: 'Could not save the log',
   storageFailed:
     'Your saved trips could not be read. Nothing is saved until the app is opened again.',
+  riskNotServed: '{line} does not stop at {stop}',
 };
 
 export type Catalogue = typeof en;

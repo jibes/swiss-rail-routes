@@ -4,8 +4,8 @@
 // plus the next via as destination, and the answers are stitched, merging the two halves of a
 // ride that continues through the split point.
 import type { Connection, Section, Waypoint } from '../model';
-import { sameStop, type SamePlace } from '../stops';
-import { MIN, ms, rides, stopSeq } from './connection';
+import { stopKey } from '../stops';
+import { MIN, ms, rides, visited } from './connection';
 
 export type Query = (
   from: Waypoint,
@@ -107,8 +107,8 @@ export async function stitched(
   return partial;
 }
 
-/** True when a connection calls at every via (or a stop of the same place), in any order. */
-export const passesVias = (c: Connection, vias: Waypoint[], same: SamePlace = sameStop) => {
-  const seq = stopSeq(c);
-  return vias.every((v) => seq.some((k) => same(v.stopRef, k)));
+/** True when a connection takes you to every via (walks included), in any order. */
+export const passesVias = (c: Connection, vias: Waypoint[]) => {
+  const at = visited(c);
+  return vias.every((v) => at.has(stopKey(v.stopRef)));
 };

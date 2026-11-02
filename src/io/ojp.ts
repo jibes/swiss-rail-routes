@@ -65,7 +65,7 @@ export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Co
       ...what,
       ms,
       bytes: text.length,
-      cache: res.headers.get('cf-cache-status') ?? undefined,
+      cache: res.headers.get('X-Cache') ?? undefined,
       connections: out.length,
       disrupted: out.filter((c) => c.sections.some((s) => s.notices?.length)).length,
       ev: out.filter((c) => c.sections.some((s) => s.category === 'EV')).length,

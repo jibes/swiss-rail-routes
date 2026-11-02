@@ -84,9 +84,11 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
                 <span>
                   {r.reason === 'cancelled'
                     ? t('riskCancelled', { line: badge(ride.s) })
-                    : r.reason === 'missed'
-                      ? t('riskMissed', { at })
-                      : t('riskTight', { at, n: r.marginMin })}
+                    : r.reason === 'notServed'
+                      ? t('riskNotServed', { line: badge(ride.s), stop: r.stop ?? '' })
+                      : r.reason === 'missed'
+                        ? t('riskMissed', { at })
+                        : t('riskTight', { at, n: r.marginMin })}
                 </span>
               </div>
             );

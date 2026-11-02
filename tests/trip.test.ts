@@ -3,6 +3,8 @@ import { newTour } from '../src/core/edit';
 import type { PlannedChain } from '../src/core/planner/plan';
 import {
   compactTrip,
+  defaultDate,
+  zurichTime,
   liveTrip,
   newTrip,
   revise,
@@ -109,5 +111,27 @@ describe('compact trips', () => {
     expect(withTrack.compact).toBe(true);
     expect(withTrack.chain!.connections[0]!.sections[0]!.geometry!.length).toBe(2);
     expect(compactTrip(withTrack)).toBe(withTrack);
+  });
+});
+
+describe('Zurich time', () => {
+  it('is right on the two clock-change days', () => {
+    expect(new Date(zurichTime('2026-03-29', '01:30')).toISOString()).toBe(
+      '2026-03-29T00:30:00.000Z',
+    );
+    expect(new Date(zurichTime('2026-10-25', '01:30')).toISOString()).toBe(
+      '2026-10-24T23:30:00.000Z',
+    );
+    expect(new Date(zurichTime('2026-07-01', '08:00')).toISOString()).toBe(
+      '2026-07-01T06:00:00.000Z',
+    );
+  });
+
+  it('the default day is the next Saturday in Zurich, whatever the device’s zone', () => {
+    // Friday 23:30 in Zurich (22:30 UTC): Saturday is tomorrow.
+    expect(defaultDate(Date.parse('2026-11-06T22:30:00Z'))).toBe('2026-11-07');
+    // Saturday 00:30 in Zurich (Friday 23:30 UTC): today.
+    expect(defaultDate(Date.parse('2026-11-06T23:30:00Z'))).toBe('2026-11-07');
+    expect(defaultDate(Date.parse('2026-11-08T10:00:00Z'))).toBe('2026-11-14');
   });
 });

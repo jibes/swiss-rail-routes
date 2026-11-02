@@ -31,6 +31,16 @@ export function calls(c: Connection): Call[] {
 
 export const stopSeq = (c: Connection) => calls(c).map((x) => x.key);
 
+/**
+ * Every stop a connection takes you to, walks included. OJP passes a via by its exact stop,
+ * walking through the station when the train or bus stops beside it (Bergün/Bravuogn, posta →
+ * Bergün/Bravuogn → posta); a via counts as passed when it is one of these.
+ */
+export const visited = (c: Connection) =>
+  new Set(
+    c.sections.flatMap((s) => [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef))),
+  );
+
 /** Minutes between arriving with one ride and leaving with the next (walks count as transfer). */
 export function transferGaps(c: Connection): { afterSection: number; min: number }[] {
   const r = rides(c);

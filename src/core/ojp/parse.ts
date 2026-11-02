@@ -102,7 +102,9 @@ function timedSection(leg: X, notices: Map<string, string>): Section {
     number: str(service?.TrainNumber),
     from: call(obj(leg?.LegBoard), 'board'),
     to: call(obj(leg?.LegAlight), 'alight'),
-    intermediate: arr(leg?.LegIntermediate).map((v) => call(v, 'mid')),
+    intermediate: arr(leg?.LegIntermediate)
+      .filter((v) => str(v?.NotServicedStop) !== 'true')
+      .map((v) => call(v, 'mid')),
     geometry: geometry(obj(leg?.LegTrack)),
     reservationRequired: codes.includes(RESERVATION_ONLY) || undefined,
     situationIds: situationIds.length ? situationIds : undefined,
@@ -113,11 +115,19 @@ function timedSection(leg: X, notices: Map<string, string>): Section {
   };
 }
 
+/** Minutes of an ISO 8601 duration (`PT1H4M30S`); undefined when there is none. */
+export function minutesOf(iso: string | undefined): number | undefined {
+  const m = iso && /^P(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/.exec(iso);
+  if (!m) return undefined;
+  return Number(m[1] ?? 0) * 60 + Number(m[2] ?? 0) + Math.round(Number(m[3] ?? 0) / 60);
+}
+
 function walkSection(leg: X): Section {
   const start = obj(leg?.LegStart);
   const end = obj(leg?.LegEnd);
   return {
     mode: 'walk',
+    walkMin: minutesOf(str(leg?.Duration)),
     from: { stopRef: str(start?.StopPointRef) ?? '', name: text(start?.Name) ?? '' },
     to: { stopRef: str(end?.StopPointRef) ?? '', name: text(end?.Name) ?? '' },
     intermediate: [],
@@ -157,6 +167,20 @@ export function parseTrips(xml: string): Connection[] {
   return arr(delivery.TripResult).flatMap((r): Connection[] => {
     const trip = obj(r?.Trip);
     if (!trip) return [];
+    // A cancelled train is no connection; a stop it no longer serves is not on its way.
+    const timed = arr(trip.Leg)
+      .map((leg) => obj(leg?.TimedLeg))
+      .filter(Boolean);
+    const out = (v: X) => str(v?.NotServicedStop) === 'true';
+    if (
+      timed.some(
+        (l) =>
+          str(obj(l?.Service)?.Cancelled) === 'true' ||
+          out(obj(l?.LegBoard)) ||
+          out(obj(l?.LegAlight)),
+      )
+    )
+      return [];
     const sections = arr(trip.Leg).flatMap((leg): Section[] => {
       if (leg?.TimedLeg) return [timedSection(obj(leg.TimedLeg), notices)];
       if (leg?.TransferLeg) return [walkSection(obj(leg.TransferLeg))];
@@ -165,11 +189,23 @@ export function parseTrips(xml: string): Connection[] {
     });
     const rides = sections.filter((s) => s.mode !== 'walk');
     if (!rides.length) return [];
+    // From the leg's first stop to its last: a walk at either end counts (from the station to
+    // the replacement bus outside it, from the pier to the station).
+    const walks = (list: Section[]) => {
+      let n = 0;
+      for (const s of list) {
+        if (s.mode !== 'walk') break;
+        n += s.walkMin ?? 0;
+      }
+      return n * 60_000;
+    };
+    const shift = (iso: string | undefined, ms: number) =>
+      iso && ms ? new Date(Date.parse(iso) + ms).toISOString() : iso;
     return [
       {
         legIndex: 0,
-        dep: rides[0]!.from.dep ?? str(trip.StartTime)!,
-        arr: rides.at(-1)!.to.arr ?? str(trip.EndTime)!,
+        dep: shift(rides[0]!.from.dep, -walks(sections)) ?? str(trip.StartTime)!,
+        arr: shift(rides.at(-1)!.to.arr, walks([...sections].reverse())) ?? str(trip.EndTime)!,
         transfers: Number(str(trip.Transfers) ?? rides.length - 1),
         sections,
       },

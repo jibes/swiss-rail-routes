@@ -66,9 +66,16 @@ export function fromEntries<T extends Pick<Tour, 'waypoints'>>(tour: T, entries:
   return { ...tour, waypoints: normalise(waypoints) };
 }
 
-/** The template id of the line that leads to entry `k`, if one does. */
-export const lineTo = (entries: Entry[], k: number) =>
-  k > 0 ? entries[k]?.rings[0]?.templateId : undefined;
+/**
+ * The template id of the line that leads to entry `k`, if one does: its rings say so, or, for a
+ * line without must-pass stations (Lake Lucerne), both its ends carry it.
+ */
+export const lineTo = (entries: Entry[], k: number): string | undefined => {
+  if (k <= 0) return undefined;
+  const e = entries[k];
+  const id = e?.rings[0]?.templateId ?? e?.w.templateId;
+  return id && (e!.rings.length || entries[k - 1]?.w.templateId === id) ? id : undefined;
+};
 
 /**
  * Cuts the line that leads to entry `k`: its rings go, and its template comes off its two ends
@@ -77,7 +84,7 @@ export const lineTo = (entries: Entry[], k: number) =>
 const cut = (entries: Entry[], k: number) => {
   const e = entries[k];
   if (!e) return;
-  const id = e.rings[0]?.templateId;
+  const id = lineTo(entries, k);
   entries[k] = { ...e, rings: [] };
   if (!id) return;
   for (const j of [k - 1, k]) {
@@ -90,7 +97,9 @@ const cut = (entries: Entry[], k: number) => {
 export function moveEntry<T extends Pick<Tour, 'waypoints'>>(tour: T, from: number, to: number): T {
   const e = entriesOf(tour);
   if (from === to || !e[from] || to < 0 || to >= e.length) return tour;
+  // Lines into it and out of it go: a line is its two ends.
   cut(e, from + 1);
+  cut(e, from);
   const [item] = e.splice(from, 1);
   e.splice(to, 0, { ...item!, rings: [] });
   cut(e, to + 1);
@@ -101,6 +110,7 @@ export function removeEntry<T extends Pick<Tour, 'waypoints'>>(tour: T, k: numbe
   const e = entriesOf(tour);
   if (!e[k]) return tour;
   cut(e, k + 1);
+  cut(e, k);
   e.splice(k, 1);
   return fromEntries(tour, e);
 }
@@ -118,6 +128,13 @@ export function insertEntries<T extends Pick<Tour, 'waypoints'>>(
   if (here && list[0] && list[0].w.stopRef === here.w.stopRef) list = list.slice(1);
   if (!list.length) return tour;
   cut(e, k + 1);
+  // A line that ends where the next station is: it leads there, the station stays as it was.
+  const after = e[k + 1];
+  const last = list.at(-1)!;
+  if (after && last.w.stopRef === after.w.stopRef) {
+    e[k + 1] = { w: { ...after.w, templateId: last.w.templateId }, rings: last.rings };
+    list = list.slice(0, -1);
+  }
   e.splice(k + 1, 0, ...list);
   return fromEntries(tour, e);
 }
@@ -173,11 +190,12 @@ export function replaceEntry<T extends Pick<Tour, 'waypoints'>>(
   const e = entriesOf(tour);
   const x = e[k];
   if (!x) return tour;
+  cut(e, k);
+  cut(e, k + 1);
   e[k] = {
-    w: { ...x.w, stopRef: stop.stopRef, name: stop.name, templateId: undefined },
+    w: { ...e[k]!.w, stopRef: stop.stopRef, name: stop.name, templateId: undefined },
     rings: [],
   };
-  cut(e, k + 1);
   return fromEntries(tour, e);
 }
 
@@ -200,7 +218,7 @@ export function setEntryStay<T extends Pick<Tour, 'waypoints'>>(
 /** Goes to entry `k` without the scenic line that leads there. */
 export function dropLine<T extends Pick<Tour, 'waypoints'>>(tour: T, k: number): T {
   const e = entriesOf(tour);
-  if (!e[k]?.rings.length) return tour;
+  if (!lineTo(e, k)) return tour;
   cut(e, k);
   return fromEntries(tour, e);
 }

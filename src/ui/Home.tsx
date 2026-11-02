@@ -2,10 +2,18 @@ import { useEffect } from 'react';
 import { expectedArrival } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
-import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
+import {
+  dayOf,
+  defaultDate,
+  departure,
+  newTrip,
+  sortTrips,
+  tripStatus,
+  type Trip,
+} from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
-import { defaultDate, useTours } from '../tours';
+import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { duration, hhmm, minutesBetween, nextHalfHour } from './format';
 import { Icon } from './icons';

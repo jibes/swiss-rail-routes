@@ -76,6 +76,34 @@ describe('OJP worker', () => {
     expect(limit).toHaveBeenCalledTimes(1);
   });
 
+  it('does not keep an OJP error answered with 200; keeps "no trip found"', async () => {
+    const err =
+      '<OJP><ErrorCondition><OtherError><Description>busy</Description></OtherError></ErrorCondition></OJP>';
+    const up = vi.fn(async () => new Response(err));
+    const { call, upstream, flush } = setup({ fetch: up as unknown as typeof fetch });
+    await call();
+    await flush();
+    await call();
+    expect(upstream).toHaveBeenCalledTimes(0);
+    expect(up).toHaveBeenCalledTimes(2);
+    const none = vi.fn(
+      async () =>
+        new Response(
+          '<OJP><ErrorCondition><TripProblemType>TRIP_NOTRIPFOUND</TripProblemType></ErrorCondition></OJP>',
+        ),
+    );
+    const s2 = setup({ fetch: none as unknown as typeof fetch });
+    await s2.call();
+    await s2.flush();
+    await s2.call();
+    expect(none).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the app read whether an answer came from the cache', async () => {
+    const res = await setup().call();
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('X-Cache');
+  });
+
   it('rejects foreign origins, bad paths, bad bodies, other methods', async () => {
     const { call, upstream } = setup();
     expect((await call('/trip', { headers: { Origin: 'https://evil.example' } })).status).toBe(403);

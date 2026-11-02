@@ -255,4 +255,5 @@ export const it = {
   debugLogFailed: 'Impossibile salvare il registro',
   storageFailed:
     'Non è stato possibile leggere i tuoi viaggi salvati. Nulla viene salvato fino alla prossima apertura dell’app.',
+  riskNotServed: '{line} non ferma a {stop}',
 } satisfies Catalogue;

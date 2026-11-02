@@ -1,6 +1,6 @@
 {
   "name": "swiss-rail-routes",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",
@@ -21,6 +21,7 @@
     "icons": "node scripts/icons.mjs",
     "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
     "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
+    "record:ojp:missing": "vitest run tests/acceptance.test.ts",
     "data:stops": "node --experimental-strip-types scripts/build-stops.ts",
     "data:ga": "node --experimental-strip-types scripts/build-ga.ts",
     "android:sync": "npm run build && cap sync android"

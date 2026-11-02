@@ -10,6 +10,9 @@ import { tripRequestXml, type TripQuery } from '../../src/core/ojp/request';
 const DIR = 'tests/fixtures/ojp';
 export const RECORD = process.env.RECORD_OJP === '1';
 export const LIVE_URL = process.env.OJP_LIVE_URL;
+/** Records only answers not yet stored, through the app's own Worker (no key needed):
+ * `OJP_RECORD_URL=https://srr-ojp….workers.dev npm run record:ojp:missing`. */
+const RECORD_URL = process.env.OJP_RECORD_URL;
 export const FIXTURE_DATE = '2026-11-07';
 
 /**
@@ -70,15 +73,21 @@ export function ojpFor(tour: string) {
         }),
       );
     }
-    if (RECORD) {
-      const xml = await post('https://api.opentransportdata.swiss/ojp20', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.OJP_API_KEY}`,
-          'Content-Type': 'application/xml',
-        },
-        body: tripRequestXml(q, new Date(), 'swiss-rail-routes'),
-      });
+    if (RECORD || (RECORD_URL && !existsSync(file))) {
+      const xml = RECORD_URL
+        ? await post(`${RECORD_URL.replace(/[/]$/, '')}/trip`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(q),
+          })
+        : await post('https://api.opentransportdata.swiss/ojp20', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.OJP_API_KEY}`,
+              'Content-Type': 'application/xml',
+            },
+            body: tripRequestXml(q, new Date(), 'swiss-rail-routes'),
+          });
       mkdirSync(`${DIR}/${tour}`, { recursive: true });
       writeFileSync(file, gzipSync(thinTracks(xml), { level: 9 }));
       index[key] = {

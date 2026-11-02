@@ -128,11 +128,13 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
   const current = trip.legs[point.leg]!;
   // A planned stay at the point (the end of the current leg, or its start while waiting there)
   // is kept: the rest leaves when the stay is over, not on arrival.
+  // Waiting before the leg's first ride, the stay at its start counts even when the point is
+  // the bus stop a short walk from the station.
   const key = stopKey(point.stop.stopRef);
   const stay =
     stopKey(current.to.stopRef) === key && cutLeg
       ? current.to.dwellMin
-      : point.keep.length === point.leg && stopKey(current.from.stopRef) === key
+      : point.keep.length === point.leg
         ? current.from.dwellMin
         : 0;
   const arrived = point.keep.length ? Date.parse(point.keep.at(-1)!.arr) : point.at;
@@ -173,6 +175,12 @@ export function mergeReplan(
   newLegs: Leg[],
   chain: PlannedChain,
 ): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
+  // The stations of the current leg already passed stay on it (the line still shows them).
+  const passed = new Set(
+    (point.keep[point.leg]?.sections ?? []).flatMap((s) =>
+      [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)),
+    ),
+  );
   const keptLegs: Leg[] = trip.legs.slice(0, point.keep.length).map((l, i) =>
     i === point.leg
       ? {
@@ -191,7 +199,10 @@ export function mergeReplan(
                   templateId: undefined,
                   ring: undefined,
                 },
-          vias: [],
+          vias: l.vias.filter(
+            (w) =>
+              passed.has(stopKey(w.stopRef)) && stopKey(w.stopRef) !== stopKey(point.stop.stopRef),
+          ),
         }
       : l,
   );

@@ -1,5 +1,6 @@
 // A trip: a route frozen with its date, ticket and the connections chosen for it (SPEC "Trips").
 import type { Leg, Tour } from './model';
+import { zurichDateTime } from './ojp/request';
 import { simplify } from './polyline';
 import type { PlannedChain } from './planner/plan';
 
@@ -70,23 +71,16 @@ const ZURICH_DAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich' 
 /** The calendar day in Zurich (where trip dates are), `YYYY-MM-DD`, wherever the device is. */
 export const dayOf = (now: number) => ZURICH_DAY.format(now);
 
-const ZURICH_PARTS = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Zurich',
-  hourCycle: 'h23',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-});
 /** A Zurich date and time (`YYYY-MM-DD`, `HH:MM`) as an instant. */
-export function zurichTime(date: string, time: string): number {
-  const guess = Date.parse(`${date}T${time}:00Z`);
-  // Zurich's offset then (+1 h, +2 h in summer), read back from the formatter.
-  const parts = ZURICH_PARTS.formatToParts(guess);
-  const v = (k: string) => Number(parts.find((p) => p.type === k)?.value);
-  const local = Date.UTC(v('year'), v('month') - 1, v('day'), v('hour'), v('minute'));
-  return guess - (local - guess);
+export const zurichTime = (date: string, time: string): number =>
+  Date.parse(zurichDateTime(`${date}T${time}`));
+
+/** Next Saturday in Zurich, or today when it is one: day trips are mostly at the weekend. */
+export function defaultDate(now = Date.now()): string {
+  const today = dayOf(now);
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + ((6 - d.getUTCDay() + 7) % 7));
+  return d.toISOString().slice(0, 10);
 }
 
 /**

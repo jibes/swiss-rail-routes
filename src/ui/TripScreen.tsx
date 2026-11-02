@@ -15,9 +15,9 @@ import {
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
 import { plannedRows, routeRows, type LineRow } from '../core/rows';
-import { samePlace, stopKey } from '../core/stops';
+import { stopKey } from '../core/stops';
 import { encodeTrip } from '../core/export/tripShare';
-import { compactTrip, isPlanned, newTrip, tripStatus } from '../core/trip';
+import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, type Picked } from './AddSheet';
@@ -154,8 +154,7 @@ export function TripScreen({ id }: { id: string }) {
   const entries = entriesOf(route);
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
   const chain = trip.chain;
-  const same = index ? samePlace(index.byRef) : undefined;
-  const rows = chain ? plannedRows(route, chain.connections, same) : routeRows(route);
+  const rows = chain ? plannedRows(route, chain.connections) : routeRows(route);
   const planning = !chain && planner.status === 'planning';
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
   const changes = chain ? chain.connections.reduce((n, c) => n + c.transfers, 0) : 0;
@@ -164,7 +163,7 @@ export function TripScreen({ id }: { id: string }) {
   const trains = chain
     ? chain.connections.reduce((n, c) => n + c.sections.filter((s) => s.mode !== 'walk').length, 0)
     : 0;
-  const today = new Date(now).toLocaleDateString('sv-SE');
+  const today = dayOf(now);
 
   const pick = (p: Picked) => {
     const at = sheet?.after ?? entries.length - 1;

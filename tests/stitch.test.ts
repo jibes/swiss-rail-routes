@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, Waypoint } from '../src/core/model';
 import { join, passesVias, stitched, subLegs } from '../src/core/planner/stitch';
-import { samePlace } from '../src/core/stops';
-import { conn, index, ref, ride } from './helpers/timetable';
+import { conn, ref, ride } from './helpers/timetable';
 
 const w = (name: string): Waypoint => ({ stopRef: ref(name), name, kind: 'via', dwellMin: 0 });
 
@@ -121,23 +120,25 @@ describe('stitched', () => {
   });
 });
 
-describe('passesVias: stops within 400 m are one station', () => {
-  const near = samePlace((k) => index.byRef(k));
-  const via = (stop: string) =>
-    conn(
-      ride('EV 3', [
-        ['Wilderswil', '09:00'],
-        [stop, '09:10'],
-      ]),
-    );
+describe('passesVias: walks count', () => {
+  const bus = ride('EV 3', [
+    ['Wilderswil', '09:00'],
+    ['Interlaken Ost, Bahnhof', '09:10'],
+  ]);
+  const walk = {
+    mode: 'walk' as const,
+    walkMin: 4,
+    from: { stopRef: ref('Interlaken Ost, Bahnhof'), name: 'Interlaken Ost, Bahnhof' },
+    to: { stopRef: ref('Interlaken Ost'), name: 'Interlaken Ost' },
+    intermediate: [],
+  };
 
-  it('takes the replacement bus stop outside the station as the station', () => {
-    expect(passesVias(via('Interlaken Ost, Bahnhof'), [w('Interlaken Ost')])).toBe(false);
-    expect(passesVias(via('Interlaken Ost, Bahnhof'), [w('Interlaken Ost')], near)).toBe(true);
+  it('passes a via OJP walks through (the bus stops outside the station)', () => {
+    expect(passesVias(conn(bus, walk), [w('Interlaken Ost')])).toBe(true);
   });
 
-  it('keeps a station 2 km away apart', () => {
-    expect(passesVias(via('Interlaken West'), [w('Interlaken Ost')], near)).toBe(false);
+  it('does not pass a via only stopped beside', () => {
+    expect(passesVias(conn(bus), [w('Interlaken Ost')])).toBe(false);
   });
 });
 

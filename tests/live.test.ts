@@ -98,6 +98,45 @@ describe('liveState', () => {
     ).toBe('cancelled');
   });
 
+  it('a missed connection stays missed after the onward train has left', () => {
+    const late: JourneyStatus = {
+      cancelled: false,
+      calls: [
+        {
+          key: ref('Luzern'),
+          name: 'Luzern',
+          arr: iso('08:45'),
+          arrEst: iso('09:03'),
+          passed: false,
+          cancelled: false,
+        },
+      ],
+    };
+    // 09:10: arrived late at Luzern, the 08:51 has gone. Not "riding" the train missed.
+    const s = liveState(chain, at('09:10'), new Map([['j1', late]]));
+    expect(s.risks).toEqual([{ ride: 1, marginMin: -12, reason: 'missed' }]);
+    expect(s.phase).toBe('waiting');
+    expect(s.current).toBe(1);
+  });
+
+  it('says when the train no longer stops where you get off', () => {
+    const skips: JourneyStatus = {
+      cancelled: false,
+      calls: [
+        {
+          key: ref('Interlaken Ost'),
+          name: 'Interlaken Ost',
+          arr: iso('10:41'),
+          passed: false,
+          cancelled: true,
+        },
+      ],
+    };
+    expect(liveState(chain, at('09:00'), new Map([['j2', skips]])).risks).toEqual([
+      { ride: 1, marginMin: 0, reason: 'notServed', stop: 'Interlaken Ost' },
+    ]);
+  });
+
   it('a change already made is no longer at risk; a cancelled first train is', () => {
     const late: JourneyStatus = {
       cancelled: false,

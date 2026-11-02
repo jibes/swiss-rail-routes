@@ -32,7 +32,9 @@ export interface Risk {
   /** Index into `rides` of the ride whose connection is at risk (the one to catch). */
   ride: number;
   marginMin: number;
-  reason: 'tight' | 'missed' | 'cancelled';
+  /** `notServed`: the train runs but no longer stops where you get on or off (`stop`). */
+  reason: 'tight' | 'missed' | 'cancelled' | 'notServed';
+  stop?: string;
 }
 
 export interface LiveState {
@@ -90,7 +92,9 @@ export function liveRides(chain: Connection[], status: Map<string, JourneyStatus
 function walkMin(chain: Connection[], a: LiveRide, b: LiveRide): number {
   if (a.leg !== b.leg) return 0;
   return chain[a.leg]!.sections.slice(a.section + 1, b.section).reduce((m, s) => {
-    if (s.mode !== 'walk' || !s.from.dep || !s.to.arr) return m;
+    if (s.mode !== 'walk') return m;
+    if (s.walkMin !== undefined) return m + s.walkMin;
+    if (!s.from.dep || !s.to.arr) return m;
     return m + Math.max(0, (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000);
   }, 0);
 }
@@ -107,12 +111,17 @@ export function liveState(
 ): LiveState {
   const rides = liveRides(chain, status);
   const risks: Risk[] = [];
-  // Only rides still to catch: a change already made is no longer at risk.
   for (let i = 0; i < rides.length; i++) {
     const b = rides[i]!;
-    if (depOf(b) <= now) continue;
+    // A ride already over is no longer at risk.
+    if (arrOf(b) <= now) continue;
     if (b.cancelled) {
       risks.push({ ride: i, marginMin: 0, reason: 'cancelled' });
+      continue;
+    }
+    const gone = [b.stops[0]!, b.stops.at(-1)!].find((x) => x.cancelled);
+    if (gone) {
+      risks.push({ ride: i, marginMin: 0, reason: 'notServed', stop: gone.name });
       continue;
     }
     const a = rides[i - 1];
@@ -120,9 +129,14 @@ export function liveState(
     // Time needed: the planned walk between the two (if any) plus the minimum change time.
     const need = walkMin(chain, a, b) + MIN_TRANSFER_MIN;
     const margin = (depOf(b) - arrOf(a)) / 60_000;
+    // Missed stays missed after the train has left (you are still at the station); a change
+    // that was tight but made is no longer a risk once the train has left.
     if (margin < 0) risks.push({ ride: i, marginMin: Math.round(margin), reason: 'missed' });
-    else if (margin < need) risks.push({ ride: i, marginMin: Math.round(margin), reason: 'tight' });
+    else if (margin < need && depOf(b) > now)
+      risks.push({ ride: i, marginMin: Math.round(margin), reason: 'tight' });
   }
+  /** Rides you cannot be on: missed, cancelled, or not stopping where you board. */
+  const lost = new Set(risks.filter((r) => r.reason !== 'tight').map((r) => r.ride));
   if (!rides.length) return { phase: 'done', rides, current: 0, progress: 1, risks };
 
   const start = depOf(rides[0]!);
@@ -152,7 +166,8 @@ export function liveState(
   if (now < start) return { phase: 'before', rides, current: 0, progress, next: board(0), risks };
   for (let i = 0; i < rides.length; i++) {
     const r = rides[i]!;
-    if (now < depOf(r))
+    // A ride you cannot be on: you wait where it would have taken you from (replan from here).
+    if (now < depOf(r) || lost.has(i))
       return { phase: 'waiting', rides, current: i, progress, next: board(i), risks };
     if (now < arrOf(r)) {
       const times = r.stops.map((x) => x.dep ?? x.arr ?? 0);

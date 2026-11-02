@@ -85,6 +85,8 @@ export interface Section {
   notices?: string[];
   /** Product name as OJP gives it, e.g. "Luzern-Interlaken Express", "BERNINA EXPRESS". */
   product?: string;
+  /** A walk's planned minutes (OJP `Duration`); walks carry no times of their own. */
+  walkMin?: number;
   /** Dated journey (`<OperatingDay>:<JourneyRef>`): same value = same vehicle. */
   journey?: string;
 }

@@ -48,6 +48,8 @@ function cors(origin: string | null, allowed: string[]): Record<string, string> 
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Max-Age': '86400',
+    // The app logs whether an answer came from the cache (debug log).
+    'Access-Control-Expose-Headers': 'X-Cache',
     Vary: 'Origin',
   };
 }
@@ -135,17 +137,21 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (!up.ok) return reply(up.status === 429 ? 503 : 502, `upstream ${up.status}`);
 
   const text = await up.text();
-  d.defer(
-    d.cache.put(
-      cacheReq,
-      new Response(text, {
-        headers: {
-          'Content-Type': 'application/xml',
-          'Cache-Control': `public, max-age=${spec.cache}`,
-        },
-      }),
-    ),
-  );
+  // An error OJP answers with 200 (a passing upstream problem) is not kept for everyone for
+  // ten minutes; "no trip found" is an answer and is kept.
+  const failed = /<(?:\w+:)?ErrorCondition>/.test(text) && !/NOTRIPFOUND/.test(text);
+  if (!failed)
+    d.defer(
+      d.cache.put(
+        cacheReq,
+        new Response(text, {
+          headers: {
+            'Content-Type': 'application/xml',
+            'Cache-Control': `public, max-age=${spec.cache}`,
+          },
+        }),
+      ),
+    );
   return new Response(text, {
     status: 200,
     headers: { ...h, 'Content-Type': 'application/xml', 'X-Cache': 'miss' },

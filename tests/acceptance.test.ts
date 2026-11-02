@@ -1,7 +1,6 @@
 // SPEC §8 acceptance tours T1–T6 on recorded OJP answers (see tests/acceptance/ojp.ts).
 import { describe, expect, it } from 'vitest';
-import { calls } from '../src/core/planner/connection';
-import { samePlace } from '../src/core/stops';
+import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
 import { usesSegment } from '../src/core/segments';
 import { addWaypoint, setStop } from '../src/core/edit';
@@ -15,7 +14,7 @@ import { ga, index, ref, segments, templates } from './helpers/timetable';
 
 const DATE = process.env.OJP_DATE ?? FIXTURE_DATE;
 const tours = acceptanceTours(DATE);
-const timeout = RECORD || LIVE_URL ? 600_000 : 20_000;
+const timeout = RECORD || LIVE_URL || process.env.OJP_RECORD_URL ? 600_000 : 20_000;
 /** Checks that hold only on the recorded date (closures, daylight). */
 const onFixtureDate = DATE === FIXTURE_DATE && !LIVE_URL;
 
@@ -36,7 +35,6 @@ const planned = (id: string) => {
 };
 
 const chains = (r: PlanResult) => r.options ?? [];
-const near = samePlace((k) => index.byRef(k));
 const stopsOf = (c: PlannedChain, leg?: number) =>
   new Set(
     c.connections
@@ -93,10 +91,9 @@ suite('acceptance tours', { timeout }, () => {
     const r = await planned('T4');
     for (const c of chains(r)) {
       expect(stopsOf(c, 0).has(ref('Rigi Kulm'))).toBe(true);
-      // Luzern by train, or by boat to the pier across the square (400 m rule).
-      const down = stopsOf(c, 1);
-      expect(down.has(ref('Vitznau'))).toBe(true);
-      expect([...down].some((k) => near(ref('Luzern'), k))).toBe(true);
+      // Luzern by train, or by boat to the pier and a walk through the station.
+      const down = visited(c.connections[1]!);
+      expect(down.has(ref('Vitznau')) && down.has(ref('Luzern'))).toBe(true);
     }
     if (onFixtureDate)
       expect(r.recommended!.warnings.some((w) => w.type === 'seasonal')).toBe(true);

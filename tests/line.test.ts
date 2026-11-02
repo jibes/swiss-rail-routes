@@ -3,6 +3,7 @@ import { insertTemplate, newTour } from '../src/core/edit';
 import {
   dropLine,
   entriesOf,
+  lineTo,
   insertEntries,
   lineEntries,
   linesLostByMove,
@@ -44,6 +45,43 @@ const trip = () => {
 };
 
 describe('the line: entries and scenic lines', () => {
+  const tags = (t: Pick<Tour, 'waypoints'>) =>
+    t.waypoints.map((w) => `${w.name}${w.templateId ? `@${w.templateId}` : ''}`);
+  const LAKE = {
+    id: 'lake',
+    chain: ['Vitznau', 'Weggis', 'Luzern'].map((n) => ({ ref: `ch:1:sloid:${n}`, name: n })),
+    mustPass: [],
+  };
+
+  it('removing, replacing or moving a line’s end leaves no line behind', () => {
+    // Zurich, StGallen@vae, (rings), Luzern@vae, …: remove Luzern (entry 2).
+    const t = insertEntries(start(), 0, lineEntries(VAE));
+    expect(tags(removeEntry(t, 2))).toEqual(['Zurich', 'StGallen']);
+    expect(tags(replaceEntry(t, 2, s('Bern')))).toEqual(['Zurich', 'StGallen', 'Bern']);
+    const moved = moveEntry(insertEntries(t, 2, [stationEntry(s('Bern'))]), 2, 3);
+    expect(tags(moved)).toEqual(['Zurich', 'StGallen', 'Bern', 'Luzern']);
+  });
+
+  it('knows a line without must-pass stations by its two ends, and drops it', () => {
+    const t = insertEntries(start(), 0, lineEntries(LAKE));
+    const e = entriesOf(t);
+    expect(lineTo(e, 2)).toBe('lake');
+    expect(tags(dropLine(t, 2))).toEqual(['Zurich', 'Vitznau', 'Luzern']);
+  });
+
+  it('a line ending at the next station leads there, without a second one', () => {
+    const t = insertEntries(start(), 0, [stationEntry(s('Luzern'))]);
+    const withLine = insertEntries(t, 0, lineEntries(BRUENIG, true));
+    expect(names(insertEntries(t, 0, lineEntries(VAE)))).toEqual([
+      'Zurich:start',
+      'StGallen:via',
+      'Herisau°:via',
+      'Wattwil°:via',
+      'Luzern:end',
+    ]);
+    expect(withLine.waypoints.filter((w) => w.name === 'Luzern')).toHaveLength(1);
+  });
+
   it('adds a line as its two ends, the must-pass stations as rings, continuing where you are', () => {
     expect(names(trip())).toEqual([
       'Zurich:start',
@@ -344,41 +382,42 @@ describe('rows: the replacement bus outside the station', () => {
     ...(dep ? { dep: iso(dep) } : {}),
   });
 
-  it('counts a stop of the same place as the station, not as a station missed', () => {
+  it('counts the station walked through from the bus stop outside it, not as a station missed', () => {
     const tour = insertEntries(start(), 0, [
       stationEntry(s('Interlaken Ost')),
       stationEntry(s('Bern')),
     ]);
-    const near = (x: string, y: string) =>
-      x === y || [x, y].every((k) => k.startsWith('ch:1:sloid:Interlaken Ost'));
-    const rows = plannedRows(
-      tour,
-      [
-        {
-          legIndex: 0,
-          dep: iso('07:00'),
-          arr: iso('09:00'),
-          transfers: 1,
-          sections: [
-            {
-              mode: 'bus',
-              line: 'EV',
-              from: call('Zurich', undefined, '07:00'),
-              to: call('Interlaken Ost, Bahnhof', '08:00'),
-              intermediate: [],
-            },
-            {
-              mode: 'rail',
-              line: 'IC',
-              from: call('Interlaken Ost', undefined, '08:10'),
-              to: call('Bern', '09:00'),
-              intermediate: [],
-            },
-          ],
-        },
-      ],
-      near,
-    );
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('07:00'),
+        arr: iso('09:00'),
+        transfers: 1,
+        sections: [
+          {
+            mode: 'bus',
+            line: 'EV',
+            from: call('Zurich', undefined, '07:00'),
+            to: call('Interlaken Ost, Bahnhof', '08:00'),
+            intermediate: [],
+          },
+          {
+            mode: 'walk',
+            walkMin: 0,
+            from: call('Interlaken Ost, Bahnhof'),
+            to: call('Interlaken Ost'),
+            intermediate: [],
+          },
+          {
+            mode: 'rail',
+            line: 'IC',
+            from: call('Interlaken Ost', undefined, '08:10'),
+            to: call('Bern', '09:00'),
+            intermediate: [],
+          },
+        ],
+      },
+    ]);
     const names = rows.flatMap((r) =>
       r.type === 'station' ? [`${r.name}${r.missed ? ' (missed)' : ''}`] : [],
     );

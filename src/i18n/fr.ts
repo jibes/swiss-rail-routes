@@ -256,4 +256,5 @@ export const fr = {
   debugLogFailed: 'Impossible d’enregistrer le journal',
   storageFailed:
     'Vos voyages enregistrés n’ont pas pu être lus. Rien n’est enregistré avant la prochaine ouverture de l’app.',
+  riskNotServed: '{line} ne s’arrête pas à {stop}',
 } satisfies Catalogue;

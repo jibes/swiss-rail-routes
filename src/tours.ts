@@ -15,13 +15,6 @@ interface ToursState {
   replaceAll: (list: Tour[]) => Promise<unknown>;
 }
 
-/** Next Saturday, or today when it is one: day trips are mostly planned for the weekend. */
-export function defaultDate(now = new Date()): string {
-  const d = new Date(now);
-  d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7));
-  return d.toLocaleDateString('sv-SE');
-}
-
 export const useTours = create<ToursState>()((set, get) => ({
   loaded: false,
   failed: false,

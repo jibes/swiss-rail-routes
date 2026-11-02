@@ -8,6 +8,7 @@ import {
   plan,
   type PlannedChain,
 } from '../src/core/planner/plan';
+import { insertEntries, lineEntries, setEntryStay, stationEntry } from '../src/core/line';
 import { DATE, conn, deps, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (name: string) => ({ stopRef: ref(name), name });
@@ -139,6 +140,35 @@ describe('chaining with dwell', () => {
   });
 });
 
+describe('arrive by, with long legs', () => {
+  // Zürich → Lugano every hour, 5 h each way: the old first try (90 min a leg) found nothing.
+  const slow = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00'].map((d) =>
+    conn(
+      ride('IC 2', [
+        ['Zürich HB', d],
+        ['Lugano', `${String(Number(d.slice(0, 2)) + 5).padStart(2, '0')}:00`],
+      ]),
+    ),
+  );
+  const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Lugano')));
+
+  it('steps back far enough and offers every chain that arrives in time', async () => {
+    const r = await plan({ ...t, anchor: { arriveBy: '16:00' } }, deps(slow).deps);
+    expect(r.options?.length).toBeGreaterThan(0);
+    for (const c of r.options!)
+      expect(Date.parse(c.arr)).toBeLessThanOrEqual(Date.parse(slow[5]!.arr));
+    expect(r.options!.some((c) => c.dep === slow[5]!.dep)).toBe(true);
+  });
+});
+
+describe('a route that collapses to one stop', () => {
+  it('plans nothing instead of failing', async () => {
+    const t = tour('Zürich HB', (x) => addWaypoint(x, stop('Zürich HB')));
+    const r = await plan(t, deps([]).deps);
+    expect(r.options).toBeUndefined();
+  });
+});
+
 describe('relaxation', () => {
   it('drops must-pass only when nothing passes, and says so', async () => {
     const t: Tour = {
@@ -153,6 +183,23 @@ describe('relaxation', () => {
     const r = await plan(t, deps([base('08:09', '10:08')]).deps);
     expect(r.recommended).toBeDefined();
     expect(r.relaxed).toEqual([{ legIndex: 0, rule: 'mustPass' }]);
+  });
+
+  it('says every rule the train breaks: not via Göschenen, and through the base tunnel', async () => {
+    const t: Tour = {
+      ...newTour('t', DATE),
+      anchor: { departAt: '08:00' },
+      waypoints: [
+        { ...stop('Zürich HB'), kind: 'start', dwellMin: 0 },
+        { ...stop('Göschenen'), kind: 'via', dwellMin: 0, templateId: 'gotthard-bergstrecke' },
+        { ...stop('Lugano'), kind: 'end', dwellMin: 0, templateId: 'gotthard-bergstrecke' },
+      ],
+    };
+    const r = await plan(t, deps([base('08:09', '10:08')]).deps);
+    expect(r.relaxed).toEqual([
+      { legIndex: 0, rule: 'avoid' },
+      { legIndex: 0, rule: 'mustPass' },
+    ]);
   });
 });
 
@@ -276,6 +323,17 @@ describe('round trips', () => {
     expect(rules).toHaveLength(1);
     expect(rules[0]!.templates.map((x) => x.id)).toEqual(['albula', 'bernina']);
     expect(index.byRef(rules[0]!.mustPass[0]!)?.name).toBe('Chur');
+  });
+});
+
+describe('lines and legs', () => {
+  it('a line’s rules stay on its own leg, not the next one from its end station', () => {
+    let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Chur'))]);
+    t = insertEntries(t, 0, lineEntries(tpl('albula')));
+    t = insertEntries(t, 1, lineEntries(tpl('vereina'), true));
+    t = setEntryStay(t, 1, 60);
+    const rules = legRules({ ...t, anchor: { departAt: '08:00' } }, { templates, segments: [] });
+    expect(rules.map((r) => r.templates.map((x) => x.id))).toEqual([['albula'], ['vereina']]);
   });
 });
 
