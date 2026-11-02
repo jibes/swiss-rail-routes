@@ -97,28 +97,6 @@
   color: var(--rail-ink);
 }
 
-svg.mini-line {
-  width: 100%;
-  height: 12px;
-  overflow: visible;
-  color: var(--rail);
-}
-
-svg.mini-line line {
-  stroke: currentColor;
-  stroke-width: 3;
-}
-
-svg.mini-line circle {
-  fill: currentColor;
-}
-
-svg.mini-line circle.via {
-  fill: var(--bg);
-  stroke: currentColor;
-  stroke-width: 2;
-}
-
 /* The trip screen */
 .trip-screen .bar .sp {
   flex: 1;

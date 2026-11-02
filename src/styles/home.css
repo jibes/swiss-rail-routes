@@ -26,9 +26,11 @@
   height: 12px;
 }
 
+/* Runs 1 px into its neighbours, so no gap shows beside a ring. */
 .mini-line i {
   flex: 1;
-  height: 2px;
+  height: 3px;
+  margin: 0 -1px;
   background: var(--rail);
 }
 
@@ -40,11 +42,14 @@
   background: var(--rail);
 }
 
+/* 9 px across plus 0.5 px either side: as wide as a dot, so all stations are evenly spaced. */
 .mini-line b.via {
+  position: relative;
   width: 6px;
   height: 6px;
-  background: var(--surface);
-  border: 2px solid var(--rail);
+  margin: 0 0.5px;
+  background: var(--bg);
+  border: 1.5px solid var(--rail);
 }
 
 .empty {
