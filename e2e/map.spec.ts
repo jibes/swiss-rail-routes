@@ -19,7 +19,8 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
   await page.getByRole('button', { name: 'Map' }).click();
   await expect(page.getByRole('region', { name: 'Map' })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
-  // The route is drawn all the same, on a plain ground: the rail's red is on the map.
+  // The route is drawn all the same, on a plain ground: the rail's red is on the map, with
+  // arrows the way it goes (their dark fill: the red line on the light ground is never darker).
   await expect
     .poll(
       async () => {
@@ -36,14 +37,17 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
           g.drawImage(img, 0, 0);
           const d = g.getImageData(0, 0, c.width, c.height).data;
           let red = 0;
-          for (let i = 0; i < d.length; i += 4)
+          let dark = 0;
+          for (let i = 0; i < d.length; i += 4) {
             if (d[i]! > 150 && d[i + 1]! < 80 && d[i + 2]! < 80) red++;
-          return red;
+            if (d[i]! > 90 && d[i]! < 140 && d[i + 1]! < 45 && d[i + 2]! < 45) dark++;
+          }
+          return red > 50 && dark > 20;
         }, png);
       },
       { timeout: 15_000 },
     )
-    .toBeGreaterThan(50);
+    .toBe(true);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chur → St. Moritz');
 });

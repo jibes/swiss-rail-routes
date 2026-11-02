@@ -26,7 +26,34 @@ maplibregl.setWorkerUrl(workerUrl);
 
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 const ACCENT = '#c0261b';
+const ACCENT_DARK = '#7a140d';
 const LOCATION = '#1a73e8';
+
+/**
+ * The way each ride goes, as arrowheads on the line: a way back on the same tracks shows
+ * arrows both ways. Drawn here, so it needs neither the style's sprite nor the tile host.
+ */
+function arrowImage(r: number): ImageData {
+  const c = document.createElement('canvas');
+  c.width = c.height = 16 * r;
+  const g = c.getContext('2d')!;
+  g.scale(r, r);
+  g.lineJoin = 'round';
+  g.beginPath();
+  // A dart, notched at the back: unlike a plain triangle, it can only point one way.
+  g.moveTo(2, 3.5);
+  g.lineTo(14, 8);
+  g.lineTo(2, 12.5);
+  g.lineTo(5, 8);
+  g.closePath();
+  // White round a dark head: readable on the red line and off it at corners.
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 2.5;
+  g.stroke();
+  g.fillStyle = ACCENT_DARK;
+  g.fill();
+  return g.getImageData(0, 0, c.width, c.height);
+}
 
 /** Without the tile host (offline, blocked): the route on a plain ground, still readable. */
 const PLAIN: maplibregl.StyleSpecification = {
@@ -145,6 +172,23 @@ export default function MapView({ id }: { id: string }) {
             'line-color': ACCENT,
             'line-width': 4,
             'line-dasharray': ['case', ['get', 'exact'], ['literal', [1]], ['literal', [2, 2]]],
+          },
+        });
+        // Sharp on any screen; its own name, as the style's sprite may have an 'arrow'.
+        const ratio = Math.ceil(window.devicePixelRatio || 1);
+        map.addImage('srr-arrow', arrowImage(ratio), { pixelRatio: ratio });
+        map.addLayer({
+          id: 'arrows',
+          type: 'symbol',
+          source: 'lines',
+          layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': 110,
+            'icon-image': 'srr-arrow',
+            // Every ride's arrows, also where a way back lies on the way out; and they never
+            // push a highlight's name away.
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
           },
         });
         map.addLayer({

@@ -29,7 +29,7 @@ One list (Now, Coming up) and one trip screen (SPEC §3a, 0.4.0). Every trip has
 - **Panel** (tap a station you entered): name field, No stop · Stay (a stepper for how long; where you asked to ride through but the plan changes trains, it says so), "Via <line> ×", Add after, ↑, ↓, remove; a grip beside the name drags it.
 - **Add sheet:** one search for stations, scenic lines and your past trips (each with its mini line and × to forget).
 - **Under way:** progress bar, the next step as a card (with where its times come from), connections at risk in red, Replan from here, and the same line as the trip screen, read-only: expected times with their delay, the travelled part grey, a pulsing marker, the ride's stops open. A shared trip, a shared route and a trip over today show that line too (0.9.0); there is no second way to draw a trip.
-- **Map:** full screen, a floating back button, and top right the location button. One marker for where you are: red with a pulse, as on the line, for the estimate from the timetable; blue with its accuracy circle for the device's location. A short line at the bottom says which it is. Without the tile host the route is drawn on a plain ground, and a note says so.
+- **Map:** full screen, a floating back button, and top right the location button. Arrowheads on the line say which way each ride goes; out and back on the same tracks shows them both ways. One marker for where you are: red with a pulse, as on the line, for the estimate from the timetable; blue with its accuracy circle for the device's location. A short line at the bottom says which it is. Without the tile host the route is drawn on a plain ground, and a note says so.
 
 ## Reviewing a change
 
