@@ -784,3 +784,13 @@
   bottom: auto;
   height: 18px;
 }
+
+/* A walk: the rail dashed (you are not on a train), as the design has it for a walk. */
+.trip-line .ride.walk .rail::before {
+  width: 3px;
+  background: repeating-linear-gradient(var(--rail) 0 6px, transparent 6px 11px);
+}
+
+.trip-line.live .ride.walk.passed .rail::before {
+  background: repeating-linear-gradient(var(--ink-3) 0 6px, transparent 6px 11px);
+}

@@ -35,6 +35,18 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
       }
       expect(await page.locator('.trip-line .ride').count()).toBeGreaterThan(0);
     }
+    // T3 walks (Interlaken Ost to its bus stop, Thun): a walk's rail is dashed, a ride's solid.
+    if (id === 'T3') {
+      const rail = (sel: string) =>
+        page
+          .locator(sel)
+          .first()
+          .evaluate(
+            (li) => getComputedStyle(li.querySelector('.rail')!, '::before').backgroundImage,
+          );
+      expect(await rail('.trip-line .ride.walk')).toContain('repeating-linear-gradient');
+      expect(await rail('.trip-line .ride:not(.walk)')).toBe('none');
+    }
 
     // The calendar is in the menu; the map shows the trip and goes back to it.
     await page.getByRole('button', { name: 'More' }).click();

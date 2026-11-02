@@ -174,6 +174,7 @@ export function TripLine({
               key={`r${id}`}
               className={[
                 'ride',
+                s.mode === 'walk' ? 'walk' : '',
                 riding ? 'here' : '',
                 shown ? 'with-mids' : '',
                 live && arrives !== undefined && arrives <= live.now ? 'passed' : '',
