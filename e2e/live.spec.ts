@@ -147,4 +147,11 @@ test('under way, the stations beside a walk passed are grey', async ({ page }) =
     ).length;
   });
   expect(red).toBe(0);
+  // The dots under the solid part are masked to its width, or they show as a bumpy second line.
+  const masked = await passed.evaluateAll((els) =>
+    els.every(
+      (li) => getComputedStyle(li.querySelector('.rail')!, '::before').maskImage !== 'none',
+    ),
+  );
+  expect(masked).toBe(true);
 });
