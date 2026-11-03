@@ -199,3 +199,26 @@ describe('sync engine', () => {
     expect(trips.find((x) => x.id === 'keep')!.at).toBeGreaterThan(0);
   });
 });
+
+describe('the sync lock', () => {
+  it('a lock another tab never lets go of does not hold this one for good', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    vi.useFakeTimers();
+    const request = vi.fn(
+      (_name: string, opts: { signal: AbortSignal }) =>
+        new Promise((_, reject) =>
+          opts.signal.addEventListener('abort', () => reject(new Error('aborted'))),
+        ),
+    );
+    vi.stubGlobal('navigator', { ...globalThis.navigator, locks: { request } });
+    const round = a.sync.syncNow();
+    await vi.advanceTimersByTimeAsync(a.sync.LOCK_WAIT_MS + 1);
+    await expect(round).resolves.toBeUndefined();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(a.sync.useSync.getState().status).toBe('ok');
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+});

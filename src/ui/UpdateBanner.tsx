@@ -1,6 +1,7 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { log } from '../io/log';
 import { useT } from '../store';
+import { watchUpdates } from './updateCheck';
 
 /** Workbox `prompt` update flow (STANDARD §2): the user decides when to reload. */
 export function UpdateBanner() {
@@ -9,7 +10,10 @@ export function UpdateBanner() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW: (url) => log('sw.registered', { url }),
+    onRegisteredSW: (url, r) => {
+      log('sw.registered', { url });
+      if (r) watchUpdates(() => r.update());
+    },
     onNeedRefresh: () => log('sw.update'),
     onRegisterError: (e: unknown) => log('sw.fail', { e }),
   });

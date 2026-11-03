@@ -67,8 +67,12 @@ export interface LatLon {
 export interface StopCall {
   stopRef: string;
   name: string;
+  /** Timetabled times. */
   arr?: string;
   dep?: string;
+  /** Expected times, when the timetable service knew a delay as it answered (the day itself). */
+  arrEst?: string;
+  depEst?: string;
 }
 
 /** One vehicle ride (or walk) inside a connection. Times are ISO 8601 with offset. */
@@ -98,8 +102,12 @@ export interface Section {
 
 export interface Connection {
   legIndex: number;
+  /** Timetabled, walks at the ends included. */
   dep: string;
   arr: string;
+  /** Expected, as `StopCall.depEst`/`arrEst`: the first and last ride's, walks included. */
+  depEst?: string;
+  arrEst?: string;
   transfers: number;
   sections: Section[];
 }

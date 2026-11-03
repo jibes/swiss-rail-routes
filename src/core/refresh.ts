@@ -102,11 +102,21 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
     const next = { sections } as Connection;
     const [nFirst, nLast] = [rides(next)[0]?.[0], rides(next).at(-1)?.[0]];
     const moved = (a?: string, b?: string) => (a && b ? Date.parse(b) - Date.parse(a) : 0);
+    const dep = shift(c.dep, moved(first?.from.dep, nFirst?.from.dep));
+    const arr = shift(c.arr, moved(last?.to.arr, nLast?.to.arr));
+    // A delay the fresh answer knows: expected times beside the timetable's, as when planned.
+    const depEst = nFirst?.from.depEst
+      ? shift(dep, moved(nFirst.from.dep, nFirst.from.depEst))
+      : undefined;
+    const arrEst = nLast?.to.arrEst ? shift(arr, moved(nLast.to.arr, nLast.to.arrEst)) : undefined;
+    const { depEst: _d, arrEst: _a, ...rest } = c;
     return {
-      ...c,
+      ...rest,
       sections,
-      dep: shift(c.dep, moved(first?.from.dep, nFirst?.from.dep)),
-      arr: shift(c.arr, moved(last?.to.arr, nLast?.to.arr)),
+      dep,
+      arr,
+      ...(depEst ? { depEst } : {}),
+      ...(arrEst ? { arrEst } : {}),
     };
   });
   const warnings = chainWarnings(trip, connections, deps);

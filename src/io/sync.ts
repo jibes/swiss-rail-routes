@@ -270,9 +270,28 @@ export function syncNow(force = false): Promise<void> {
   return running;
 }
 
-/** Rounds of all tabs one at a time (Web Locks where there are). */
-const exclusive = (f: () => Promise<void>) =>
-  navigator.locks ? navigator.locks.request('srr-sync', f) : f();
+/** How long a round waits for another tab's to end before giving up on this one. */
+export const LOCK_WAIT_MS = 60_000;
+
+/**
+ * Rounds of all tabs one at a time (Web Locks where there are). A tab frozen by the browser in
+ * the middle of its round keeps the lock until it is discarded: this round is given up after
+ * LOCK_WAIT_MS (the next change or return to the app asks again) instead of every tab waiting
+ * for good.
+ */
+async function exclusive(f: () => Promise<void>) {
+  if (!navigator.locks) return f();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), LOCK_WAIT_MS);
+  try {
+    await navigator.locks.request('srr-sync', { signal: ctrl.signal }, f);
+  } catch (e) {
+    if (!ctrl.signal.aborted) throw e;
+    log('sync.lock.timeout', { ms: LOCK_WAIT_MS });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function once(force = false) {
   if (!syncAvailable()) return;

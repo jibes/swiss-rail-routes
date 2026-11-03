@@ -5,6 +5,10 @@ import { stopKey } from '../stops';
 export const MIN = 60_000;
 export const ms = (iso: string) => Date.parse(iso);
 
+/** When a connection is expected to leave and arrive: the estimate known, else the timetable. */
+export const expectedDep = (c: Connection) => c.depEst ?? c.dep;
+export const expectedArr = (c: Connection) => c.arrEst ?? c.arr;
+
 export const rides = (c: Connection): [Section, number][] =>
   c.sections.map((s, i) => [s, i] as [Section, number]).filter(([s]) => s.mode !== 'walk');
 

@@ -8,7 +8,16 @@ import { withLines } from '../line';
 import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
 import { isSupplement, warningsFor, type Warning } from '../warnings';
-import { MIN, ms, rides, visited } from './connection';
+import {
+  expectedArr,
+  expectedDep,
+  isTight,
+  MIN,
+  ms,
+  rides,
+  visited,
+  walkMinutes,
+} from './connection';
 import { passesVias, stitched, type Query } from './stitch';
 
 /**
@@ -138,6 +147,34 @@ export function splitLoops(tour: Tour): Tour {
     ...tour,
     waypoints: tour.waypoints.map((w) => (turn.has(w) ? { ...w, kind: 'stop', dwellMin: 0 } : w)),
   };
+}
+
+/**
+ * The change from one leg's last ride to the next leg's first, judged as `warningsFor` judges
+ * a change within a connection and as the live view will: tight below TIGHT_TRANSFER_MIN or
+ * the walk between them. Said on the ride you leave. A stay planned there is time enough.
+ */
+function changeWarning(prev: Connection | undefined, c: Connection, legIndex: number): Warning[] {
+  const a = rides(prev ?? c).at(-1);
+  const b = rides(c)[0];
+  if (!prev || !a || !b || !a[0].to.arr || !b[0].from.dep) return [];
+  if (a[0].journey && a[0].journey === b[0].journey) return [];
+  const walk = [...prev.sections.slice(a[1] + 1), ...c.sections.slice(0, b[1])].reduce(
+    (m, s) => m + (s.mode === 'walk' ? walkMinutes(s) : 0),
+    0,
+  );
+  const min = (ms(b[0].from.dep) - ms(a[0].to.arr)) / MIN;
+  if (!isTight(min, walk)) return [];
+  return [
+    {
+      type: 'tight-transfer',
+      severity: 'warn',
+      legIndex: legIndex - 1,
+      sectionIndex: a[1],
+      key: 'wTightTransfer',
+      params: { min: Math.max(0, Math.round(min)), at: a[0].to.name },
+    },
+  ];
 }
 
 /** Why a connection fails the leg's rules, or null when it passes. */
@@ -334,22 +371,24 @@ async function planFrom(
           : list;
       };
       pool = preferred(pool);
+      // Chained by the times expected (a delay the service knew as it answered), so a change
+      // that is already lost is never planned; the warnings read the timetable, as the line does.
       for (const b of beams) {
-        let opts = pool.filter((c) => ms(c.dep) >= b.ready);
+        let opts = pool.filter((c) => ms(expectedDep(c)) >= b.ready);
         if (!opts.length && b.ready > ready) {
           const own = (await fetchAt(asked, b.ready, relaxed)).filter(
-            (c) => !rejectReason(c, asked, relaxed) && ms(c.dep) >= b.ready,
+            (c) => !rejectReason(c, asked, relaxed) && ms(expectedDep(c)) >= b.ready,
           );
           opts = preferred(own);
         }
         for (const c of opts) {
-          const w = warningsFor(c, ctx);
+          const w = [...warningsFor(c, ctx), ...changeWarning(b.conns.at(-1), c, i)];
           const dwell = Math.max(rules.leg.to.dwellMin, minTransfer);
           next.push({
             conns: [...b.conns, c],
             warnings: [...b.warnings, ...w],
             penalty: b.penalty + scoreOf(c, w, wt),
-            ready: ms(c.arr) + dwell * MIN,
+            ready: ms(expectedArr(c)) + dwell * MIN,
           });
         }
       }

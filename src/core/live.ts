@@ -51,6 +51,8 @@ export interface LiveState {
 
 const ms = (iso?: string) => (iso ? Date.parse(iso) : undefined);
 
+// Expected: what the vehicle reports (on time included, so a delay the plan was made with
+// does not stay once it is made up); until it reports, the delay known as the plan was made.
 function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveStop {
   const arrPlan = ms(c.arr);
   const depPlan = ms(c.dep);
@@ -59,8 +61,8 @@ function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveSto
     name: c.name,
     arrPlan,
     depPlan,
-    arr: ms(live?.arrEst) ?? arrPlan,
-    dep: ms(live?.depEst) ?? depPlan,
+    arr: (live ? ms(live.arrEst) : ms(c.arrEst)) ?? arrPlan,
+    dep: (live ? ms(live.depEst) : ms(c.depEst)) ?? depPlan,
     platform: live?.platform ?? c.platform,
     cancelled: live?.cancelled ?? false,
   };

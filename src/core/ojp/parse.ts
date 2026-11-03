@@ -63,14 +63,28 @@ function modeOf(service: X): Mode {
   }
 }
 
+// The timetable's times are the plan (links, calendar, the question asked again later); an
+// estimate the service already knows (asked on the day) is kept beside them.
 function call(v: X, kind: 'board' | 'alight' | 'mid'): StopCall & { platform?: string } {
   const dep = obj(v?.ServiceDeparture);
   const arr_ = obj(v?.ServiceArrival);
+  const time = (t: X) => {
+    const planned = str(t?.TimetabledTime);
+    const expected = str(t?.EstimatedTime);
+    return {
+      at: planned ?? expected,
+      est: expected && planned !== expected ? expected : undefined,
+    };
+  };
+  const d = kind === 'alight' ? undefined : time(dep);
+  const a = kind === 'board' ? undefined : time(arr_);
   return {
     stopRef: str(v?.StopPointRef) ?? '',
     name: text(v?.StopPointName) ?? '',
-    dep: kind === 'alight' ? undefined : (str(dep?.EstimatedTime) ?? str(dep?.TimetabledTime)),
-    arr: kind === 'board' ? undefined : (str(arr_?.EstimatedTime) ?? str(arr_?.TimetabledTime)),
+    dep: d?.at,
+    arr: a?.at,
+    ...(d?.est ? { depEst: d.est } : {}),
+    ...(a?.est ? { arrEst: a.est } : {}),
     platform: text(v?.EstimatedQuay) ?? text(v?.PlannedQuay),
   };
 }
@@ -201,11 +215,16 @@ export function parseTrips(xml: string): Connection[] {
     };
     const shift = (iso: string | undefined, ms: number) =>
       iso && ms ? new Date(Date.parse(iso) + ms).toISOString().replace('.000Z', 'Z') : iso;
+    const [first, last] = [rides[0]!.from, rides.at(-1)!.to];
+    const depEst = shift(first.depEst, -walks(sections));
+    const arrEst = shift(last.arrEst, walks([...sections].reverse()));
     return [
       {
         legIndex: 0,
-        dep: shift(rides[0]!.from.dep, -walks(sections)) ?? str(trip.StartTime)!,
-        arr: shift(rides.at(-1)!.to.arr, walks([...sections].reverse())) ?? str(trip.EndTime)!,
+        dep: shift(first.dep, -walks(sections)) ?? str(trip.StartTime)!,
+        arr: shift(last.arr, walks([...sections].reverse())) ?? str(trip.EndTime)!,
+        ...(depEst ? { depEst } : {}),
+        ...(arrEst ? { arrEst } : {}),
         transfers: Number(str(trip.Transfers) ?? rides.length - 1),
         sections,
       },

@@ -19,7 +19,9 @@ export const toursList = savedList<Tour>(TOURS, (raw) => {
   return raw.flatMap((x) => {
     const t = sanitiseTour(x, today, 0);
     const id = (x as { id?: unknown })?.id;
-    return t && typeof id === 'string' ? [{ ...t, id }] : [];
+    // What this version does not know stays (a field a newer version added, synced from
+    // another device): read, saved and hashed as it came, so it is neither lost nor an edit.
+    return t && typeof id === 'string' ? [{ ...(x as object), ...t, id }] : [];
   });
 });
 
