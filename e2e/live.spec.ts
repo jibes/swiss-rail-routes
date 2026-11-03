@@ -1,7 +1,7 @@
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { expect, pick, planShared, test } from './fixtures';
+import { BEFORE, expect, pick, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
@@ -123,4 +123,28 @@ test('before departure: edited in place; after its day: in search', async ({ pag
   await expect(page.getByRole('list', { name: 'Upcoming' })).toHaveCount(0);
   await page.getByRole('button', { name: 'New trip' }).click();
   await expect(page.getByRole('button', { name: /^T5/ })).toBeVisible();
+});
+
+// T3 walks at Interlaken Ost and Thun: once passed, the stations beside a walk are grey all
+// along their rail, not red where it is solid (they were, as fragments on the grey line).
+test('under way, the stations beside a walk passed are grey', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T3!, name: 'T3' }));
+  const [, arr] = (await page.locator('.hero-times').innerText()).match(/\d\d:\d\d/g)!;
+  const end = Date.parse(`${FIXTURE_DATE}T${arr}:00+01:00`);
+  await page.clock.fastForward(end - 20 * 60_000 - BEFORE.getTime());
+  await expect(page.locator('.trip-line.live')).toBeVisible();
+  const passed = page.locator('.trip-line.live .station.passed:is(.walk-from, .walk-to)');
+  await expect(passed.first()).toBeVisible();
+  const red = await passed.evaluateAll((els) => {
+    const probe = document.createElement('i');
+    probe.style.color = 'var(--rail)';
+    document.body.append(probe);
+    const rail = getComputedStyle(probe).color;
+    probe.remove();
+    return els.filter((li) =>
+      getComputedStyle(li.querySelector('.rail')!, '::before').backgroundImage.includes(rail),
+    ).length;
+  });
+  expect(red).toBe(0);
 });

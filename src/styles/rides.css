@@ -7,6 +7,15 @@
   background: var(--ink-3);
 }
 
+/* What is solid of a station's rail (beside a walk too) is red ahead and grey once passed. */
+.trip-line .station {
+  --solid: var(--rail);
+}
+
+.trip-line.live .station.passed {
+  --solid: var(--ink-3);
+}
+
 .trip-line.live .passed > .t,
 .trip-line.live .passed > .m {
   opacity: 0.55;
@@ -173,13 +182,13 @@
   width: 4px;
   margin-left: -2px;
   background:
-    linear-gradient(var(--rail), var(--rail)) center top / 3px var(--dot-at) no-repeat,
+    linear-gradient(var(--solid), var(--solid)) center top / 3px var(--dot-at) no-repeat,
     radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
 }
 
 .trip-line .station.walk-to .rail::before {
   background:
-    linear-gradient(var(--rail), var(--rail)) center bottom / 3px calc(100% - var(--dot-at))
+    linear-gradient(var(--solid), var(--solid)) center bottom / 3px calc(100% - var(--dot-at))
       no-repeat,
     radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
 }
