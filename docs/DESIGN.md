@@ -9,9 +9,9 @@ A day trip is one rail line. Every screen draws it the same way, so nothing has 
 1. **One line, one accent.** The rail is the only colour (`--rail`). Solid dot: you get off (start, stops, end). Ring: the train passes through. Dotted grey: a walk. Dashed: "add a station".
 2. **Hairlines, not boxes.** Surfaces only where something is tapped as a whole (tour cards, route chips, the options control).
 3. **Numbers first.** Times are tabular and bold; departure–arrival is the largest type on the timeline.
-4. **Thumb zone.** Each screen has one main action in the bottom dock (New tour, Plan, Share). Navigation sits top left, the map top right.
-5. **Edit in place.** Tap a station's name and it becomes its own search field: type another, × and leave to remove it, the stay as a chip beside it. The grip moves it. Selects are the app's own (a chip and a list), never the system's. No dialogs, no settings screen.
-6. **Smart defaults.** A route template runs in the direction that continues from your last station; a new trip is today, from now, with GA.
+4. **Thumb zone.** A screen with one main action has it in the bottom dock (New trip on the list, Update trip on replan); the trip screen has none, it plans itself. Navigation sits top left, map and share top right.
+5. **Edit in place.** Tap a station you entered and its panel opens under it: the name as its own search field, no stop or a stay, the line that leads there, add after, up, down, remove; the grip moves it. Selects are the app's own (a chip and a list); the date and the time are the system's pickers, lying invisible over a pill (the one control the system does better). No dialogs; one Settings screen (sync, reservation trains, language, debug log).
+6. **Smart defaults.** A scenic line runs the way that continues from your last station; a new trip is today, from the next five minutes; reservation-only trains are avoided unless Settings say otherwise; where the GA does not cover a stretch, a note says so.
 7. **Calm warnings.** A coloured dot and one line of text under the ride it concerns: red for disruptions, amber for things to check, blue for information.
 
 ## Tokens

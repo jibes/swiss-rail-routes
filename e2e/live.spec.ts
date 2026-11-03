@@ -1,7 +1,7 @@
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { expect, planShared, test } from './fixtures';
+import { expect, pick, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
@@ -88,9 +88,7 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await line.locator('.station.entry').first().getByRole('button').first().click();
   await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add after' }).click();
-  const search = page.getByPlaceholder('Station, scenic line or past trip');
-  await search.fill('Wengen');
-  await search.press('Enter');
+  await pick(page, 'Wengen');
 
   const wengen = line.locator('.station.entry', { hasText: 'Wengen' });
   await wengen.getByRole('button', { name: /^Wengen/ }).click();

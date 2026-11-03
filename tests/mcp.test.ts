@@ -576,15 +576,34 @@ describe('over HTTP, with the real MCP client', () => {
         headers: { 'Content-Type': 'application/json' },
       });
     expect((await post('/mcp/wrong')).status).toBe(404);
-    expect((await post('/mcp/')).status).toBe(404);
     expect((await post(`/mcp/${SECRET}x`)).status).toBe(404);
-    expect((await post('/mcp')).status).toBe(404);
     expect((await post(`/${SECRET}`)).status).toBe(404);
     expect((await fetch(`${base}/mcp/wrong`)).status).toBe(404);
     const health = await fetch(`${base}/healthz`);
     expect(health.status).toBe(200);
     expect(trips).not.toHaveBeenCalled();
     expect((await fetch(`${base}/mcp/${SECRET}`)).status).toBe(405);
+    // The secret as a bearer token on /mcp, which no proxy or client logs as a path.
+    const bearer = (token: string, method = 'POST') =>
+      fetch(`${base}/mcp`, {
+        method,
+        body: method === 'POST' ? '{}' : undefined,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+    expect((await post('/mcp')).status).toBe(401);
+    expect((await post('/mcp/')).status).toBe(401);
+    expect((await bearer('wrong')).status).toBe(401);
+    expect((await bearer(`${SECRET}x`)).status).toBe(401);
+    expect((await bearer(SECRET, 'GET')).status).toBe(405);
+    expect((await bearer(SECRET)).status).not.toBe(401);
+    const client = new Client({ name: 'bearer', version: '1' });
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
+        requestInit: { headers: { Authorization: `Bearer ${SECRET}` } },
+      }),
+    );
+    servers.push({ close: () => void client.close() });
+    expect((await client.listTools()).tools.map((t) => t.name)).toHaveLength(5);
     expect((await post(`/mcp/${SECRET}`, 'x'.repeat(257 * 1024))).status).toBe(413);
     expect((await post(`/mcp/${SECRET}`, 'not json')).status).toBe(400);
   });

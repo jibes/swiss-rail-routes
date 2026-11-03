@@ -1,10 +1,9 @@
-import { BEFORE, expect, test } from './fixtures';
+import { BEFORE, expect, newTrip as open, test } from './fixtures';
 
 /** A new trip, today from the next five minutes (Mon 2 Nov, 09:05 in Zurich). */
 const newTrip = async (page: import('@playwright/test').Page) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
+  await open(page);
   await page.keyboard.press('Escape');
   await expect(page.getByLabel('Leave from (time)')).toHaveValue('09:05');
 };

@@ -2,7 +2,7 @@
 // OJP Worker (the build's VITE_OJP_URL, https://ojp.invalid) is answered from the recorded
 // acceptance answers (tests/fixtures/ojp/*/<sha1>.xml.gz, keyed like tests/acceptance/ojp.ts).
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { expect, test as base, type Page } from '@playwright/test';
 import { handle } from '../workers/ojp/src/handler';
@@ -15,13 +15,26 @@ export function recordedAnswer(body: string): string | null {
   const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
   for (const t of tours) {
     const f = `${DIR}/${t}/${key}.xml.gz`;
-    if (existsSync(f)) return gunzipSync(readFileSync(f)).toString('utf8');
+    if (existsSync(f)) {
+      if (process.env.FIXTURE_LOG) appendFileSync(process.env.FIXTURE_LOG, f + '\n');
+      return gunzipSync(readFileSync(f)).toString('utf8');
+    }
   }
   return null;
 }
 
 /** The sync mailbox, shared by every page of a run (ids are random per key). */
 const boxes = new Map<string, SyncRecord>();
+
+/** Pages whose tests mean a trip query without a recorded answer (the app's own failure path). */
+const lenient = new WeakSet<Page>();
+
+/**
+ * A trip query the fixtures cannot answer fails the test, so a planner change that asks
+ * something new is caught here, not hidden behind "could not load more". A test about what
+ * the app does when the service fails says so with this first.
+ */
+export const allowUnrecorded = (page: Page) => void lenient.add(page);
 
 /**
  * Answers the Worker with the Worker itself (`handle`, the same code that runs on Cloudflare):
@@ -34,6 +47,8 @@ export async function answerWorker(page: Page, problems: string[] = []) {
     const req = route.request();
     const body = req.postData() ?? undefined;
     const recorded = body ? recordedAnswer(body) : null;
+    if (body && !recorded && /\/trip$/.test(new URL(req.url()).pathname) && !lenient.has(page))
+      problems.push(`no recorded answer for ${body}`);
     const res = await handle(
       new Request(req.url(), {
         method: req.method(),
@@ -129,4 +144,22 @@ export async function planShared(page: Page, hash: string) {
   await expect(page.locator('.hero-times').or(page.locator('.trip-progress'))).toBeVisible({
     timeout: 30_000,
   });
+}
+
+/** Types into the add sheet's search and takes the first answer (Enter), or the one named. */
+export async function pick(page: Page, text: string, name?: RegExp) {
+  const search = page.getByPlaceholder('Station, scenic line or past trip');
+  await search.fill(text);
+  if (name) await page.getByRole('button', { name }).first().click();
+  else await search.press('Enter');
+}
+
+/** A new trip from the list with these stations, each after the one before. */
+export async function newTrip(page: Page, ...stations: string[]) {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  for (const [i, station] of stations.entries()) {
+    if (i) await page.getByRole('button', { name: 'Add a station' }).click();
+    await pick(page, station);
+  }
 }

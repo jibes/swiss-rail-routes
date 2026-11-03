@@ -130,13 +130,17 @@ suite('acceptance tours', { timeout }, () => {
     const wengen = index.search('Wengen', 1)[0]!;
     let draft = remainingRoute(trip, point);
     // As the screen asks while you edit: the rest as it is, then with Wengen, then the stay.
-    expect((await plan(draft, deps)).recommended).toBeDefined();
+    const rest = await plan(draft, deps);
+    expect(rest.relaxed).toEqual([]);
+    expect(stopsOf(rest.recommended!).has(ref('Kleine Scheidegg'))).toBe(true);
     draft = addWaypoint(
       draft,
       { stopRef: wengen.ref, name: wengen.name },
       draft.waypoints.length - 1,
     );
-    expect((await plan(draft, deps)).recommended).toBeDefined();
+    const viaWengen = await plan(draft, deps);
+    expect(viaWengen.relaxed).toEqual([]);
+    expect(stopsOf(viaWengen.recommended!).has(wengen.ref)).toBe(true);
     draft = setStop(draft, 1, true); // 30 min, as the panel's Stay
     const again = await plan(draft, deps);
     expect(again.relaxed).toEqual([]);

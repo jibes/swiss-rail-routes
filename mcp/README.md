@@ -6,14 +6,15 @@ It runs on a VPS, not as a Cloudflare Worker: a plan needs real CPU time and man
 
 ## Run
 
-| Env              | What                                                                  |
-| ---------------- | --------------------------------------------------------------------- |
-| `MCP_SECRET`     | Required, at least 32 characters. The MCP address is `/mcp/<secret>`. |
-| `OJP_WORKER_URL` | Required. The Worker's address.                                       |
-| `MCP_PORT`       | Default 8049. Listens on `0.0.0.0`.                                   |
-| `VIADUKT_URL`    | Default `https://jibes.github.io/swiss-rail-routes/`, for links.      |
+| Env              | What                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `MCP_SECRET`     | Required, at least 32 characters. Sent as `Authorization: Bearer <secret>` to `/mcp`. |
+| `OJP_WORKER_URL` | Required. The Worker's address.                                                       |
+| `MCP_PORT`       | Default 8049. Listens on `0.0.0.0`.                                                   |
+| `VIADUKT_URL`    | Default `https://jibes.github.io/swiss-rail-routes/`, for links.                      |
 
-- `POST /mcp/<secret>`: MCP, stateless Streamable HTTP. A wrong or missing secret gets 404, compared in constant time. With the right secret, other methods get 405 (what MCP clients expect of a server without sessions).
+- `POST /mcp` with `Authorization: Bearer <secret>`: MCP, stateless Streamable HTTP. A wrong or missing token gets 401, compared in constant time. With the right secret, other methods get 405 (what MCP clients expect of a server without sessions).
+- `POST /mcp/<secret>` still works for clients that cannot send a header, and is deprecated: a path ends up in the reverse proxy's access log and in clients' own logs. The proxy must not log request paths for this location (nginx: `access_log off;` in its `location`; Caddy: no `log` for the site, or a format without the URI) while any client uses it.
 - `GET /healthz`: 200, without calling the Worker.
 
 Older clients: every protocol version the SDK supports works over Streamable HTTP. The old HTTP+SSE transport (a GET stream, 2024-11-05) does not, as it needs state between requests.

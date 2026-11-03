@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { BEFORE, expect, test } from './fixtures';
+import { allowUnrecorded, BEFORE, expect, newTrip, pick, test } from './fixtures';
 
 const axe = async (page: import('@playwright/test').Page) =>
   (await new AxeBuilder({ page }).analyze()).violations
@@ -22,16 +22,16 @@ test('a new trip plans itself: T5 with the GA warning, options, and stays on the
       body: '<OJP><OJPResponse><ServiceDelivery><OJPTripDelivery><ErrorCondition><TripProblemType>TRIP_NOTRIPFOUND</TripProblemType></ErrorCondition></OJPTripDelivery></ServiceDelivery></OJPResponse></OJP>',
     });
   });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
+  // The date is set before the time: the plan asked in between (Saturday 09:05) has no answer.
+  allowUnrecorded(page);
+  await newTrip(page);
   // A new trip opens with the search: where it starts.
   const search = page.getByPlaceholder('Station, scenic line or past trip');
   await expect(search).toBeFocused();
   await search.fill('Interlaken Ost');
   await page.getByRole('button', { name: 'Interlaken Ost', exact: true }).click();
   await page.getByRole('button', { name: 'Add a station' }).click();
-  await search.fill('Kleine Scheidegg');
-  await search.press('Enter');
+  await pick(page, 'Kleine Scheidegg');
 
   // Today, from the next five minutes, by default (Mon 2 Nov, 09:00 in Zurich).
   const date = page.getByLabel('Date');

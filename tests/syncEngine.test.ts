@@ -30,10 +30,35 @@ const worker = async (input: string | URL | Request, init?: RequestInit) => {
   });
 };
 
-/** One device: its own IndexedDB and stores, sync loaded. */
+let devices = 0;
+
+/**
+ * One device: its own IndexedDB and stores, sync loaded. idb-keyval is a dependency, so
+ * `resetModules` leaves it as it is, and its default store would stay bound to the first
+ * device's database: each device gets the library with a store of its own instead.
+ */
 async function device() {
   vi.resetModules();
   globalThis.indexedDB = new IDBFactory();
+  const name = `device-${devices++}`;
+  vi.doMock('idb-keyval', async () => {
+    const actual = await vi.importActual<typeof import('idb-keyval')>('idb-keyval');
+    const own = actual.createStore(name, 'keyval');
+    const bound =
+      <A extends unknown[], R>(f: (...a: [...A, typeof own]) => R) =>
+      (...a: A) =>
+        f(...a, own);
+    return {
+      ...actual,
+      get: bound(actual.get),
+      set: bound(actual.set),
+      update: bound(actual.update),
+      del: bound(actual.del),
+      entries: bound(actual.entries),
+      keys: bound(actual.keys),
+      delMany: bound(actual.delMany),
+    };
+  });
   vi.stubEnv('VITE_OJP_URL', WORKER);
   vi.stubGlobal('fetch', worker);
   const sync = await import('../src/io/sync');
@@ -136,9 +161,7 @@ describe('sync engine', () => {
     await round;
     // Off, and the trips as they were on this device: not the other's.
     expect(a.sync.useSync.getState().key).toBeNull();
-    const ids = a.useTrips.getState().trips.map((t) => t.id);
-    expect(ids).toContain('ta');
-    expect(ids).not.toContain('tb');
+    expect(a.useTrips.getState().trips.map((t) => t.id)).toEqual(['ta']);
   });
 
   const openBox = async (key: string) => {

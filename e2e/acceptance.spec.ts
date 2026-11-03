@@ -1,4 +1,5 @@
 // T1–T6 through the real UI: route link → trip → every option → calendar → map.
+import { readFileSync } from 'node:fs';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
@@ -52,10 +53,14 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
       expect(await rail('.trip-line .ride:not(.walk)')).toBe('none');
     }
 
-    // The calendar is in the menu; the map shows the trip and goes back to it.
+    // The calendar from the menu: one event per train; the map shows the trip and goes back.
+    const rides = await page.locator('.trip-line .ride:not(.walk)').count();
     await page.getByRole('button', { name: 'More' }).click();
-    await expect(page.getByRole('button', { name: /Calendar/ })).toBeVisible();
-    await page.locator('.menu-scrim').click({ position: { x: 5, y: 400 } });
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Calendar/ }).click();
+    const ics = readFileSync((await (await download).path())!, 'utf8');
+    expect(ics.match(/^BEGIN:VEVENT/gm)?.length, 'events in the .ics').toBe(rides);
+    expect(ics).toContain('END:VCALENDAR');
     await page.getByRole('button', { name: 'Map' }).click();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await page.getByRole('button', { name: 'Back', exact: true }).click();

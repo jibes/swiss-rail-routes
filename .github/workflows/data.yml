@@ -1,7 +1,8 @@
 name: Data
 
-# Monthly DIDOK stop index and GA exceptions (OSDM fares). Commits only when the data changed, then deploys
-# (a push by GITHUB_TOKEN does not start other workflows, so this dispatches the deploy).
+# Monthly DIDOK stop index and GA exceptions (OSDM fares). When the data changed, opens (or
+# refreshes) one pull request from the branch `data`: merging it to main is the owner's push,
+# with the version bump that releases the app (a push by GITHUB_TOKEN would start no release).
 on:
   schedule:
     - cron: '17 3 2 * *'
@@ -20,7 +21,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
-      actions: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -36,21 +37,23 @@ jobs:
       - run: npm run data:ga
       - run: npx vitest run tests/stops.test.ts tests/data.test.ts tests/acceptance.test.ts
 
-      - name: Commit if changed
-        id: commit
+      - name: Pull request if changed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet public/data src/data/ga.json; then
-            echo "No change"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+            echo "No change"; exit 0
           fi
+          title="Data: stops $(jq -r .date public/data/stops.v1.json), GA $(jq -r .version src/data/ga.json)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -am "Data: stops $(jq -r .date public/data/stops.v1.json), GA $(jq -r .version src/data/ga.json)"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-      - if: steps.commit.outputs.changed == 'true'
-        run: gh workflow run deploy.yml --ref main
-        env:
-          GH_TOKEN: ${{ github.token }}
+          git checkout -B data
+          git commit -am "$title"
+          # The bot's own branch: replaced on every run that finds a change.
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+          if [ -z "$(gh pr list --head data --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --base main --head data --title "$title" \
+              --body "Monthly stop index and GA exceptions, from data.yml. Checks ran on the data (stops, data, acceptance). Merge with a version bump (\`npm version patch --no-git-tag-version\`) so the app releases with the new data."
+          else
+            gh pr edit data --title "$title"
+          fi

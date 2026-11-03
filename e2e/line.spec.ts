@@ -1,25 +1,16 @@
 import AxeBuilder from '@axe-core/playwright';
-import { BEFORE, expect, test } from './fixtures';
-
-const add = async (page: import('@playwright/test').Page, text: string, pick?: RegExp) => {
-  const search = page.getByPlaceholder('Station, scenic line or past trip');
-  await search.fill(text);
-  if (pick) await page.getByRole('button', { name: pick }).first().click();
-  else await search.press('Enter');
-};
+import { allowUnrecorded, BEFORE, expect, newTrip, pick, test } from './fixtures';
 
 test('one line: stations, a scenic line as rings, the panel, a round trip, kept after reload', async ({
   page,
 }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  await add(page, 'zürich hb');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await add(page, 'luzern');
+  // These trips are about editing, not planning: nothing is recorded for them.
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern');
   await page.getByRole('button', { name: 'Add a station' }).click();
   // A scenic line from where you are: its end station is yours, the stations between are rings.
-  await add(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
+  await pick(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
   await page.getByRole('button', { name: 'Add a station' }).click();
   await page.getByRole('button', { name: /^Back to Zürich HB/ }).click();
 
@@ -81,12 +72,9 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
 
 test('drag the open station by its grip; rename the trip', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  for (const s of ['Bern', 'Thun', 'Spiez', 'Brig']) {
-    if (s !== 'Bern') await page.getByRole('button', { name: 'Add a station' }).click();
-    await add(page, s);
-  }
+  // These trips are about editing, not planning: nothing is recorded for them.
+  allowUnrecorded(page);
+  await newTrip(page, 'Bern', 'Thun', 'Spiez', 'Brig');
   const entries = page.locator('.trip-line .station.entry');
   await expect(entries).toHaveText([/^Bern/, /^Thun/, /^Spiez/, /^Brig/]);
   // Nothing recorded for this trip: its planning ends in a notice above the line. Wait for it,
@@ -111,9 +99,7 @@ test('drag the open station by its grip; rename the trip', async ({ page }) => {
 
 test('an edit survives a reload right after it', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  await add(page, 'Bern');
+  await newTrip(page, 'Bern');
   // A name waits 300 ms to be saved; the page goes before that.
   await page.locator('h1 .title').click();
   const name = page.getByRole('textbox', { name: 'Name' });
@@ -127,7 +113,7 @@ test('an edit survives a reload right after it', async ({ page }) => {
     .toBeNull();
   // A station is saved at once, and the page may still go during the write.
   await page.getByRole('button', { name: 'Add a station' }).click();
-  await add(page, 'Thun');
+  await pick(page, 'Thun');
   await expect(page.locator('.trip-line .station.entry').nth(1)).toContainText('Thun');
   await page.reload();
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Bern/, /^Thun/]);
@@ -135,11 +121,7 @@ test('an edit survives a reload right after it', async ({ page }) => {
 
 test('a trip whose day is over leaves the list and waits in search', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  await add(page, 'Chur');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await add(page, 'Arosa');
+  await newTrip(page, 'Chur', 'Arosa');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('link', { name: /Chur → Arosa/ })).toBeVisible();
 
@@ -162,11 +144,7 @@ test('a trip whose day is over leaves the list and waits in search', async ({ pa
 
 test('delete at once, with Undo for a few seconds', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  await add(page, 'Chur');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await add(page, 'Arosa');
+  await newTrip(page, 'Chur', 'Arosa');
   await page.getByRole('button', { name: 'More' }).click();
   await page.getByRole('button', { name: 'Delete trip' }).click();
 
@@ -192,11 +170,9 @@ test('Escape closes what is on top first; renaming cancels; /edit before departu
   page,
 }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  await add(page, 'Bern');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await add(page, 'Thun');
+  // These trips are about editing, not planning: nothing is recorded for them.
+  allowUnrecorded(page);
+  await newTrip(page, 'Bern', 'Thun');
   const entries = page.locator('.trip-line .station.entry');
   await entries.first().getByRole('button').first().click();
   await expect(page.locator('.panel')).toBeVisible();
@@ -224,8 +200,7 @@ test('search: a line typed by its name comes first, a station named so stays fir
   page,
 }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
+  await newTrip(page);
   const search = page.getByPlaceholder('Station, scenic line or past trip');
   const first = page.locator('.add-sheet .results .result').first();
   await search.fill('Bernina');

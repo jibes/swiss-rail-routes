@@ -19,7 +19,7 @@
     "e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "icons": "node scripts/icons.mjs",
-    "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml",
+    "worker:dev": "wrangler dev -c workers/ojp/wrangler.toml --var ALLOWED_ORIGINS:https://jibes.github.io,https://localhost,http://localhost:5173,http://localhost:4173",
     "record:ojp": "RECORD_OJP=1 vitest run tests/acceptance.test.ts",
     "record:ojp:missing": "vitest run tests/acceptance.test.ts",
     "data:stops": "node --experimental-strip-types scripts/build-stops.ts",

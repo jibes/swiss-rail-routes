@@ -7,8 +7,9 @@ observability = { enabled = false }
 
 [vars]
 OJP_URL = "https://api.opentransportdata.swiss/ojp20"
-# https://localhost: the Android app (Capacitor).
-ALLOWED_ORIGINS = "https://jibes.github.io,https://localhost,http://localhost:5173,http://localhost:4173"
+# https://localhost: the Android app (Capacitor). Local dev servers are not here: `npm run
+# worker:dev` adds them with --var, so no page on anyone's localhost can spend the key.
+ALLOWED_ORIGINS = "https://jibes.github.io,https://localhost"
 
 # 120 uncached requests a minute per client IP (a 4-leg arrive-by tour can need ~80).
 [[ratelimits]]

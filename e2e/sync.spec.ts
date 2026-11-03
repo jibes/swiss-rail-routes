@@ -1,7 +1,7 @@
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { BEFORE, expect, guard, planShared, test } from './fixtures';
+import { allowUnrecorded, BEFORE, expect, guard, newTrip, planShared, test } from './fixtures';
 
 // Two devices (separate browser contexts, so separate storage) and the Worker's mailbox.
 test('sync: start on one device, join with the key on another, changes go both ways', async ({
@@ -35,18 +35,16 @@ test('sync: start on one device, join with the key on another, changes go both w
   await laptop.goto('./');
   await expect(laptop.getByRole('link', { name: /From the phone/ })).toBeVisible();
 
-  // A trip made on the laptop reaches the phone; one deleted there disappears here.
-  await laptop.getByRole('button', { name: 'New trip' }).click();
-  const search = laptop.getByPlaceholder('Station, scenic line or past trip');
-  await search.fill('Chur');
-  await search.press('Enter');
-  await laptop.getByRole('button', { name: 'Add a station' }).click();
-  await search.fill('Arosa');
-  await search.press('Enter');
+  // A trip made on the laptop reaches the phone; one deleted there disappears here (nothing is
+  // recorded for Chur–Arosa: it syncs as a route without a timetable).
+  allowUnrecorded(laptop);
+  await newTrip(laptop, 'Chur', 'Arosa');
   await laptop.locator('h1 .title').click();
   await laptop.getByRole('textbox', { name: 'Name' }).fill('From the laptop');
+  // Sync 3 s after the last change: wait for that write to be answered.
+  const written = laptop.waitForResponse((r) => r.request().method() === 'PUT' && r.ok());
   await laptop.getByRole('textbox', { name: 'Name' }).press('Enter');
-  await laptop.waitForTimeout(3500); // sync 3 s after the last change
+  await written;
   await laptop.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.goto('./');
   await page.reload();
@@ -61,8 +59,9 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('link', { name: /From the laptop/ }).click();
   await page.getByRole('button', { name: 'More' }).click();
+  const deleted = page.waitForResponse((r) => r.request().method() === 'PUT' && r.ok());
   await page.getByRole('button', { name: 'Delete trip' }).click();
-  await page.waitForTimeout(3500);
+  await deleted;
   await laptop.goto('./');
   await laptop.reload();
   await expect(laptop.getByRole('link', { name: /Renamed on the phone/ })).toBeVisible();

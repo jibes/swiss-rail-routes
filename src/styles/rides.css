@@ -1,0 +1,196 @@
+/* The rides of the trip line: their stops, walks, the way here and under way (continues
+   tripline.css, which draws the line and its panel). */
+
+/* ─── Under way (TripLine live): travelled parts grey, a marker where you are ─── */
+
+.trip-line.live .passed .rail::before {
+  background: var(--ink-3);
+}
+
+.trip-line.live .passed > .t,
+.trip-line.live .passed > .m {
+  opacity: 0.55;
+}
+
+.trip-line.live .station.passed .dot {
+  background: var(--ink-3);
+  border-color: var(--ink-3);
+}
+
+.trip-line .ride.here .rail::before {
+  background: linear-gradient(
+    var(--ink-3) 0 var(--fm, var(--f)),
+    var(--rail) var(--fm, var(--f)) 100%
+  );
+}
+
+.trip-line .ride.here .rail::after,
+.trip-line .station.here .rail::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--bg);
+  background: var(--rail);
+  z-index: 1;
+}
+
+.trip-line .ride.here .rail::after {
+  top: calc(var(--fm, var(--f)) - 10px);
+}
+
+.trip-line .station.here .rail::after {
+  top: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trip-line .ride.here .rail::after,
+  .trip-line .station.here .rail::after {
+    animation: here 2s ease-out infinite;
+  }
+}
+
+/* A ride's stops between, a tick on the rail for each. */
+.trip-line .ride .mids {
+  flex-basis: 100%;
+}
+
+.trip-line .ride.with-mids .mids li:not(.here-mid) {
+  position: relative;
+}
+
+.trip-line .ride.with-mids .mids li:not(.here-mid)::before {
+  content: '';
+  position: absolute;
+  /* Centred on the rail: the content column starts 15 px right of it, plus the 8 px padding. */
+  left: -28px;
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--rail);
+}
+
+.trip-line.live .ride.with-mids .mids li.passed::before {
+  border-color: var(--ink-3);
+}
+
+/* A route station on the ride: in the list like any stop, in white, tap for the panel. */
+.trip-line .ride .mids li.via {
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+}
+
+.trip-line .ride .mids li.via.open {
+  grid-template-columns: 3.2em minmax(0, 1fr) 44px;
+}
+
+.trip-line .ride .mids li.via.entry {
+  color: var(--ink);
+}
+
+.trip-line .ride .mids .via .t {
+  padding: 0;
+}
+
+/* As tall as any other stop in the list; the tap area reaches beyond the row. */
+.trip-line .ride .mids .via .m {
+  display: block;
+  grid-column: 2;
+  min-height: 0;
+  padding: 10px 0;
+  margin: -8px 0;
+  font-size: 14px;
+  color: inherit;
+}
+
+.trip-line .ride .mids .via .n {
+  font-size: 14px;
+}
+
+.trip-line .ride .mids .via .panel,
+.trip-line .ride .mids .via .why {
+  grid-column: 1 / -1;
+  margin-left: 0;
+}
+
+/* Small as a word, a finger's height to tap (the padding reaches beyond the row). */
+.trip-line .ride .mids-toggle {
+  min-height: 0;
+  padding: 12px 0;
+  margin: -12px 0;
+  font-size: 13px;
+}
+
+/* Why a station cannot be edited: a quiet note, not a stop. */
+.trip-line .why {
+  padding-left: 8px;
+  border-left: 2px solid var(--hair);
+  color: var(--ink-3);
+}
+
+/* Nothing to add after the end (read-only): the rail stops at the last station. */
+.trip-line.read > li:last-child .rail::before {
+  bottom: auto;
+  height: 18px;
+}
+
+/* The way here (replan) ends with a ride: its rail runs on into the line of the rest. */
+.trip-line.past > li:last-child .rail::before {
+  bottom: 0;
+  height: auto;
+}
+
+/* A walk: the rail dotted and grey (you are not on a train), from dot to dot. */
+.trip-line .ride.walk .rail::before {
+  width: 4px;
+  margin-left: -2px;
+  /* Dotted and grey all the way: on foot, not on a train. */
+  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
+    repeat-y;
+}
+
+/* The stations either side: dotted between their dot and the walk, solid on the ride's side
+   (--dot-at: how far down the rail the dot sits). */
+.trip-line .station {
+  --dot-at: 18px;
+}
+
+.trip-line .station:has(.t i) {
+  --dot-at: 28px;
+}
+
+.trip-line .station.walk-from .rail::before,
+.trip-line .station.walk-to .rail::before {
+  width: 4px;
+  margin-left: -2px;
+  background:
+    linear-gradient(var(--rail), var(--rail)) center top / 3px var(--dot-at) no-repeat,
+    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
+}
+
+.trip-line .station.walk-to .rail::before {
+  background:
+    linear-gradient(var(--rail), var(--rail)) center bottom / 3px calc(100% - var(--dot-at))
+      no-repeat,
+    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
+}
+
+.trip-line .station.walk-from.walk-to .rail::before {
+  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
+    repeat-y;
+}
+
+/* A station not reached: the rail runs on past its note. */
+.trip-line .station:has(.missed-note) .rail {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}

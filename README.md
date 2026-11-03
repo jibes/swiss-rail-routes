@@ -4,7 +4,7 @@ Swiss rail day-trip planner (repository `swiss-rail-routes`).
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** 0.4.0: one list of dated trips and one screen per trip: the trip is one line, edited in place (stations, scenic lines, stays; a panel per station, drag to move) and planned while you edit (three options, Earlier/Later); under way live delays, connections at risk, position on the line, replan from here, undo; a finished trip waits in search to go again. Calendar (.ics), exact share links, sync between your own devices, map, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
+**Status:** one list of dated trips and one screen per trip: the trip is one line, edited in place (stations, scenic lines, stays; a panel per station, drag to move) and planned while you edit (three options, Earlier/Later); under way live delays, connections at risk, position on the line, replan from here, undo; a finished trip waits in search to go again. Calendar (.ics), exact share links, sync between your own devices, map, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 
@@ -15,16 +15,19 @@ npm run dev
 
 Planning needs `VITE_OJP_URL` (the Worker). For the e2e tests build with `VITE_OJP_URL=https://ojp.invalid`; the tests answer it from recorded fixtures.
 
-| Script                      | Does                                                  |
-| --------------------------- | ----------------------------------------------------- |
-| `dev` / `build` / `preview` | Vite                                                  |
-| `check`                     | typecheck, lint, format:check, unit tests             |
-| `e2e`                       | Playwright smoke against `vite preview` (build first) |
-| `icons`                     | Renders `public/icons/{icon,maskable}.svg` to PNGs    |
-| `worker:dev`                | The OJP Worker locally (wrangler)                     |
-| `record:ojp`                | Re-records the acceptance fixtures (`OJP_API_KEY`)    |
-| `data:stops` / `data:ga`    | Rebuilds the stop index / GA exceptions               |
-| `android:sync`              | Builds the web app and copies it into `android/`      |
+| Script                      | Does                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| `dev` / `build` / `preview` | Vite                                                                            |
+| `check`                     | `typecheck`, `lint`, `format:check`, `test` (Vitest) in one                     |
+| `format`                    | Prettier, writing                                                               |
+| `e2e`                       | Playwright against `vite preview` (build first)                                 |
+| `icons`                     | Renders `public/icons/{icon,maskable}.svg` to PNGs                              |
+| `worker:dev`                | The OJP Worker locally (wrangler), with the dev servers' origins allowed        |
+| `record:ojp`                | Re-records all acceptance fixtures (`OJP_API_KEY`)                              |
+| `record:ojp:missing`        | Records only the answers missing, through the Worker (`OJP_RECORD_URL`, no key) |
+| `data:stops` / `data:ga`    | Rebuilds the stop index / GA data                                               |
+| `mcp:bundle`                | The MCP server's bundle for the VPS (`mcp/README.md`)                           |
+| `android:sync`              | Builds the web app and copies it into `android/`                                |
 
 Set `CHROMIUM_PATH` to use a preinstalled Chromium instead of Playwright's own.
 
@@ -59,7 +62,9 @@ One-time setup:
 3. Add the OJP 2.0 key as a Worker secret: Cloudflare dashboard → Workers → `srr-ojp` → Settings → Variables and Secrets → `OJP_API_KEY` (type Secret). Or `npx wrangler secret put OJP_API_KEY -c workers/ojp/wrangler.toml`.
 4. Add repo variable `OJP_WORKER_URL` with the Worker's URL and rerun "Deploy to GitHub Pages". The build adds its origin to the CSP, and `live.yml` runs T1–T6 against it nightly for the next Saturday (one open issue labelled `live-check` while it fails).
 
-Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`); add a custom domain there.
+Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`: the site and `https://localhost` for the Android app); add a custom domain there. Local dev servers are not in it, so no page on anyone's localhost can spend the key: `npm run worker:dev` passes them with `--var`.
+
+`data.yml` rebuilds the stop index and GA data monthly and opens a pull request (branch `data`) when they changed; merge it with a version bump, so the app releases with the new data.
 
 ## Links
 

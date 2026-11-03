@@ -8,13 +8,9 @@ import {
   setStop,
 } from '../helpers/edit';
 import type { Tour } from '../../src/core/model';
-import { index, templates } from '../helpers/timetable';
+import { ref, templates } from '../helpers/timetable';
 
-const st = (name: string) => {
-  const s = index.search(name, 1)[0];
-  if (s?.name !== name) throw new Error(`no stop ${name}`);
-  return { stopRef: s.ref, name };
-};
+const st = (name: string) => ({ stopRef: ref(name), name });
 const tpl = (id: string) => templates.find((t) => t.id === id)!;
 const at = (tour: Tour, name: string) => tour.waypoints.findLastIndex((w) => w.name === name);
 const stopAt = (tour: Tour, name: string, min: number) =>

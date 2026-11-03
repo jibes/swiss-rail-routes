@@ -1,5 +1,5 @@
 // Stateless Streamable HTTP: a new server and transport for each request, so nothing about one
-// request is left for the next. The secret is the access control: compared in constant time,
+// request is left for the next. The secret is the access control (a bearer token): compared in constant time,
 // and never logged, nor is any path. Logs hold tool names, outcomes and timings only.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
@@ -234,8 +234,16 @@ export function createHttpServer(o: {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         return void res.end('ok');
       }
-      const given = path.startsWith('/mcp/') ? decodeSafe(path.slice(5)) : null;
-      if (given === null || !isSecret(given)) return end(404);
+      // The secret as a bearer token on /mcp. In the path (/mcp/<secret>) still works, but
+      // proxies and clients log paths: deprecated.
+      if (path === '/mcp' || path === '/mcp/') {
+        const auth = req.headers.authorization ?? '';
+        const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+        if (!token || !isSecret(token)) return end(401, { 'WWW-Authenticate': 'Bearer' });
+      } else {
+        const given = path.startsWith('/mcp/') ? decodeSafe(path.slice(5)) : null;
+        if (given === null || !isSecret(given)) return end(404);
+      }
       // Stateless: no session to resume or end. MCP clients expect this answer to a GET.
       if (req.method !== 'POST') return end(405, { Allow: 'POST' });
       const body = await readBody(req);

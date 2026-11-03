@@ -3,18 +3,11 @@ import type { Locator, Page } from '@playwright/test';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { encodeTour } from '../tests/helpers/share';
-import { BEFORE, expect, planShared, test } from './fixtures';
+import { BEFORE, expect, newTrip, planShared, test } from './fixtures';
 
 test('map opens for a trip and says so when tiles are unreachable', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'New trip' }).click();
-  const search = page.getByPlaceholder('Station, scenic line or past trip');
-  await search.fill('Chur');
-  await search.press('Enter');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await search.fill('St. Moritz');
-  await search.press('Enter');
+  await newTrip(page, 'Chur', 'St. Moritz');
 
   await page.getByRole('button', { name: 'Map' }).click();
   await expect(page.getByRole('region', { name: 'Map' })).toBeVisible();

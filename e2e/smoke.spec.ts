@@ -1,14 +1,24 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from './fixtures';
+import { encodeTour } from '../tests/helpers/share';
+import { FIXTURE_DATE } from '../tests/acceptance/ojp';
+import { acceptanceTours } from '../tests/acceptance/tours';
+import { BEFORE, expect, planShared, test } from './fixtures';
 
-test('loads, works offline after first visit', async ({ page, context }) => {
-  await page.goto('./');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+test('loads, and a planned trip is readable offline after the first visit (SPEC §8)', async ({
+  page,
+  context,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+  const times = (await page.locator('.hero-times').textContent())!;
   await page.evaluate(() => navigator.serviceWorker.ready);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  // TODO: plan T3 from canned Worker answers once the planner exists (SPEC §8)
+  // The shell from the service worker, the trip and its timetable from the device.
+  await expect(page.locator('.hero-times')).toHaveText(times);
+  await expect(page.locator('.trip-line .ride').first()).toBeVisible();
+  await page.goto('./');
+  await expect(page.getByRole('link', { name: /T5/ })).toBeVisible();
 });
 
 test('switches language and keeps it', async ({ page }) => {
