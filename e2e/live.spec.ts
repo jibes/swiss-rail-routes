@@ -147,11 +147,27 @@ test('under way, the stations beside a walk passed are grey', async ({ page }) =
     ).length;
   });
   expect(red).toBe(0);
-  // The dots under the solid part are masked to its width, or they show as a bumpy second line.
-  const masked = await passed.evaluateAll((els) =>
-    els.every(
-      (li) => getComputedStyle(li.querySelector('.rail')!, '::before').maskImage !== 'none',
-    ),
-  );
-  expect(masked).toBe(true);
+  // Each walk is one dotted line from the dot before to the dot after (drawn in pieces, the
+  // dots bunched where rows met), also with a station's note open above it.
+  const spans = () =>
+    page.locator('.trip-line > li.ride.walk').evaluateAll((walks) =>
+      walks.map((w) => {
+        const rail = w.querySelector(':scope > .rail')!;
+        const line = getComputedStyle(rail, '::before');
+        const box = rail.getBoundingClientRect();
+        const centre = (li: Element | null) => {
+          const b = li!.querySelector('.dot')!.getBoundingClientRect();
+          return b.top + b.height / 2;
+        };
+        const top = box.top + parseFloat(line.top);
+        const bottom = box.top + parseFloat(line.top) + parseFloat(line.height);
+        return [
+          Math.abs(top - centre(w.previousElementSibling)) < 1.5,
+          Math.abs(bottom - centre(w.nextElementSibling)) < 1.5,
+        ];
+      }),
+    );
+  expect((await spans()).flat().every(Boolean)).toBe(true);
+  await page.locator('.trip-line .station.walk-from .m').first().click();
+  expect((await spans()).flat().every(Boolean)).toBe(true);
 });

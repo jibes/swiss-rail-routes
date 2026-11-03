@@ -17,6 +17,7 @@ import { Icon } from './icons';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
+import { useWalkSpans } from './walkSpans';
 
 export interface LineActions {
   replace: (k: number, stop: { stopRef: string; name: string }) => void;
@@ -79,6 +80,7 @@ export function TripLine({
   const entries = entriesOf(route);
   const n = entries.length;
   const box = useRef<HTMLOListElement>(null);
+  useWalkSpans(box);
   // A station the timetable added (grey): a tap says why it cannot be edited.
   // Keyed by the station, not its place: an edit moves rows.
   const [hint, setHint] = useState<string | null>(null);

@@ -158,16 +158,24 @@
   height: auto;
 }
 
-/* A walk: the rail dotted and grey (you are not on a train), from dot to dot. */
+/* A walk: one dotted grey line (you are not on a train) from the dot before to the dot after.
+   The walk's row draws it, reaching into its neighbours by what useWalkSpans measured (--up,
+   --down); spaced evenly, so the dots never bunch where rows meet. */
 .trip-line .ride.walk .rail::before {
+  top: calc(-1 * var(--up, 0px));
+  bottom: calc(-1 * var(--down, 0px));
   width: 4px;
   margin-left: -2px;
-  /* Dotted and grey all the way: on foot, not on a train. */
-  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
-    repeat-y;
+  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center / 4px 8px;
+  background-repeat: no-repeat space;
 }
 
-/* The stations either side: dotted between their dot and the walk, solid on the ride's side
+/* Under the dots: the walk's line runs over the station before, which comes first. */
+.trip-line .station .dot {
+  z-index: 1;
+}
+
+/* The stations either side: solid on the ride's side only, the walk's line drawn over the rest
    (--dot-at: how far down the rail the dot sits). */
 .trip-line .station {
   --dot-at: 18px;
@@ -177,45 +185,17 @@
   --dot-at: 28px;
 }
 
-.trip-line .station.walk-from .rail::before,
-.trip-line .station.walk-to .rail::before {
-  width: 4px;
-  margin-left: -2px;
-  background:
-    linear-gradient(var(--solid), var(--solid)) center top / 3px var(--dot-at) no-repeat,
-    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
-}
-
-.trip-line .station.walk-to .rail::before {
-  background:
-    linear-gradient(var(--solid), var(--solid)) center bottom / 3px calc(100% - var(--dot-at))
-      no-repeat,
-    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y;
-}
-
-/* The dots run the whole row under the solid part; 1 px wider than it, they would show at its
-   edges as a second, bumpy line. Only the walk's side keeps its full width. */
 .trip-line .station.walk-from .rail::before {
-  --keep:
-    linear-gradient(#000 0 0) center top / 3px var(--dot-at) no-repeat,
-    linear-gradient(#000 0 0) 0 var(--dot-at) / 100% 100% no-repeat;
-  -webkit-mask: var(--keep);
-  mask: var(--keep);
+  background: linear-gradient(var(--solid), var(--solid)) center top / 3px var(--dot-at) no-repeat;
 }
 
 .trip-line .station.walk-to .rail::before {
-  --keep:
-    linear-gradient(#000 0 0) 0 0 / 100% var(--dot-at) no-repeat,
-    linear-gradient(#000 0 0) center bottom / 3px calc(100% - var(--dot-at)) no-repeat;
-  -webkit-mask: var(--keep);
-  mask: var(--keep);
+  background: linear-gradient(var(--solid), var(--solid)) center bottom / 3px
+    calc(100% - var(--dot-at)) no-repeat;
 }
 
 .trip-line .station.walk-from.walk-to .rail::before {
-  -webkit-mask: none;
-  mask: none;
-  background: radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px
-    repeat-y;
+  background: none;
 }
 
 /* A station not reached: the rail runs on past its note. */
