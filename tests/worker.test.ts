@@ -131,6 +131,17 @@ describe('OJP worker', () => {
     expect(upstream).not.toHaveBeenCalled();
   });
 
+  it('gives OJP a deadline: not answering is 504, with a signal on the call', async () => {
+    const slow = vi.fn(async (_u: unknown, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      throw new DOMException('timed out', 'TimeoutError');
+    });
+    const { call } = setup({ fetch: slow as unknown as typeof fetch });
+    const res = await call();
+    expect(res.status).toBe(504);
+    expect(await res.text()).toBe('upstream timeout');
+  });
+
   it('maps upstream failures and does not cache them', async () => {
     const failing = vi.fn(async () => new Response('quota', { status: 429 }));
     const { call, flush } = setup({ fetch: failing as unknown as typeof fetch });
@@ -208,6 +219,21 @@ describe('sync mailbox', () => {
     expect((await sync('DELETE')).status).toBe(204);
     expect((await sync('GET')).status).toBe(410);
     expect((await sync('PUT', { v: 0, data: 'again' })).status).toBe(410);
+  });
+
+  it('closing a box that never was makes none, and closing is a write for the limiter', async () => {
+    const id = 'n'.repeat(43);
+    expect((await sync('DELETE', undefined, id)).status).toBe(204);
+    expect(syncBoxes.has(id)).toBe(false);
+    expect(await (await sync('GET', undefined, id)).json()).toEqual({ v: 0 });
+    expect((await sync('PUT', { v: 0, data: 'abc' }, id)).status).toBe(200);
+    const limited = await setup({ limitWrite: async () => false }).call(`/sync/${id}`, {
+      method: 'DELETE',
+      body: undefined,
+      headers: { Origin: ORIGIN },
+    });
+    expect(limited.status).toBe(429);
+    expect(syncBoxes.get(id)?.revoked).toBeUndefined();
   });
 
   it('limits writes on their own, and refuses one without its size', async () => {

@@ -186,6 +186,42 @@ describe('a trip as its trains', async () => {
     expect(r2.chain.dep).toBe(trip.chain.dep);
   });
 
+  it('a ride without a journey id is still a ride, not a walk', async () => {
+    const bare: PlannedTrip = {
+      ...trip,
+      chain: {
+        ...trip.chain,
+        connections: trip.chain.connections.map((c) => ({
+          ...c,
+          sections: c.sections.map((s) => ({ ...s, journey: undefined })),
+        })),
+      },
+    };
+    const back = await opened(bare);
+    expect(rides(back).map((s) => s.mode)).toEqual(rides(trip).map((s) => s.mode));
+    expect(rides(back).every((s) => s.journey === undefined)).toBe(true);
+    const walks = (t: PlannedTrip) =>
+      t.chain.connections.flatMap((c) => c.sections).filter((s) => s.mode === 'walk').length;
+    expect(walks(back)).toBe(walks(trip));
+  });
+
+  it('the same train to another stop is not this ride: gone, not moved', async () => {
+    const mine = rides(trip)[0]!;
+    const other = mine.intermediate[0] ?? mine.from;
+    const partial: Connection[] = trip.chain.connections.map((c) => ({
+      ...c,
+      sections: c.sections.map((s) =>
+        s.journey === mine.journey ? { ...s, to: { ...other, arr: s.to.arr } } : s,
+      ),
+    }));
+    const r2 = await refreshChain(await opened(), deps({ ask: async () => partial }));
+    expect(r2.gone).toBe(1);
+    const kept = r2.chain.connections
+      .flatMap((c) => c.sections)
+      .find((s) => s.journey === mine.journey)!;
+    expect(stopKey(kept.to.stopRef)).toBe(stopKey(mine.to.stopRef));
+  });
+
   it('rejects what is not one of these links', async () => {
     const good = await encodeTripLink(trip, nameOf);
     expect(await decodeTripLink(good.slice(0, 80), 'x', nameOf)).toBeNull();

@@ -216,6 +216,9 @@ async function round(start: Saved): Promise<Saved> {
     const store = useTrips.getState().trips;
     const trips =
       plan.apply.trips ?? (local.trips.some((t, i) => t !== store[i]) ? local.trips : undefined);
+    // Turned off, or given a new key, while the server was asked: the shared copy is not
+    // applied (turning sync off is also how one stops another device's copy coming in).
+    if ((await get<Saved>(KEY))?.key !== start.key) throw new Stopped();
     // Both lists set first, then both saves awaited: an edit cannot slip in between.
     await Promise.all([
       plan.apply.tours && useTours.getState().replaceAll(plan.apply.tours),

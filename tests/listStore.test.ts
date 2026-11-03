@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyChanges, changesOf, readUnsaved } from '../src/io/listStore';
+import { applyChanges, changesOf, readUnsaved, settleUnsaved } from '../src/io/listStore';
 
 const item = (id: string, n = 0) => ({ id, n });
 
@@ -43,5 +43,31 @@ describe('saved lists: changes item by item', () => {
     expect(readUnsaved(null).size).toBe(0);
     expect(readUnsaved('{not json').size).toBe(0);
     expect(readUnsaved('{"a":1}').size).toBe(0);
+  });
+
+  it('a write that finished takes its change out of what was left unsaved, no other', () => {
+    const raw = JSON.stringify([
+      ['a', item('a', 2)],
+      ['b', null],
+      ['c', item('c', 5)],
+    ]);
+    // a as left, b's removal: stored now. c was edited again by another tab: stays.
+    const written = new Map<string, { id: string; n: number } | null>([
+      ['a', item('a', 2)],
+      ['b', null],
+      ['c', item('c', 4)],
+    ]);
+    expect(readUnsaved(settleUnsaved(raw, written))).toEqual(new Map([['c', item('c', 5)]]));
+    expect(
+      settleUnsaved(
+        raw,
+        new Map([
+          ['a', item('a', 2)],
+          ['b', null],
+          ['c', item('c', 5)],
+        ]),
+      ),
+    ).toBeNull();
+    expect(settleUnsaved(null, written)).toBeNull();
   });
 });

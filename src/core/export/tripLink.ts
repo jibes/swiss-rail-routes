@@ -33,8 +33,9 @@ export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<st
   /** Minutes from the trip's day: no time zones or repeated dates in the link. */
   const min = (iso?: string) => (iso ? (Date.parse(iso) - base) / 60_000 : undefined);
   const own = (ref: string, name: string) => (nameOf(ref) === name ? 0 : name);
+  // Walks start with a number (their minutes), rides with their journey: '' when it has none.
   const journey = (j?: string) => {
-    if (!j) return 0;
+    if (!j) return '';
     const day = `${route.date}:`;
     const rest = j.startsWith(day) ? j.slice(day.length) : `!${j}`;
     return rest.startsWith(SJYID) ? rest.slice(SJYID.length) : `~${rest}`;
@@ -107,12 +108,13 @@ export async function decodeTripLink(
         ? new Date(base + m * 60_000).toISOString().replace('.000', '')
         : undefined;
     const journey = (j: unknown) => {
-      if (typeof j !== 'string') return undefined;
+      if (typeof j !== 'string' || !j) return undefined;
       const long = j.startsWith('~') ? j.slice(1) : SJYID + j;
       return long.startsWith('!') ? long.slice(1) : `${date}:${long}`;
     };
     const named = (ref: string, own: unknown) => text(own) ?? nameOf(ref) ?? '';
     const stop = (e: unknown[], time?: 'arr' | 'dep') => {
+      if (typeof e[0] !== 'string' && typeof e[0] !== 'number') throw new Error('stop');
       const ref = longRef(String(e[0]));
       const when = at(e[1]);
       return {

@@ -98,10 +98,6 @@ export function legRules(tour: Tour, deps: Pick<PlanDeps, 'templates'>): LegRule
   });
 }
 
-/**
- * OJP cannot plan a leg that ends where it starts. Such a loop (a round trip without a stop)
- * turns at its middle via: that via becomes a stop of 0 min.
- */
 /** Consecutive waypoints at the same stop are one: the later one's stop and dwell win. */
 export function mergeRepeats(tour: Tour): Tour {
   const out: Waypoint[] = [];
@@ -121,11 +117,22 @@ export function mergeRepeats(tour: Tour): Tour {
   return out.length === tour.waypoints.length ? tour : { ...tour, waypoints: out };
 }
 
+/**
+ * OJP cannot plan a leg that ends where it starts. Such a loop (a round trip without a stop)
+ * turns at a via, which becomes a stop of 0 min.
+ */
 export function splitLoops(tour: Tour): Tour {
   const turn = new Set<Waypoint>();
+  // A line's rings are its stations, not yours: the turn is one of yours (the middle one when
+  // several), the middle ring only when you entered none.
+  const lined = withLines(tour.waypoints);
+  const ring = new Set(tour.waypoints.filter((_, i) => lined[i]?.ring));
   for (const leg of expandLegs(tour))
-    if (stopKey(leg.from.stopRef) === stopKey(leg.to.stopRef) && leg.vias.length)
-      turn.add(leg.vias[Math.floor((leg.vias.length - 1) / 2)]!);
+    if (stopKey(leg.from.stopRef) === stopKey(leg.to.stopRef) && leg.vias.length) {
+      const own = leg.vias.filter((w) => !ring.has(w));
+      const among = own.length ? own : leg.vias;
+      turn.add(among[Math.floor((among.length - 1) / 2)]!);
+    }
   if (!turn.size) return tour;
   return {
     ...tour,
@@ -317,19 +324,23 @@ async function planFrom(
         rejected: why,
         mustPass: asked.leg.vias.map((v) => v.name),
       });
-      // Regular trains over panorama/supplement trains when both run.
+      // Regular trains over panorama/supplement trains when both run: in the shared pool, and
+      // just the same in an answer fetched for one beam alone.
       const isRegular = (c: Connection) => !rides(c).some(([s]) => isSupplement(s, deps.ga));
-      const regular = pool.filter(isRegular);
-      if (reservations === 'never' || (reservations === 'avoid' && regular.length)) pool = regular;
+      const preferred = (list: Connection[]) => {
+        const regular = list.filter(isRegular);
+        return reservations === 'never' || (reservations === 'avoid' && regular.length)
+          ? regular
+          : list;
+      };
+      pool = preferred(pool);
       for (const b of beams) {
         let opts = pool.filter((c) => ms(c.dep) >= b.ready);
         if (!opts.length && b.ready > ready) {
-          opts = (await fetchAt(asked, b.ready, relaxed)).filter(
-            (c) =>
-              !rejectReason(c, asked, relaxed) &&
-              ms(c.dep) >= b.ready &&
-              (reservations !== 'never' || isRegular(c)),
+          const own = (await fetchAt(asked, b.ready, relaxed)).filter(
+            (c) => !rejectReason(c, asked, relaxed) && ms(c.dep) >= b.ready,
           );
+          opts = preferred(own);
         }
         for (const c of opts) {
           const w = warningsFor(c, ctx);
@@ -428,7 +439,7 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   // be a whole night (the way back runs next morning), so the day's start is always tried.
   const by = ms(zurichDateTime(`${tour.date}T${tour.anchor.arriveBy}`));
   const dayStart = ms(zurichDateTime(`${tour.date}T${DAY_START}`));
-  const legs = expandLegs(tour).length;
+  const legs = expandLegs(splitLoops(mergeRepeats(tour))).length;
   const dwell = tour.waypoints.reduce((s, w) => s + w.dwellMin, 0);
   // Not before the day's start while that is an option (an arrival before it has none).
   const inDayFrom = (was: number, t: number) => (was > dayStart ? Math.max(t, dayStart) : t);

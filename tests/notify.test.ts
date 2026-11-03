@@ -96,4 +96,39 @@ describe('noticesFor', () => {
     // Android notification ids are 32-bit signed integers.
     for (const n of list) expect(n.id > 0 && n.id < 2 ** 31).toBe(true);
   });
+
+  it('the same train on both sides of a stop: no exit there, no departure from it', () => {
+    const through = [
+      conn(
+        ride(
+          'RE 1',
+          [
+            ['Chur', '15:58'],
+            ['Filisur', '16:50'],
+          ],
+          { journey: 'j9' },
+        ),
+      ),
+      conn(
+        ride(
+          'RE 1',
+          [
+            ['Filisur', '16:50'],
+            ['St. Moritz', '17:58'],
+          ],
+          { journey: 'j9' },
+        ),
+      ),
+    ];
+    const t = newTrip(
+      'trip-through',
+      route,
+      [],
+      { connections: through, warnings: [], score: 0, dep: through[0]!.dep, arr: through[1]!.arr },
+      new Date(0),
+    );
+    const list = noticesFor(t, at('08:00'), templates, stop);
+    expect(list.filter((n) => n.kind === 'depart').map((n) => n.params.time)).toEqual(['15:58']);
+    expect(list.filter((n) => n.kind === 'exit').map((n) => n.params.time)).toEqual(['17:58']);
+  });
 });

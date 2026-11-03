@@ -4,7 +4,7 @@
 import { linesOf } from './line';
 import type { RouteTemplate } from './data';
 import type { LatLon } from './model';
-import { liveRides } from './live';
+import { liveRides, type LiveRide } from './live';
 import { sunset } from './sun';
 import type { PlannedTrip as Trip } from './trip';
 
@@ -60,11 +60,15 @@ export function noticesFor(
     if (at > now) out.push({ id: b + n, kind, at, params, tripId: trip.id });
   };
   const rides = liveRides(trip.chain.connections, new Map());
-  rides.forEach((r) => {
+  // The same train on both sides of a stop (a replan from on board): you stay seated, so
+  // neither its exit nor the next departure is a notice.
+  const through = (a?: LiveRide, b?: LiveRide) =>
+    !!a && !!b && !!a.s.journey && a.s.journey === b.s.journey;
+  rides.forEach((r, i) => {
     const board = r.stops[0]!;
     const exit = r.stops.at(-1)!;
     const line = r.s.line ?? [r.s.category, r.s.number].filter(Boolean).join(' ');
-    if (board.dep)
+    if (board.dep && !through(rides[i - 1], r))
       push('depart', board.dep - BEFORE_DEPARTURE_MIN * 60_000, {
         line,
         to: r.s.to.name,
@@ -72,7 +76,7 @@ export function noticesFor(
         platform: board.platform ?? '',
         from: board.name,
       });
-    if (exit.arr)
+    if (exit.arr && !through(r, rides[i + 1]))
       push('exit', exit.arr - BEFORE_EXIT_MIN * 60_000, { stop: exit.name, time: hhmm(exit.arr) });
   });
 

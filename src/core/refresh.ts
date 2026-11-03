@@ -79,7 +79,16 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
     } catch {
       return void failed++;
     }
-    const same = answer.flatMap((c) => c.sections).find((a) => a.journey === journey);
+    // The same train, boarded and left where it was: an answer may also hold it to another
+    // stop (ride it part of the way, then change), which is not this ride.
+    const same = answer
+      .flatMap((c) => c.sections)
+      .find(
+        (a) =>
+          a.journey === journey &&
+          stopKey(a.from.stopRef) === stopKey(from.stopRef) &&
+          stopKey(a.to.stopRef) === stopKey(to.stopRef),
+      );
     if (same) fresh.set(`${x.ci}:${x.si}`, same);
     else missing.push(x);
   };

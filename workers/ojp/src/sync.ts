@@ -7,7 +7,8 @@
 //   PUT    /sync/<id>  {v: version it read (0 for none), data} → 200 {v} | 409 {v, data}
 //   DELETE /sync/<id>  → 204 (a new key): the blob goes, a marker stays, and from then on
 //                         GET and PUT answer 410, so devices still on that key stop and say so
-//                         instead of filling it again. Unused boxes expire (SyncBox alarm).
+//                         instead of filling it again; a box never written stays nothing.
+//                         Unused boxes expire (SyncBox alarm).
 
 export interface SyncRecord {
   v: number;
@@ -50,7 +51,9 @@ export async function syncHandle(req: Request, store: SyncStore): Promise<Respon
     return json(200, cur ?? { v: 0 });
   }
   if (req.method === 'DELETE') {
-    await store.put({ v: (cur?.v ?? 0) + 1, data: '', revoked: true });
+    // A box that never was is not made now: a marker for every id anyone names would be
+    // storage without end.
+    if (cur) await store.put({ v: cur.v + 1, data: '', revoked: true });
     return new Response(null, { status: 204 });
   }
   return json(405, { error: 'method' });

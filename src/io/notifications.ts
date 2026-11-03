@@ -52,21 +52,27 @@ async function reschedule(trips: Trip[], lang: Lang, now: number) {
     log('notify.skip', { permission: perm });
     return;
   }
-  const index = await stopSearch();
+  // What was scheduled goes first, whatever follows: a trip deleted or moved must not keep
+  // its old notices. Without the stop index (not loaded) the trains are still scheduled,
+  // only the highlights are not.
+  const pending = await LocalNotifications.getPending();
+  if (pending.notifications.length)
+    await LocalNotifications.cancel({
+      notifications: pending.notifications.map((n) => ({ id: n.id })),
+    });
+  const index = await stopSearch().catch((e: unknown) => {
+    log('notify.stops.fail', { e });
+    return null;
+  });
   const notices = trips
     .filter(isPlanned)
-    .flatMap((t) => noticesFor(t, now, TEMPLATES, (r) => index.byRef(stopKey(r))));
+    .flatMap((t) => noticesFor(t, now, TEMPLATES, (r) => index?.byRef(stopKey(r))));
   await LocalNotifications.createChannel({
     id: CHANNEL,
     name: translate(lang, 'nChannel'),
     importance: 4,
     vibration: true,
   });
-  const pending = await LocalNotifications.getPending();
-  if (pending.notifications.length)
-    await LocalNotifications.cancel({
-      notifications: pending.notifications.map((n) => ({ id: n.id })),
-    });
   log('notify.schedule', {
     cancelled: pending.notifications.length,
     scheduled: notices.length,

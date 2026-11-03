@@ -42,6 +42,8 @@ export interface Deps {
 }
 
 const REQUESTOR = 'swiss-rail-routes';
+/** OJP has this long to answer. */
+const UPSTREAM_TIMEOUT_MS = 25_000;
 
 function cors(origin: string | null, allowed: string[]): Record<string, string> {
   if (!origin || !allowed.includes(origin)) return {};
@@ -89,11 +91,11 @@ async function route(req: Request, d: Deps): Promise<Response> {
     if (!SYNC_ID.test(id)) return reply(404, 'sync id');
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (!(await d.limit(`sync:${ip}`))) return reply(429, 'rate', { 'Retry-After': '60' });
-    if (req.method === 'PUT') {
-      // Its size said up front, so a body is never read without bounds.
-      if (!req.headers.get('Content-Length')) return reply(411, 'length');
+    // Its size said up front, so a body is never read without bounds.
+    if (req.method === 'PUT' && !req.headers.get('Content-Length')) return reply(411, 'length');
+    // Writes (a blob, or the marker a new key leaves) have their own, tighter limit.
+    if (req.method === 'PUT' || req.method === 'DELETE')
       if (!(await d.limitWrite(`put:${ip}`))) return reply(429, 'rate', { 'Retry-After': '60' });
-    }
     const res = await d.sync(id, req);
     return new Response(res.body, {
       status: res.status,
@@ -131,15 +133,19 @@ async function route(req: Request, d: Deps): Promise<Response> {
 
   const xml = (spec.xml as (q: unknown, now: Date, r: string) => string)(q, d.now(), REQUESTOR);
 
+  // OJP not answering ends here, not at Cloudflare's own limit: the app gives up at 30 s and
+  // asks again, and a call left open would still count against this client's budget.
   let up: Response;
   try {
     up = await d.fetch(d.upstream, {
       method: 'POST',
       headers: { Authorization: `Bearer ${d.apiKey}`, 'Content-Type': 'application/xml' },
       body: xml,
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
-  } catch {
-    return reply(502, 'upstream');
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === 'TimeoutError';
+    return reply(timedOut ? 504 : 502, timedOut ? 'upstream timeout' : 'upstream');
   }
   if (!up.ok) return reply(up.status === 429 ? 503 : 502, `upstream ${up.status}`);
 

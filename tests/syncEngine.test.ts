@@ -13,9 +13,13 @@ const reset = () => boxes.clear();
 /** The next PUTs fail with this status (the Worker or the network having a bad moment). */
 let failPuts = 0;
 
+/** While set, reads wait for it (the server slow to answer). */
+let holdReads: Promise<void> | null = null;
+
 const worker = async (input: string | URL | Request, init?: RequestInit) => {
   const req = new Request(input, init);
   const id = new URL(req.url).pathname.split('/')[2]!;
+  if (req.method === 'GET' && holdReads) await holdReads;
   if (req.method === 'PUT' && failPuts > 0) {
     failPuts--;
     return new Response('busy', { status: 503 });
@@ -96,6 +100,45 @@ describe('sync engine', () => {
     expect(a.sync.useSync.getState().key).toBeNull();
     await a.sync.loadSync();
     expect(a.sync.useSync.getState().key).toBeNull();
+  });
+
+  it('turned off while the server was asked: the shared copy is not taken in', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    a.useTrips.getState().add(trip('ta', 'Albula'));
+    await a.sync.syncNow();
+    // Another device, same key: it took ta away and put tb in. This device turns sync off
+    // while its round waits for the server.
+    const { deriveKeys, parseKey, seal } = await import('../src/core/sync');
+    const { id, aes } = await deriveKeys(parseKey(key)!);
+    const cur = boxes.get(id)!;
+    const later = Date.now() + 60_000;
+    const data = await seal(
+      {
+        v: 1,
+        tours: [],
+        trips: [
+          { id: 'ta', at: later },
+          { id: 'tb', at: later, value: trip('tb', 'Rigi') },
+        ],
+      },
+      aes,
+    );
+    boxes.set(id, { v: cur.v + 1, data });
+    let release = () => {};
+    holdReads = new Promise<void>((r) => (release = r));
+    const round = a.sync.syncNow();
+    await a.sync.stopSync();
+    release();
+    holdReads = null;
+    await round;
+    // Off, and the trips as they were on this device: not the other's.
+    expect(a.sync.useSync.getState().key).toBeNull();
+    const ids = a.useTrips.getState().trips.map((t) => t.id);
+    expect(ids).toContain('ta');
+    expect(ids).not.toContain('tb');
   });
 
   const openBox = async (key: string) => {

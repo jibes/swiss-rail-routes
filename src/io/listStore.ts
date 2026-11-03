@@ -44,6 +44,23 @@ export function readUnsaved<T extends Item>(raw: string | null): Map<string, T |
   }
 }
 
+/**
+ * What a page left unsaved, less the changes now known to be stored: an entry goes when it is
+ * the very change written (by its value: another tab's newer edit of the same item stays).
+ * Without this, an edit of a closing tab whose write did finish after all would come back on
+ * the next load as a new edit, outranking anything done to the item meanwhile.
+ */
+export function settleUnsaved<T extends Item>(
+  raw: string | null,
+  written: Map<string, T | null>,
+): string | null {
+  const left = readUnsaved<T>(raw);
+  if (!left.size) return raw;
+  for (const [id, x] of written)
+    if (left.has(id) && JSON.stringify(left.get(id)) === JSON.stringify(x)) left.delete(id);
+  return left.size ? JSON.stringify([...left]) : null;
+}
+
 /** localStorage, if this visit has it (the accessor throws with site data blocked). */
 function unsavedStorage(): Storage | undefined {
   try {
@@ -101,6 +118,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       .then(() => update<unknown>(key, (stored) => applyChanges(read(stored), changes)))
       .then(() => {
         for (const [id, x] of changes) if (writes.get(id) === x) writes.delete(id);
+        settle(changes);
         channel?.postMessage('saved');
       });
     // The chain goes on after a failure; this write's caller hears of it.
@@ -129,6 +147,19 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       for (const [id, x] of [...writes, ...pending]) left.set(id, x);
       localStorage.setItem(unsavedKey, JSON.stringify([...left]));
       log('store.unsaved.leave', { key, items: left.size });
+    } catch (e) {
+      log('store.unsaved.fail', { key, e });
+    }
+  };
+  /** A write that finished after the page was told to leave: not unsaved after all. */
+  const settle = (changes: Map<string, T | null>) => {
+    try {
+      const storage = unsavedStorage();
+      const raw = storage?.getItem(unsavedKey) ?? null;
+      if (!storage || raw === null) return;
+      const next = settleUnsaved(raw, changes);
+      if (next === null) storage.removeItem(unsavedKey);
+      else if (next !== raw) storage.setItem(unsavedKey, next);
     } catch (e) {
       log('store.unsaved.fail', { key, e });
     }

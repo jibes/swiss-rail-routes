@@ -583,6 +583,112 @@ describe('round trips', () => {
   });
 });
 
+describe('loops turned', () => {
+  // Chur → Albula line → St. Moritz → Chur without a stay: one leg from Chur to Chur, which
+  // OJP cannot plan. The turn is St. Moritz, yours, not the middle of the line's own stations.
+  const out = conn(
+    ride('RE 1', [
+      ['Chur', '08:00'],
+      ['Thusis', '08:30'],
+      ['Filisur', '09:00'],
+      ['Bergün/Bravuogn', '09:10'],
+      ['Preda', '09:30'],
+      ['St. Moritz', '10:00'],
+    ]),
+  );
+  const back = conn(
+    ride('RE 2', [
+      ['St. Moritz', '10:30'],
+      ['Preda', '11:00'],
+      ['Bergün/Bravuogn', '11:20'],
+      ['Filisur', '11:30'],
+      ['Thusis', '12:00'],
+      ['Chur', '12:30'],
+    ]),
+  );
+  // Built as the app builds it: the line after Chur, then Chur again at the end.
+  const loop = ((): Tour => {
+    let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Chur'))]);
+    t = insertEntries(t, 0, lineEntries(tpl('albula')));
+    t = insertEntries(t, entriesOf(t).length - 1, [stationEntry(stop('Chur'))]);
+    return { ...t, anchor: { departAt: '07:30' } };
+  })();
+
+  it('a round trip on a line turns at your station, never at one of the line’s rings', async () => {
+    const d = deps([out, back]);
+    const r = await plan(loop, d.deps);
+    expect(r.legs!.map((l) => `${l.from.name}>${l.to.name}`)).toEqual([
+      'Chur>St. Moritz',
+      'St. Moritz>Chur',
+    ]);
+    expect(r.recommended!.connections.map((c) => c.dep)).toEqual([out.dep, back.dep]);
+    expect(r.relaxed).toEqual([]);
+  });
+
+  it('arrive by: the first try leaves room for both legs of a turned loop', async () => {
+    const d = deps([out, back]);
+    await plan({ ...loop, anchor: { arriveBy: '13:00' } }, d.deps);
+    // 90 min a leg, two legs: asked from 10:00, not from 11:30 as for one leg.
+    expect(d.tt.calls[0]!.time).toBe('2026-11-07T10:00');
+  });
+});
+
+describe('reservation trains', () => {
+  it('avoided also in an answer fetched for one chain alone', async () => {
+    // Zürich → Chur (30 min stop) → St. Moritz. Two trains to Chur; from Chur six regular
+    // trains within the hour (the first answer, full), then a panorama train and a regular
+    // one. The chain off the later train to Chur finds nothing in the shared answer and asks
+    // again: that answer, too, prefers the regular train.
+    const first = (dep: string, arr: string, line = 'IC 3') =>
+      conn(
+        ride(line, [
+          ['Zürich HB', dep],
+          ['Chur', arr],
+        ]),
+      );
+    const on = (line: string, dep: string, arr: string, extra = {}) =>
+      conn(
+        ride(
+          line,
+          [
+            ['Chur', dep],
+            ['St. Moritz', arr],
+          ],
+          extra,
+        ),
+      );
+    const list = [
+      first('07:37', '08:52'),
+      first('08:37', '09:52'),
+      ...['09:25', '09:35', '09:45', '09:55', '10:05', '10:15'].map((t, i) =>
+        on('RE 1', t, `1${i}:00`),
+      ),
+      on('PE 9', '10:30', '12:10', { reservationRequired: true }),
+      // The regular train later needs a change: a worse chain, still the one to take.
+      conn(
+        ride('RE 2', [
+          ['Chur', '11:30'],
+          ['Thusis', '12:00'],
+        ]),
+        ride('RE 3', [
+          ['Thusis', '12:10'],
+          ['St. Moritz', '13:30'],
+        ]),
+      ),
+    ];
+    const t = tour('Zürich HB', (x) => {
+      const y = addWaypoint(addWaypoint(x, stop('Chur')), stop('St. Moritz'));
+      return setDwell(setStop(y, 1, true), 1, 30);
+    });
+    const r = await plan(t, deps(list).deps);
+    const trains = r.options!.flatMap((o) =>
+      o.connections.flatMap((c) => c.sections.map((s) => `${s.category} ${s.number}`)),
+    );
+    expect(trains).not.toContain('PE 9');
+    expect(trains).toContain('RE 2');
+  });
+});
+
 describe('lines and legs', () => {
   it('lines without rings, back to back, each on its own leg (a Rigi day)', () => {
     let t = insertEntries(newTour('t', DATE), -1, [stationEntry(stop('Zürich HB'))]);
