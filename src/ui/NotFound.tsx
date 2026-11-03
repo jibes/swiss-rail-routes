@@ -12,9 +12,6 @@ export function NotFound() {
         </button>
       </header>
       <p>{t('notFound')}</p>
-      <button type="button" className="secondary" onClick={() => go('/')}>
-        {t('back')}
-      </button>
     </main>
   );
 }

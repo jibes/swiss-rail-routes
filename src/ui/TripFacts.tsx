@@ -1,4 +1,5 @@
 import type { PlannedChain } from '../core/planner/plan';
+import { changesOf } from '../core/trip';
 import { useT } from '../store';
 import { duration, hhmm, minutesBetween } from './format';
 import { Icon } from './icons';
@@ -7,7 +8,7 @@ import { Icon } from './icons';
  * the trip screen and a shared trip. */
 export function TripFacts({ chain }: { chain: PlannedChain }) {
   const t = useT();
-  const changes = chain.connections.reduce((n, c) => n + c.transfers, 0);
+  const changes = changesOf(chain.connections);
   // Disruptions are on the rides they concern; their number is said at the top.
   const disruptions = chain.warnings.filter((w) => w.type === 'disruption').length;
   const trains = chain.connections.reduce(

@@ -18,6 +18,10 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
         page.locator('.trip-line .station', { hasText: 'Bergün' }).first(),
       ).toBeVisible();
       await expect(page.locator('.trip-line .station.missed')).toHaveCount(0);
+      // The bus passes Bergün by walking to the station and back: one row, arriving and leaving,
+      // not two walks around an untimed station.
+      await expect(page.locator('.trip-line .station', { hasText: 'Bergün' })).toHaveCount(1);
+      await expect(page.getByText('Walk 8 min')).toHaveCount(0);
     }
 
     // 2–3 options with different times, the recommended one chosen; or one with a note.
@@ -116,9 +120,12 @@ test('more options that fail to load change nothing; a tap chooses one', async (
   });
   await page.evaluate(() => document.querySelectorAll('[data-copy]').forEach((x) => x.remove()));
   release();
-  await expect(page.getByText('Could not load more connections. Try again.')).toBeVisible({
+  await expect(page.getByText('Could not load more connections.')).toBeVisible({
     timeout: 30_000,
   });
+  await expect(
+    page.locator('.options-note').getByRole('button', { name: 'Try again' }),
+  ).toBeVisible();
   await expect(opts).toHaveCount(n);
   await expect(page.locator('.hero-times')).toHaveText(hero);
   // Another option becomes the trip at once (no new request), the others stay to choose from.

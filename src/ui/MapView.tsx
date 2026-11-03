@@ -227,6 +227,17 @@ export default function MapView({ id }: { id: string }) {
             },
             paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
           });
+        // Named without the style's fonts (HTML markers), so the plain ground has names too:
+        // the stations where you board, stay and get off, not every one passed.
+        for (const f of d.stops.features) {
+          if (f.properties.kind === 'via') continue;
+          const el = document.createElement('div');
+          el.className = 'map-name';
+          el.textContent = String(f.properties.name ?? '');
+          new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 9] })
+            .setLngLat(f.geometry.coordinates)
+            .addTo(map);
+        }
         setMap(map);
       });
     })().catch(() => setFailed(true));

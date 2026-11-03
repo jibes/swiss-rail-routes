@@ -168,25 +168,21 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
   };
 }
 
-/** The revised trip: the travelled part, then the new plan; warnings re-indexed by leg. */
-export function mergeReplan(
-  trip: Trip,
-  point: ReplanPoint,
-  newLegs: Leg[],
-  chain: PlannedChain,
-): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
-  // The stations of the current leg already passed stay on it (the line still shows them).
+/**
+ * The legs travelled: whole ones before the point, and the current one ending at it (a stay
+ * planned there stays; else it is a change, never a scenic line's station). The stations of
+ * the current leg already passed stay on it (the line still shows them).
+ */
+export function keptLegs(trip: Trip, point: ReplanPoint): Leg[] {
   const passed = new Set(
     (point.keep[point.leg]?.sections ?? []).flatMap((s) =>
       [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)),
     ),
   );
-  const keptLegs: Leg[] = trip.legs.slice(0, point.keep.length).map((l, i) =>
+  return trip.legs.slice(0, point.keep.length).map((l, i) =>
     i === point.leg
       ? {
           ...l,
-          // The point ends the travelled part: a stay planned there stays; else it is a
-          // change (a leg ends there), never a scenic line's station.
           to:
             stopKey(point.stop.stopRef) === stopKey(l.to.stopRef)
               ? { ...l.to, templateId: undefined, ring: undefined, line: undefined }
@@ -207,12 +203,33 @@ export function mergeReplan(
         }
       : l,
   );
+}
+
+/** The route as travelled up to the point, for its own line above the rest (null before any ride). */
+export function travelledRoute(trip: Trip, point: ReplanPoint): Tour | null {
+  const legs = keptLegs(trip, point);
+  const first = legs[0]?.from;
+  if (!first) return null;
+  return {
+    ...trip.route,
+    id: `${trip.id}-travelled`,
+    waypoints: normalise([first, ...legs.flatMap((l) => [...l.vias, l.to])]),
+  };
+}
+
+/** The revised trip: the travelled part, then the new plan; warnings re-indexed by leg. */
+export function mergeReplan(
+  trip: Trip,
+  point: ReplanPoint,
+  newLegs: Leg[],
+  chain: PlannedChain,
+): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
   const keptWarnings = trip.chain.warnings.filter((w) => w.legIndex < point.keep.length);
   const offset = point.keep.length;
   const connections = [...point.keep, ...chain.connections];
   // The trip's route as it now runs: what was travelled, then the new rest (its stops, map,
   // shares and "Save as route" all follow the replanned trip). Date and time stay the trip's.
-  const legs = [...keptLegs, ...newLegs.map((l, i) => ({ ...l, index: offset + i }))];
+  const legs = [...keptLegs(trip, point), ...newLegs.map((l, i) => ({ ...l, index: offset + i }))];
   const first = legs[0]?.from;
   const route: Tour = first
     ? {

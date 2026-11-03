@@ -19,7 +19,8 @@ const MODE_KEY: Partial<Record<StopMode, MessageKey>> = {
 
 /**
  * Station search as an ARIA combobox over the bundled stop index. As an edit field
- * (`initial` given) it starts with the station's name selected, has a clear button, and reports
+ * (`initial` given) it starts with the station's name selected, has a clear button while the
+ * text differs from it, and reports
  * the text left when focus leaves it and anything in `trailing` (`onLeave`).
  */
 export function StopPicker({
@@ -124,7 +125,7 @@ export function StopPicker({
           e.preventDefault();
         }}
       />
-      {initial !== undefined && text && (
+      {initial !== undefined && text && text !== initial && (
         <button
           type="button"
           className="icon clear"

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { optionsKey } from '../core/answers';
 import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
+import { isRoundTrip } from '../core/tour';
 import { dayOf, type Trip } from '../core/trip';
 import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
@@ -90,6 +91,8 @@ export function OptionsBar({
     .filter(ahead)
     .sort((a, b) => Date.parse(a.c.dep) - Date.parse(b.c.dep));
   const sameArr = all.length > 1 && all.every((o) => o.c.arr === all[0]!.c.arr);
+  // Under each option its arrival: "back" where the trip ends where it started.
+  const arrKey = isRoundTrip(trip.route) ? 'backAt' : 'arrAt';
   const noMore = none?.base === base && !none.failed ? none.dir : null;
   const failed = none?.base === base && none.failed;
   const strip = useRef<HTMLDivElement>(null);
@@ -221,13 +224,18 @@ export function OptionsBar({
                   <b>
                     {hhmm(c.dep)}
                     {c.dep === result?.recommended?.dep && c.arr === result.recommended.arr && (
-                      <span className="best" role="img" aria-label={t('recommended')} />
+                      <span
+                        className="best"
+                        role="img"
+                        aria-label={t('recommended')}
+                        title={t('recommended')}
+                      />
                     )}
                   </b>
                   <span>
                     {sameArr
                       ? duration(minutesBetween(c.dep, c.arr))
-                      : t('backAt', { time: hhmm(c.arr) })}
+                      : t(arrKey, { time: hhmm(c.arr) })}
                   </span>
                 </button>
               );
@@ -261,6 +269,16 @@ export function OptionsBar({
       {(noMore || failed) && (
         <p className="muted options-note" role="status">
           {failed ? t('moreFailed') : noMore === 'later' ? t('noLater') : t('noEarlier')}
+          {failed && none && (
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy !== null}
+              onClick={() => void load(none.dir)}
+            >
+              {t('retry')}
+            </button>
+          )}
         </p>
       )}
     </div>

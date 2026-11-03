@@ -146,7 +146,6 @@ button {
   }
 }
 
-.bar h1,
 .bar .title {
   flex: 1;
   min-width: 0;
@@ -164,8 +163,11 @@ button {
   border-radius: 8px;
 }
 
-.title::placeholder {
-  color: var(--ink-3);
+/* The pencil: the name can be changed. */
+.title svg {
+  margin-left: 8px;
+  vertical-align: -2px;
+  opacity: 0.5;
 }
 
 .title:hover {
@@ -212,12 +214,6 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.dock .note {
-  flex: 1;
-  font-size: 14px;
-  color: var(--ink-2);
 }
 
 .primary,

@@ -7,6 +7,9 @@ import type { Connection, Section } from '../src/core/model';
 import type { TripQuery } from '../src/core/ojp/request';
 import { parseTripQuery } from '../src/core/ojp/request';
 import { stopKey } from '../src/core/stops';
+import { toB64Url } from '../src/core/b64';
+import { pipe } from '../src/core/export/tripShare';
+import { changesOf } from '../src/core/trip';
 import { isPlanned, newTrip, type PlannedTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from './acceptance/ojp';
 import { acceptanceTours } from './acceptance/tours';
@@ -49,6 +52,33 @@ describe('a trip as its trains', async () => {
     expect(link.startsWith('#/s/')).toBe(true);
     expect(link.length).toBeLessThan(1200);
     expect(link.length).toBeLessThan((await encodeTrip(trip)).length / 3);
+  });
+
+  it('says the same number of changes as the trip screen', async () => {
+    const back = await opened();
+    expect(changesOf(back.chain.connections)).toBe(changesOf(trip.chain.connections));
+  });
+
+  it('a link written until 0.15.0, with time windows on its stations, still opens', async () => {
+    const data = [
+      1,
+      'Old',
+      '',
+      trip.route.date,
+      'd08:00',
+      'GA',
+      2,
+      [
+        ['3000', 0, 0, 0, 0, 0, 0, '09:30', '17:00'],
+        ['9000', 4, 0, 0, 0, 0, 0, 0, '18:00'],
+      ],
+      [[480, 600, [['', 0, ['3000', 480], ['9000', 600]]]]],
+    ];
+    const json = new TextEncoder().encode(JSON.stringify(data));
+    const hash = '#/s/' + toB64Url(await pipe(json, new CompressionStream('deflate-raw')));
+    const back = await decodeTripLink(hash, 'old', nameOf);
+    expect(back?.route.waypoints.map((w) => w.name)).toEqual(['Zürich HB', 'Chur']);
+    expect(back?.route.waypoints.some((w) => 'earliestArr' in w || 'latestDep' in w)).toBe(false);
   });
 
   it('holds the trip’s trains: each ride, where you board and get off, its times', async () => {

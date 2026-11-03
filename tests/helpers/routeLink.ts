@@ -12,7 +12,10 @@ function code(ref: string): string {
   return m ? m[1]! : 'x' + encodeURIComponent(ref).replaceAll('.', '%2E').replaceAll('~', '%7E');
 }
 
-function token(w: Waypoint): string {
+/** The 0.3 builder's time windows, written into links until 0.15.0; the app reads past them. */
+export type OldWaypoint = Waypoint & { earliestArr?: string; latestDep?: string };
+
+function token(w: OldWaypoint): string {
   const mods: string[] = [];
   if (w.kind === 'stop') mods.push(String(w.dwellMin));
   if (w.kind === 'turnaround') mods.push(`t${w.dwellMin}`);
@@ -26,7 +29,10 @@ function token(w: Waypoint): string {
  * The route's stops and settings as link parts (defaults left out). A route is where you go;
  * `when` adds date, time and ticket (the plan screen's address).
  */
-export function routeParts(tour: Tour, when = false): { stops: string; query: URLSearchParams } {
+export function routeParts(
+  tour: Omit<Tour, 'waypoints'> & { waypoints: OldWaypoint[] },
+  when = false,
+): { stops: string; query: URLSearchParams } {
   const q = new URLSearchParams();
   if (when) {
     q.set('d', tour.date);

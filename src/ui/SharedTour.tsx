@@ -7,7 +7,7 @@ import { useStopIndex } from './useStopIndex';
 import { lineName } from './TemplatePicker';
 import { useT } from '../store';
 import { useTrips } from '../trips';
-import { dayOf, defaultDate, newTrip } from '../core/trip';
+import { dayOf, newTrip } from '../core/trip';
 import { markRings } from '../core/line';
 import { autoName } from '../core/naming';
 import { go } from './useHash';
@@ -17,7 +17,8 @@ import { TripLine } from './TripLine';
 
 /**
  * A route someone shared: `#/r/<stops>?…` (or a route's address from another device), or the
- * older `#/t/<data>`. It becomes a new trip on this device, planned on its date (or next Saturday).
+ * older `#/t/<data>`. It becomes a new trip on this device, planned on its date (or today, when
+ * the link names none or a day gone).
  */
 export function SharedTour({
   stops,
@@ -41,7 +42,7 @@ export function SharedTour({
             name: (ref) =>
               index?.byRef(stopKey(ref))?.name ??
               TEMPLATES.flatMap((x) => x.chain).find((c) => c.ref === ref)?.name,
-            today: defaultDate(now),
+            today: dayOf(now),
           });
           return r && { ...r, id: 'shared' };
         })();
@@ -80,7 +81,7 @@ export function SharedTour({
             onClick={() => {
               const id = crypto.randomUUID();
               const today = dayOf(Date.now()); // in the tap, not in render
-              const date = rest.date >= today ? rest.date : defaultDate();
+              const date = rest.date >= today ? rest.date : today;
               add(
                 newTrip(
                   id,

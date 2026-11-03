@@ -112,7 +112,16 @@ test('the trains still show when the rest cannot be loaded; try again gets it', 
   await page.goto('about:blank');
   await page.goto(url);
   await expect(page.locator('.hero-times')).toContainText('09:04');
-  await expect(page.getByText('Showing the trains and times')).toBeVisible();
+  // Said above the line, and the line marks no station missed: the stops are not known yet.
+  const bare = page.getByText('Showing the trains and times');
+  await expect(bare).toBeVisible();
+  expect(await bare.boundingBox().then((b) => b!.y)).toBeLessThan(
+    await page
+      .locator('.trip-line')
+      .boundingBox()
+      .then((b) => b!.y),
+  );
+  await expect(page.locator('.trip-line .station.missed')).toHaveCount(0);
 
   await page.unroute(/\/trip$/);
   await page.route(/\/trip$/, (r) => r.fulfill({ contentType: 'application/xml', body: answer() }));

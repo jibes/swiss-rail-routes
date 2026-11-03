@@ -579,22 +579,6 @@
   color: var(--ink);
 }
 
-/* Controls, plain (0.5.4): flat tonal fills instead of outlined pills; one radius. */
-.trip-screen .pill,
-.add-sheet .pill {
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  box-shadow: none;
-}
-
-.trip-screen .pill.on,
-.trip-screen .pill[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--bg);
-}
-
 .trip-screen .options-bar {
   border-radius: 12px;
   background: color-mix(in srgb, var(--ink) 5%, transparent);
@@ -639,10 +623,6 @@
 /* Audit 0.5.5: no native border on pills; 44 px targets; a sheet that keeps its height */
 .pill {
   border: 0;
-}
-
-.trip-screen .pill {
-  min-height: 40px;
 }
 
 .options-bar .shift {
@@ -780,10 +760,6 @@
   grid-template-columns: 3.2em minmax(0, 1fr) 44px;
 }
 
-.trip-line .ride.with-mids .mids li.via::before {
-  top: 17px;
-}
-
 .trip-line .ride .mids li.via.entry {
   color: var(--ink);
 }
@@ -792,10 +768,13 @@
   padding: 0;
 }
 
+/* As tall as any other stop in the list; the tap area reaches beyond the row. */
 .trip-line .ride .mids .via .m {
   display: block;
   grid-column: 2;
-  padding: 6px 0;
+  min-height: 0;
+  padding: 10px 0;
+  margin: -8px 0;
   font-size: 14px;
   color: inherit;
 }
@@ -810,10 +789,42 @@
   margin-left: 0;
 }
 
+/* Small as a word, a finger's height to tap (the padding reaches beyond the row). */
 .trip-line .ride .mids-toggle {
   min-height: 0;
-  padding: 0;
+  padding: 12px 0;
+  margin: -12px 0;
   font-size: 13px;
+}
+
+/* Why a station cannot be edited: a quiet note, not a stop. */
+.trip-line .why {
+  padding-left: 8px;
+  border-left: 2px solid var(--hair);
+  color: var(--ink-3);
+}
+
+/* The panel's head: the station's name as a field, the cross that closes the panel. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.panel-head .picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-head > .icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--ink-2);
+}
+
+.options-note .text-button {
+  margin-left: 8px;
 }
 
 .panel .panel-note {
@@ -826,6 +837,12 @@
 .trip-line.read > li:last-child .rail::before {
   bottom: auto;
   height: 18px;
+}
+
+/* The way here (replan) ends with a ride: its rail runs on into the line of the rest. */
+.trip-line.past > li:last-child .rail::before {
+  bottom: 0;
+  height: auto;
 }
 
 /* A walk: the rail dotted and grey (you are not on a train), from dot to dot. */

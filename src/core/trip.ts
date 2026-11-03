@@ -1,5 +1,5 @@
 // A trip: a route frozen with its date, ticket and the connections chosen for it (SPEC "Trips").
-import type { Leg, Tour } from './model';
+import type { Connection, Leg, Tour } from './model';
 import { zurichDateTime } from './ojp/request';
 import { simplify } from './polyline';
 import type { PlannedChain } from './planner/plan';
@@ -75,13 +75,15 @@ export const dayOf = (now: number) => ZURICH_DAY.format(now);
 export const zurichTime = (date: string, time: string): number =>
   Date.parse(zurichDateTime(`${date}T${time}`));
 
-/** Next Saturday in Zurich, or today when it is one: day trips are mostly at the weekend. */
-export function defaultDate(now = Date.now()): string {
-  const today = dayOf(now);
-  const d = new Date(`${today}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + ((6 - d.getUTCDay() + 7) % 7));
-  return d.toISOString().slice(0, 10);
-}
+/**
+ * How often you change vehicle: within each connection, every ride after the first (a walk
+ * between is no change of its own). The one count for the trip screen and a shared trip.
+ */
+export const changesOf = (connections: Pick<Connection, 'sections'>[]): number =>
+  connections.reduce(
+    (n, c) => n + Math.max(0, c.sections.filter((s) => s.mode !== 'walk').length - 1),
+    0,
+  );
 
 /**
  * `arrival`: the expected arrival with live delays, so a late last train keeps it live. A trip

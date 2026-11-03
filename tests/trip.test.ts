@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { newTour } from './helpers/edit';
 import type { PlannedChain } from '../src/core/planner/plan';
 import {
+  changesOf,
   compactTrip,
-  defaultDate,
   zurichTime,
   liveTrip,
   newTrip,
@@ -126,6 +126,17 @@ describe('compact trips', () => {
   });
 });
 
+describe('changes', () => {
+  const ride = (): { mode: 'rail' } => ({ mode: 'rail' });
+  const walk = (): { mode: 'walk' } => ({ mode: 'walk' });
+  it('counts every ride after the first of a connection; walks and the stops between legs are none', () => {
+    const c = (...sections: { mode: 'rail' | 'walk' }[]) => ({ sections: sections as never });
+    expect(changesOf([c(ride(), walk(), ride()), c(ride()), c(ride(), ride(), ride())])).toBe(3);
+    expect(changesOf([c(walk(), ride(), walk())])).toBe(0);
+    expect(changesOf([])).toBe(0);
+  });
+});
+
 describe('Zurich time', () => {
   it('is right on the two clock-change days', () => {
     expect(new Date(zurichTime('2026-03-29', '01:30')).toISOString()).toBe(
@@ -137,13 +148,5 @@ describe('Zurich time', () => {
     expect(new Date(zurichTime('2026-07-01', '08:00')).toISOString()).toBe(
       '2026-07-01T06:00:00.000Z',
     );
-  });
-
-  it('the default day is the next Saturday in Zurich, whatever the device’s zone', () => {
-    // Friday 23:30 in Zurich (22:30 UTC): Saturday is tomorrow.
-    expect(defaultDate(Date.parse('2026-11-06T22:30:00Z'))).toBe('2026-11-07');
-    // Saturday 00:30 in Zurich (Friday 23:30 UTC): today.
-    expect(defaultDate(Date.parse('2026-11-06T23:30:00Z'))).toBe('2026-11-07');
-    expect(defaultDate(Date.parse('2026-11-08T10:00:00Z'))).toBe('2026-11-14');
   });
 });

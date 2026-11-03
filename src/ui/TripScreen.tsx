@@ -386,8 +386,16 @@ export function TripScreen({ id }: { id: string }) {
         />
       ) : (
         <h1>
-          <button type="button" className="title" onClick={() => setRenaming(true)}>
+          {/* The pencil says the name can be changed; the label says so to a screen reader. */}
+          <button
+            type="button"
+            className="title"
+            aria-label={`${name}. ${t('renameTrip')}`}
+            title={t('renameTrip')}
+            onClick={() => setRenaming(true)}
+          >
             {name}
+            <Icon name="edit" size={16} />
           </button>
         </h1>
       )}

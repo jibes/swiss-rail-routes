@@ -560,6 +560,94 @@ describe('rows: the replacement bus outside the station', () => {
     );
     expect(names).toEqual(['Zurich', 'Interlaken Ost', 'Bern']);
   });
+
+  it('a walk from the bus stop to the station and back is the stop, arriving and leaving', () => {
+    // T1 on the Albula closure: the bus passes Bergün by walking from "Bergün, posta" to the
+    // station and back while you wait for the next bus. One row, with both times.
+    const tour = insertEntries(start(), 0, [
+      stationEntry(s('Bergün/Bravuogn')),
+      stationEntry(s('Preda')),
+    ]);
+    const walk = (a: string, b: string) => ({
+      mode: 'walk' as const,
+      walkMin: 8,
+      from: call(a),
+      to: call(b),
+      intermediate: [],
+    });
+    const rows = plannedRows(tour, [
+      {
+        legIndex: 0,
+        dep: iso('11:58'),
+        arr: iso('13:30'),
+        transfers: 1,
+        sections: [
+          {
+            mode: 'bus',
+            line: 'EV4',
+            from: call('Zurich', undefined, '11:58'),
+            to: call('Bergün/Bravuogn, posta', '12:17'),
+            intermediate: [],
+          },
+          walk('Bergün/Bravuogn, posta', 'Bergün/Bravuogn'),
+          walk('Bergün/Bravuogn', 'Bergün/Bravuogn, posta'),
+          {
+            mode: 'bus',
+            line: 'EV4',
+            from: call('Bergün/Bravuogn, posta', undefined, '13:17'),
+            to: call('Preda', '13:30'),
+            intermediate: [],
+          },
+        ],
+      },
+    ]);
+    expect(rows.map((r) => (r.type === 'ride' ? `[${r.section.mode}]` : r.name))).toEqual([
+      'Zurich',
+      '[bus]',
+      'Bergün/Bravuogn',
+      '[bus]',
+      'Preda',
+    ]);
+    const bergün = rows[2] as Extract<(typeof rows)[number], { type: 'station' }>;
+    expect([bergün.arr, bergün.dep, bergün.role, bergün.missed]).toEqual([
+      iso('12:17'),
+      iso('13:17'),
+      'change',
+      undefined,
+    ]);
+  });
+
+  it('a link holds only the trains: a route station not among their ends is not missed', () => {
+    const tour = insertEntries(start(), 0, [
+      stationEntry(s('Pontresina')),
+      stationEntry(s('Tirano')),
+    ]);
+    const chain = [
+      {
+        legIndex: 0,
+        dep: iso('09:00'),
+        arr: iso('11:00'),
+        transfers: 0,
+        sections: [
+          {
+            mode: 'rail' as const,
+            line: 'R',
+            from: call('Zurich', undefined, '09:00'),
+            to: call('Tirano', '11:00'),
+            intermediate: [],
+          },
+        ],
+      },
+    ];
+    const missed = (rows: ReturnType<typeof plannedRows>) =>
+      rows.flatMap((r) => (r.type === 'station' && r.missed ? [r.name] : []));
+    expect(missed(plannedRows(tour, chain))).toEqual(['Pontresina']);
+    expect(missed(plannedRows(tour, chain, { partial: true }))).toEqual([]);
+    // Still on the line, in its place, without times.
+    expect(
+      plannedRows(tour, chain, { partial: true }).map((r) => (r.type === 'station' ? r.name : '-')),
+    ).toEqual(['Zurich', '-', 'Pontresina', 'Tirano']);
+  });
 });
 
 describe('a finished trip waits in search', () => {

@@ -62,19 +62,6 @@
   font-weight: 600;
 }
 
-/* Quiet: plain text with a chevron (language). Opens upwards from the page foot. */
-.select.quiet > button {
-  min-height: var(--tap);
-  padding: 0 4px;
-  color: var(--ink-2);
-  font-size: 13px;
-}
-
-.home-foot .select-list {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-
 .picker.editing {
   flex: 1;
   display: grid;

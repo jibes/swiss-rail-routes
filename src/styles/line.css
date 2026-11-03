@@ -14,12 +14,6 @@
   white-space: nowrap;
 }
 
-.chip[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--bg);
-  box-shadow: none;
-}
-
 /* Station search */
 .picker {
   position: relative;

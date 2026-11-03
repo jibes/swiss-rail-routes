@@ -79,6 +79,10 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   // The rest from here is planned at once, without a failure first.
   await expect(page.getByRole('button', { name: 'Update trip' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('alert')).toHaveCount(0);
+  // Nothing changed yet: nothing to update. The way here, grey, above the rest.
+  await expect(page.getByRole('button', { name: 'Update trip' })).toBeDisabled();
+  await expect(page.locator('.trip-line.past .ride')).toHaveCount(1);
+  await expect(page.locator('.trip-line.past .station')).toHaveText([/Interlaken Ost/]);
   // The same line as the trip screen; where you are is fixed: only "Add after".
   const line = page.getByRole('list', { name: 'The trip', exact: true });
   await line.locator('.station.entry').first().getByRole('button').first().click();
@@ -93,6 +97,7 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await page.getByRole('button', { name: 'Stay', exact: true }).click();
   // Planned as you edit: no Find button, Update once the plan is there.
   await expect(page.getByRole('button', { name: 'Find connections' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Update trip' })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Update trip' }).click({ timeout: 30_000 });
 
   // Back on Now: the new plan (via Wengen), undo available.

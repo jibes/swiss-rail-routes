@@ -25,16 +25,23 @@
   pointer-events: auto;
 }
 
-.map-bar .icon,
-.map-bar .secondary {
+.map-bar .icon {
   background: var(--surface);
   box-shadow: var(--shadow);
 }
 
-.map-bar .secondary {
-  min-height: var(--tap);
-  font-size: 15px;
-  padding: 0 16px;
+/* A station's name on the map (an HTML marker: no font of the style needed). */
+.map-name {
+  font:
+    600 12px/1.2 system-ui,
+    sans-serif;
+  color: #1a1a1a;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 4px #fff,
+    0 1px 3px #fff;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .map-note {
@@ -83,33 +90,6 @@
   min-height: 36px;
   font-size: 15px;
   box-shadow: none;
-}
-
-.icon.secondary {
-  width: 52px;
-  height: 52px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-/* Drag to reorder */
-.stop {
-  background: var(--bg);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .stop {
-    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
-  }
-}
-
-.stop.dragging {
-  box-shadow: var(--shadow);
-  border-radius: var(--r);
-}
-
-.stop.dragging::before {
-  opacity: 0.3;
 }
 
 .grip {

@@ -11,7 +11,7 @@ import {
 import { expectedArrival } from '../core/live';
 import type { Tour } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
-import { mergeReplan, remainingRoute, replanPoint } from '../core/replan';
+import { mergeReplan, remainingRoute, replanPoint, travelledRoute } from '../core/replan';
 import { plannedRows, routeRows } from '../core/rows';
 import { isPlanned, revise, tripStatus, type PlannedTrip } from '../core/trip';
 import { log } from '../io/log';
@@ -62,12 +62,13 @@ export function EditTrip({ id }: { id: string }) {
   const { state, now } = useLive(live ? trip : undefined);
   const start = (x: PlannedTrip | undefined) => {
     const p = x && state ? replanPoint(x, state, now) : null;
-    return { point: p, draft: x && p ? remainingRoute(x, p) : null, version: x?.version };
+    const draft = x && p ? remainingRoute(x, p) : null;
+    return { point: p, draft, version: x?.version, initial: draft ? JSON.stringify(draft) : '' };
   };
   // The live state and time it was opened with: the cut is made again at saving, with stop
   // positions, so the travelled train keeps its track up to the stop.
   const [opened, setOpened] = useState(() => ({ state, now, version: trip?.version }));
-  const [{ point, draft }, setBase] = useState(() => start(trip));
+  const [{ point, draft, initial }, setBase] = useState(() => start(trip));
   const setDraft = (f: (d: Tour) => Tour) =>
     setBase((b) => (b.draft ? { ...b, draft: f(b.draft) } : b));
   const index = useStopIndex();
@@ -133,6 +134,19 @@ export function EditTrip({ id }: { id: string }) {
   const shown = chain ?? (planning ? (last?.recommended ?? null) : null);
   const entries = entriesOf(draft);
   const rows = shown ? plannedRows(draft, shown.connections) : routeRows(draft);
+  // The way here, grey above the rest; the station you are at starts the rest, so it is not
+  // drawn twice (the travelled line ends with the ride that brought you).
+  const travelled = travelledRoute(trip, point);
+  const travelledRows = travelled ? plannedRows(travelled, point.keep) : [];
+  const behind = travelledRows.slice(
+    0,
+    Math.max(
+      0,
+      travelledRows.findLastIndex((r) => r.type === 'station'),
+    ),
+  );
+  // Nothing to update until the rest differs, or another connection was chosen.
+  const dirty = json !== initial || picked !== null;
   const edit = (f: (x: Tour) => Tour) => {
     setDraft(f);
     setPicked(null);
@@ -239,6 +253,15 @@ export function EditTrip({ id }: { id: string }) {
           />
         )}
 
+      {travelled && behind.length > 0 && (
+        <TripLine
+          travelled
+          route={travelled}
+          rows={behind}
+          warnings={trip.chain.warnings.filter((w) => w.legIndex < point.keep.length)}
+          planning={false}
+        />
+      )}
       <TripLine
         route={draft}
         rows={rows}
@@ -268,7 +291,7 @@ export function EditTrip({ id }: { id: string }) {
       {chain && !changed && (
         <div className="dock">
           <div className="dock-inner">
-            <button type="button" className="primary wide" onClick={save}>
+            <button type="button" className="primary wide" disabled={!dirty} onClick={save}>
               {t('updateTrip')}
             </button>
           </div>

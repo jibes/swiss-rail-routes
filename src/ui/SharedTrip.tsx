@@ -112,13 +112,8 @@ export function SharedTrip({ hash }: { hash: string }) {
       </header>
       <p className="eyebrow">{longDate(trip.route.date, lang)}</p>
       <TripFacts chain={trip.chain} />
-      <TripLine
-        route={trip.route}
-        rows={plannedRows(trip.route, trip.chain.connections)}
-        warnings={trip.chain.warnings}
-        planning={false}
-      />
-      {past && <p className="notice">{t('sharedPast')}</p>}
+      {/* Said where it is seen, above the line; the line marks nothing missed while the stops
+          between are not known yet. */}
       {bare && !busy && (
         <div className="notice">
           <p>{t('sharedBare')}</p>
@@ -127,6 +122,13 @@ export function SharedTrip({ hash }: { hash: string }) {
           </button>
         </div>
       )}
+      <TripLine
+        route={trip.route}
+        rows={plannedRows(trip.route, trip.chain.connections, { partial: bare })}
+        warnings={trip.chain.warnings}
+        planning={false}
+      />
+      {past && <p className="notice">{t('sharedPast')}</p>}
       <div className="dock">
         <div className="dock-inner">
           {past ? (

@@ -13,8 +13,6 @@ export interface Waypoint {
   name: string;
   kind: WaypointKind;
   dwellMin: number;
-  earliestArr?: string;
-  latestDep?: string;
   /** Set on the stops a route template inserted; its rules apply to the leg containing them. */
   templateId?: string;
   /**

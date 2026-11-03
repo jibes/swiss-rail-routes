@@ -63,12 +63,6 @@ export function sanitiseTour(
       ...(typeof w.templateId === 'string' ? { templateId: w.templateId } : {}),
       ...(w.ring === true && typeof w.templateId === 'string' ? { ring: true } : {}),
       ...(typeof w.line === 'string' ? { line: w.line } : {}),
-      ...(typeof w.earliestArr === 'string' && TIME.test(w.earliestArr)
-        ? { earliestArr: w.earliestArr }
-        : {}),
-      ...(typeof w.latestDep === 'string' && TIME.test(w.latestDep)
-        ? { latestDep: w.latestDep }
-        : {}),
     });
   }
   // A ring is a line's station between two you entered: never the first or the last.

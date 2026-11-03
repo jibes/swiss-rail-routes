@@ -121,7 +121,15 @@ export function routeRows(tour: Pick<Tour, 'waypoints'>): LineRow[] {
  * get off, and the route's stations passed on the way (with their times). Route stations the
  * timetable does not show are kept, without times, where they belong.
  */
-export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connection[]): LineRow[] {
+export function plannedRows(
+  tour: Pick<Tour, 'waypoints'>,
+  connections: Connection[],
+  opts: {
+    /** The rides are known, their stops between are not (a `#/s/` link before it was asked
+     * again): a route station not found is not missed, just not placed yet. */
+    partial?: boolean;
+  } = {},
+): LineRow[] {
   const route = routeStations(tour);
   const wanted = new Set(route.map((r) => r.key));
   // The timetable's own sequence: boarding and alighting stations, and passed route stations.
@@ -157,14 +165,30 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     seq.push({ type: 'station', name, key, role: 'change', leg, ...times });
   };
   connections.forEach((c, leg) => {
+    /** Whether section `k` is the walk back from where walk `s` goes. */
+    const back = (s: Section, k: number) => {
+      const o = c.sections[k];
+      return (
+        o?.mode === 'walk' &&
+        stopKey(o.from.stopRef) === stopKey(s.to.stopRef) &&
+        stopKey(o.to.stopRef) === stopKey(s.from.stopRef)
+      );
+    };
     c.sections.forEach((s, j) => {
       // A walk that stays at the station (another platform), or takes under a minute, is no
-      // step of its own.
+      // step of its own. Nor is a walk out and back to the same stop (OJP passes a via by its
+      // exact stop, walking from the bus stop to the station and back while you wait): the
+      // stop and its station are one row, arriving and leaving.
       if (s.mode === 'walk') {
         const min =
           s.walkMin ??
           (s.from.dep && s.to.arr ? (Date.parse(s.to.arr) - Date.parse(s.from.dep)) / 60_000 : 0);
-        if (stopKey(s.from.stopRef) === stopKey(s.to.stopRef) || min < 1) {
+        if (
+          stopKey(s.from.stopRef) === stopKey(s.to.stopRef) ||
+          min < 1 ||
+          back(s, j + 1) ||
+          back(s, j - 1)
+        ) {
           // A walk first of all: its start is where the trip starts, a row to fold into.
           if (!seq.some((r) => r.type === 'station'))
             station(s.from.name, s.from.stopRef, leg, { dep: s.from.dep });
@@ -190,6 +214,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     });
   });
 
+  const unplaced = (r: StationRow): StationRow => (opts.partial ? r : { ...r, missed: true });
   // Match the route's stations in order; a timetable station that is none of them is a change.
   const out: LineRow[] = [];
   let p = 0;
@@ -217,7 +242,7 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
       continue;
     }
     // Route stations the plan does not reach come first, without times, marked as missed.
-    for (; p < m; p++) out.push({ ...route[p]!, missed: true });
+    for (; p < m; p++) out.push(unplaced(route[p]!));
     const r = route[m]!;
     out.push({
       ...row,
@@ -230,6 +255,6 @@ export function plannedRows(tour: Pick<Tour, 'waypoints'>, connections: Connecti
     });
     p = m + 1;
   }
-  for (; p < route.length; p++) out.push({ ...route[p]!, missed: true });
+  for (; p < route.length; p++) out.push(unplaced(route[p]!));
   return out;
 }

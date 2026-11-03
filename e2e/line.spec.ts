@@ -48,6 +48,11 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   await expect(entries.nth(1)).toContainText('Stay 60 min');
   await entries.nth(2).getByRole('button').first().click();
   await expect(page.getByText('Via Brünig')).toBeVisible();
+  // The panel's cross closes it (the name's own Clear shows only while another is typed).
+  await expect(page.locator('.panel').getByRole('button', { name: 'Clear' })).toHaveCount(0);
+  await page.locator('.panel').getByRole('button', { name: 'Close' }).click();
+  await expect(page.locator('.panel')).toHaveCount(0);
+  await entries.nth(2).getByRole('button').first().click();
   const blocking = (await new AxeBuilder({ page }).analyze()).violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
   );

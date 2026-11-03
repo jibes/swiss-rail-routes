@@ -62,10 +62,6 @@
   color: var(--ink-2);
 }
 
-.empty svg {
-  color: var(--rail);
-}
-
 .home-foot {
   margin-top: auto;
   display: flex;
@@ -75,17 +71,7 @@
   color: var(--ink-3);
 }
 
-/* ─── Builder: settings strip ─── */
-
-.strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.strip::-webkit-scrollbar {
-  display: none;
-}
+/* ─── Pills: one control, flat and tonal everywhere (settings, the trip's date, the panel) ─── */
 
 .pill {
   flex: none;
@@ -93,13 +79,18 @@
   align-items: center;
   gap: 6px;
   min-height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hair);
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
   font-size: 15px;
   white-space: nowrap;
   position: relative;
+}
+
+.pill.on,
+.pill[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
 }
 
 .pill input {

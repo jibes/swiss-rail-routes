@@ -4,7 +4,7 @@
 // station names come from the app's own list, the rest from OJP when it opens (core/refresh.ts).
 import { fromB64Url, toB64Url } from '../b64';
 import type { Mode, Section, Waypoint, WaypointKind } from '../model';
-import type { PlannedTrip, Trip } from '../trip';
+import { changesOf, type PlannedTrip, type Trip } from '../trip';
 import { pipe, tripFromData } from './tripShare';
 
 const PREFIX = '#/s/';
@@ -59,8 +59,6 @@ export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<st
         w.templateId,
         w.line,
         w.ring ? 1 : 0,
-        w.earliestArr,
-        w.latestDep,
       ),
     ),
     chain.connections.map((c) => [
@@ -152,7 +150,7 @@ export async function decodeTripLink(
         legIndex: i,
         dep: at(c[0]),
         arr: at(c[1]),
-        transfers: Math.max(0, sections.filter((s) => s.mode !== 'walk').length - 1),
+        transfers: changesOf([{ sections }]),
         sections,
       };
     });
@@ -166,8 +164,7 @@ export async function decodeTripLink(
         ...(text(w[4]) ? { templateId: text(w[4]) } : {}),
         ...(text(w[5]) ? { line: text(w[5]) } : {}),
         ...(w[6] === 1 ? { ring: true } : {}),
-        ...(text(w[7]) ? { earliestArr: text(w[7]) } : {}),
-        ...(text(w[8]) ? { latestDep: text(w[8]) } : {}),
+        // Slots 7 and 8 (arrive no earlier, leave no later) were written until 0.15.0: read past.
       };
     };
     const when = anchor.slice(1);

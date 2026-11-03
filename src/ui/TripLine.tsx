@@ -57,6 +57,7 @@ export function TripLine({
   act,
   fixedFirst = false,
   live,
+  travelled = false,
 }: {
   /** Replan from here: the first station is where you are; only "Add after" it. */
   fixedFirst?: boolean;
@@ -70,6 +71,8 @@ export function TripLine({
   act?: LineActions;
   /** Under way: expected times, the travelled part grey, the marker where you are. */
   live?: LiveCtx;
+  /** Replan: the way here, grey, above the line of the rest. */
+  travelled?: boolean;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -218,6 +221,7 @@ export function TripLine({
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
             act={act}
+            close={() => setOpen?.(null)}
           />
         )}
       </>
@@ -261,9 +265,9 @@ export function TripLine({
 
   return (
     <ol
-      className={`trip-line ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''}`}
+      className={`trip-line ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
       ref={box}
-      aria-label={t('theLine')}
+      aria-label={travelled ? t('theWayHere') : t('theLine')}
     >
       {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
       {rows.map((r, i) => {
@@ -469,6 +473,7 @@ function Panel({
   line,
   change,
   act,
+  close,
 }: {
   /** You asked to ride through, but the plan changes trains here. */
   change: boolean;
@@ -480,9 +485,15 @@ function Panel({
   stay: number | null;
   line: string;
   act: LineActions;
+  close: () => void;
 }) {
   const t = useT();
   const inner = k > 0 && k < n - 1;
+  const closeButton = (
+    <button type="button" className="icon" aria-label={t('close')} onClick={close}>
+      <Icon name="close" size={18} />
+    </button>
+  );
   if (k < fixed)
     return (
       <div className="panel">
@@ -491,18 +502,24 @@ function Panel({
             <Icon name="plus" size={16} />
             {t('addAfter')}
           </button>
+          <span className="sp" />
+          {closeButton}
         </div>
       </div>
     );
   return (
     <div className="panel">
-      <StopPicker
-        // Another station picked: the field shows its name (the panel stays open).
-        key={name}
-        label={t('replaceStation')}
-        initial={name}
-        onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
-      />
+      {/* The name is the field (type another station); the cross closes the panel. */}
+      <div className="panel-head">
+        <StopPicker
+          // Another station picked: the field shows its name (the panel stays open).
+          key={name}
+          label={t('replaceStation')}
+          initial={name}
+          onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
+        />
+        {closeButton}
+      </div>
       {inner && (
         <>
           {/* Ride through (changing if the timetable needs it), or stay (for how long below). A

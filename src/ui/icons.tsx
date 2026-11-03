@@ -23,6 +23,7 @@ const P = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   locate: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v4M12 18v4M2 12h4M18 12h4',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
 } as const;
 
 export type IconName = keyof typeof P;

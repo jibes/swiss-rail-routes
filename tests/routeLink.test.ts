@@ -65,6 +65,14 @@ describe('route links', () => {
     expect(r.waypoints.at(-1)!.kind).toBe('end');
     expect(r.waypoints.every((w) => w.templateId === 'bernina')).toBe(true);
     expect(read('#/r/@bernina.r')!.waypoints[0]!.stopRef).toBe(r.waypoints.at(-1)!.stopRef);
+    // Time windows (`a<hhmm>`, `b<hhmm>`) were written until 0.15.0 and never enforced: read past.
+    const old = read('#/r/zurich-hb.3000.a0930~chur.9000.60.b1700~tirano.9257')!;
+    expect(old.waypoints.map((w) => `${w.name}:${w.kind}:${w.dwellMin}`)).toEqual([
+      'Zürich HB:start:0',
+      'Chur:stop:60',
+      'Tirano:end:0',
+    ]);
+    expect(old.waypoints.some((w) => 'earliestArr' in w || 'latestDep' in w)).toBe(false);
   });
 
   it('keeps refs that are not SLOIDs, and names unknown stops from the slug', () => {

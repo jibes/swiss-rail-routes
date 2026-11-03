@@ -49,10 +49,10 @@ export function ShareButton({
       >
         <Icon name={copied ? 'check' : 'share'} />
       </button>
-      {/* Said, not only shown: the icon's label change alone is not announced. */}
-      <span className="sr-only" role="status">
-        {copied ? t('copied') : ''}
-      </span>
+      {/* Said and shown: the icon's change alone is easy to miss. */}
+      <div className="toast" role="status" hidden={!copied}>
+        <span>{copied ? t('copied') : ''}</span>
+      </div>
     </>
   );
 }

@@ -5,8 +5,9 @@
 // Stops are `~`-separated: `<slug>.<code>` plus `.`-modifiers. The code is the SLOID number
 // (`ch:1:sloid:<n>`), or `x` and the percent-encoded ref for anything else; the slug is only
 // for people (names come from the stop index). Modifiers: `<min>` get off for that long,
-// `t<min>` turn there, `@<template>` part of that route template, `a<hhmm>` arrive no earlier,
-// `b<hhmm>` leave no later. `@<template>` alone (`.r` reversed) inserts a route template.
+// `t<min>` turn there, `@<template>` part of that route template; `a<hhmm>` and `b<hhmm>`
+// (arrive no earlier, leave no later) were written by older links and are read past: nothing
+// ever enforced them. `@<template>` alone (`.r` reversed) inserts a route template.
 // Settings, each optional: d (date, default today), dep or arr (time, default dep=08:00),
 // ticket (default GA), class (default 2), name, notes.
 import type { RouteTemplate } from '../data';
@@ -16,8 +17,6 @@ import type { TicketType, Tour, Waypoint } from '../model';
 const TICKETS: TicketType[] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-const time = (s: string) => `${s.slice(0, 2)}:${s.slice(2, 4)}`;
 
 export interface LinkContext {
   templates: RouteTemplate[];
@@ -92,8 +91,6 @@ export function parseRoute(
         Object.assign(w, { kind: 'turnaround', dwellMin: Number(m.slice(1)) });
       else if (m.startsWith('@') && ctx.templates.some((x) => x.id === m.slice(1)))
         w.templateId = m.slice(1);
-      else if (/^a\d{4}$/.test(m) && TIME.test(time(m.slice(1)))) w.earliestArr = time(m.slice(1));
-      else if (/^b\d{4}$/.test(m) && TIME.test(time(m.slice(1)))) w.latestDep = time(m.slice(1));
     }
     // A stop right after the same stop (a template's end written out again) is one stop.
     const prev = tour.waypoints.at(-1);

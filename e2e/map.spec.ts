@@ -19,6 +19,8 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
   await page.getByRole('button', { name: 'Map' }).click();
   await expect(page.getByRole('region', { name: 'Map' })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
+  // The stations you get off at are named, without the tile host's fonts.
+  await expect(page.locator('.map-name')).toHaveText(['Chur', 'St. Moritz']);
   // The route is drawn all the same, on a plain ground: the rail's red is on the map, with
   // arrows the way it goes (their dark fill: the red line on the light ground is never darker).
   await expect
