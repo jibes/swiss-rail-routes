@@ -5,7 +5,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import type { GaData, GaRule } from '../src/core/data.ts';
-import { createStopSearch, stopKey, type StopIndexFile } from '../src/core/stops.ts';
+import { createStopSearch, stopKey, type Stop, type StopIndexFile } from '../src/core/stops.ts';
 
 const DATASET = 'https://data.opentransportdata.swiss/en/dataset/osdm-offline';
 const OUT = 'src/data/ga.json';
@@ -46,6 +46,21 @@ const s = delivery.fareStructure as {
 const stops = createStopSearch(
   JSON.parse(await readFile('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
 );
+/**
+ * A fare names a place's main station; the ride may leave from another stop there (the cable
+ * car to Birg from Mürren (Schilthornbahn), the fare from Mürren BLM). When the two ends share no
+ * mode, the end is moved to the nearest stop within 1 km that has the other end's mode.
+ */
+function served(a?: Stop, b?: Stop): [Stop | undefined, Stop | undefined] {
+  if (!a || !b || a.modes.some((m) => b.modes.includes(m))) return [a, b];
+  const near = (x: Stop, y: Stop) =>
+    stops.near(x, 1).find((s) => s.ref !== y.ref && s.modes.some((m) => y.modes.includes(m)));
+  const a2 = near(a, b);
+  if (a2) return [a2, b];
+  const b2 = near(b, a);
+  return b2 ? [a, b2] : [a, b];
+}
+
 const amount = new Map(s.prices.map((p) => [p.id, p.price[0]!.amount]));
 const regional = new Map(s.regionalConstraints.map((r) => [r.id, r]));
 const isAdult2nd = (f: Fare) =>
@@ -67,7 +82,7 @@ for (const f of s.fares) {
     .map((x) => (x.station ? stops.byRef(stopKey(x.station.code)) : undefined));
   // Each pair of consecutive known stations is a stretch a ride can be checked against.
   for (let i = 0; i + 1 < route.length; i++) {
-    const [a, b] = [route[i], route[i + 1]];
+    const [a, b] = served(route[i], route[i + 1]);
     if (!a || !b) continue;
     const [x, y] = a.ref < b.ref ? [a, b] : [b, a];
     sections.set(`${x.ref}|${y.ref}`, { from: x.ref, to: y.ref, names: [x.name, y.name], rule });

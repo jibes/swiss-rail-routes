@@ -87,7 +87,7 @@ Must = MVP; Should = v1.1; Could = later.
 - [Must] Daylight: sunset per highlight coords and date; warn when a sunlight-required highlight is passed after sunset − 15 min.
 - [Should] Seasonal closures (Oberalp / Furka winter limits, cable-car revision weeks) from template metadata.
 - [Should] Transfers < 4 min flagged; platform change shown.
-- [Should] Seat-side tip per leg ("sit right").
+- [Should] Seat-side tip per leg ("sit right"), done 0.17.1: on the ride, for the lines a source states a side for (`src/data/SEATS.md`), flipped for the other direction (`src/core/seat.ts`); none where sources disagree.
 
 **Output and export** (all generated on the device)
 
@@ -262,4 +262,4 @@ Plus the standard e2e smoke: load at base path, plan T5 from the recorded answer
 - [ ] Do TripResult situations cover planned closures such as Albula 29.10.–13.11.2026? If not, add SIRI-SX through the Worker.
 - [ ] Exact quota per key; whether a commercial tier is needed; terms on caching through a proxy.
 - [ ] Source for cable-car revision dates (operator sites only?).
-- [ ] Seat-side tips: curated in templates (MVP) or derived from track bearing vs. sun/view direction (later)?
+- [x] Seat-side tips: curated in templates, with their sources (0.17.1).

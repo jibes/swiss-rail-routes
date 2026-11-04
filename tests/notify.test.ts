@@ -54,6 +54,21 @@ describe('noticesFor', () => {
     expect(list.map((n) => n.at)).toEqual([...list.map((n) => n.at)].sort((a, b) => a - b));
   });
 
+  it("a highlight's side flips for the line ridden the other way", () => {
+    const back = structuredClone(trip);
+    const c = back.chain.connections[0]!;
+    for (const x of c.sections) {
+      [x.from, x.to] = [x.to, x.from];
+      x.intermediate.reverse();
+    }
+    c.sections.reverse();
+    const list = noticesFor(back, at('08:00'), templates, stop);
+    const landwasser = list.find(
+      (n) => n.kind === 'highlight' && n.params.name === 'Landwasserviadukt',
+    );
+    expect(landwasser?.params.side).toBe('L');
+  });
+
   it('skips what is past, keeps ids stable', () => {
     const later = noticesFor(trip, at('16:00'), templates, stop);
     expect(later.some((n) => n.kind === 'depart')).toBe(false);

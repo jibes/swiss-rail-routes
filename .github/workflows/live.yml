@@ -1,6 +1,7 @@
 name: Live check
 
-# Nightly T1–T6 against the live OJP Worker for the next Saturday. Never gates a deploy.
+# Nightly T1–T6 against the live OJP Worker for the next Saturday, and the same day's live facts
+# (delays, cancellations; report only). Never gates a deploy.
 # Keeps one open issue (label live-check) while failing and closes it when green again.
 on:
   schedule:
@@ -51,6 +52,14 @@ jobs:
           echo "date=$OJP_DATE" >> "$GITHUB_OUTPUT"
           npx vitest run tests/acceptance.test.ts --reporter=verbose 2>&1 | tee live.log
           exit "${PIPESTATUS[0]}"
+
+      # Report only: whether same-day answers carry delays (<EstimatedTime>, read into
+      # depEst/arrEst) and whether <Cancelled> / <NotServicedStop> still come by those names.
+      # A quiet day has neither, so it never fails; warnings go to the job summary.
+      - name: Live facts (report only)
+        if: env.OJP_LIVE_URL != ''
+        continue-on-error: true
+        run: npx vitest run tests/liveFacts.test.ts --silent=false
 
       - name: Report
         if: env.OJP_LIVE_URL != ''

@@ -4,7 +4,7 @@ Swiss rail day-trip planner (repository `swiss-rail-routes`).
 
 Plans a scenic Swiss rail day trip (forced routes, stops with dwell time, round trip) as one validated timetable, with GA validity, reservation, disruption and after-sunset warnings.
 
-**Status:** one list of dated trips and one screen per trip: the trip is one line, edited in place (stations, scenic lines, stays; a panel per station, drag to move) and planned while you edit (three options, Earlier/Later); a station no connection passes gets a nearby one that works, on a tap; under way live delays, connections at risk, position on the line, replan from here, undo; a finished trip waits in search to go again. Calendar (.ics), a printout (⋯ → Print: one page for a usual day, two for the longest), exact share links, sync between your own devices, map, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
+**Status:** one list of dated trips and one screen per trip: the trip is one line, edited in place (stations, scenic lines, stays; a panel per station, drag to move) and planned while you edit (three options, Earlier/Later); a station no connection passes gets a nearby one that works, on a tap; under way live delays, connections at risk, position on the line, replan from here, undo; a finished trip waits in search to go again. Calendar (.ics), a printout (⋯ → Print: one page for a usual day, two for the longest), which side to sit on along the scenic lines where sources agree, exact share links, sync between your own devices, map, Android app with notifications, OJP Worker, monthly stop and GA data. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## Run
 

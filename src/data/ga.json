@@ -4,12 +4,6 @@
   "reviewed": null,
   "sections": [
     {
-      "from": "ch:1:sloid:8317",
-      "to": "ch:1:sloid:8456",
-      "names": ["Alpnachstad", "Pilatus Kulm"],
-      "rule": "half"
-    },
-    {
       "from": "ch:1:sloid:7456",
       "to": "ch:1:sloid:7457",
       "names": ["Birg (Schilthornbahn)", "Schilthorn"],
@@ -29,8 +23,8 @@
     },
     {
       "from": "ch:1:sloid:7374",
-      "to": "ch:1:sloid:7380",
-      "names": ["Kleine Scheidegg", "Grindelwald"],
+      "to": "ch:1:sloid:7376",
+      "names": ["Kleine Scheidegg", "Grindelwald Grund"],
       "rule": "half"
     },
     {
@@ -40,9 +34,15 @@
       "rule": "half"
     },
     {
-      "from": "ch:1:sloid:7379",
+      "from": "ch:1:sloid:7455",
       "to": "ch:1:sloid:7456",
-      "names": ["Mürren BLM", "Birg (Schilthornbahn)"],
+      "names": ["Mürren (Schilthornbahn)", "Birg (Schilthornbahn)"],
+      "rule": "half"
+    },
+    {
+      "from": "ch:1:sloid:8456",
+      "to": "ch:1:sloid:8458",
+      "names": ["Pilatus Kulm", "Alpnachstad PB"],
       "rule": "half"
     },
     {
@@ -58,9 +58,9 @@
       "rule": "half"
     },
     {
-      "from": "ch:1:sloid:1689",
+      "from": "ch:1:sloid:1690",
       "to": "ch:1:sloid:1694",
-      "names": ["Zermatt", "Gornergrat"],
+      "names": ["Zermatt GGB", "Gornergrat"],
       "rule": "half"
     }
   ],

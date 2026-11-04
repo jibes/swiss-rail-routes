@@ -26,8 +26,10 @@ export interface RouteTemplate {
   mustPass: string[];
   modes: Mode[];
   highlights: TemplateHighlight[];
-  /** Best seat side in chain order. */
+  /** Best seat side in chain order (sources: src/data/SEATS.md). */
   seat?: 'L' | 'R';
+  /** The chain station the seat side holds from, when only part of the line has the view. */
+  seatFrom?: string;
   season?: { months: number[]; note: Record<Lang, string> };
 }
 

@@ -19,6 +19,8 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
         page.locator('.trip-line .station', { hasText: 'Bergün' }).first(),
       ).toBeVisible();
       await expect(page.locator('.trip-line .station.missed')).toHaveCount(0);
+      // Along the Albula and Bernina lines: which side to sit on, on the ride.
+      await expect(page.locator('.trip-line .ride .seat').first()).toBeVisible();
       // The bus passes Bergün by walking to the station and back: one row, arriving and leaving,
       // not two walks around an untimed station.
       await expect(page.locator('.trip-line .station', { hasText: 'Bergün' })).toHaveCount(1);

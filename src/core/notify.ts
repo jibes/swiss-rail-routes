@@ -5,6 +5,7 @@ import { linesOf } from './line';
 import type { RouteTemplate } from './data';
 import type { LatLon } from './model';
 import { liveRides, type LiveRide } from './live';
+import { directionOn, flipSide } from './seat';
 import { sunset } from './sun';
 import type { PlannedTrip as Trip } from './trip';
 
@@ -84,21 +85,26 @@ export function noticesFor(
   for (const t of templates.filter((x) => ids.has(x.id)))
     for (const h of t.highlights) {
       // The call nearest the highlight, as for the after-sunset warning.
-      let best: { d: number; at: number } | undefined;
+      let best: { d: number; at: number; ride: (typeof rides)[number] } | undefined;
       for (const r of rides)
         for (const s of r.stops) {
           const p = stop(s.key);
           const at = s.dep ?? s.arr;
           if (!p || at === undefined) continue;
           const d = km(p, h);
-          if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at };
+          if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at, ride: r };
         }
       if (!best) continue;
       const set = sunset(trip.route.date, h);
       const nearSunset = set && Math.abs(best.at - set.getTime()) <= SUNSET_NEAR_MIN * 60_000;
       push('highlight', best.at - BEFORE_HIGHLIGHT_MIN * 60_000, {
         name: h.name,
-        side: h.side ?? '',
+        // The side is given in the line's order: the other way, the other side.
+        side: h.side
+          ? directionOn(best.ride.s, t)?.forward === false
+            ? flipSide(h.side)
+            : h.side
+          : '',
         sunset: nearSunset && set ? hhmm(set.getTime()) : '',
       });
     }

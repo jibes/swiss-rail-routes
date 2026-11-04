@@ -1,6 +1,8 @@
 // Delays the timetable service knows as it answers (asked on the day): kept beside the
 // timetable's times, never in their place. The timetable is the plan; the estimate is how it
-// is going (0.15.0). No recorded answer carries <EstimatedTime>, so the XML is made here.
+// is going (0.15.0). Hand-made XML for the cases, and one real answer below.
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { liveRides, liveState } from '../src/core/live';
 import { noticesFor } from '../src/core/notify';
@@ -221,5 +223,31 @@ describe('the delay the plan was made with', () => {
     const c0 = r.chain.connections[0]!;
     expect([Date.parse(c0.arr), Date.parse(c0.arrEst!)]).toEqual([ms('08:45'), ms('09:05')]);
     expect(r.chain.connections[1]).not.toHaveProperty('arrEst');
+  });
+});
+
+// A real answer, asked on the day (Bern → Interlaken Ost, 4 Nov 2026 07:27, recorded by
+// tests/liveFacts.test.ts): delays as <EstimatedTime>, and a train that does not serve Bern.
+describe('a real same-day answer', () => {
+  const xml = gunzipSync(readFileSync('tests/fixtures/ojp/estimates/live.xml.gz')).toString();
+  const cs = parseTrips(xml);
+  const calls = cs.flatMap((c) => c.sections).flatMap((s) => [s.from, ...s.intermediate, s.to]);
+
+  it('keeps the timetable as the plan and the estimate beside it', () => {
+    const est = calls.filter((x) => x.depEst || x.arrEst);
+    expect(est.length).toBeGreaterThan(0);
+    const timetabled = new Set(
+      [...xml.matchAll(/<(?:\w+:)?TimetabledTime>([^<]+)</g)].map((m) => Date.parse(m[1]!)),
+    );
+    for (const x of est) {
+      if (x.dep) expect(timetabled.has(Date.parse(x.dep))).toBe(true);
+      if (x.arr) expect(timetabled.has(Date.parse(x.arr))).toBe(true);
+    }
+  });
+
+  it('a trip boarding or leaving where its train does not stop is dropped', () => {
+    const results = (xml.match(/<(?:\w+:)?TripResult>/g) ?? []).length;
+    expect(xml).toMatch(/NotServicedStop>true/);
+    expect(cs.length).toBeLessThan(results);
   });
 });

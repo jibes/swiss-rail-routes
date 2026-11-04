@@ -69,6 +69,7 @@
     },
     {
       "id": "bernina",
+      "seat": "R",
       "name": "Bernina",
       "chain": [
         {
@@ -354,6 +355,8 @@
     },
     {
       "id": "loetschberg-bergstrecke",
+      "seat": "R",
+      "seatFrom": "ch:1:sloid:7474",
       "name": "Lötschberg-Bergstrecke",
       "chain": [
         {
@@ -473,6 +476,7 @@
     },
     {
       "id": "rigi-vitznau",
+      "seat": "R",
       "name": "Rigi (Vitznau)",
       "chain": [
         {
@@ -520,6 +524,8 @@
     },
     {
       "id": "bergbahn-muerren",
+      "seat": "L",
+      "seatFrom": "ch:1:sloid:7378",
       "name": "Lauterbrunnen–Mürren",
       "chain": [
         {

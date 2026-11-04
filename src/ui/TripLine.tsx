@@ -20,6 +20,7 @@ import { TEMPLATES } from './TemplatePicker';
 import { platformMoved } from '../core/live';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
+import { seatOn } from '../core/seat';
 
 export interface LineActions {
   replace: (k: number, stop: { stopRef: string; name: string }) => void;
@@ -297,6 +298,7 @@ export function TripLine({
           const vias = onRide.get(i) ?? [];
           const platform = lr?.stops[0]?.platform ?? s.from.platform;
           const moved = platformMoved(lr?.stops[0]);
+          const seat = seatOn(s, TEMPLATES);
           return (
             // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
             // the focus in it) must stay the same element.
@@ -332,6 +334,9 @@ export function TripLine({
                       platform && <span>{t('platform', { p: platform })}</span>
                     )}
                     {min > 0 && <span>{duration(min)}</span>}
+                    {seat && (
+                      <span className="seat">{t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}</span>
+                    )}
                     {mids.length > vias.length && (
                       <button
                         type="button"
