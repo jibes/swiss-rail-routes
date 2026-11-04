@@ -59,9 +59,19 @@ export const fold = (s: string) =>
 
 const RAIL_MASK = modeMask(['TRAIN', 'RACK_RAILWAY', 'CABLE_RAILWAY', 'CABLE_CAR', 'BOAT']);
 
+/** Kilometres between two points (equirectangular: exact enough within the country). */
+export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const rad = Math.PI / 180;
+  const x = (b.lon - a.lon) * rad * Math.cos(((a.lat + b.lat) / 2) * rad);
+  const y = (b.lat - a.lat) * rad;
+  return Math.hypot(x, y) * 6371;
+}
+
 export interface StopSearch {
   search(query: string, limit?: number): Stop[];
   byRef(ref: string): Stop | undefined;
+  /** Rail, cable and boat stops within `km` of a point, nearest first, each with its distance. */
+  near(at: { lat: number; lon: number }, km: number): (Stop & { km: number })[];
 }
 
 /**
@@ -77,6 +87,19 @@ export function createStopSearch(file: StopIndexFile): StopSearch {
     byRef: (ref) => {
       const r = byRef.get(ref);
       return r && toStop(r);
+    },
+    near(at, km) {
+      const out: (Stop & { km: number })[] = [];
+      // A box first: most stops are far, and the box is cheap.
+      const dLat = km / 111;
+      const dLon = km / (111 * Math.cos((at.lat * Math.PI) / 180));
+      for (const r of file.rows) {
+        if (!(r[4] & RAIL_MASK)) continue;
+        if (Math.abs(r[2] - at.lat) > dLat || Math.abs(r[3] - at.lon) > dLon) continue;
+        const d = kmBetween(at, { lat: r[2], lon: r[3] });
+        if (d <= km) out.push({ ...toStop(r), km: d });
+      }
+      return out.sort((a, b) => a.km - b.km);
     },
     search(query, limit = 8) {
       const q = fold(query);

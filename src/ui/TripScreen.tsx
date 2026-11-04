@@ -39,6 +39,7 @@ import { WhenField } from './WhenField';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
+import { findSubstitute } from '../io/substitute';
 
 const addDays = (date: string, n: number) => {
   const d = new Date(`${date}T12:00:00Z`);
@@ -457,22 +458,27 @@ export function TripScreen({ id }: { id: string }) {
             planning={planning}
             open={open}
             setOpen={setOpen}
-            act={logged(id, {
-              replace: (k, s) => edit((r) => replaceEntry(r, k, s)),
-              stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
-              move: (from, to) => {
-                edit((r) => moveEntry(r, from, to));
-                setOpen(to);
-              },
-              remove: (k) => {
-                edit((r) => removeEntry(r, k));
-                setOpen(null);
-              },
-              dropLine: (k) => edit((r) => dropLine(r, k)),
-              addAfter: (k) => setSheet({ after: k }),
-              add: () => setSheet({ after: entries.length - 1 }),
-              later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
-            })}
+            act={{
+              ...logged(id, {
+                replace: (k: number, s: { stopRef: string; name: string }) =>
+                  edit((r) => replaceEntry(r, k, s)),
+                stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
+                move: (from, to) => {
+                  edit((r) => moveEntry(r, from, to));
+                  setOpen(to);
+                },
+                remove: (k) => {
+                  edit((r) => removeEntry(r, k));
+                  setOpen(null);
+                },
+                dropLine: (k) => edit((r) => dropLine(r, k)),
+                addAfter: (k) => setSheet({ after: k }),
+                add: () => setSheet({ after: entries.length - 1 }),
+                later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
+              }),
+              // Not through `logged`: it returns what it finds, and its signal is no log data.
+              find: (k, signal) => findSubstitute(trip, k, signal),
+            }}
           />
         </>
       )}

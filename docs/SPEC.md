@@ -77,7 +77,7 @@ Must = MVP; Should = v1.1; Could = later.
 - [Must] One OJP TripRequest per leg with all its forced vias; leg n+1 departs ≥ arrival n + max(dwell, minTransfer): a stay includes the change.
 - [Must] Line enforcement: drop candidates that miss a must-pass stop (walks count: OJP walks through a station when the bus stops beside it) or do not ride a line its way (Lake Lucerne by boat). Passing the must-pass stations of a mountain line rules out its base tunnel.
 - [Must] Up to three options that leave at different times (the best-scored one marked), with total duration and the time at each stop; one option says so. Earlier/Later move the departure by an hour and replan.
-- [Should] Auto-fix: when a leg is impossible, propose the nearest valid substitute and say what is lost.
+- [Should, done 0.17.0] Auto-fix: a station struck through offers "Find one that works": on a tap, up to 3 nearby stations (within 10 km, trains call there or it is the same scenic line's, the line's first, nearest first) are planned one by one until one is reached; the note says it, its arrival against the plan and what is skipped, with Use (the station replaces it, as any edit) and Dismiss. Never in the background, never applied by itself.
 
 **Validation and warnings**
 

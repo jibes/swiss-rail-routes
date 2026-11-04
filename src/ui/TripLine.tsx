@@ -8,12 +8,13 @@ import {
 import type { RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
-import { missedByDisruption, viasOnRides, type LineRow, type StationRow } from '../core/rows';
+import { viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import type { Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
 import { badge } from './format';
 import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
+import { MissedNote, type FindSubstitute } from './MissedNote';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
 import { platformMoved } from '../core/live';
@@ -30,6 +31,8 @@ export interface LineActions {
   add: () => void;
   /** An hour later (a station not reached may be at another time). */
   later: () => void;
+  /** The nearest station that works in place of entry `k` (a tap on a station missed). */
+  find?: FindSubstitute;
 }
 
 /** A stay goes up and down in quarter hours; any length can be typed (to 10 h). */
@@ -440,22 +443,16 @@ export function TripLine({
             {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
             {whyLocked(r, i)}
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
-              <div className="missed-note">
-                <span>
-                  {
-                    // An interruption on that stretch is the likely reason: say so.
-                    missedByDisruption(rows, i, warnings)
-                      ? t('notReachedDisrupted')
-                      : t('notReached')
-                  }
-                </span>
-                {/* A disruption (works, a closure) is not over in an hour: no point trying later. */}
-                {act && !missedByDisruption(rows, i, warnings) && (
-                  <button type="button" className="text-button" onClick={act.later}>
-                    {t('tryLater')}
-                  </button>
-                )}
-              </div>
+              <MissedNote
+                // A new route (an edit, an hour later) drops a suggestion and stops a search.
+                key={JSON.stringify(route.waypoints)}
+                rows={rows}
+                i={i}
+                warnings={warnings}
+                later={act?.later}
+                find={act?.find}
+                use={act?.replace}
+              />
             )}
             {editing(r)}
           </li>

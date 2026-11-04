@@ -227,6 +227,14 @@ export const de = {
   notReached:
     'Zu dieser Zeit fährt keine Verbindung hier durch: die Reise geht ohne diese Station.',
   tryLater: 'Eine Stunde später versuchen',
+  substituteFind: 'Eine finden, die geht',
+  substituteLooking: 'Suche in der Nähe…',
+  substituteFound: 'Stattdessen: {name}, Ankunft {time}{delta}; ohne {missed}.',
+  substituteLater: ', {n} Min. später als geplant',
+  substituteEarlier: ', {n} Min. früher als geplant',
+  substituteNone: 'Keine Station in der Nähe geht zu dieser Zeit.',
+  substituteUse: 'Übernehmen',
+  substituteDismiss: 'Verwerfen',
   forgotten: 'Vergessen: {name}',
   notReachedDisrupted:
     'Die Strecke ist hier unterbrochen (siehe Störung): die Reise führt darum herum.',

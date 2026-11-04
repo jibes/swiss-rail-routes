@@ -97,3 +97,13 @@ describe('bundled index', () => {
     }
   });
 });
+
+describe('stops near a point', () => {
+  it('rail, cable and boat stops within reach, nearest first, with their distance', () => {
+    const near = s.near({ lat: 47.37818, lon: 8.54021 }, 5);
+    expect(near.map((x) => x.name)).toEqual(['Zürich HB', 'Zürich Oerlikon']);
+    expect(near[0]!.km).toBe(0);
+    expect(near[1]!.km).toBeGreaterThan(3);
+    expect(s.near({ lat: 47.37818, lon: 8.54021 }, 1).map((x) => x.name)).toEqual(['Zürich HB']);
+  });
+});

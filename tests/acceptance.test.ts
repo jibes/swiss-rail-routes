@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
-import { addWaypoint, setStop } from './helpers/edit';
+import { addWaypoint, newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';
@@ -10,6 +10,7 @@ import { newTrip } from '../src/core/trip';
 import { FIXTURE_DATE, LIVE_URL, RECORD, ojpFor } from './acceptance/ojp';
 import { acceptanceTours } from './acceptance/tours';
 import { ga, index, ref, templates } from './helpers/timetable';
+import { candidates, reaches, trialRoute } from '../src/core/substitute';
 
 const DATE = process.env.OJP_DATE ?? FIXTURE_DATE;
 const tours = acceptanceTours(DATE);
@@ -158,5 +159,27 @@ suite('acceptance tours', { timeout }, () => {
       expect(seq).toContain(ref('Göschenen'));
       expect(seq).toContain(ref('Airolo'));
     }
+  });
+
+  // A station struck through (Bern, which the e2e line marks as missed): the stations to try in
+  // its place, planned one by one as the app does on "Find one that works" (e2e/substitute).
+  it('T7S a station missed: the nearest that works in its place', async () => {
+    const st = (n: string) => ({ stopRef: ref(n), name: n });
+    const route = addWaypoint(
+      addWaypoint(addWaypoint(newTour('v', DATE, st('St. Gallen')), st('Wattwil')), st('Bern')),
+      st('Luzern'),
+    );
+    const deps = { ...ojpFor('T7S'), templates, ga, stop: (r: string) => index.byRef(r) };
+    let found: string | undefined;
+    for (const c of candidates(route, 2, index, templates)) {
+      const trial = trialRoute(route, 2, c);
+      const r = await plan(trial, deps);
+      const chain = r.recommended ?? r.options?.[0];
+      if (chain && reaches(trial, 2, chain.connections)) {
+        found = c.name;
+        break;
+      }
+    }
+    expect(found).toBeDefined();
   });
 });

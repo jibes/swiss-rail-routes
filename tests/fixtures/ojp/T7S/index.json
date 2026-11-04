@@ -1,0 +1,25 @@
+{
+  "166bc11a0754": {
+    "from": "St. Gallen",
+    "to": "Luzern",
+    "via": [
+      "Wattwil",
+      "Bern Weissenbühl"
+    ],
+    "time": "2026-11-07T08:00"
+  },
+  "2eb971a85fd4": {
+    "from": "St. Gallen",
+    "to": "Bern Weissenbühl",
+    "via": [
+      "Wattwil"
+    ],
+    "time": "2026-11-07T08:00"
+  },
+  "0456b7033c7b": {
+    "from": "Bern Weissenbühl",
+    "to": "Luzern",
+    "via": [],
+    "time": "2026-11-07T11:11"
+  }
+}
