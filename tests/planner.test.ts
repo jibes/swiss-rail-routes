@@ -537,7 +537,7 @@ describe('warnings', () => {
     const r = await plan(t, deps([day, dusk]).deps);
     expect(r.recommended!.dep).toBe(day.dep);
     const late = r.options!.at(-1)!.warnings.filter((w) => w.type === 'after-sunset');
-    expect(late.map((w) => w.params.name)).toContain('Landwasserviadukt');
+    expect(late.map((w) => w.params.highlight)).toContain('landwasser');
     expect(r.recommended!.warnings.some((w) => w.type === 'after-sunset')).toBe(false);
   });
 
@@ -866,5 +866,45 @@ describe('options', () => {
     const deps_ = r.options!.map((c) => c.dep);
     expect(new Set(deps_).size).toBe(deps_.length);
     expect(r.options).toHaveLength(3);
+  });
+});
+
+// Reported 4 Nov 2026: the 14:19 home from Le Châtelard lost to the 19:19, its IR90 Martigny →
+// Lausanne flagged for works between Lausanne and Genève-Aéroport, which it does not ride.
+describe('a notice about another stretch of the train', () => {
+  it('does not change which connection is recommended', async () => {
+    const works = {
+      situationIds: ['s1'],
+      notices: ['Der Bahnverkehr zwischen Lausanne und Genève-Aéroport ist eingeschränkt.'],
+    };
+    const early = conn(
+      ride(
+        'IR 90',
+        [
+          ['Martigny', '14:19'],
+          ['Montreux', '14:52'],
+          ['Lausanne', '15:18'],
+        ],
+        works,
+      ),
+    );
+    const late = conn(
+      ride('IR 90', [
+        ['Martigny', '19:19'],
+        ['Montreux', '19:52'],
+        ['Lausanne', '20:18'],
+      ]),
+    );
+    const t: Tour = {
+      ...newTour('t', DATE, stop('Martigny')),
+      anchor: { departAt: '14:00' },
+      waypoints: [
+        { ...stop('Martigny'), kind: 'start', dwellMin: 0 },
+        { ...stop('Lausanne'), kind: 'end', dwellMin: 0 },
+      ],
+    };
+    const r = await plan(t, deps([early, late]).deps);
+    expect(r.recommended!.connections[0]!.dep).toBe(early.dep);
+    expect(r.recommended!.warnings.map((w) => w.type)).toContain('disruption-away');
   });
 });

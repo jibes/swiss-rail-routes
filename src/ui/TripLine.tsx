@@ -5,7 +5,7 @@ import {
   type PointerEvent as RPointerEvent,
   type ReactNode,
 } from 'react';
-import type { RouteTemplate } from '../core/data';
+import { localParams, type RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
 import { towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
@@ -373,7 +373,7 @@ export function TripLine({
                     w.type === 'seasonal'
                       ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
                         t(w.key, w.params))
-                      : t(w.key, w.params);
+                      : t(w.key, localParams(w.params, lang, TEMPLATES));
                   // A disruption opens the operator's own message on a tap.
                   const detail =
                     (w.type === 'disruption' || w.type === 'disruption-away') && s.notices?.length

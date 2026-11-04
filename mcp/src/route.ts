@@ -1,6 +1,7 @@
 // A `plan_trip` request as the app's route: stations and scenic lines, in the app's own terms.
 import type { RouteTemplate } from '../../src/core/data';
 import { lineEntries, stationEntry, fromEntries, type Entry } from '../../src/core/line';
+import { lineReversed } from '../../src/core/lineDirection';
 import type { Anchor, TicketType, Tour, Waypoint } from '../../src/core/model';
 import { fold, stopKey, type Stop, type StopSearch } from '../../src/core/stops';
 import { dayOf } from '../../src/core/trip';
@@ -41,25 +42,6 @@ export function resolveStop(s: StopInput, index: StopSearch): Stop {
   const hit = s.name ? index.search(s.name, 1)[0] : undefined;
   if (!hit) throw new ToolError(`unknown stop: ${s.name ?? '(no name or ref)'}`);
   return hit;
-}
-
-const near = (a: Stop | undefined, b: Stop | undefined) =>
-  a && b ? (a.lat - b.lat) ** 2 + (a.lon - b.lon) ** 2 : 0;
-
-/**
- * Which way a line runs: on from the station before it. First in the route, towards the station
- * after it, so "Bernina, then Chur" runs back from Tirano.
- */
-function reversed(
-  t: RouteTemplate,
-  before: Stop | undefined,
-  after: Stop | undefined,
-  index: StopSearch,
-) {
-  const first = index.byRef(stopKey(t.chain[0]!.ref));
-  const last = index.byRef(stopKey(t.chain.at(-1)!.ref));
-  if (before) return near(before, last) < near(before, first);
-  return after ? near(after, first) < near(after, last) : false;
 }
 
 const asDate = (d: string) => Date.parse(`${d}T12:00:00Z`);
@@ -106,7 +88,16 @@ export function buildRoute(
       if (!t) throw new ToolError(`unknown scenic line: ${s.line}`);
       const before = entries.at(-1);
       const beforeStop = before ? index.byRef(stopKey(before.w.stopRef)) : undefined;
-      const line = lineEntries(t, reversed(t, beforeStop, stations[i + 1], index));
+      const next = stations[i + 1];
+      const reversed = lineReversed(
+        t,
+        {
+          before: before && { ref: before.w.stopRef, at: beforeStop },
+          after: next && { ref: next.ref, at: next },
+        },
+        (r) => index.byRef(stopKey(r)),
+      );
+      const line = lineEntries(t, reversed);
       // Already at its start: it continues from here.
       entries.push(
         ...(before && stopKey(before.w.stopRef) === stopKey(line[0]!.w.stopRef)

@@ -21,6 +21,10 @@ export const it = {
   wGaReduced: '{from}–{to}: non coperto da AG o carta giornaliera (tariffa ridotta con questi)',
   wGaNone: '{from}–{to}: non coperto da AG o carta giornaliera',
   wTightTransfer: 'Coincidenza stretta a {at}: {min} min',
+  wTimedChange: 'Coincidenza garantita a {at}: {min} min, il treno aspetta',
+  wReplacementBus: 'Bus sostitutivo {from}–{to}: il tratto {line} è su strada',
+  reservationOnlyNote:
+    'Circolano anche treni regolari; solo alcuni treni panoramici richiedono la prenotazione.',
   wAfterSunset: '{name} dopo il tramonto ({time})',
   wSeasonal: 'Limitazioni stagionali',
   back: 'Indietro',

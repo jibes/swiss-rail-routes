@@ -8,6 +8,7 @@ import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { cachedTrips } from './answers';
+import { placeByName } from '../core/stops';
 import { stopSearch } from './stops';
 import { savePlan } from './tours';
 
@@ -92,6 +93,7 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
       templates: TEMPLATES,
       ga: GA,
       stop: (ref) => index.byRef(ref),
+      place: placeByName(index),
       reservations,
     });
     const r: PlanResult = { ...planned, reservations };

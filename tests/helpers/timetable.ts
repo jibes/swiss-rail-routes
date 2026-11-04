@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { Connection, Section } from '../../src/core/model';
 import type { TripQuery } from '../../src/core/ojp/request';
 import { zurichDateTime } from '../../src/core/ojp/request';
-import { createStopSearch, stopKey, type StopIndexFile } from '../../src/core/stops';
+import { createStopSearch, placeByName, stopKey, type StopIndexFile } from '../../src/core/stops';
 import { GA, TEMPLATES } from '../../src/data';
 
 export const index = createStopSearch(
@@ -79,6 +79,7 @@ export const deps = (list: Connection[]) => {
       templates,
       ga,
       stop: (r: string) => index.byRef(r),
+      place: placeByName(index),
     },
   };
 };

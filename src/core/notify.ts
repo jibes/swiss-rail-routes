@@ -2,7 +2,7 @@
 // 10 min before each departure, 5 min before each exit, 10 min before passing a highlight
 // (with the sunset time when it is near). Pure: the app translates and schedules them.
 import { linesOf } from './line';
-import type { RouteTemplate } from './data';
+import { highlightName, type RouteTemplate } from './data';
 import type { LatLon } from './model';
 import { liveRides, type LiveRide } from './live';
 import { directionOn, flipSide } from './seat';
@@ -98,7 +98,8 @@ export function noticesFor(
       const set = sunset(trip.route.date, h);
       const nearSunset = set && Math.abs(best.at - set.getTime()) <= SUNSET_NEAR_MIN * 60_000;
       push('highlight', best.at - BEFORE_HIGHLIGHT_MIN * 60_000, {
-        name: h.name,
+        name: highlightName(h),
+        highlight: h.id,
         // The side is given in the line's order: the other way, the other side.
         side: h.side
           ? directionOn(best.ride.s, t)?.forward === false

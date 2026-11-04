@@ -2,7 +2,7 @@
 // asking for the latest means. Its links too need the station list.
 import { encodeTripLink } from '../core/export/tripLink';
 import { refreshChain, chainWarnings, type Refreshed } from '../core/refresh';
-import { stopKey } from '../core/stops';
+import { placeByName, stopKey } from '../core/stops';
 import { dayOf, type PlannedTrip } from '../core/trip';
 import { GA, TEMPLATES } from '../data';
 import { fetchTrips } from './ojp';
@@ -27,6 +27,7 @@ export async function reloadTrip(trip: PlannedTrip): Promise<Refreshed> {
     templates: TEMPLATES,
     ga: GA,
     stop: (ref) => index.byRef(ref),
+    place: placeByName(index),
     today: dayOf(Date.now()),
   });
   const { rides, found, gone, failed } = out;
@@ -41,6 +42,7 @@ export async function linkWarnings(trip: PlannedTrip) {
     templates: TEMPLATES,
     ga: GA,
     stop: (ref) => index.byRef(ref),
+    place: placeByName(index),
   });
 }
 

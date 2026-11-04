@@ -67,6 +67,21 @@ export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon
   return Math.hypot(x, y) * 6371;
 }
 
+/**
+ * A place by the name a text gives it (an operator's notice): the stop named just that, else one
+ * whose name starts with it ("Genève-Aéroport", "Ebikon"); nothing for a name it cannot tell.
+ */
+export function placeByName(index: Pick<StopSearch, 'search'>) {
+  return (name: string): { lat: number; lon: number } | undefined => {
+    const f = fold(name);
+    if (!f) return undefined;
+    const hits = index.search(name, 5);
+    return (
+      hits.find((h) => fold(h.name) === f) ?? hits.find((h) => fold(h.name).startsWith(`${f} `))
+    );
+  };
+}
+
 export interface StopSearch {
   search(query: string, limit?: number): Stop[];
   byRef(ref: string): Stop | undefined;

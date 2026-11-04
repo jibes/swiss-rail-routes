@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insertTemplate, newTour } from './helpers/edit';
+import { highlightName, localParams } from '../src/core/data';
 import { mapData } from '../src/core/mapdata';
 import { conn, index, ref, ride, templates } from './helpers/timetable';
 
@@ -57,5 +58,30 @@ describe('mapData', () => {
 
   it('is empty for an empty tour', () => {
     expect(mapData(newTour('x', '2026-11-07'), undefined, templates, stop).bounds).toBeNull();
+  });
+});
+
+// Reported 4 Nov 2026: with lang de, highlight names stayed English.
+describe('highlight names in the reader’s language', () => {
+  it('a warning or notice names it by id, the screen in its language', () => {
+    const params = {
+      name: 'Lauterbrunnen valley',
+      highlight: 'lauterbrunnen-valley',
+      time: '17:10',
+    };
+    expect(localParams(params, 'de', templates).name).toBe('Lauterbrunnental');
+    expect(localParams(params, 'fr', templates).name).toBe('Vallée de Lauterbrunnen');
+    expect(localParams(params, 'en', templates).name).toBe('Lauterbrunnen valley');
+    // Words without a highlight, or one no longer known: as they came.
+    expect(localParams({ at: 'Chur' }, 'de', templates)).toEqual({ at: 'Chur' });
+    expect(localParams({ name: 'X', highlight: 'gone' }, 'de', templates).name).toBe('X');
+    // A plain string, as names were before: the same in every language.
+    expect(highlightName({ name: 'Rigi Kulm' }, 'it')).toBe('Rigi Kulm');
+  });
+  it('every highlight has its name in the four languages', () => {
+    for (const t of templates)
+      for (const h of t.highlights)
+        for (const l of ['en', 'de', 'fr', 'it'] as const)
+          expect(typeof h.name === 'object' && h.name[l], `${h.id} ${l}`).toBeTruthy();
   });
 });

@@ -89,6 +89,29 @@ describe('routes from a request', () => {
     expect(towards.waypoints[0]!.name).toBe('Tirano');
   });
 
+  it('a line whose end is the next station leads there (reported 4 Nov 2026)', () => {
+    // Zürich, Voralpen-Express, Luzern: St. Gallen → Luzern, not Luzern → St. Gallen and back.
+    const t = route({
+      date: FIXTURE_DATE,
+      stops: [
+        { name: 'Zürich HB' },
+        { line: 'voralpen-express' },
+        { name: 'Luzern', stay: 45 },
+        { line: 'bruenig' },
+        { name: 'Interlaken Ost' },
+      ],
+      roundTrip: true,
+    });
+    const names = t.waypoints.map((w) => w.name);
+    expect(names.slice(0, 2)).toEqual(['Zürich HB', 'St. Gallen']);
+    expect(names.filter((n) => n === 'Luzern')).toHaveLength(1);
+    expect(names.filter((n) => n === 'St. Gallen')).toHaveLength(1);
+    // The line is marked on the end it leads to, Luzern, with its stay.
+    const luzern = t.waypoints.find((w) => w.name === 'Luzern')!;
+    expect(luzern).toMatchObject({ kind: 'stop', dwellMin: 45, line: 'voralpen-express' });
+    expect(routeLinkOf(t, URL_)).toContain('luzern.5000.45.@voralpen-express');
+  });
+
   it('stay 0 or none rides through; a stay at the very start or end means nothing', () => {
     const t = route({
       date: FIXTURE_DATE,
@@ -174,6 +197,11 @@ describe('tools, on recorded answers', () => {
     expect(all.length).toBe(templates.length);
     const b = tools.listScenicLines({ query: 'bernina' }).lines.find((l) => l.id === 'bernina')!;
     expect(b).toMatchObject({ from: 'St. Moritz', to: 'Tirano', reservation: true });
+    // Reported 4 Nov 2026: "reservation" read as "the line needs one"; it means some trains do.
+    expect(b).toMatchObject({
+      reservationOnlyTrains: true,
+      reservationNote: expect.stringMatching(/Regular trains run here too/),
+    });
     expect(b.mustPass).toEqual(['Pontresina', 'Ospizio Bernina', 'Alp Grüm']);
     expect(tools.listScenicLines({ query: 'Tirano' }).lines.map((l) => l.id)).toContain('bernina');
     expect(all.find((l) => l.id === 'lake-lucerne')!.modes).toContain('boat');

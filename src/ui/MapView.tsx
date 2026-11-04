@@ -141,6 +141,7 @@ export default function MapView({ id }: { id: string }) {
     () => (state && index ? estimatedPosition(state, (k) => index.byRef(stopKey(k))) : null),
     [state, index],
   );
+  const lang = usePrefs((s) => s.lang);
   const locating = usePrefs((s) => s.location);
   const setLocating = usePrefs((s) => s.setLocation);
   // Refused: off again, so the next visit does not ask or fail again; said until tapped.
@@ -178,7 +179,7 @@ export default function MapView({ id }: { id: string }) {
       const chain: Connection[] | undefined =
         savedChain ??
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
-      const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r));
+      const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r), lang);
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       const page = inPage();
       if (page) registerMapProtocol();
@@ -286,7 +287,7 @@ export default function MapView({ id }: { id: string }) {
       setMap(null);
       map?.remove();
     };
-  }, [json, id]);
+  }, [json, id, lang]);
 
   // The marker: one, its look by what it is from (made anew only when that changes).
   const marker = useRef<maplibregl.Marker | null>(null);

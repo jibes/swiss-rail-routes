@@ -1,4 +1,5 @@
 // SPEC §8 acceptance tours T1–T6 on recorded OJP answers (see tests/acceptance/ojp.ts).
+import { placeByName } from '../src/core/stops';
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
@@ -28,6 +29,7 @@ const planned = (id: string) => {
         templates,
         ga,
         stop: (r) => index.byRef(r),
+        place: placeByName(index),
       }),
     );
   return results.get(id)!;
@@ -54,12 +56,14 @@ suite('acceptance tours', { timeout }, () => {
       expect(back.has(ref('Preda'))).toBe(false);
     }
     if (onFixtureDate) {
-      // Thusis–Preda is closed 29.10.–13.11.2026: either a replacement service with a
-      // disruption warning, or the planner says it dropped the Albula stops.
+      // Thusis–Preda is closed 29.10.–13.11.2026: either the replacement buses, said as the
+      // Albula by road, or the planner says it dropped the Albula stops. (Until 0.18.1 the
+      // trains' notice "between Thusis and Preda" counted on the IR38 Chur–Thusis, a stretch it
+      // does not ride; it is said as elsewhere on the train's route now.)
       const out = r.recommended!;
-      const disrupted = out.warnings.some((w) => w.type === 'disruption' && w.legIndex === 0);
+      const byRoad = out.warnings.some((w) => w.type === 'replacement-bus' && w.legIndex === 0);
       const relaxed = r.relaxed.some((x) => x.legIndex === 0);
-      expect(disrupted || relaxed).toBe(true);
+      expect(byRoad || relaxed).toBe(true);
     }
   });
 
@@ -169,7 +173,13 @@ suite('acceptance tours', { timeout }, () => {
       addWaypoint(addWaypoint(newTour('v', DATE, st('St. Gallen')), st('Wattwil')), st('Bern')),
       st('Luzern'),
     );
-    const deps = { ...ojpFor('T7S'), templates, ga, stop: (r: string) => index.byRef(r) };
+    const deps = {
+      ...ojpFor('T7S'),
+      templates,
+      ga,
+      stop: (r: string) => index.byRef(r),
+      place: placeByName(index),
+    };
     let found: string | undefined;
     for (const c of candidates(route, 2, index, templates)) {
       const trial = trialRoute(route, 2, c);
@@ -195,7 +205,13 @@ suite('acceptance tours', { timeout }, () => {
       ),
       anchor: { departAt: '08:09' },
     };
-    const deps = { ...ojpFor('T8R'), templates, ga, stop: (r: string) => index.byRef(r) };
+    const deps = {
+      ...ojpFor('T8R'),
+      templates,
+      ga,
+      stop: (r: string) => index.byRef(r),
+      place: placeByName(index),
+    };
     const first = await plan(route, deps);
     const chain = first.recommended ?? first.options?.[0];
     expect(chain && reaches(route, 1, chain.connections)).toBeFalsy();

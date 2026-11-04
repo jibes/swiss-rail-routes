@@ -15,6 +15,7 @@ export interface RefreshDeps {
   templates: RouteTemplate[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
+  place?: (name: string) => LatLon | undefined;
   /** Today, `YYYY-MM-DD`: a train missing from a day gone by says nothing about it. */
   today: string;
 }
@@ -37,7 +38,7 @@ const shift = (t: string, by: number) =>
 export function chainWarnings(
   trip: Pick<Trip, 'route'>,
   connections: Connection[],
-  deps: Pick<RefreshDeps, 'templates' | 'ga' | 'stop'>,
+  deps: Pick<RefreshDeps, 'templates' | 'ga' | 'stop' | 'place'>,
 ): Warning[] {
   const rules = legRules(splitLoops(mergeRepeats(trip.route)), deps);
   return connections.flatMap((c, i) =>
@@ -48,6 +49,7 @@ export function chainWarnings(
       templates: rules[i]?.templates ?? [],
       ga: deps.ga,
       stop: deps.stop,
+      place: deps.place,
     }),
   );
 }

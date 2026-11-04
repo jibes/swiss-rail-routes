@@ -36,6 +36,7 @@ describe('templates.json', () => {
         for (const r of t.mustPass) expect(chain).toContain(r);
         for (const m of t.modes) expect(MODES).toContain(m);
         if (t.seat) expect(['L', 'R']).toContain(t.seat);
+        for (const r of t.timedChanges ?? []) expect(chain, `timed change ${r}`).toContain(r);
         if (t.seatFrom) {
           expect(t.seat, 'seatFrom without a seat').toBeDefined();
           expect(chain).toContain(t.seatFrom);

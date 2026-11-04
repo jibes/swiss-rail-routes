@@ -1,7 +1,7 @@
 // Warnings per connection (SPEC §3 "Validation and warnings"). Core returns keys and params;
 // the UI renders them through i18n.
 import type { MessageKey } from '../i18n';
-import type { GaData, GaRule, RouteTemplate } from './data';
+import { highlightName, type GaData, type GaRule, type RouteTemplate } from './data';
 import type { Connection, LatLon, Section, WarningType } from './model';
 import { calls, transferGaps, isTight } from './planner/connection';
 import { stopKey } from './stops';
@@ -24,6 +24,8 @@ export interface WarningContext {
   templates: RouteTemplate[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
+  /** A place by the name a notice gives it (`placeByName`); without it, notices are read by name. */
+  place?: (name: string) => LatLon | undefined;
 }
 
 const fold = (x: string) =>
@@ -50,24 +52,90 @@ export function stretchOf(text: string): [string, string] | undefined {
   return undefined;
 }
 
+/** Where things are, for reading a notice against the track you ride. */
+export interface Places {
+  stop: (ref: string) => LatLon | undefined;
+  /** A place by the name a notice gives it (`placeByName` in stops.ts). */
+  place?: (name: string) => LatLon | undefined;
+}
+
+/** A place this close to the track you ride counts as on it (an express passing without a stop). */
+const ON_TRACK_KM = 2;
+
+/** Kilometres from a point to a segment, and where along it the nearest point is (0…1). */
+function toSegment(p: LatLon, a: LatLon, b: LatLon): { km: number; t: number } {
+  const k = Math.cos((p.lat * Math.PI) / 180);
+  const [ax, ay, bx, by, px, py] = [a.lon * k, a.lat, b.lon * k, b.lat, p.lon * k, p.lat];
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l = dx * dx + dy * dy;
+  const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0;
+  return { km: Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) * 111.2, t };
+}
+
+/** The track you ride: its geometry, else straight between its calls. */
+function trackOf(s: Section, places?: Places): LatLon[] {
+  if (s.geometry && s.geometry.length > 1) return s.geometry.map(([lon, lat]) => ({ lat, lon }));
+  if (!places) return [];
+  return [s.from, ...s.intermediate, s.to].flatMap((c) => {
+    const p = places.stop(c.stopRef);
+    return p ? [p] : [];
+  });
+}
+
+/** A place still this near counts at the track's ends (a station a little off its last point). */
+const AT_END_KM = 0.3;
+
 /**
- * Whether a ride's notices concern the stretch you ride: yes when one names no stretch (it may be
- * about anything), or names an end you pass; no only when every one names a stretch whose ends are
- * none of your ride's stops. OJP gives the train, not the stops, so the notice's words decide.
+ * Whether a place lies by the track: within `ON_TRACK_KM`, and not beyond either end of it
+ * (Interlaken Ost, 1.6 km past a ride that starts at Interlaken West, is not on it).
  */
-export function onThisStretch(s: Section): boolean {
+function nearTrack(p: LatLon, track: LatLon[]) {
+  let best = { km: Infinity, beyond: false };
+  for (let i = 1; i < track.length; i++) {
+    const x = toSegment(p, track[i - 1]!, track[i]!);
+    if (x.km < best.km)
+      best = {
+        km: x.km,
+        beyond: (i === 1 && x.t === 0) || (i === track.length - 1 && x.t === 1),
+      };
+  }
+  return best.km <= ON_TRACK_KM && !(best.beyond && best.km > AT_END_KM);
+}
+
+/**
+ * Whether a ride's notices concern the stretch you ride (reported 4 Nov 2026: the VAE St. Gallen–
+ * Luzern was flagged for Luzern–Ebikon, the IC1 Lausanne–Zürich for Lausanne–Genève-Aéroport).
+ * A notice naming no stretch may be about anything: yes. One naming a stretch "between A and B"
+ * counts when you ride it: both ends among your ride's calls, or one of them and the other by the
+ * track you ride (an express passing it); neither: only when both are by your track. An end the
+ * notice names that cannot be placed counts as by your track. OJP gives the train, not the stops,
+ * so the notice's words decide.
+ */
+export function onThisStretch(s: Section, places?: Places): boolean {
   const notices = s.notices ?? [];
   if (!notices.length) return true;
   const stops = [s.from, ...s.intermediate, s.to].map((x) => fold(x.name));
-  const passes = (end: string) => {
+  const calls = (end: string) => {
     const e = fold(end);
     return stops.some(
       (x) => x === e || x.startsWith(`${e} `) || e.startsWith(`${x} `) || x.startsWith(`${e},`),
     );
   };
+  let track: LatLon[] | undefined;
+  const byTrack = (end: string) => {
+    const p = places?.place?.(end);
+    if (!p) return undefined;
+    track ??= trackOf(s, places);
+    return track.length > 1 ? nearTrack(p, track) : undefined;
+  };
   return notices.some((n) => {
     const ends = stretchOf(n);
-    return !ends || passes(ends[0]) || passes(ends[1]);
+    if (!ends) return true;
+    const [a, b] = ends.map(calls) as [boolean, boolean];
+    if (a && b) return true;
+    if (a || b) return byTrack(a ? ends[1] : ends[0]) ?? true;
+    return (byTrack(ends[0]) ?? false) && (byTrack(ends[1]) ?? false);
   });
 }
 
@@ -107,9 +175,50 @@ export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
         if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at: x.at! };
       }
       if (best && isAfterSunset(new Date(best.at), ctx.date, h))
-        out.push({ id: h.id, name: h.name, at: best.at });
+        out.push({ id: h.id, name: highlightName(h), at: best.at });
     }
   return out;
+}
+
+/** A replacement bus's ends this near stations of a line: it stands in for that line. */
+const REPLACES_KM = 1.5;
+
+/**
+ * The leg's scenic line a replacement bus (category EV) stands in for: both its ends by
+ * different stations of the line ("Thusis, Bahnhof" and "Filisur, Bahnhof" on the Albula).
+ */
+export function lineReplaced(s: Section, ctx: Pick<WarningContext, 'templates' | 'stop'>) {
+  if (s.category !== 'EV') return undefined;
+  const a = ctx.stop(s.from.stopRef);
+  const b = ctx.stop(s.to.stopRef);
+  if (!a || !b) return undefined;
+  return ctx.templates.find((t) => {
+    const at = (p: LatLon) =>
+      t.chain.findIndex((c) => {
+        const q = ctx.stop(c.ref);
+        return !!q && km(p, q) <= REPLACES_KM;
+      });
+    const i = at(a);
+    const j = at(b);
+    return i >= 0 && j >= 0 && i !== j;
+  });
+}
+
+/** A change the line's operator times (`timedChanges`): the arriving and leaving stop by one. */
+const TIMED_KM = 0.3;
+function timedChange(
+  c: Connection,
+  after: number,
+  ctx: Pick<WarningContext, 'templates' | 'stop'>,
+) {
+  const p = ctx.stop(c.sections[after]!.to.stopRef);
+  if (!p) return false;
+  return ctx.templates.some((t) =>
+    (t.timedChanges ?? []).some((ref) => {
+      const q = ctx.stop(ref);
+      return !!q && km(p, q) <= TIMED_KM;
+    }),
+  );
 }
 
 const hhmm = (t: number) =>
@@ -127,7 +236,7 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
     const where = { from: s.from.name, to: s.to.name };
     if (s.situationIds?.length)
       w.push(
-        onThisStretch(s)
+        onThisStretch(s, ctx)
           ? {
               ...base,
               sectionIndex: i,
@@ -147,6 +256,16 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
               params: where,
             },
       );
+    const replaced = lineReplaced(s, ctx);
+    if (replaced)
+      w.push({
+        ...base,
+        sectionIndex: i,
+        type: 'replacement-bus',
+        severity: 'warn',
+        key: 'wReplacementBus',
+        params: { ...where, line: replaced.name },
+      });
     if (isSupplement(s, ctx.ga))
       w.push({
         ...base,
@@ -170,22 +289,38 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
       });
   });
   for (const g of transferGaps(c))
-    if (isTight(g.min, g.walk))
-      w.push({
-        ...base,
-        sectionIndex: g.afterSection,
-        type: 'tight-transfer',
-        severity: 'warn',
-        key: 'wTightTransfer',
-        params: { min: Math.max(0, Math.round(g.min)), at: c.sections[g.afterSection]!.to.name },
-      });
+    if (isTight(g.min, g.walk)) {
+      const params = {
+        min: Math.max(0, Math.round(g.min)),
+        at: c.sections[g.afterSection]!.to.name,
+      };
+      w.push(
+        timedChange(c, g.afterSection, ctx)
+          ? {
+              ...base,
+              sectionIndex: g.afterSection,
+              type: 'timed-change',
+              severity: 'info',
+              key: 'wTimedChange',
+              params,
+            }
+          : {
+              ...base,
+              sectionIndex: g.afterSection,
+              type: 'tight-transfer',
+              severity: 'warn',
+              key: 'wTightTransfer',
+              params,
+            },
+      );
+    }
   for (const h of highlightsAfterSunset(c, ctx))
     w.push({
       ...base,
       type: 'after-sunset',
       severity: 'warn',
       key: 'wAfterSunset',
-      params: { name: h.name, time: hhmm(h.at) },
+      params: { name: h.name, highlight: h.id, time: hhmm(h.at) },
     });
   const month = Number(ctx.date.slice(5, 7));
   for (const t of ctx.templates)

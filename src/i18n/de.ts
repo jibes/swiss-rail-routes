@@ -21,6 +21,10 @@ export const de = {
   wGaReduced: '{from}–{to}: nicht im GA/in der Tageskarte (ermässigt damit)',
   wGaNone: '{from}–{to}: nicht im GA/in der Tageskarte',
   wTightTransfer: 'Knapper Umstieg in {at}: {min} Min.',
+  wTimedChange: 'Abgestimmter Anschluss in {at}: {min} Min., der Zug wartet',
+  wReplacementBus: 'Ersatzbus {from}–{to}: die Strecke der {line} auf der Strasse',
+  reservationOnlyNote:
+    'Hier fahren auch reguläre Züge; nur einige Panoramazüge sind reservationspflichtig.',
   wAfterSunset: '{name} nach Sonnenuntergang ({time})',
   wSeasonal: 'Saisonale Einschränkungen',
   back: 'Zurück',

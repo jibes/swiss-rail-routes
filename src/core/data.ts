@@ -9,7 +9,8 @@ export interface TemplateStop {
 
 export interface TemplateHighlight {
   id: string;
-  name: string;
+  /** In each language (0.18.1); a plain string, as before, reads as its name in all. */
+  name: string | Record<Lang, string>;
   lat: number;
   lon: number;
   /** Side to sit on, travelling in chain order. */
@@ -31,6 +32,11 @@ export interface RouteTemplate {
   /** The chain station the seat side holds from, when only part of the line has the view. */
   seatFrom?: string;
   season?: { months: number[]; note: Record<Lang, string> };
+  /**
+   * Chain stations where the operator times one vehicle for the other (Grütschalp: the train
+   * waits for the cable car): a tight change there is said as timed, not as a risk.
+   */
+  timedChanges?: string[];
 }
 
 export type GaRule = 'half' | 'reduced' | 'none';
@@ -43,4 +49,23 @@ export interface GaData {
   reviewed: string | null;
   sections: { from: string; to: string; names: [string, string]; rule: GaRule }[];
   supplementTrains: { categories: string[]; names: string[] };
+}
+
+/** A highlight's name in a language: its own, else English, else the plain name it had. */
+export const highlightName = (h: Pick<TemplateHighlight, 'name'>, lang: Lang = 'en') =>
+  typeof h.name === 'string' ? h.name : (h.name[lang] ?? h.name.en);
+
+/**
+ * A warning's or notice's words with a highlight's name in the reader's language: core says it
+ * by its id (`highlight`) and in English (`name`), the reader's screen in theirs.
+ */
+export function localParams<P extends Record<string, string | number>>(
+  params: P,
+  lang: Lang,
+  templates: Pick<RouteTemplate, 'highlights'>[],
+): P {
+  const id = params.highlight;
+  if (typeof id !== 'string') return params;
+  const h = templates.flatMap((t) => t.highlights).find((x) => x.id === id);
+  return h ? { ...params, name: highlightName(h, lang) } : params;
 }

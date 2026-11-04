@@ -53,6 +53,10 @@ export type WarningType =
   | 'not-ga'
   | 'reservation'
   | 'tight-transfer'
+  /** A tight change the operator times its vehicles for (`timedChanges`): said, not counted. */
+  | 'timed-change'
+  /** A replacement bus on a scenic line's stretch: the view is from the road. */
+  | 'replacement-bus'
   /** Asked again, the timetable no longer has this train. */
   | 'train-gone'
   | 'seasonal';

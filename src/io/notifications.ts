@@ -2,6 +2,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { noticesFor, type Notice } from '../core/notify';
 import { isPlanned, type Trip } from '../core/trip';
+import { localParams } from '../core/data';
 import { TEMPLATES } from '../data';
 import { translate, type Lang } from '../i18n';
 import { isNative } from '../native';
@@ -28,7 +29,10 @@ function text(n: Notice, lang: Lang) {
   if (n.kind === 'exit') return { title: t('nExitTitle', p), body: t('nExitBody', p) };
   const side = p.side === 'R' ? t('nSideRight') : p.side === 'L' ? t('nSideLeft') : '';
   const sun = p.sunset ? t('nSunset', { time: p.sunset }) : '';
-  return { title: t('nHighlightTitle', p), body: [side, sun].filter(Boolean).join(' · ') };
+  return {
+    title: t('nHighlightTitle', localParams(p, lang, TEMPLATES)),
+    body: [side, sun].filter(Boolean).join(' · '),
+  };
 }
 
 let queue: Promise<unknown> = Promise.resolve();

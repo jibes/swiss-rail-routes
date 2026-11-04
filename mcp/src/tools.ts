@@ -1,6 +1,6 @@
 // The five tools: the app's planner and data, answered as JSON. Read-only: nothing about a
 // request outlives the in-memory cache of its answer.
-import type { GaData, RouteTemplate } from '../../src/core/data';
+import { localParams, type GaData, type RouteTemplate } from '../../src/core/data';
 import { encodeTripLink } from '../../src/core/export/tripLink';
 import type { Reservations } from '../../src/core/planner/plan';
 import { plan, zurichLocal, type PlannedChain, type PlanResult } from '../../src/core/planner/plan';
@@ -8,7 +8,14 @@ import type { Leg, Section, Tour } from '../../src/core/model';
 import { delayMin } from '../../src/core/ojp/journey';
 import { journeyQueryOf, parseJourneyQuery } from '../../src/core/ojp/request';
 import { missedByDisruption, plannedRows } from '../../src/core/rows';
-import { fold, stopKey, type Stop, type StopMode, type StopSearch } from '../../src/core/stops';
+import {
+  fold,
+  placeByName,
+  stopKey,
+  type Stop,
+  type StopMode,
+  type StopSearch,
+} from '../../src/core/stops';
 import { newTrip, zurichTime } from '../../src/core/trip';
 import type { Warning } from '../../src/core/warnings';
 import { translate, type Lang } from '../../src/i18n';
@@ -101,7 +108,7 @@ function warningOf(w: Warning, chain: PlannedChain, lang: Lang, templates: Route
   return {
     type: w.type,
     severity: w.severity,
-    text: note ?? translate(lang, w.key, w.params),
+    text: note ?? translate(lang, w.key, localParams(w.params, lang, templates)),
     ...(s ? { on: `${s.line ?? s.category ?? ''} ${s.from.name}–${s.to.name}`.trim() } : {}),
     ...((w.type === 'disruption' || w.type === 'disruption-away') && s?.notices?.length
       ? { operatorText: s.notices }
@@ -119,6 +126,7 @@ export function createTools(deps: ToolDeps) {
   const now = deps.now ?? Date.now;
   const waitMs = deps.waitMs ?? WAIT_MS;
   const stop = (ref: string) => index.byRef(ref);
+  const place = placeByName(index);
   const nameOf = (ref: string) => index.byRef(stopKey(ref))?.name;
 
   interface Job {
@@ -147,6 +155,7 @@ export function createTools(deps: ToolDeps) {
         templates,
         ga,
         stop,
+        place,
         reservations,
       }),
     };
@@ -263,6 +272,8 @@ export function createTools(deps: ToolDeps) {
 
     listScenicLines({ query, lang }: { query?: string; lang?: Lang }) {
       const q = query ? fold(query) : '';
+      const reservationOnly = (t: RouteTemplate) =>
+        ga.supplementTrains.names.some((n) => fold(n).includes(fold(t.name.split(/[ -]/)[0]!)));
       const hit = (t: RouteTemplate) =>
         !q ||
         fold(t.name).includes(q) ||
@@ -279,10 +290,16 @@ export function createTools(deps: ToolDeps) {
           ...(t.season
             ? { season: { months: t.season.months, note: t.season.note[lang ?? 'en'] } }
             : {}),
-          // Reservation-only trains run under these names (Bernina Express on the Bernina line).
-          reservation: ga.supplementTrains.names.some((n) =>
-            fold(n).includes(fold(t.name.split(/[ -]/)[0]!)),
-          ),
+          // Reservation-only trains run on the line under these names (Bernina Express on the
+          // Bernina); regular trains run too, so the line itself needs none (reported 4 Nov 2026).
+          ...(reservationOnly(t)
+            ? {
+                reservationOnlyTrains: true,
+                reservationNote: translate(lang ?? 'en', 'reservationOnlyNote'),
+              }
+            : { reservationOnlyTrains: false }),
+          /** Deprecated (0.18.1): `reservationOnlyTrains`, which says what it means. */
+          reservation: reservationOnly(t),
         })),
       };
     },

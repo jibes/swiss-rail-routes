@@ -21,6 +21,17 @@ describe('which way a scenic line runs on from a station', () => {
     expect(directionFrom(line('rigi-arth'), from('Arth-Goldau'), stop)).toBe(false);
   });
 
+  it('a line put before one of its ends leads there', () => {
+    // Added after Zürich with Luzern next: from St. Gallen to Luzern.
+    const l = line('voralpen-express');
+    const luzern = l.chain.at(-1)!;
+    expect(directionFrom(l, from('Zürich HB'), stop, { ref: luzern.ref })).toBe(false);
+    // Before St. Gallen: from Luzern.
+    expect(directionFrom(l, from('Zürich HB'), stop, { ref: l.chain[0]!.ref })).toBe(true);
+    // Added after one of its ends: from there, whatever comes next.
+    expect(directionFrom(l, { ...from('Luzern'), ref: luzern.ref }, stop)).toBe(true);
+  });
+
   it('nothing known: as written', () => {
     expect(directionFrom(line('albula'), undefined, stop)).toBe(false);
     expect(directionFrom(line('albula'), from('Zürich HB'), () => undefined)).toBe(false);

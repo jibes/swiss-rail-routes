@@ -51,7 +51,12 @@
       "highlights": [
         {
           "id": "landwasser",
-          "name": "Landwasserviadukt",
+          "name": {
+            "en": "Landwasser Viaduct",
+            "de": "Landwasserviadukt",
+            "fr": "Viaduc de Landwasser",
+            "it": "Viadotto Landwasser"
+          },
           "lat": 46.6806,
           "lon": 9.6756,
           "sunlight": true,
@@ -59,7 +64,12 @@
         },
         {
           "id": "albula-loops",
-          "name": "Bergün–Preda loops",
+          "name": {
+            "en": "Bergün–Preda loops",
+            "de": "Kehrtunnels Bergün–Preda",
+            "fr": "Boucles Bergün–Preda",
+            "it": "Elicoidali Bergün–Preda"
+          },
           "lat": 46.606,
           "lon": 9.76,
           "sunlight": true
@@ -130,21 +140,36 @@
       "highlights": [
         {
           "id": "morteratsch",
-          "name": "Morteratsch glacier",
+          "name": {
+            "en": "Morteratsch glacier",
+            "de": "Morteratschgletscher",
+            "fr": "Glacier du Morteratsch",
+            "it": "Ghiacciaio del Morteratsch"
+          },
           "lat": 46.45,
           "lon": 9.93,
           "sunlight": true
         },
         {
           "id": "lago-bianco",
-          "name": "Lago Bianco",
+          "name": {
+            "en": "Lago Bianco",
+            "de": "Lago Bianco",
+            "fr": "Lago Bianco",
+            "it": "Lago Bianco"
+          },
           "lat": 46.411,
           "lon": 10.023,
           "sunlight": true
         },
         {
           "id": "brusio",
-          "name": "Brusio spiral viaduct",
+          "name": {
+            "en": "Brusio spiral viaduct",
+            "de": "Kreisviadukt Brusio",
+            "fr": "Viaduc hélicoïdal de Brusio",
+            "it": "Viadotto elicoidale di Brusio"
+          },
           "lat": 46.252,
           "lon": 10.121,
           "sunlight": true
@@ -226,14 +251,24 @@
       "highlights": [
         {
           "id": "sitter",
-          "name": "Sitterviadukt",
+          "name": {
+            "en": "Sitter Viaduct",
+            "de": "Sitterviadukt",
+            "fr": "Viaduc de la Sitter",
+            "it": "Viadotto della Sitter"
+          },
           "lat": 47.406,
           "lon": 9.333,
           "sunlight": true
         },
         {
           "id": "seedamm",
-          "name": "Seedamm Rapperswil",
+          "name": {
+            "en": "Seedamm Rapperswil",
+            "de": "Seedamm Rapperswil",
+            "fr": "Digue de Rapperswil",
+            "it": "Diga di Rapperswil"
+          },
           "lat": 47.224,
           "lon": 8.81,
           "sunlight": true
@@ -286,14 +321,24 @@
       "highlights": [
         {
           "id": "lungernsee",
-          "name": "Lungerersee",
+          "name": {
+            "en": "Lake Lungern",
+            "de": "Lungerersee",
+            "fr": "Lac de Lungern",
+            "it": "Lago di Lungern"
+          },
           "lat": 46.79,
           "lon": 8.16,
           "sunlight": true
         },
         {
           "id": "bruenig-pass",
-          "name": "Brünig pass",
+          "name": {
+            "en": "Brünig pass",
+            "de": "Brünigpass",
+            "fr": "Col du Brünig",
+            "it": "Passo del Brünig"
+          },
           "lat": 46.757,
           "lon": 8.138,
           "sunlight": true
@@ -346,7 +391,12 @@
       "highlights": [
         {
           "id": "wassen",
-          "name": "Wassen church loops",
+          "name": {
+            "en": "Wassen church loops",
+            "de": "Kirchlein von Wassen",
+            "fr": "Église de Wassen",
+            "it": "Chiesetta di Wassen"
+          },
           "lat": 46.7067,
           "lon": 8.599,
           "sunlight": true
@@ -385,14 +435,24 @@
       "highlights": [
         {
           "id": "kander-loops",
-          "name": "Kander valley loops",
+          "name": {
+            "en": "Kander valley loops",
+            "de": "Kehrtunnels im Kandertal",
+            "fr": "Boucles de la vallée de la Kander",
+            "it": "Elicoidali della Kandertal"
+          },
           "lat": 46.51,
           "lon": 7.67,
           "sunlight": true
         },
         {
           "id": "bietschtal",
-          "name": "Bietschtal viaduct",
+          "name": {
+            "en": "Bietschtal viaduct",
+            "de": "Bietschtalbrücke",
+            "fr": "Viaduc du Bietschtal",
+            "it": "Viadotto del Bietschtal"
+          },
           "lat": 46.311,
           "lon": 7.838,
           "sunlight": true
@@ -429,7 +489,12 @@
       "highlights": [
         {
           "id": "oberalpsee",
-          "name": "Oberalpsee",
+          "name": {
+            "en": "Lake Oberalp",
+            "de": "Oberalpsee",
+            "fr": "Lac de l'Oberalp",
+            "it": "Lago dell'Oberalp"
+          },
           "lat": 46.659,
           "lon": 8.671,
           "sunlight": true
@@ -467,7 +532,7 @@
       "highlights": [
         {
           "id": "rigi-kulm",
-          "name": "Rigi Kulm",
+          "name": { "en": "Rigi Kulm", "de": "Rigi Kulm", "fr": "Rigi Kulm", "it": "Rigi Kulm" },
           "lat": 47.0567,
           "lon": 8.485,
           "sunlight": true
@@ -526,6 +591,7 @@
       "id": "bergbahn-muerren",
       "seat": "L",
       "seatFrom": "ch:1:sloid:7378",
+      "timedChanges": ["ch:1:sloid:7378"],
       "name": "Lauterbrunnen–Mürren",
       "chain": [
         {
@@ -546,7 +612,12 @@
       "highlights": [
         {
           "id": "lauterbrunnen-valley",
-          "name": "Lauterbrunnen valley",
+          "name": {
+            "en": "Lauterbrunnen valley",
+            "de": "Lauterbrunnental",
+            "fr": "Vallée de Lauterbrunnen",
+            "it": "Valle di Lauterbrunnen"
+          },
           "lat": 46.56,
           "lon": 7.9,
           "sunlight": true

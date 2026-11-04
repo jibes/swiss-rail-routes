@@ -314,6 +314,7 @@ export function EditTrip({ id }: { id: string }) {
         <AddSheet
           title={t('addAfterStop', { stop: entries[sheet.after]?.w.name ?? '' })}
           after={entries[sheet.after]?.w}
+          next={entries[sheet.after + 1]?.w}
           // "Back to the start": the trip's own start, not where you are now.
           first={sheet.after === entries.length - 1 ? trip.route.waypoints[0] : undefined}
           onPick={pick}

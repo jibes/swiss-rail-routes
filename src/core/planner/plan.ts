@@ -31,6 +31,8 @@ export interface PlanDeps {
   templates: RouteTemplate[];
   ga: GaData;
   stop: (ref: string) => LatLon | undefined;
+  /** A place by the name a notice gives it (`placeByName`): reads a disruption against the track. */
+  place?: (name: string) => LatLon | undefined;
   /** Absent: avoid. */
   reservations?: Reservations;
   /** Debug log (io/log.ts); the planner says what it asked, kept and gave up. */
@@ -335,6 +337,7 @@ async function planFrom(
       templates: rules.templates,
       ga: deps.ga,
       stop: deps.stop,
+      place: deps.place,
     };
     // Every station and line; else the stations the timetable reaches at all (one closed line
     // does not cost the others); else whatever connects the leg's ends.

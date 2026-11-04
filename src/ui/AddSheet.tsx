@@ -22,17 +22,20 @@ export type Picked =
 
 /**
  * The one way to add (SPEC §3a): a sheet that finds stations, scenic lines and your past trips.
- * `after` is the station it adds after (lines run on from there; none: a new trip).
+ * `after` is the station it adds after (lines run on from there; none: a new trip), `next` the
+ * one that follows it (a line ending there leads to it).
  */
 export function AddSheet({
   title,
   after,
+  next,
   first,
   onPick,
   onClose,
 }: {
   title: string;
   after?: Pick<Waypoint, 'stopRef' | 'name'>;
+  next?: Pick<Waypoint, 'stopRef' | 'name'>;
   /** The trip's first station: offered as the way back (a round trip) when adding at the end. */
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
   onPick: (p: Picked) => void;
@@ -81,7 +84,9 @@ export function AddSheet({
 
   const f = fold(q.trim());
   const stop = (r: string) => index?.byRef(stopKey(r));
-  const from = after ? stop(after.stopRef) : undefined;
+  const fromAt = after ? stop(after.stopRef) : undefined;
+  const from = fromAt && after ? { ...fromAt, ref: after.stopRef } : undefined;
+  const nextAt = next ? { ref: next.stopRef, at: stop(next.stopRef) } : undefined;
   const has = (names: string[]) =>
     !f ||
     names.some(
@@ -110,7 +115,7 @@ export function AddSheet({
     <>
       <h3 className="section-label">{t('scenicLines')}</h3>
       {lines.map((tp) => {
-        const reversed = directionFrom(tp, from, stop);
+        const reversed = directionFrom(tp, from, stop, nextAt);
         const [a, b] = reversed
           ? [tp.chain.at(-1)!, tp.chain[0]!]
           : [tp.chain[0]!, tp.chain.at(-1)!];
@@ -167,7 +172,7 @@ export function AddSheet({
               return onPick({
                 kind: 'line',
                 template: tp,
-                reversed: directionFrom(tp, from, stop),
+                reversed: directionFrom(tp, from, stop, nextAt),
               });
             const s = stations[0];
             if (s) onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } });

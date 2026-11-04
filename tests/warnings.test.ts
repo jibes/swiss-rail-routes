@@ -1,7 +1,9 @@
 // A train's notice counts against the plan only when it concerns the stretch you ride.
 import { describe, expect, it } from 'vitest';
-import type { Section } from '../src/core/model';
-import { onThisStretch, stretchOf } from '../src/core/warnings';
+import type { Connection, Section } from '../src/core/model';
+import { placeByName, stopKey } from '../src/core/stops';
+import { onThisStretch, stretchOf, warningsFor } from '../src/core/warnings';
+import { DATE, conn, ga, index, ride as tRide, templates } from './helpers/timetable';
 
 const call = (name: string) => ({ stopRef: name, name });
 const ride = (names: string[], notices: string[]): Section => ({
@@ -36,6 +38,7 @@ describe('a notice and the stretch you ride', () => {
     expect(onThisStretch(s)).toBe(false);
   });
   it('an end you pass, or a notice naming no stretch: on your stretch', () => {
+    // Without places to read it against (as before): one end you pass is enough.
     const s = ride(
       ['Interlaken West', 'Spiez', 'Bern'],
       ['Der Bahnverkehr zwischen Interlaken Ost und Interlaken West ist unterbrochen.'],
@@ -46,5 +49,123 @@ describe('a notice and the stretch you ride', () => {
     );
     // Notices with no text: as before, a disruption.
     expect(onThisStretch(ride(['Bern', 'Zürich HB'], []))).toBe(true);
+  });
+});
+
+// Reported 4 Nov 2026: a notice was counted on a ride that shares only one end with its stretch.
+describe('a notice read against the track you ride', () => {
+  const st = (name: string) => index.search(name, 1)[0]!;
+  const real = (names: string[], notice: string): Section => {
+    const c = (n: string) => ({ stopRef: st(n).ref, name: st(n).name });
+    return {
+      mode: 'rail',
+      from: c(names[0]!),
+      to: c(names.at(-1)!),
+      intermediate: names.slice(1, -1).map(c),
+      situationIds: ['x'],
+      notices: [notice],
+    };
+  };
+  const places = { stop: (r: string) => index.byRef(stopKey(r)), place: placeByName(index) };
+  const lausanneGeneve = 'Der Bahnverkehr zwischen Lausanne und Genève-Aéroport ist eingeschränkt.';
+
+  it('the VAE St. Gallen–Luzern via Küssnacht and Luzern–Ebikon: elsewhere', () => {
+    const vae = real(
+      ['St. Gallen', 'Rapperswil SG', 'Arth-Goldau', 'Küssnacht am Rigi', 'Luzern'],
+      'Der Bahnverkehr zwischen Luzern und Ebikon ist unterbrochen.',
+    );
+    expect(onThisStretch(vae, places)).toBe(false);
+  });
+  it('the IC1 Lausanne → Zürich and Lausanne–Genève-Aéroport: elsewhere', () => {
+    const ic1 = real(['Lausanne', 'Fribourg/Freiburg', 'Bern', 'Zürich HB'], lausanneGeneve);
+    expect(onThisStretch(ic1, places)).toBe(false);
+    const ir90 = real(['Martigny', 'Montreux', 'Vevey', 'Lausanne'], lausanneGeneve);
+    expect(onThisStretch(ir90, places)).toBe(false);
+  });
+  it('a ride over the stretch: on it, in each language', () => {
+    expect(
+      onThisStretch(real(['Genève-Aéroport', 'Genève', 'Lausanne'], lausanneGeneve), places),
+    ).toBe(true);
+    const fr = 'Trafic perturbé entre Lausanne et Genève-Aéroport.';
+    const it_ = 'Traffico limitato tra Lausanne e Genève-Aéroport.';
+    const en = 'Restricted service between Lausanne and Genève-Aéroport.';
+    for (const n of [fr, it_, en])
+      expect(onThisStretch(real(['Genève-Aéroport', 'Lausanne'], n), places)).toBe(true);
+  });
+  it('an express passing the other end without stopping: on it', () => {
+    // Bern → Zürich HB without a stop passes Olten on its track; "Olten–Zürich" concerns it.
+    const ic = real(
+      ['Bern', 'Zürich HB'],
+      'Der Bahnverkehr zwischen Olten und Zürich HB ist eingeschränkt.',
+    );
+    const at = (n: string): [number, number] => [st(n).lon, st(n).lat];
+    ic.geometry = [at('Bern'), at('Burgdorf'), at('Olten'), at('Aarau'), at('Zürich HB')];
+    expect(onThisStretch(ic, places)).toBe(true);
+    // Without its track, straight from Bern to Zürich misses Olten by 24 km: not counted.
+    expect(onThisStretch({ ...ic, geometry: undefined }, places)).toBe(false);
+  });
+  it('a ride that starts where the stretch ends: elsewhere', () => {
+    const s = real(
+      ['Interlaken West', 'Spiez', 'Bern'],
+      'Der Bahnverkehr zwischen Interlaken Ost und Interlaken West ist unterbrochen.',
+    );
+    expect(onThisStretch(s, places)).toBe(false);
+  });
+});
+
+describe('replacement buses and timed changes (reported 4 Nov 2026)', () => {
+  const ctx = (ids: string[]) => ({
+    legIndex: 0,
+    date: DATE,
+    ticket: 'GA' as const,
+    templates: templates.filter((t) => ids.includes(t.id)),
+    ga,
+    stop: (r: string) => index.byRef(stopKey(r)),
+  });
+  const types = (c: Connection, ids: string[]) => warningsFor(c, ctx(ids)).map((w) => w.type);
+
+  it('a replacement bus on a scenic line says the stretch is by road', () => {
+    const ev = conn(
+      tRide('EV 3', [
+        ['Thusis', '10:31'],
+        ['Filisur', '11:02'],
+      ]),
+    );
+    const w = warningsFor(ev, ctx(['albula']));
+    expect(w.find((x) => x.type === 'replacement-bus')).toMatchObject({
+      severity: 'warn',
+      key: 'wReplacementBus',
+      params: { from: 'Thusis', to: 'Filisur', line: 'Albula' },
+    });
+    // The same bus where no scenic line is ridden, or a train on the line: nothing of the kind.
+    expect(types(ev, [])).not.toContain('replacement-bus');
+    const train = conn(
+      tRide('IR 38', [
+        ['Thusis', '10:31'],
+        ['Filisur', '11:02'],
+      ]),
+    );
+    expect(types(train, ['albula'])).not.toContain('replacement-bus');
+  });
+
+  it('a tight change the operator times is said as timed, not as a risk', () => {
+    const c = conn(
+      tRide('PB 2461', [
+        ['Lauterbrunnen', '10:00'],
+        ['Grütschalp', '10:04'],
+      ]),
+      tRide('R 66', [
+        ['Grütschalp', '10:07'],
+        ['Mürren BLM', '10:21'],
+      ]),
+    );
+    const w = warningsFor(c, ctx(['bergbahn-muerren']));
+    expect(w.find((x) => x.type === 'timed-change')).toMatchObject({
+      severity: 'info',
+      params: { at: 'Grütschalp', min: 3 },
+    });
+    expect(types(c, ['bergbahn-muerren'])).not.toContain('tight-transfer');
+    // Without the line, the same 3 minutes are a tight change.
+    expect(types(c, [])).toContain('tight-transfer');
   });
 });

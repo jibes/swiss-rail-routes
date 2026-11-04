@@ -491,6 +491,7 @@ export function TripScreen({ id }: { id: string }) {
               : t('addAfterStop', { stop: entries[sheet.after]?.w.name ?? '' })
           }
           after={entries[sheet.after]?.w}
+          next={entries[sheet.after + 1]?.w}
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
           onPick={pick}
           onClose={closeSheet}

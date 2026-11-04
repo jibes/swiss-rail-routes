@@ -47,7 +47,7 @@ describe('noticesFor', () => {
       time: '15:58',
     });
     expect(by('exit')[0]!.at).toBe(at('17:53'));
-    const landwasser = by('highlight').find((n) => n.params.name === 'Landwasserviadukt')!;
+    const landwasser = by('highlight').find((n) => n.params.highlight === 'landwasser')!;
     expect(landwasser.at).toBe(at('16:40')); // Filisur 16:50, nearest call
     expect(landwasser.params.side).toBe('R');
     expect(landwasser.params.sunset).toMatch(/^1[67]:\d\d$/); // Nov sunset ≈ 17:00, within an hour
@@ -64,7 +64,7 @@ describe('noticesFor', () => {
     c.sections.reverse();
     const list = noticesFor(back, at('08:00'), templates, stop);
     const landwasser = list.find(
-      (n) => n.kind === 'highlight' && n.params.name === 'Landwasserviadukt',
+      (n) => n.kind === 'highlight' && n.params.highlight === 'landwasser',
     );
     expect(landwasser?.params.side).toBe('L');
   });
