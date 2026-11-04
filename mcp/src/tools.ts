@@ -67,12 +67,14 @@ function rideOf(s: Section) {
     number: s.number,
     mode: s.mode,
     journey: s.journey,
+    ...(s.destination ? { destination: s.destination } : {}),
     from: {
       name: s.from.name,
       ref: stopKey(s.from.stopRef),
       dep: local(s.from.dep),
       ...(s.from.depEst ? { expectedDep: local(s.from.depEst) } : {}),
       platform: s.from.platform,
+      ...(s.from.platformEst ? { platformExpected: s.from.platformEst } : {}),
     },
     to: {
       name: s.to.name,
@@ -80,6 +82,7 @@ function rideOf(s: Section) {
       arr: local(s.to.arr),
       ...(s.to.arrEst ? { expectedArr: local(s.to.arrEst) } : {}),
       platform: s.to.platform,
+      ...(s.to.platformEst ? { platformExpected: s.to.platformEst } : {}),
     },
     stops: s.intermediate.map((c) => ({ name: c.name, arr: local(c.arr), dep: local(c.dep) })),
     ...(s.reservationRequired ? { reservationRequired: true } : {}),

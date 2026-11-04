@@ -4,7 +4,7 @@
 //   carry attribute A__PR;
 // - times are UTC (`…Z`); stop point refs embed the stop's SLOID.
 import { XMLParser } from 'fast-xml-parser';
-import type { Connection, Mode, Section, StopCall } from '../model';
+import type { Connection, Mode, PlatformCall, Section } from '../model';
 
 const ARRAYS = new Set([
   'TripResult',
@@ -65,7 +65,7 @@ function modeOf(service: X): Mode {
 
 // The timetable's times are the plan (links, calendar, the question asked again later); an
 // estimate the service already knows (asked on the day) is kept beside them.
-function call(v: X, kind: 'board' | 'alight' | 'mid'): StopCall & { platform?: string } {
+function call(v: X, kind: 'board' | 'alight' | 'mid'): PlatformCall {
   const dep = obj(v?.ServiceDeparture);
   const arr_ = obj(v?.ServiceArrival);
   const time = (t: X) => {
@@ -85,7 +85,15 @@ function call(v: X, kind: 'board' | 'alight' | 'mid'): StopCall & { platform?: s
     arr: a?.at,
     ...(d?.est ? { depEst: d.est } : {}),
     ...(a?.est ? { arrEst: a.est } : {}),
-    platform: text(v?.EstimatedQuay) ?? text(v?.PlannedQuay),
+    ...platforms(text(v?.PlannedQuay), text(v?.EstimatedQuay)),
+  };
+}
+
+// As times: the timetable's platform is the plan, another one already known beside it.
+function platforms(planned?: string, expected?: string) {
+  return {
+    ...(planned ? { platform: planned } : {}),
+    ...(expected && expected !== planned ? { platformEst: expected } : {}),
   };
 }
 
@@ -126,6 +134,7 @@ function timedSection(leg: X, notices: Map<string, string>): Section {
       ? situationIds.map((id) => notices.get(id)).filter((x): x is string => !!x)
       : undefined,
     journey: day && journey ? `${day}:${journey}` : undefined,
+    destination: text(service?.DestinationText),
   };
 }
 

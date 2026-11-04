@@ -73,6 +73,13 @@ export interface StopCall {
   depEst?: string;
 }
 
+/**
+ * A ride's end with its platform: `platform` is the timetable's (OJP `PlannedQuay`), what links,
+ * the calendar and print carry; `platformEst` the one the service already knew another
+ * (`EstimatedQuay`, asked on the day). With only an expected platform, `platform` is empty.
+ */
+export type PlatformCall = StopCall & { platform?: string; platformEst?: string };
+
 /** One vehicle ride (or walk) inside a connection. Times are ISO 8601 with offset. */
 export interface Section {
   mode: Mode | 'walk';
@@ -80,8 +87,8 @@ export interface Section {
   category?: string;
   number?: string;
   operator?: string;
-  from: StopCall & { platform?: string };
-  to: StopCall & { platform?: string };
+  from: PlatformCall;
+  to: PlatformCall;
   intermediate: StopCall[];
   /** Track geometry, [lon, lat] pairs (GeoJSON order). */
   geometry?: [number, number][];
@@ -96,6 +103,8 @@ export interface Section {
   walkMin?: number;
   /** Dated journey (`<OperatingDay>:<JourneyRef>`): same value = same vehicle. */
   journey?: string;
+  /** Where the vehicle goes (OJP `DestinationText`), as the departure boards say it. */
+  destination?: string;
 }
 
 export interface Connection {

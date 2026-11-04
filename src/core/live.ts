@@ -1,6 +1,6 @@
 // Where a trip stands at a moment: from its connections, the time, and live calls (OJP TripInfo)
 // when known. Position comes from the timetable only (no GPS, SPEC "Now").
-import type { Connection, Section, StopCall } from './model';
+import type { Connection, PlatformCall, Section } from './model';
 import type { JourneyStatus, LiveCall } from './ojp/journey';
 import { isTight, walkMinutes } from './planner/connection';
 import { stopKey } from './stops';
@@ -13,10 +13,20 @@ export interface LiveStop {
   dep?: number;
   arrPlan?: number;
   depPlan?: number;
+  /** The platform to go to: the vehicle's, else the one known as the plan was made, else the plan's. */
   platform?: string;
-  /** The platform the plan has, when `platform` may be a later one. */
+  /** The timetable's platform. */
   platformPlan?: string;
   cancelled: boolean;
+}
+
+/**
+ * The platform of a ride's end and whether it moved: the vehicle's report, else the one known as
+ * the plan was made, against the timetable's. One taken back shows nothing.
+ */
+export function platformAt(c: PlatformCall, live?: Pick<LiveStop, 'platform'>) {
+  const now = live?.platform ?? c.platformEst ?? c.platform;
+  return { now, moved: platformMoved({ platform: now, platformPlan: c.platform }) };
 }
 
 /** A platform the vehicle reports other than the planned one: both, else nothing. */
@@ -62,7 +72,7 @@ const ms = (iso?: string) => (iso ? Date.parse(iso) : undefined);
 
 // Expected: what the vehicle reports (on time included, so a delay the plan was made with
 // does not stay once it is made up); until it reports, the delay known as the plan was made.
-function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveStop {
+function liveStop(c: PlatformCall, live?: LiveCall): LiveStop {
   const arrPlan = ms(c.arr);
   const depPlan = ms(c.dep);
   return {
@@ -72,7 +82,7 @@ function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveSto
     depPlan,
     arr: (live ? ms(live.arrEst) : ms(c.arrEst)) ?? arrPlan,
     dep: (live ? ms(live.depEst) : ms(c.depEst)) ?? depPlan,
-    platform: live?.platform ?? c.platform,
+    platform: live?.platform ?? c.platformEst ?? c.platform,
     platformPlan: c.platform,
     cancelled: live?.cancelled ?? false,
   };

@@ -8,7 +8,7 @@ import {
 import type { RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
-import { viasOnRides, type LineRow, type StationRow } from '../core/rows';
+import { towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import type { Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
 import { badge } from './format';
@@ -17,7 +17,7 @@ import { Icon } from './icons';
 import { MissedNote, type FindSubstitute } from './MissedNote';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
-import { platformMoved } from '../core/live';
+import { platformAt } from '../core/live';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
@@ -296,9 +296,9 @@ export function TripLine({
           const mids = s.mode === 'walk' ? [] : s.intermediate;
           const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
           const vias = onRide.get(i) ?? [];
-          const platform = lr?.stops[0]?.platform ?? s.from.platform;
-          const moved = platformMoved(lr?.stops[0]);
+          const { now: platform, moved } = platformAt(s.from, lr?.stops[0]);
           const seat = seatOn(s, TEMPLATES);
+          const dest = towards(s);
           return (
             // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
             // the focus in it) must stay the same element.
@@ -322,6 +322,12 @@ export function TripLine({
                   <>
                     <span className="badge">{badge(s)}</span>
                     {s.product && <b>{s.product}</b>}
+                    {dest && (
+                      <span className="towards">
+                        <span aria-hidden="true">→ {dest}</span>
+                        <span className="sr-only">{t('towards', { to: dest })}</span>
+                      </span>
+                    )}
                     {moved ? (
                       <span className="platform-moved">
                         <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}

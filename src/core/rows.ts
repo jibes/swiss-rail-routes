@@ -258,3 +258,21 @@ export function plannedRows(
   for (; p < route.length; p++) out.push(unplaced(route[p]!));
   return out;
 }
+
+const plainName = (n: string) =>
+  n
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * Where a ride's vehicle goes, as the departure boards say it, to find it there: nothing when it
+ * ends where you get off (it adds nothing) or the service named none.
+ */
+export function towards(s: Pick<Section, 'mode' | 'destination' | 'to'>): string | undefined {
+  const d = s.destination?.trim();
+  if (s.mode === 'walk' || !d) return undefined;
+  return plainName(d) === plainName(s.to.name) ? undefined : d;
+}

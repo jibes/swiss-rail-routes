@@ -121,6 +121,7 @@ export const de = {
   nExitBody: 'Ankunft {time}, in 5 Min.',
   nHighlightTitle: '{name} in 10 Min.',
   nSideRight: 'Rechts sitzen',
+  towards: 'Richtung {to}',
   nSideLeft: 'Links sitzen',
   nSunset: 'Sonnenuntergang {time}',
   clear: 'Leeren',
