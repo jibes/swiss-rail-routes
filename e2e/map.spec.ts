@@ -47,6 +47,41 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chur → St. Moritz');
 });
 
+// In dark mode the plain ground is dark (a light one glares), the route still red on it.
+test('the plain ground follows dark mode', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.clock.install({ time: BEFORE });
+  await newTrip(page, 'Chur', 'St. Moritz');
+  await page.getByRole('button', { name: 'Map' }).click();
+  await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
+  await expect
+    .poll(
+      async () => {
+        const png = (await page.locator('.map').screenshot()).toString('base64');
+        return page.evaluate(async (b64) => {
+          const img = new Image();
+          img.src = `data:image/png;base64,${b64}`;
+          await img.decode();
+          const c = document.createElement('canvas');
+          c.width = img.width;
+          c.height = img.height;
+          const g = c.getContext('2d')!;
+          g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data;
+          // A corner below the bar: the ground.
+          const at = 4 * (c.width * Math.floor(c.height * 0.6) + 2);
+          const ground = (d[at]! + d[at + 1]! + d[at + 2]!) / 3;
+          let red = 0;
+          for (let i = 0; i < d.length; i += 4)
+            if (d[i]! > 150 && d[i + 1]! < 80 && d[i + 2]! < 80) red++;
+          return ground < 60 && red > 50;
+        }, png);
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+});
+
 // T5 (Interlaken Ost 09:04 →) by a controlled clock; a location near Interlaken Ost.
 const AT_INTERLAKEN = { latitude: 46.69, longitude: 7.87, accuracy: 30 };
 const watches = (page: Page) =>

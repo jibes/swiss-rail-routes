@@ -55,12 +55,17 @@ function arrowImage(r: number): ImageData {
   return g.getImageData(0, 0, c.width, c.height);
 }
 
-/** Without the tile host (offline, blocked): the route on a plain ground, still readable. */
-const PLAIN: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [{ id: 'ground', type: 'background', paint: { 'background-color': '#ecebe6' } }],
-};
+/** Without the tile host (offline, blocked): the route on a plain ground, still readable; the
+    ground follows the theme (`--map-ground`), as a light one glares on a dark screen. */
+function plain(): maplibregl.StyleSpecification {
+  const ground =
+    getComputedStyle(document.documentElement).getPropertyValue('--map-ground').trim() || '#ecebe6';
+  return {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'ground', type: 'background', paint: { 'background-color': ground } }],
+  };
+}
 
 /** The map's style, fetched first: if it cannot be had, the plain one (and say so). */
 async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
@@ -145,7 +150,7 @@ export default function MapView({ id }: { id: string }) {
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       map = new maplibregl.Map({
         container: box.current,
-        style: style ?? PLAIN,
+        style: style ?? plain(),
         bounds: d.bounds ?? [5.9, 45.8, 10.5, 47.8],
         fitBoundsOptions: { padding: 40 },
         attributionControl: { compact: true },

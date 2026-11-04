@@ -42,7 +42,8 @@ export const allowUnrecorded = (page: Page) => void lenient.add(page);
  * request the real Worker would refuse (400) is reported to `problems`, so the test fails.
  */
 export async function answerWorker(page: Page, problems: string[] = []) {
-  await page.route('https://tiles.openfreemap.org/**', (r) => r.abort());
+  // On the context: the service worker's own requests for the map pass it, not the page's routes.
+  await page.context().route('https://tiles.openfreemap.org/**', (r) => r.abort());
   await page.route('https://ojp.invalid/**', async (route) => {
     const req = route.request();
     const body = req.postData() ?? undefined;

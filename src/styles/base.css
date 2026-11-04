@@ -6,6 +6,8 @@
   color-scheme: light dark;
   --bg: #f7f7f5;
   --surface: #ffffff;
+  /* The map's ground when its tiles cannot be had (MapView reads it). */
+  --map-ground: #ecebe6;
   --ink: #121314;
   --ink-2: #5b5e64;
   --ink-3: #6c6f76;
@@ -37,6 +39,7 @@
   :root {
     --bg: #0d0e10;
     --surface: #17181b;
+    --map-ground: #1c1e22;
     --ink: #f1f1ee;
     --ink-2: #a7aab0;
     --ink-3: #7c7f86;

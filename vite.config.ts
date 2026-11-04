@@ -15,6 +15,35 @@ const build = {
   version: (JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }).version,
 };
 
+/**
+ * The map as it was seen, kept for offline (web only: the Android app has no service worker).
+ * Only what the map asked for anyway is kept; nothing is fetched ahead. The style and the tile
+ * index (TileJSON) are read from the cache and refreshed behind it; tiles, glyphs and sprites
+ * never change at an address, so the cache answers alone. About 30 MB: 800 tiles of ~35 KB.
+ */
+export const MAP_CACHING = [
+  {
+    urlPattern: ({ url }: { url: URL }) =>
+      url.host === 'tiles.openfreemap.org' && !/\.[a-z0-9]+$/i.test(url.pathname),
+    handler: 'StaleWhileRevalidate' as const,
+    options: {
+      cacheName: 'srr-mapstyle-v1',
+      expiration: { maxEntries: 20, maxAgeSeconds: 60 * 24 * 3600 },
+      cacheableResponse: { statuses: [200] },
+    },
+  },
+  {
+    urlPattern: ({ url }: { url: URL }) =>
+      url.host === 'tiles.openfreemap.org' && /\.[a-z0-9]+$/i.test(url.pathname),
+    handler: 'CacheFirst' as const,
+    options: {
+      cacheName: 'srr-tiles-v1',
+      expiration: { maxEntries: 800, maxAgeSeconds: 60 * 24 * 3600, purgeOnQuotaError: true },
+      cacheableResponse: { statuses: [200] },
+    },
+  },
+];
+
 export default defineConfig({
   base: process.env.VITE_BASE ?? './',
   define: { __BUILD__: JSON.stringify(build) },
@@ -62,6 +91,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,wasm,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // stops.v1.json
         navigateFallback: 'index.html',
+        runtimeCaching: MAP_CACHING,
       },
     }),
   ],
