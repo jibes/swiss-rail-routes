@@ -14,7 +14,16 @@ export interface LiveStop {
   arrPlan?: number;
   depPlan?: number;
   platform?: string;
+  /** The platform the plan has, when `platform` may be a later one. */
+  platformPlan?: string;
   cancelled: boolean;
+}
+
+/** A platform the vehicle reports other than the planned one: both, else nothing. */
+export function platformMoved(s?: Pick<LiveStop, 'platform' | 'platformPlan'>) {
+  return s?.platform && s.platformPlan && s.platform !== s.platformPlan
+    ? { now: s.platform, was: s.platformPlan }
+    : undefined;
 }
 
 export interface LiveRide {
@@ -64,6 +73,7 @@ function liveStop(c: StopCall & { platform?: string }, live?: LiveCall): LiveSto
     arr: (live ? ms(live.arrEst) : ms(c.arrEst)) ?? arrPlan,
     dep: (live ? ms(live.depEst) : ms(c.depEst)) ?? depPlan,
     platform: live?.platform ?? c.platform,
+    platformPlan: c.platform,
     cancelled: live?.cancelled ?? false,
   };
 }

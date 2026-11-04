@@ -45,6 +45,7 @@ export const en = {
   transfers: '{n} changes',
   walk: 'Walk',
   platform: 'Pl. {p}',
+  platformChanged: 'Platform changed: now {p}, was {was}',
   stopsBetween: '{n} stops',
   copied: 'Link copied',
   calendar: 'Calendar (.ics)',

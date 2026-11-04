@@ -47,6 +47,7 @@ export const it = {
   transfers: '{n} cambi',
   walk: 'A piedi',
   platform: 'Bin. {p}',
+  platformChanged: 'Binario cambiato: ora {p}, invece di {was}',
   stopsBetween: '{n} fermate',
   copied: 'Link copiato',
   calendar: 'Calendario (.ics)',

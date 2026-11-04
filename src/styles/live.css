@@ -146,3 +146,13 @@
 .mids .here-mid {
   height: 0;
 }
+
+/* A platform the train reports other than the planned one: the old struck, the new as a delay. */
+.platform-moved s {
+  color: var(--ink-3);
+}
+
+.platform-moved b {
+  color: var(--red);
+  font-weight: 600;
+}

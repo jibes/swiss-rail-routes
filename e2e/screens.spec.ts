@@ -15,7 +15,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.clock.install({ time: BEFORE });
     const t3 = { ...acceptanceTours(FIXTURE_DATE).T3!, name: 'Voralpen-Express + Brünig' };
     await planShared(page, encodeTour(t3));
-    await page.waitForTimeout(300);
+    await page.locator('.trip-line .ride').first().waitFor();
+    await page.evaluate(() => document.fonts.ready);
     await shot('2-trip');
     await shot('2-trip-full', true);
     await page.locator('.trip-line .station.entry').nth(2).getByRole('button').first().click();
@@ -25,7 +26,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.getByRole('button', { name: 'Add a station' }).click();
     await shot('3-add');
     await page.goto('./');
-    await page.waitForTimeout(300);
+    await page.getByRole('button', { name: 'New trip' }).waitFor();
+    await page.evaluate(() => document.fonts.ready);
     await shot('1-home');
   });
 
@@ -49,7 +51,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
     await page.goBack();
     await page.goto('./#/');
-    await page.waitForTimeout(300);
+    await page.locator('.livebar').waitFor();
+    await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: `${dir}/${scheme}-5-list-live.png` });
     expect(true).toBe(true);
   });

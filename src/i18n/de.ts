@@ -47,6 +47,7 @@ export const de = {
   transfers: '{n} Umstiege',
   walk: 'Fussweg',
   platform: 'Gl. {p}',
+  platformChanged: 'Gleis geändert: jetzt {p}, statt {was}',
   stopsBetween: '{n} Halte',
   copied: 'Link kopiert',
   calendar: 'Kalender (.ics)',

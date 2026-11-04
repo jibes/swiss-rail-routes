@@ -39,8 +39,10 @@ export const useTours = create<ToursState>()((set, get) => ({
   replaceAll: (tours) => {
     log('pastTrips.replaceAll', { count: tours.length });
     const before = get().tours;
-    set({ tours });
-    return toursList.save(before, tours, true);
+    // Items this version cannot read stay out of the screens, held and saved as they came.
+    const { items, saved } = toursList.replace(before, tours);
+    set({ tours: items });
+    return saved;
   },
 }));
 

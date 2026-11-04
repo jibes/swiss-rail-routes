@@ -201,9 +201,17 @@ test('pull down from the top reloads the trip; from further down it does not', a
       { from, to, x },
     );
 
+  // What a pull did is on the page once React has drawn it: two frames on, a reload is busy
+  // or says how it went, and nothing is said when none started.
+  const drawn = () =>
+    page.evaluate(
+      () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null)))),
+    );
+  const said = page.locator('.pull-mark, .pull-said');
   await pull(200, 260);
-  await page.waitForTimeout(100);
-  expect(asked, 'a short pull does nothing').toBe(0);
+  await drawn();
+  await expect(said, 'a short pull does nothing').toHaveCount(0);
+  expect(asked).toBe(0);
 
   await pull(200, 400);
   await expect(page.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
@@ -217,9 +225,12 @@ test('pull down from the top reloads the trip; from further down it does not', a
     document.body.style.minHeight = '3000px';
     window.scrollTo(0, 300);
   });
+  await page.clock.runFor(5_000); // what the last one said goes after 5 s
+  await expect(said).toHaveCount(0);
   await pull(200, 400);
-  await page.waitForTimeout(100);
-  expect(asked, 'scrolled down, a pull is a scroll').toBe(before);
+  await drawn();
+  await expect(said, 'scrolled down, a pull is a scroll').toHaveCount(0);
+  expect(asked).toBe(before);
 });
 
 test('a via on the ride is one of its stops, in white; a station missed keeps the rail straight', async ({

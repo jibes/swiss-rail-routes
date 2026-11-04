@@ -16,6 +16,7 @@ import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
+import { platformMoved } from '../core/live';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 
@@ -292,6 +293,7 @@ export function TripLine({
           const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
           const vias = onRide.get(i) ?? [];
           const platform = lr?.stops[0]?.platform ?? s.from.platform;
+          const moved = platformMoved(lr?.stops[0]);
           return (
             // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
             // the focus in it) must stay the same element.
@@ -315,7 +317,17 @@ export function TripLine({
                   <>
                     <span className="badge">{badge(s)}</span>
                     {s.product && <b>{s.product}</b>}
-                    {platform && <span>{t('platform', { p: platform })}</span>}
+                    {moved ? (
+                      <span className="platform-moved">
+                        <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
+                        <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
+                        <span className="sr-only">
+                          {t('platformChanged', { was: moved.was, p: moved.now })}
+                        </span>
+                      </span>
+                    ) : (
+                      platform && <span>{t('platform', { p: platform })}</span>
+                    )}
                     {min > 0 && <span>{duration(min)}</span>}
                     {mids.length > vias.length && (
                       <button

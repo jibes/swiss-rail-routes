@@ -168,6 +168,33 @@ test('under way, the stations beside a walk passed are grey', async ({ page }) =
       }),
     );
   expect((await spans()).flat().every(Boolean)).toBe(true);
-  await page.locator('.trip-line .station.walk-from .m').first().click();
+  // A station the timetable added, beside a walk: a tap opens its note, the row grows.
+  const added = page.locator('.trip-line .station.auto.walk-from');
+  await added.locator('.m.locked').first().click();
+  await expect(added.first().locator('.why')).toBeVisible();
   expect((await spans()).flat().every(Boolean)).toBe(true);
+});
+
+// The train reports another platform than the planned one: the line says so, both platforms.
+test('a platform changed on the day shows on the line', async ({ page }) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // 08:50 in Zürich
+  const quay = (p: string) => `<Text xml:lang="de">${p}</Text>`;
+  await page.route(/\/journey$/, (route) =>
+    route.fulfill({
+      contentType: 'application/xml',
+      body:
+        '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult>' +
+        '<OnwardCall><siri:StopPointRef>ch:1:sloid:7492:0:94927</siri:StopPointRef><StopPointName>' +
+        quay('Interlaken Ost') +
+        `</StopPointName><PlannedQuay>${quay('2A')}</PlannedQuay><EstimatedQuay>${quay('3')}</EstimatedQuay>` +
+        `<ServiceDeparture><TimetabledTime>${FIXTURE_DATE}T08:04:00Z</TimetabledTime></ServiceDeparture></OnwardCall>` +
+        '</TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
+    }),
+  );
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+  const moved = page.locator('.trip-line .ride .platform-moved').first();
+  await expect(moved).toBeVisible();
+  await expect(moved.locator('s')).toHaveText('Pl. 2A');
+  await expect(moved.locator('b')).toHaveText('Pl. 3');
+  await expect(moved.locator('.sr-only')).toHaveText('Platform changed: now 3, was 2A');
 });

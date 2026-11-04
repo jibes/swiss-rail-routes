@@ -37,7 +37,7 @@ let devices = 0;
  * `resetModules` leaves it as it is, and its default store would stay bound to the first
  * device's database: each device gets the library with a store of its own instead.
  */
-async function device() {
+async function device(stored?: Record<string, unknown>) {
   vi.resetModules();
   globalThis.indexedDB = new IDBFactory();
   const name = `device-${devices++}`;
@@ -59,6 +59,10 @@ async function device() {
       delMany: bound(actual.delMany),
     };
   });
+  if (stored) {
+    const { set } = await import('idb-keyval');
+    for (const [k, v] of Object.entries(stored)) await set(k, v);
+  }
   vi.stubEnv('VITE_OJP_URL', WORKER);
   vi.stubGlobal('fetch', worker);
   const sync = await import('../src/io/sync');
@@ -66,7 +70,9 @@ async function device() {
   const { useTours } = await import('../src/tours');
   await Promise.all([useTrips.getState().load(), useTours.getState().load()]);
   await sync.loadSync();
-  return { sync, useTrips };
+  const { tripsList } = await import('../src/io/trips');
+  const { get } = await import('idb-keyval');
+  return { sync, useTrips, tripsList, get };
 }
 
 const trip = (id: string, name: string) =>
@@ -243,5 +249,41 @@ describe('the sync lock', () => {
     expect(a.sync.useSync.getState().status).toBe('ok');
     vi.unstubAllGlobals();
     vi.useRealTimers();
+  });
+
+  it('a trip this version cannot read is held: shared on, kept, never deleted', async () => {
+    reset();
+    const future = { id: 'f', journey: { v: 2, legs: ['Chur', 'Arosa'] } };
+    const a = await device({ 'srr.trips.v1': [trip('t0', 'Albula'), future] });
+    expect(a.useTrips.getState().trips.map((t) => t.id)).toEqual(['t0']);
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    a.useTrips.getState().add(trip('t1', 'Rigi'));
+    await a.sync.syncNow();
+    expect(a.sync.useSync.getState().status).toBe('ok');
+    const stored = (await a.get('srr.trips.v1')) as { id: string }[];
+    expect(
+      stored.find((x) => x.id === 'f'),
+      'still stored, as it came',
+    ).toEqual(future);
+
+    // Another device gets it too, held as it came, and shows only what it can read.
+    const b = await device();
+    await b.sync.startSync(key);
+    expect(b.sync.useSync.getState().status).toBe('ok');
+    expect(
+      b.useTrips
+        .getState()
+        .trips.map((t) => t.id)
+        .sort(),
+    ).toEqual(['t0', 't1']);
+    expect(b.tripsList.held()).toEqual([future]);
+    // And back on the first one, after another round, it is no tombstone.
+    await a.sync.syncNow();
+    expect(((await a.get('srr.trips.v1')) as { id: string }[]).map((x) => x.id)).toContain('f');
+    const saved = (await a.get('srr.sync.v1')) as {
+      stamps: { trips: Record<string, { h: string }> };
+    };
+    expect(saved.stamps.trips.f!.h, 'not a deletion').not.toBe('');
   });
 });

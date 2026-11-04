@@ -4,6 +4,8 @@
 // other tabs, which read the list again. A list that could not be read is never written.
 // IndexedDB cannot finish a write once the page goes (it must read before it writes), so what is
 // still unsaved then goes to localStorage, written at once, and into the list on the next load.
+// An item this version cannot read (a newer version's, synced in) is held as it came: never
+// shown, written back untouched, and given to sync as it is, so it is neither lost nor deleted.
 import { get, update } from 'idb-keyval';
 import { log } from './log';
 
@@ -32,6 +34,19 @@ export function applyChanges<T extends Item>(stored: T[], changes: Map<string, T
   });
   const added = [...changes.values()].filter((x): x is T => !!x && !seen.has(x.id));
   return [...added, ...kept];
+}
+
+/** The stored items `read` could not read (an object with an id), as they came. */
+export function heldOf(stored: unknown, items: Item[]): Item[] {
+  if (!Array.isArray(stored)) return [];
+  const known = new Set(items.map((x) => x.id));
+  return stored.filter(
+    (x): x is Item =>
+      !!x &&
+      typeof x === 'object' &&
+      typeof (x as Item).id === 'string' &&
+      !known.has((x as Item).id),
+  );
 }
 
 /** What was left unsaved, from its stored form; nothing when it is unreadable. */
@@ -75,6 +90,13 @@ export interface SavedList<T extends Item> {
   load: () => Promise<T[]>;
   /** Records the change from `before` to `after`; saved after 300 ms, or at once. */
   save: (before: T[], after: T[], now?: boolean) => Promise<void>;
+  /** The items held as they came (unreadable here), for sync. */
+  held: () => Item[];
+  /**
+   * The whole list as sync merged it, from `before` (what the screens hold): saved at once.
+   * Returns what the screens may hold; the rest is held.
+   */
+  replace: (before: T[], all: Item[]) => { items: T[]; saved: Promise<void> };
   /** Called with the stored list (with this tab's unsaved changes) when another tab saved. */
   onOtherTab: (cb: (list: T[]) => void) => void;
   /** Reading or writing failed: nothing more is written (or synced) this visit. */
@@ -93,6 +115,19 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
   let listener: ((list: T[]) => void) | undefined;
   let failedCb: (() => void) | undefined;
   let writing: Promise<void> = Promise.resolve();
+  let held: Item[] = [];
+  /** What is stored, read: what can be shown, and what is held (`held` kept up to date). */
+  const readStored = (stored: unknown) => {
+    const items = read(stored);
+    held = heldOf(stored, items);
+    return items;
+  };
+  /** `changes` applied to what is stored, the held items written back as they came. */
+  const write = (stored: unknown, changes: Map<string, T | null>) => {
+    const items = applyChanges(read(stored), changes);
+    const kept = heldOf(stored, items).filter((x) => !changes.has(x.id));
+    return [...items, ...kept];
+  };
   const fail = () => {
     if (broken) return;
     broken = true;
@@ -115,8 +150,10 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     pending = new Map();
     for (const [id, x] of changes) writes.set(id, x);
     const done = writing
-      .then(() => update<unknown>(key, (stored) => applyChanges(read(stored), changes)))
-      .then(() => {
+      .then(() => update<unknown>(key, (stored) => write(stored, changes)))
+      .then(() => get(key))
+      .then((stored) => {
+        readStored(stored);
         for (const [id, x] of changes) if (writes.get(id) === x) writes.delete(id);
         settle(changes);
         channel?.postMessage('saved');
@@ -135,7 +172,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     // them, and an edit just taken out of `pending` is not lost from memory.
     void writing
       .then(() => get(key))
-      .then((raw) => listener?.(applyChanges(read(raw), pending)))
+      .then((raw) => listener?.(applyChanges(readStored(raw), pending)))
       .catch((e: unknown) => log('store.reload.fail', { key, e }));
   });
   const quiet = () => void flush().catch(() => undefined);
@@ -169,7 +206,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     const left = readUnsaved<T>(unsavedStorage()?.getItem(unsavedKey) ?? null);
     if (!left.size) return;
     log('store.unsaved.take', { key, items: left.size });
-    await update<unknown>(key, (stored) => applyChanges(read(stored), left));
+    await update<unknown>(key, (stored) => write(stored, left));
     channel?.postMessage('saved');
     unsavedStorage()?.removeItem(unsavedKey);
   };
@@ -191,7 +228,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     load: async () => {
       try {
         await takeUnsaved();
-        return read(await get(key));
+        return readStored(await get(key));
       } catch (e) {
         log('store.load.fail', { key, e });
         fail();
@@ -204,6 +241,21 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       clearTimeout(timer);
       timer = setTimeout(quiet, 300);
       return Promise.resolve();
+    },
+    held: () => held,
+    replace: (before, all) => {
+      // What can be shown is shown as sync gave it (read only says which).
+      const shown = new Set(read(all).map((x) => x.id));
+      const items = all.filter((x) => shown.has(x.id)) as T[];
+      const next = all.filter((x) => !shown.has(x.id));
+      for (const [id, x] of changesOf(before, items)) pending.set(id, x);
+      // Held items: a new or changed one is written as it came, one gone is removed.
+      const was = new Map(held.map((x) => [x.id, JSON.stringify(x)]));
+      for (const x of next) if (was.get(x.id) !== JSON.stringify(x)) pending.set(x.id, x as T);
+      const now = new Set(all.map((x) => x.id));
+      for (const x of held) if (!now.has(x.id)) pending.set(x.id, null);
+      held = next;
+      return { items, saved: flush() };
     },
     onOtherTab: (cb) => {
       listener = cb;

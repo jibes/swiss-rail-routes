@@ -21,6 +21,8 @@ import { compactTrip, type Trip } from '../core/trip';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
 import { log } from './log';
+import { toursList } from './tours';
+import { tripsList } from './trips';
 
 const KEY = 'srr.sync.v1';
 /** The last key's stamps after turning off, for turning on again with the same key. */
@@ -195,10 +197,11 @@ async function round(start: Saved): Promise<Saved> {
     const v = got.v < saved.v ? 0 : got.v;
     // Read the lists only now: edits made while waiting for the server are part of this round.
     const now = Date.now();
+    // With what this version cannot read, held as it came: shared on, never deleted.
     const local = {
-      tours: useTours.getState().tours,
+      tours: [...useTours.getState().tours, ...(toursList.held() as Tour[])],
       // Stored and shared compactly (simplified tracks), once per trip.
-      trips: useTrips.getState().trips.map(compactTrip),
+      trips: [...useTrips.getState().trips.map(compactTrip), ...(tripsList.held() as Trip[])],
     };
     const plan = planRound({
       stamps: saved.stamps,
@@ -215,7 +218,8 @@ async function round(start: Saved): Promise<Saved> {
     });
     const store = useTrips.getState().trips;
     const trips =
-      plan.apply.trips ?? (local.trips.some((t, i) => t !== store[i]) ? local.trips : undefined);
+      plan.apply.trips ??
+      (local.trips.some((t, i) => i < store.length && t !== store[i]) ? local.trips : undefined);
     // Turned off, or given a new key, while the server was asked: the shared copy is not
     // applied (turning sync off is also how one stops another device's copy coming in).
     if ((await get<Saved>(KEY))?.key !== start.key) throw new Stopped();
@@ -377,8 +381,8 @@ export async function startSync(key = newKey(), carry?: Saved['stamps']) {
     (last?.key === clean
       ? last.stamps
       : {
-          tours: joinStamps(useTours.getState().tours),
-          trips: joinStamps(useTrips.getState().trips.map(compactTrip)),
+          tours: joinStamps([...useTours.getState().tours, ...toursList.held()]),
+          trips: joinStamps([...useTrips.getState().trips.map(compactTrip), ...tripsList.held()]),
         });
   await del(LAST);
   log('sync.start', { sameKeyAgain: last?.key === clean });

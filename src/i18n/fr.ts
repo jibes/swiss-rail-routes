@@ -47,6 +47,7 @@ export const fr = {
   transfers: '{n} changements',
   walk: 'À pied',
   platform: 'Voie {p}',
+  platformChanged: 'Voie modifiée : maintenant {p}, au lieu de {was}',
   stopsBetween: '{n} arrêts',
   copied: 'Lien copié',
   calendar: 'Calendrier (.ics)',
