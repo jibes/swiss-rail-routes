@@ -51,6 +51,7 @@ export const de = {
   stopsBetween: '{n} Halte',
   copied: 'Link kopiert',
   calendar: 'Kalender (.ics)',
+  print: 'Drucken',
   sharedTour: 'Jemand hat diese Route mit dir geteilt.',
   sharedBroken:
     'Dieser Link ist ungültig, oder ein Messenger hat ihn abgeschnitten. Bitte lass ihn dir nochmals schicken.',

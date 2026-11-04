@@ -51,6 +51,7 @@ export const fr = {
   stopsBetween: '{n} arrêts',
   copied: 'Lien copié',
   calendar: 'Calendrier (.ics)',
+  print: 'Imprimer',
   sharedTour: 'Quelqu’un a partagé cet itinéraire avec toi.',
   sharedBroken:
     'Ce lien est invalide, ou une messagerie l’a coupé. Demande à le recevoir à nouveau.',

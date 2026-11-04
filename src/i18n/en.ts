@@ -49,6 +49,7 @@ export const en = {
   stopsBetween: '{n} stops',
   copied: 'Link copied',
   calendar: 'Calendar (.ics)',
+  print: 'Print',
   sharedTour: 'Someone shared this route with you.',
   sharedBroken: 'This share link is broken, or a messenger cut it off. Ask for it again.',
   sharedBare: 'Showing the trains and times. The stops and map could not be loaded.',

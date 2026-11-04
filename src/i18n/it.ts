@@ -51,6 +51,7 @@ export const it = {
   stopsBetween: '{n} fermate',
   copied: 'Link copiato',
   calendar: 'Calendario (.ics)',
+  print: 'Stampa',
   sharedTour: 'Qualcuno ha condiviso questo percorso con te.',
   sharedBroken:
     'Questo link non è valido, o un’app di messaggi l’ha tagliato. Chiedi di riceverlo di nuovo.',

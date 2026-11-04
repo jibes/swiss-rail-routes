@@ -323,6 +323,20 @@ export function TripScreen({ id }: { id: string }) {
                 {t('calendar')}
               </button>
             )}
+            {isPlanned(trip) && (
+              <button
+                type="button"
+                onClick={() => {
+                  log('trip.print', { trip: id });
+                  setMenu(false);
+                  // After the menu has gone, so it is not on the page.
+                  requestAnimationFrame(() => window.print());
+                }}
+              >
+                <Icon name="print" size={18} />
+                {t('print')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

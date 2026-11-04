@@ -1,0 +1,111 @@
+/* ─── Print: one page of the trip, black on white ───────────────────────────
+   What it is (name, date, departure → arrival) and the line: times, platforms, trains,
+   changes, stays and warnings. Nothing to tap: no header, dock, strip, sheets or notes. */
+
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #fff;
+    --surface: #fff;
+    --ink: #000;
+    --ink-2: #222;
+    --ink-3: #555;
+    --hair: #bbb;
+    --rail: #000;
+    --rail-ink: #000;
+    --rail-soft: transparent;
+    --on-rail: #fff;
+    --red: #000;
+    --amber: #000;
+    --ok: #000;
+    --info: #000;
+    --shadow: none;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 10pt;
+  }
+
+  .bar,
+  .dock,
+  .options-wrap,
+  .options-bar,
+  .menu-scrim,
+  .scrim,
+  .sheet,
+  .toast,
+  .banner,
+  .livebar,
+  .pull-mark,
+  .pull-said,
+  .live-actions,
+  .trip-line .addrow,
+  .trip-line .panel,
+  .trip-line .grip,
+  .trip-line .dropmark,
+  .title svg {
+    display: none !important;
+  }
+
+  .page {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* The date and time as text: no pills. */
+  .pill,
+  .chip,
+  .badge,
+  .notice {
+    background: none !important;
+    box-shadow: none !important;
+  }
+
+  .hero-times {
+    font-size: 22pt;
+  }
+
+  /* A ride's stops stay as they were: closed unless opened; its toggle is a plain count. */
+  .trip-line .mids-toggle {
+    text-decoration: none;
+    color: var(--ink-3);
+  }
+
+  /* Smaller than on screen, so a usual day fits one page (a very long one takes two). */
+  .page {
+    zoom: 0.72;
+  }
+
+  .trip-line > li {
+    break-inside: avoid;
+  }
+
+  /* Nothing to add on paper: the rail ends at the last station's dot. */
+  .trip-line > li:has(+ .addrow) .rail::before {
+    bottom: calc(100% - var(--dot-at, 18px));
+  }
+
+  /* The rail and its dots are drawn as backgrounds, which print leaves out unless told. */
+  .trip-line .rail,
+  .trip-line .rail::before,
+  .trip-line .rail::after,
+  .trip-line .dot,
+  .trip-line .mids li::before {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Live marks have no meaning on paper. */
+  .trip-line .dot,
+  .trip-line .rail::after {
+    animation: none !important;
+    box-shadow: none !important;
+  }
+}
