@@ -16,6 +16,7 @@ import { plannedRows, routeRows } from '../core/rows';
 import { isPlanned, revise, tripStatus, type PlannedTrip } from '../core/trip';
 import { log } from '../io/log';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
+import { findSubstitute } from '../io/substitute';
 import { planRoute } from '../io/planTrip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
@@ -285,6 +286,17 @@ export function EditTrip({ id }: { id: string }) {
           addAfter: (k) => setSheet({ after: k }),
           add: () => setSheet({ after: entries.length - 1 }),
           later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
+          // The rest's own: Use edits the draft. The station you are at is fixed and the way here
+          // is behind you, so neither is ever offered or replaced.
+          find: (k, signal) =>
+            k === 0
+              ? Promise.resolve(null)
+              : findSubstitute(
+                  { ...trip, id: `${trip.id}-replan`, route: draft },
+                  k,
+                  signal,
+                  travelled?.waypoints.map((w) => w.stopRef) ?? [],
+                ),
         }}
       />
 

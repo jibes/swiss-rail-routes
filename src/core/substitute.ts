@@ -30,6 +30,8 @@ export function candidates(
   k: number,
   index: Pick<StopSearch, 'byRef' | 'near'>,
   templates: RouteTemplate[],
+  /** Stations never to offer besides the route's own (replan: the way here). */
+  exclude: string[] = [],
 ): Candidate[] {
   const entries = entriesOf(route);
   const w = entries[k]?.w;
@@ -37,7 +39,7 @@ export function candidates(
   const key = stopKey(w.stopRef);
   const at = index.byRef(key);
   if (!at) return [];
-  const own = new Set(route.waypoints.map((x) => stopKey(x.stopRef)));
+  const own = new Set([...route.waypoints.map((x) => stopKey(x.stopRef)), ...exclude.map(stopKey)]);
   const lineIds = new Set(
     [entries[k]?.w.line, entries[k + 1]?.w.line].filter((x): x is string => !!x),
   );

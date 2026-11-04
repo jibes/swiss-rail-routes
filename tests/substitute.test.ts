@@ -48,6 +48,12 @@ describe('stations to try in place of one missed', () => {
     expect([...c].sort((a, b) => a.km - b.km)).toEqual(c);
   });
 
+  it('replan: never a station of the way here', () => {
+    const c = candidates(albula, 1, index, templates, [ref('Preda')]);
+    expect(c.map((x) => x.name)).not.toContain('Preda');
+    expect(c[0]?.name).toBe('Filisur');
+  });
+
   it('nothing for an entry that is not there or a stop the index does not know', () => {
     expect(candidates(albula, 9, index, templates)).toEqual([]);
     const unknown = {

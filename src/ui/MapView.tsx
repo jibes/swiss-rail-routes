@@ -4,11 +4,13 @@ import * as maplibregl from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
+import { fromProtocol, MAP_PROTOCOL, toProtocol } from '../core/mapCache';
 import { mapData } from '../core/mapdata';
 import type { Connection } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isPlanned, tripStatus } from '../core/trip';
+import { mapFetch } from '../io/mapCache';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { usePrefs, useT } from '../store';
@@ -67,10 +69,40 @@ function plain(): maplibregl.StyleSpecification {
   };
 }
 
+/**
+ * Where no service worker keeps the map as seen (the Android shell has none; a web page before
+ * its worker controls it), the page keeps it: the tile host's addresses go through the app's own
+ * protocol, answered by `mapFetch` (src/io/mapCache.ts).
+ */
+const inPage = () => !navigator.serviceWorker?.controller;
+
+let registered = false;
+function registerMapProtocol() {
+  if (registered) return;
+  registered = true;
+  maplibregl.addProtocol(MAP_PROTOCOL, async (p, abort) => {
+    const url = fromProtocol(p.url);
+    const res = await mapFetch(url, abort.signal);
+    if (!res.ok) throw new maplibregl.AJAXError(res.status, res.statusText, url, await res.blob());
+    const data =
+      p.type === 'json'
+        ? await res.json()
+        : p.type === 'string'
+          ? await res.text()
+          : await res.arrayBuffer();
+    return {
+      data,
+      cacheControl: res.headers.get('Cache-Control'),
+      expires: res.headers.get('Expires'),
+    };
+  });
+}
+
 /** The map's style, fetched first: if it cannot be had, the plain one (and say so). */
 async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
   try {
-    const res = await fetch(MAP_STYLE, { signal: AbortSignal.timeout(8000) });
+    const signal = AbortSignal.timeout(8000);
+    const res = inPage() ? await mapFetch(MAP_STYLE, signal) : await fetch(MAP_STYLE, { signal });
     return res.ok ? ((await res.json()) as maplibregl.StyleSpecification) : null;
   } catch {
     return null;
@@ -148,8 +180,11 @@ export default function MapView({ id }: { id: string }) {
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
       const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r));
       setStraight(d.lines.features.some((f) => !f.properties.exact));
+      const page = inPage();
+      if (page) registerMapProtocol();
       map = new maplibregl.Map({
         container: box.current,
+        transformRequest: page ? (url) => ({ url: toProtocol(url) }) : undefined,
         style: style ?? plain(),
         bounds: d.bounds ?? [5.9, 45.8, 10.5, 47.8],
         fitBoundsOptions: { padding: 40 },

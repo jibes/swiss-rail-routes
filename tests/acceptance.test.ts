@@ -182,4 +182,33 @@ suite('acceptance tours', { timeout }, () => {
     }
     expect(found).toBeDefined();
   });
+
+  // Replan from here with a station missed for real (e2e/substitute): Chur → Alvaneu →
+  // St. Moritz on 7 Nov 2026, from Landquart at 08:09 on the way; the Albula is closed
+  // Thusis–Preda and the replacement buses do not serve Alvaneu. Filisur, near it, is served.
+  it('T8R the rest misses Alvaneu for real; Filisur works in its place', async () => {
+    const st = (n: string) => ({ stopRef: ref(n), name: n });
+    const route = {
+      ...addWaypoint(
+        addWaypoint(newTour('r', DATE, st('Landquart')), st('Alvaneu')),
+        st('St. Moritz'),
+      ),
+      anchor: { departAt: '08:09' },
+    };
+    const deps = { ...ojpFor('T8R'), templates, ga, stop: (r: string) => index.byRef(r) };
+    const first = await plan(route, deps);
+    const chain = first.recommended ?? first.options?.[0];
+    expect(chain && reaches(route, 1, chain.connections)).toBeFalsy();
+    let found: string | undefined;
+    for (const c of candidates(route, 1, index, templates)) {
+      const trial = trialRoute(route, 1, c);
+      const r = await plan(trial, deps);
+      const ch = r.recommended ?? r.options?.[0];
+      if (ch && reaches(trial, 1, ch.connections)) {
+        found = c.name;
+        break;
+      }
+    }
+    expect(found).toBe('Filisur');
+  });
 });

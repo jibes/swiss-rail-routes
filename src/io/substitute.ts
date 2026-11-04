@@ -22,9 +22,11 @@ export async function findSubstitute(
   trip: Trip,
   k: number,
   signal: AbortSignal,
+  /** Stations never to offer besides the route's own (replan: the way here). */
+  exclude: string[] = [],
 ): Promise<Found | null> {
   const index = await stopSearch();
-  const tries = candidates(trip.route, k, index, TEMPLATES);
+  const tries = candidates(trip.route, k, index, TEMPLATES, exclude);
   log('substitute.try', { trip: trip.id, entry: k, candidates: tries.map((c) => c.name) });
   for (const c of tries) {
     signal.throwIfAborted();

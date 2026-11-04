@@ -71,3 +71,47 @@ test('a map seen once opens offline from the device', async ({ page, context }) 
   await expect.poll(() => ground(page), { timeout: 15_000 }).toBeGreaterThan(0.5);
   await expect(page.getByText('Map tiles could not be loaded.')).toHaveCount(0);
 });
+
+// Where no service worker keeps it (the Android shell has none; here: workers blocked), the page
+// keeps the map as seen itself, by the same rules (src/io/mapCache.ts).
+test.describe('without a service worker', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('the page keeps the map as seen, and opens it offline', async ({ page, context }) => {
+    await page.clock.install({ time: BEFORE });
+    await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+    expect(await page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(false);
+    const asked: string[] = [];
+    await context.unrouteAll();
+    await context.route('https://tiles.openfreemap.org/**', (r) => {
+      asked.push(r.request().url());
+      return r.request().url().endsWith('/styles/positron')
+        ? r.fulfill({ json: STYLE, headers: { 'Access-Control-Allow-Origin': '*' } })
+        : r.abort();
+    });
+    await page.getByRole('button', { name: 'Map' }).click();
+    await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+    await expect.poll(() => ground(page), { timeout: 15_000 }).toBeGreaterThan(0.5);
+    // Kept by the page: with its time, which the service worker's entries do not carry.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const c = await caches.open('srr-mapstyle-v1');
+          const [k] = await c.keys();
+          return k ? (await c.match(k))?.headers.get('x-srr-kept-at') : null;
+        }),
+      )
+      .toMatch(/^\d+$/);
+    expect(asked.every((u) => u.startsWith('https://tiles.openfreemap.org/styles/'))).toBe(true);
+
+    await context.unrouteAll();
+    await context.route('https://tiles.openfreemap.org/**', (r) => r.abort());
+    // The tile host gone, the app's own files still there (in the Android shell they are on the
+    // device): leave the map, open it again.
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Map' }).click();
+    await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+    await expect.poll(() => ground(page), { timeout: 15_000 }).toBeGreaterThan(0.5);
+    await expect(page.getByText('Map tiles could not be loaded.')).toHaveCount(0);
+  });
+});

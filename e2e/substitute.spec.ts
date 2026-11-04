@@ -65,3 +65,47 @@ test('a station missed: a suggestion dismissed leaves the route as it was', asyn
   await expect(line.locator('.station.missed')).toHaveText(/Bern/);
   await expect(line.locator('.station', { hasText: 'Bern Weissenbühl' })).toHaveCount(0);
 });
+
+// Replan from here has the same note on its own line: Use edits the rest, not the saved trip.
+// Chur → Alvaneu → St. Moritz on 7 Nov 2026, the Albula closed Thusis–Preda (replacement buses do
+// not serve Alvaneu): planned again from Landquart, Alvaneu is missed for real. Answers:
+// tests/fixtures/ojp/T8R (recorded by the acceptance test of that name).
+test('replan from here: a station missed, the nearest that works used in the rest', async ({
+  page,
+}) => {
+  const st = (name: string) => ({ stopRef: ref(name), name });
+  const tour = {
+    ...addWaypoint(addWaypoint(newTour('s', DATE, st('Chur')), st('Alvaneu')), st('St. Moritz')),
+    name: 'Alvaneu',
+  };
+  const c = conn(
+    ride('IR 1', [
+      ['Chur', '08:00'],
+      ['Landquart', '08:09'],
+      ['St. Moritz', '10:12'],
+    ]),
+  );
+  const chain = { connections: [c], warnings: [], score: 0, dep: c.dep, arr: c.arr };
+  await page.clock.install({ time: new Date(`${DATE}T07:05:00Z`) }); // 08:05, on the IR
+  await page.goto(
+    `./${await encodeTrip(newTrip('s', tour, expandLegs(tour), chain, new Date(0)))}`,
+  );
+  await page.getByRole('button', { name: 'Save trip' }).click();
+  await expect(page).toHaveURL(/#\/trip\//);
+  await page.getByRole('link', { name: 'Replan from here' }).click();
+  const line = page.getByRole('list', { name: 'The trip', exact: true });
+  await expect(line.locator('.station.missed')).toHaveText(/Alvaneu/, { timeout: 30_000 });
+  const note = line.locator('.missed-note');
+  await note.getByRole('button', { name: 'Find one that works' }).click();
+  await expect(note.getByRole('status')).toContainText(/Instead: .+; skips Alvaneu\./, {
+    timeout: 30_000,
+  });
+  const instead = /Instead: ([^,]+),/.exec((await note.getByRole('status').innerText()) ?? '')![1]!;
+  await note.getByRole('button', { name: 'Use' }).click();
+  // The rest has it in Alvaneu's place and plans again; the saved trip is not touched yet.
+  await expect(line.locator('.station.entry', { hasText: instead }).first()).toBeVisible();
+  await expect(line.locator('.station.missed')).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Update trip' })).toBeEnabled({ timeout: 30_000 });
+  // The way here stays as it was: Chur, never offered.
+  await expect(page.locator('.trip-line.past .station').first()).toHaveText(/Chur/);
+});
