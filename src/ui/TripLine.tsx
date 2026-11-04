@@ -18,6 +18,7 @@ import { MissedNote, type FindSubstitute } from './MissedNote';
 import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
 import { platformAt } from '../core/live';
+import { ChangePlatform } from './ChangePlatform';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
@@ -451,6 +452,7 @@ export function TripLine({
               <span className="dot" />
             </span>
             {nameOf(r, i)}
+            {!planning && !r.missed && <ChangePlatform rows={rows} i={i} live={live} />}
             {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
             {whyLocked(r, i)}
             {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (

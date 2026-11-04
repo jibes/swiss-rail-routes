@@ -198,10 +198,11 @@
   background: none;
 }
 
-/* A station not reached: the rail runs on past its note. */
-.trip-line .station:has(.missed-note) .rail {
+/* The rail runs down the whole station row, past what sits under its name (where you change,
+   why it is the timetable's, not reached, its panel): rows nothing fills take no height. */
+.trip-line .station .rail {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 6;
 }
 
 /* Where the train goes, as on the boards: shortened, never pushing platform or duration off. */
@@ -211,4 +212,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Where you change: the platform you arrive on and the next train's, one quiet line under the
+   station (0.17.3). An arrival platform moved: the planned one struck, the new one red. */
+.trip-line .station .change-pl {
+  grid-column: 3 / -1;
+  margin: -8px 0 6px 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.trip-line .station .change-pl s {
+  color: var(--ink-3);
+}
+
+.trip-line .station .change-pl b {
+  color: var(--red);
+  font-weight: 600;
 }
