@@ -27,6 +27,7 @@ export const de = {
     'Hier fahren auch reguläre Züge; nur einige Panoramazüge sind reservationspflichtig.',
   wAfterSunset: '{name} nach Sonnenuntergang ({time})',
   wSeasonal: 'Saisonale Einschränkungen',
+  wSparse: 'Nächste Verbindung {gap} später ({at})',
   back: 'Zurück',
   tourName: 'Name',
   date: 'Datum',

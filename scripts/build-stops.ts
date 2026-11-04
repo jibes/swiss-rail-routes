@@ -85,6 +85,15 @@ for (const r of it) {
   if (r[C.validFrom]! > newest && r[C.validFrom]! <= new Date().toISOString().slice(0, 10))
     newest = r[C.validFrom]!;
 }
+// Stops abroad DIDOK does not list but OJP answers for by their UIC number, at the ends of lines
+// the app knows (Mont-Blanc Express, Centovalli). Names and places from OJP's own answer
+// (LocationInformationRequest, 4 Nov 2026).
+const EXTRA: StopRow[] = [
+  ['Domodossola', 8301003, 46.11529, 8.29624, modeMask(['TRAIN', 'BUS'])],
+  ['Chamonix-Mont-Blanc', 8774678, 45.92262, 6.87384, modeMask(['TRAIN', 'BUS'])],
+  ['Vallorcine', 8774687, 46.0334, 6.93399, modeMask(['TRAIN', 'BUS'])],
+];
+for (const x of EXTRA) if (!rows.some((r) => r[1] === x[1])) rows.push(x);
 rows.sort((a, b) => a[1] - b[1]);
 if (rows.length < 20000) throw new Error(`Only ${rows.length} stops: refusing to write`);
 

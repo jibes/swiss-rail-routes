@@ -3,7 +3,7 @@ import { placeByName } from '../src/core/stops';
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
-import { addWaypoint, newTour, setStop } from './helpers/edit';
+import { addWaypoint, insertTemplate, newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';
@@ -227,4 +227,43 @@ suite('acceptance tours', { timeout }, () => {
     }
     expect(found).toBe('Filisur');
   });
+
+  // Lines added in 0.19.0, each planned end to end on the recorded day: every station the line
+  // must pass is called at, nothing relaxed. Proves the must-pass stations are ones trains stop at.
+  const lines: [string, string, string][] = [
+    ['LMBE', 'mont-blanc-express', '09:00'],
+    ['LNSTCM', 'nyon-la-cure', '09:00'],
+    ['LCENTO', 'centovalli', '09:00'],
+    ['LMOB', 'goldenpass-mob', '09:00'],
+    ['LVIGNES', 'train-des-vignes', '10:00'],
+  ];
+  for (const [id, line, time] of lines)
+    it(`${id} the ${line} line passes all its stations`, async () => {
+      const t = templates.find((x) => x.id === line)!;
+      const route = {
+        ...insertTemplate(
+          newTour('l', DATE, { stopRef: t.chain[0]!.ref, name: t.chain[0]!.name }),
+          t,
+        ),
+        anchor: { departAt: time },
+      };
+      const r = await plan(route, {
+        ...ojpFor(id),
+        templates,
+        ga,
+        stop: (x) => index.byRef(x),
+        place: placeByName(index),
+      });
+      expect(r.relaxed).toEqual([]);
+      const chain = r.recommended!;
+      const at = new Set(chain.connections.flatMap((c) => [...visited(c)]));
+      for (const m of t.mustPass) expect(at, `${line}: ${m}`).toContain(m);
+      // Past the border the GA ends: said for Vallorcine–Chamonix.
+      if (line === 'mont-blanc-express')
+        expect(
+          chain.warnings
+            .filter((w) => w.type === 'not-ga')
+            .map((w) => `${w.params.from}–${w.params.to}`),
+        ).toEqual(['Le Châtelard-Frontière–Vallorcine (F)', 'Vallorcine (F)–Chamonix-Mont-Blanc']);
+    });
 });

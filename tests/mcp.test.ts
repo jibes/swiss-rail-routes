@@ -112,6 +112,19 @@ describe('routes from a request', () => {
     expect(routeLinkOf(t, URL_)).toContain('luzern.5000.45.@voralpen-express');
   });
 
+  it('out and back without a round trip: stations, part of a line by its own', () => {
+    // St. Moritz → Alp Grüm (stay) → St. Moritz: the Bernina line part way, as plan_trip says.
+    const t = route({
+      date: FIXTURE_DATE,
+      stops: [{ name: 'St. Moritz' }, { name: 'Alp Grüm', stay: 60 }, { name: 'St. Moritz' }],
+    });
+    expect(t.waypoints.map((w) => [w.name, w.kind, w.dwellMin])).toEqual([
+      ['St. Moritz', 'start', 0],
+      ['Alp Grüm', 'stop', 60],
+      ['St. Moritz', 'end', 0],
+    ]);
+  });
+
   it('stay 0 or none rides through; a stay at the very start or end means nothing', () => {
     const t = route({
       date: FIXTURE_DATE,

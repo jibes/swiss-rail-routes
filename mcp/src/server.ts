@@ -135,7 +135,7 @@ function build(tools: Tools, log: (line: object) => void) {
     'plan_trip',
     {
       description:
-        'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options, the recommended one marked, and links that open them in the Viadukt app. If it answers status "still_planning", call it again with exactly the same arguments.',
+        'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options, the recommended one marked, and links that open them in the Viadukt app. Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
       inputSchema: {
         date,
         departAt: z

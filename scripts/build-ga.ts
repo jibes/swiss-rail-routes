@@ -88,6 +88,19 @@ for (const f of s.fares) {
     sections.set(`${x.ref}|${y.ref}`, { from: x.ref, to: y.ref, names: [x.name, y.name], rule });
   }
 }
+// Abroad, past the border station: SBB sells no fare there, so OSDM says nothing, and the GA and
+// day passes end at the border (Le Châtelard-Frontière; beyond is SNCF). Stops abroad go by
+// their UIC number (src/core/stops.ts).
+const ABROAD: GaData['sections'] = [
+  {
+    from: '8774687',
+    to: 'ch:1:sloid:1568',
+    names: ['Vallorcine', 'Le Châtelard-Frontière'],
+    rule: 'none',
+  },
+  { from: '8774678', to: '8774687', names: ['Chamonix-Mont-Blanc', 'Vallorcine'], rule: 'none' },
+];
+for (const x of ABROAD) sections.set(`${x.from}|${x.to}`, x);
 if (sections.size < 5) throw new Error(`Only ${sections.size} GA sections: refusing to write`);
 
 const current = JSON.parse(await readFile(OUT, 'utf8')) as GaData;

@@ -24,6 +24,7 @@ export const en = {
   reservationOnlyNote: 'Regular trains run here too; only some panorama trains need a reservation.',
   wAfterSunset: '{name} passed after sunset ({time})',
   wSeasonal: 'Seasonal restrictions apply',
+  wSparse: 'Next connection {gap} later ({at})',
   back: 'Back',
   tourName: 'Name',
   date: 'Date',

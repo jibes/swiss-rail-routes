@@ -503,10 +503,10 @@
       "season": {
         "months": [11, 12, 1, 2, 3, 4],
         "note": {
-          "en": "Winter: Oberalp section can close at short notice; check before travelling.",
-          "de": "Winter: Oberalp-Abschnitt kann kurzfristig gesperrt sein; vor der Reise prüfen.",
-          "fr": "Hiver : le tronçon de l'Oberalp peut fermer à bref délai ; vérifier avant le départ.",
-          "it": "Inverno: la tratta dell’Oberalp può chiudere con breve preavviso; verificare prima del viaggio."
+          "en": "Runs all year; in winter the pass section can close at short notice (avalanche danger): check before travelling.",
+          "de": "Fährt das ganze Jahr; im Winter kann der Passabschnitt kurzfristig gesperrt sein (Lawinengefahr): vor der Reise prüfen.",
+          "fr": "Circule toute l'année ; en hiver, le tronçon du col peut fermer à bref délai (risque d'avalanche) : vérifier avant le départ.",
+          "it": "Circola tutto l'anno; in inverno la tratta del passo può chiudere con breve preavviso (pericolo di valanghe): verificare prima del viaggio."
         }
       }
     },
@@ -532,7 +532,12 @@
       "highlights": [
         {
           "id": "rigi-kulm",
-          "name": { "en": "Rigi Kulm", "de": "Rigi Kulm", "fr": "Rigi Kulm", "it": "Rigi Kulm" },
+          "name": {
+            "en": "Rigi Kulm",
+            "de": "Rigi Kulm",
+            "fr": "Rigi Kulm",
+            "it": "Rigi Kulm"
+          },
           "lat": 47.0567,
           "lon": 8.485,
           "sunlight": true
@@ -620,6 +625,240 @@
           },
           "lat": 46.56,
           "lon": 7.9,
+          "sunlight": true
+        }
+      ]
+    },
+    {
+      "id": "mont-blanc-express",
+      "name": "Mont-Blanc Express",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:1500",
+          "name": "Martigny"
+        },
+        {
+          "ref": "ch:1:sloid:1573",
+          "name": "Martigny-Croix"
+        },
+        {
+          "ref": "ch:1:sloid:1562",
+          "name": "Salvan"
+        },
+        {
+          "ref": "ch:1:sloid:1563",
+          "name": "Les Marécottes"
+        },
+        {
+          "ref": "ch:1:sloid:1565",
+          "name": "Finhaut"
+        },
+        {
+          "ref": "ch:1:sloid:1566",
+          "name": "Le Châtelard VS"
+        },
+        {
+          "ref": "ch:1:sloid:1568",
+          "name": "Le Châtelard-Frontière"
+        },
+        {
+          "ref": "8774687",
+          "name": "Vallorcine"
+        },
+        {
+          "ref": "8774678",
+          "name": "Chamonix-Mont-Blanc"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:1565", "ch:1:sloid:1568", "8774687"],
+      "modes": ["rail", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "nyon-la-cure",
+      "name": "Nyon–St-Cergue–La Cure",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:1030",
+          "name": "Nyon"
+        },
+        {
+          "ref": "ch:1:sloid:1068",
+          "name": "Trélex"
+        },
+        {
+          "ref": "ch:1:sloid:1067",
+          "name": "Givrins"
+        },
+        {
+          "ref": "ch:1:sloid:1066",
+          "name": "Genolier"
+        },
+        {
+          "ref": "ch:1:sloid:1064",
+          "name": "Bassins"
+        },
+        {
+          "ref": "ch:1:sloid:1063",
+          "name": "Arzier"
+        },
+        {
+          "ref": "ch:1:sloid:1062",
+          "name": "St-Cergue"
+        },
+        {
+          "ref": "ch:1:sloid:1061",
+          "name": "La Givrine"
+        },
+        {
+          "ref": "ch:1:sloid:1060",
+          "name": "La Cure"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:1066", "ch:1:sloid:1062", "ch:1:sloid:1061"],
+      "modes": ["rail", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "centovalli",
+      "name": "Centovalli",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:5400",
+          "name": "Locarno"
+        },
+        {
+          "ref": "ch:1:sloid:5473",
+          "name": "Ponte Brolla"
+        },
+        {
+          "ref": "ch:1:sloid:5494",
+          "name": "Intragna"
+        },
+        {
+          "ref": "ch:1:sloid:5496",
+          "name": "Verdasio"
+        },
+        {
+          "ref": "ch:1:sloid:5497",
+          "name": "Palagnedra"
+        },
+        {
+          "ref": "ch:1:sloid:5499",
+          "name": "Camedo"
+        },
+        {
+          "ref": "ch:1:sloid:5580",
+          "name": "Re"
+        },
+        {
+          "ref": "ch:1:sloid:5584",
+          "name": "Malesco"
+        },
+        {
+          "ref": "ch:1:sloid:5585",
+          "name": "Druogno"
+        },
+        {
+          "ref": "ch:1:sloid:5597",
+          "name": "Trontano"
+        },
+        {
+          "ref": "8301003",
+          "name": "Domodossola"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:5494", "ch:1:sloid:5499", "ch:1:sloid:5580"],
+      "modes": ["rail", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "goldenpass-mob",
+      "name": "GoldenPass (MOB)",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:1300",
+          "name": "Montreux"
+        },
+        {
+          "ref": "ch:1:sloid:1376",
+          "name": "Chamby"
+        },
+        {
+          "ref": "ch:1:sloid:1377",
+          "name": "Les Avants"
+        },
+        {
+          "ref": "ch:1:sloid:4070",
+          "name": "Montbovon"
+        },
+        {
+          "ref": "ch:1:sloid:1392",
+          "name": "Rossinière"
+        },
+        {
+          "ref": "ch:1:sloid:1394",
+          "name": "Château-d'Oex"
+        },
+        {
+          "ref": "ch:1:sloid:1397",
+          "name": "Rougemont"
+        },
+        {
+          "ref": "ch:1:sloid:1398",
+          "name": "Saanen"
+        },
+        {
+          "ref": "ch:1:sloid:1399",
+          "name": "Gstaad"
+        },
+        {
+          "ref": "ch:1:sloid:7271",
+          "name": "Schönried"
+        },
+        {
+          "ref": "ch:1:sloid:7272",
+          "name": "Saanenmöser"
+        },
+        {
+          "ref": "ch:1:sloid:7290",
+          "name": "Zweisimmen"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:1377", "ch:1:sloid:4070", "ch:1:sloid:1394", "ch:1:sloid:7272"],
+      "modes": ["rail", "bus"],
+      "highlights": []
+    },
+    {
+      "id": "train-des-vignes",
+      "name": "Train des Vignes (Lavaux)",
+      "chain": [
+        {
+          "ref": "ch:1:sloid:1200",
+          "name": "Vevey"
+        },
+        {
+          "ref": "ch:1:sloid:4013",
+          "name": "Chexbres-Village"
+        },
+        {
+          "ref": "ch:1:sloid:4012",
+          "name": "Puidoux"
+        }
+      ],
+      "mustPass": ["ch:1:sloid:4013"],
+      "modes": ["rail", "bus"],
+      "highlights": [
+        {
+          "id": "lavaux",
+          "name": {
+            "en": "Lavaux vineyard terraces",
+            "de": "Weinbergterrassen des Lavaux",
+            "fr": "Vignoble en terrasses de Lavaux",
+            "it": "Vigneti terrazzati del Lavaux"
+          },
+          "lat": 46.485,
+          "lon": 6.77,
           "sunlight": true
         }
       ]

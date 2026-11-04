@@ -908,3 +908,48 @@ describe('a notice about another stretch of the train', () => {
     expect(r.recommended!.warnings.map((w) => w.type)).toContain('disruption-away');
   });
 });
+
+// Sparse lines (Le Châtelard on a Sunday): the connection after the one planned, from the same
+// answers, said when it leaves over two hours later; nothing when the answers hold none later.
+describe('the next connection, when it is far off', () => {
+  const ir = (dep: string, arr: string) =>
+    conn(
+      ride('IR 90', [
+        ['Martigny', dep],
+        ['Lausanne', arr],
+      ]),
+    );
+  const trip = (depart: string): Tour => ({
+    ...newTour('t', DATE, stop('Martigny')),
+    anchor: { departAt: depart },
+    waypoints: [
+      { ...stop('Martigny'), kind: 'start', dwellMin: 0 },
+      { ...stop('Lausanne'), kind: 'end', dwellMin: 0 },
+    ],
+  });
+  const sparse = (r: Awaited<ReturnType<typeof plan>>) =>
+    r.recommended!.warnings.filter((w) => w.type === 'sparse');
+
+  it('says when and how much later the next one leaves', async () => {
+    const r = await plan(trip('14:00'), deps([ir('14:19', '15:18'), ir('18:49', '19:48')]).deps);
+    const [w] = sparse(r);
+    expect(w).toMatchObject({
+      severity: 'info',
+      key: 'wSparse',
+      params: { gap: '4 h 30 min', at: '18:49' },
+    });
+    expect(w!.sectionIndex).toBe(0);
+  });
+
+  it('says nothing within two hours, nor when none later is known', async () => {
+    expect(
+      sparse(await plan(trip('14:00'), deps([ir('14:19', '15:18'), ir('16:19', '17:18')]).deps)),
+    ).toEqual([]);
+    expect(sparse(await plan(trip('14:00'), deps([ir('14:19', '15:18')]).deps))).toEqual([]);
+  });
+
+  it('is not counted against the plan', async () => {
+    const r = await plan(trip('14:00'), deps([ir('14:19', '15:18'), ir('18:49', '19:48')]).deps);
+    expect(r.recommended!.connections[0]!.dep).toContain('14:19');
+  });
+});

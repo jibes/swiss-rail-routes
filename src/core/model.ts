@@ -59,7 +59,9 @@ export type WarningType =
   | 'replacement-bus'
   /** Asked again, the timetable no longer has this train. */
   | 'train-gone'
-  | 'seasonal';
+  | 'seasonal'
+  /** The connection after this one on the leg leaves over `GAP_MIN` later: said, not counted. */
+  | 'sparse';
 
 export interface LatLon {
   lat: number;

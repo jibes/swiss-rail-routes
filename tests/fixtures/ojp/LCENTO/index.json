@@ -1,0 +1,12 @@
+{
+  "5d4313be8add": {
+    "from": "Locarno",
+    "to": "Domodossola",
+    "via": [
+      "Intragna",
+      "Camedo",
+      "Re"
+    ],
+    "time": "2026-11-07T09:00"
+  }
+}

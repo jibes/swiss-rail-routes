@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createStopSearch, fold, modeMask, toStop, type StopIndexFile } from '../src/core/stops';
+import {
+  createStopSearch,
+  fold,
+  modeMask,
+  stopKey,
+  toStop,
+  type StopIndexFile,
+} from '../src/core/stops';
 
 const small: StopIndexFile = {
   v: 1,
@@ -95,6 +102,25 @@ describe('bundled index', () => {
       expect(lon).toBeGreaterThan(2);
       expect(lon).toBeLessThan(18);
     }
+  });
+});
+
+// Stops abroad DIDOK does not list (0.19.0): OJP knows them by their UIC number only, and
+// refuses `ch:1:sloid:8774678`; Swiss DIDOK numbers still become SLOIDs.
+describe('stops abroad', () => {
+  const file = JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile;
+  const real = createStopSearch(file);
+  it('keep their UIC number as ref and key', () => {
+    for (const [name, uic] of [
+      ['Chamonix-Mont-Blanc', '8774678'],
+      ['Vallorcine', '8774687'],
+      ['Domodossola', '8301003'],
+    ] as const) {
+      expect(real.search(name)[0]).toMatchObject({ name, ref: uic });
+      expect(stopKey(uic)).toBe(uic);
+      expect(real.byRef(stopKey(uic))?.name).toBe(name);
+    }
+    expect(stopKey('8503000')).toBe('ch:1:sloid:3000');
   });
 });
 

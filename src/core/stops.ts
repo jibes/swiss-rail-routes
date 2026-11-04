@@ -15,7 +15,11 @@ export const MODES = [
 ] as const;
 export type StopMode = (typeof MODES)[number];
 
-/** One row: name, SLOID number (`ch:1:sloid:<n>`), lat, lon, mode bitmask (bit i = MODES[i]). */
+/**
+ * One row: name, SLOID number (`ch:1:sloid:<n>`), lat, lon, mode bitmask (bit i = MODES[i]).
+ * A stop abroad that DIDOK does not list (Chamonix, Vallorcine, Domodossola) has its UIC number
+ * instead (`UIC_MIN` and up: SLOID numbers stay far below), and OJP knows it by that number.
+ */
 export type StopRow = [name: string, sloid: number, lat: number, lon: number, modes: number];
 
 export interface StopIndexFile {
@@ -39,8 +43,11 @@ export const modeMask = (modes: readonly string[]) =>
     return i < 0 ? m : m | (1 << i);
   }, 0);
 
+/** Row numbers from here are UIC numbers of stops abroad, not SLOIDs (those end near 1.5 M). */
+export const UIC_MIN = 8_000_000;
+
 export const toStop = ([name, sloid, lat, lon, mask]: StopRow): Stop => ({
-  ref: `ch:1:sloid:${sloid}`,
+  ref: sloid >= UIC_MIN ? String(sloid) : `ch:1:sloid:${sloid}`,
   name,
   lat,
   lon,
@@ -96,7 +103,7 @@ export interface StopSearch {
 export function createStopSearch(file: StopIndexFile): StopSearch {
   const folded = file.rows.map((r) => fold(r[0]));
   const words = folded.map((f) => f.split(' '));
-  const byRef = new Map(file.rows.map((r) => [`ch:1:sloid:${r[1]}`, r]));
+  const byRef = new Map(file.rows.map((r) => [toStop(r).ref, r]));
 
   return {
     byRef: (ref) => {
@@ -147,7 +154,8 @@ export function stopKey(ref: string): string {
   const didok = /^(\d{7})$/.exec(ref);
   if (didok) {
     const n = didok[1]!;
-    return `ch:1:sloid:${n.startsWith('85') ? Number(n.slice(2)) : Number(n)}`;
+    // A stop abroad keeps its UIC number, as OJP knows it by that (Chamonix, `8774678`).
+    return n.startsWith('85') ? `ch:1:sloid:${Number(n.slice(2))}` : n;
   }
   return ref;
 }

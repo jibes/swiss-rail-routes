@@ -102,7 +102,9 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo last change' }).click();
-  await expect(line).not.toContainText('Wengen');
+  // No Wengen station any more (the GA note still names its stretch, Wengen–Kleine Scheidegg).
+  await expect(line.locator('.station', { hasText: 'Wengen' })).toHaveCount(0);
+  await expect(line.locator('.station', { hasText: 'Kleine Scheidegg' })).toHaveCount(1);
 });
 
 test('before departure: edited in place; after its day: in search', async ({ page }) => {

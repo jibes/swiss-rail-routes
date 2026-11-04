@@ -34,6 +34,12 @@
       "rule": "half"
     },
     {
+      "from": "8774687",
+      "to": "ch:1:sloid:1568",
+      "names": ["Vallorcine", "Le Châtelard-Frontière"],
+      "rule": "none"
+    },
+    {
       "from": "ch:1:sloid:7455",
       "to": "ch:1:sloid:7456",
       "names": ["Mürren (Schilthornbahn)", "Birg (Schilthornbahn)"],
@@ -50,6 +56,12 @@
       "to": "ch:1:sloid:7388",
       "names": ["Schynige Platte", "Wilderswil"],
       "rule": "half"
+    },
+    {
+      "from": "8774678",
+      "to": "8774687",
+      "names": ["Chamonix-Mont-Blanc", "Vallorcine"],
+      "rule": "none"
     },
     {
       "from": "ch:1:sloid:7372",

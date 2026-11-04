@@ -27,6 +27,7 @@ export const it = {
     'Circolano anche treni regolari; solo alcuni treni panoramici richiedono la prenotazione.',
   wAfterSunset: '{name} dopo il tramonto ({time})',
   wSeasonal: 'Limitazioni stagionali',
+  wSparse: 'Prossima corsa {gap} più tardi ({at})',
   back: 'Indietro',
   tourName: 'Nome',
   date: 'Data',

@@ -179,6 +179,35 @@ function changeWarning(prev: Connection | undefined, c: Connection, legIndex: nu
   ];
 }
 
+/** A next connection this much later on the leg is said (a sparse line, the last one back). */
+export const GAP_MIN = 120;
+
+/**
+ * How long after `c` the next connection of the same answers leaves, said when over `GAP_MIN`
+ * (on its first ride). Nothing when the answers hold none later: never guessed.
+ */
+export function gapWarning(c: Connection, others: Connection[], legIndex: number): Warning[] {
+  const dep = ms(expectedDep(c));
+  const later = others.map((o) => ms(expectedDep(o))).filter((t) => t > dep);
+  if (!later.length) return [];
+  const next = Math.min(...later);
+  const gap = Math.round((next - dep) / MIN);
+  if (gap <= GAP_MIN) return [];
+  const first = rides(c)[0];
+  const h = Math.floor(gap / 60);
+  const m = gap % 60;
+  return [
+    {
+      type: 'sparse',
+      severity: 'info',
+      legIndex,
+      ...(first ? { sectionIndex: first[1] } : {}),
+      key: 'wSparse',
+      params: { gap: m ? `${h} h ${m} min` : `${h} h`, at: zurichLocal(next).slice(11, 16) },
+    },
+  ];
+}
+
 /** Why a connection fails the leg's rules, or null when it passes. */
 export function rejectReason(
   c: Connection,
@@ -385,7 +414,11 @@ async function planFrom(
           opts = preferred(own);
         }
         for (const c of opts) {
-          const w = [...warningsFor(c, ctx), ...changeWarning(b.conns.at(-1), c, i)];
+          const w = [
+            ...warningsFor(c, ctx),
+            ...changeWarning(b.conns.at(-1), c, i),
+            ...gapWarning(c, opts, i),
+          ];
           const dwell = Math.max(rules.leg.to.dwellMin, minTransfer);
           next.push({
             conns: [...b.conns, c],

@@ -149,9 +149,25 @@ export function isSupplement(s: Section, ga: GaData): boolean {
   return ga.supplementTrains.names.some((n) => text.includes(n.toLowerCase()));
 }
 
+/** The stretch of a ride the GA or day pass does not cover, named in the order it is ridden. */
+export function gaStretchOf(
+  s: Section,
+  ga: GaData,
+): { rule: GaRule; from: string; to: string } | null {
+  const calls = [s.from, ...s.intermediate, s.to];
+  const at = (k: string) => calls.findIndex((x) => stopKey(x.stopRef) === k);
+  for (const x of ga.sections) {
+    const i = at(x.from);
+    const j = at(x.to);
+    if (i < 0 || j < 0) continue;
+    const [a, b] = i < j ? [i, j] : [j, i];
+    return { rule: x.rule, from: calls[a]!.name, to: calls[b]!.name };
+  }
+  return null;
+}
+
 export function gaRuleOf(s: Section, ga: GaData): GaRule | null {
-  const keys = new Set([s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)));
-  return ga.sections.find((x) => keys.has(x.from) && keys.has(x.to))?.rule ?? null;
+  return gaStretchOf(s, ga)?.rule ?? null;
 }
 
 const km = (a: LatLon, b: LatLon) => {
@@ -277,15 +293,16 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
       });
     // Shown to everyone, whatever ticket (0.5.1): a fact about the stretch, in neutral blue;
     // those without a GA or day pass can pass over it. (A day pass is valid where the GA is.)
-    const rule = gaRuleOf(s, ctx.ga);
-    if (rule)
+    // Named by the stretch itself: a ride Les Marécottes → Vallorcine is covered up to the border.
+    const ga = gaStretchOf(s, ctx.ga);
+    if (ga)
       w.push({
         ...base,
         sectionIndex: i,
         type: 'not-ga',
         severity: 'info',
-        key: rule === 'half' ? 'wGaHalf' : rule === 'reduced' ? 'wGaReduced' : 'wGaNone',
-        params: where,
+        key: ga.rule === 'half' ? 'wGaHalf' : ga.rule === 'reduced' ? 'wGaReduced' : 'wGaNone',
+        params: { from: ga.from, to: ga.to },
       });
   });
   for (const g of transferGaps(c))
