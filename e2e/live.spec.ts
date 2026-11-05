@@ -200,3 +200,30 @@ test('a platform changed on the day shows on the line', async ({ page }) => {
   await expect(moved.locator('b')).toHaveText('Pl. 3');
   await expect(moved.locator('.sr-only')).toHaveText('Platform changed: now 3, was 2A');
 });
+
+// At a station mid-trip (a stay), the rail is the way here down to its dot and ahead below it,
+// as on a ride: the grey/red split sat at the top of the row (reported on Melide, 5 Nov 2026).
+test('under way at a stay, the rail splits at the station’s dot', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T3!, name: 'T3' }));
+  const here = page.locator('.trip-line.live > li.station.here:not(:first-child)');
+  const [dep] = (await page.locator('.hero-times').innerText()).match(/\d\d:\d\d/g)!;
+  await page.clock.fastForward(Date.parse(`${FIXTURE_DATE}T${dep}:00+01:00`) - BEFORE.getTime());
+  for (let i = 0; i < 80 && !(await here.count()); i++) await page.clock.fastForward(5 * 60_000);
+  await expect(here.first()).toBeVisible();
+  const split = await here.first().evaluate((li) => {
+    const rail = li.querySelector(':scope > .rail')!;
+    const line = getComputedStyle(rail, '::before');
+    const dot = (li.querySelector('.rail .dot') ?? rail).getBoundingClientRect();
+    const top = rail.getBoundingClientRect().top + parseFloat(line.top);
+    const stops = [...line.backgroundImage.matchAll(/(-?[\d.]+)px/g)].map((m) => Number(m[1]));
+    return {
+      image: line.backgroundImage,
+      at: stops.find((x) => x > 0),
+      dot: dot.top + dot.height / 2 - top,
+    };
+  });
+  expect(split.image).toContain('linear-gradient');
+  expect(split.at, split.image).toBeDefined();
+  expect(Math.abs(split.at! - split.dot)).toBeLessThan(1.5);
+});

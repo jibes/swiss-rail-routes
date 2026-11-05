@@ -56,6 +56,17 @@
   top: 8px;
 }
 
+/* Where you are at a station: travelled down to its dot, ahead below it, as on a ride. The
+   first station's rail starts at its dot, so all of it is ahead; beside a walk the solid half
+   above the dot is the way here. */
+.trip-line.live > li.station.here:not(:first-child):not(.walk-from):not(.walk-to) .rail::before {
+  background: linear-gradient(var(--ink-3) 0 var(--dot-at), var(--rail) var(--dot-at) 100%);
+}
+
+.trip-line.live .station.here.walk-from:not(.walk-to) {
+  --solid: var(--ink-3);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .trip-line .ride.here .rail::after,
   .trip-line .station.here .rail::after {
