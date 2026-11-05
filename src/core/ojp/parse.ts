@@ -4,7 +4,7 @@
 //   carry attribute A__PR;
 // - times are UTC (`…Z`); stop point refs embed the stop's SLOID.
 import { XMLParser } from 'fast-xml-parser';
-import type { Connection, Mode, PlatformCall, Section } from '../model';
+import type { Connection, Mode, NoticeInfo, PlatformCall, Section } from '../model';
 
 const ARRAYS = new Set([
   'TripResult',
@@ -107,7 +107,56 @@ function geometry(track: X): [number, number][] | undefined {
   return ok.length > 1 ? ok : undefined;
 }
 
-function timedSection(leg: X, notices: Map<string, string>): Section {
+/** Every value under `key`, anywhere below `v` (a situation's stops sit deep in its scope). */
+function findAll(v: unknown, key: string, out: unknown[] = []): unknown[] {
+  if (Array.isArray(v)) for (const x of v) findAll(x, key, out);
+  else if (v && typeof v === 'object')
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (k === key) out.push(...(Array.isArray(x) ? x : [x]));
+      findAll(x, key, out);
+    }
+  return out;
+}
+
+/** A situation's validity, stops named and the operator's description and remarks. */
+function noticeInfoOf(s: X): NoticeInfo {
+  const ends = arr(s?.ValidityPeriod)
+    .map((p) => str(p?.EndTime))
+    .filter((x): x is string => !!x)
+    .sort();
+  const affected = [
+    ...new Set(
+      findAll(s, 'AffectedStopPlace')
+        .map((p) => text(obj(p)?.PlaceName) ?? str(obj(p)?.PlaceName))
+        .filter((x): x is string => !!x),
+    ),
+  ];
+  const content = arr(
+    obj(obj(obj(s?.PublishingActions)?.PublishingAction)?.PassengerInformationAction)
+      ?.TextualContent,
+  );
+  const said = (c: X, box: string, field: string) => {
+    const v = obj(c?.[box])?.[field];
+    return (Array.isArray(v) ? v : [v]).map((x) => text(x) ?? str(x));
+  };
+  const detail = content
+    .flatMap((c) => [
+      ...said(c, 'DescriptionContent', 'DescriptionText'),
+      ...said(c, 'RemarkContent', 'Remark'),
+    ])
+    .filter((x): x is string => !!x);
+  return {
+    ...(ends.length ? { until: ends.at(-1)! } : {}),
+    ...(affected.length ? { affected } : {}),
+    ...(detail.length ? { detail: [...new Set(detail)].join(' ') } : {}),
+  };
+}
+
+function timedSection(
+  leg: X,
+  notices: Map<string, string>,
+  infos: Map<string, NoticeInfo>,
+): Section {
   const service = obj(leg?.Service);
   const cat = obj(service?.ProductCategory);
   const situationIds = arr(obj(service?.SituationFullRefs)?.SituationFullRef)
@@ -132,6 +181,9 @@ function timedSection(leg: X, notices: Map<string, string>): Section {
     situationIds: situationIds.length ? situationIds : undefined,
     notices: situationIds.length
       ? situationIds.map((id) => notices.get(id)).filter((x): x is string => !!x)
+      : undefined,
+    noticeInfo: situationIds.some((id) => notices.has(id))
+      ? situationIds.filter((id) => notices.has(id)).map((id) => infos.get(id) ?? {})
       : undefined,
     journey: day && journey ? `${day}:${journey}` : undefined,
     destination: text(service?.DestinationText),
@@ -173,6 +225,7 @@ export function parseTrips(xml: string): Connection[] {
   }
 
   const notices = new Map<string, string>();
+  const infos = new Map<string, NoticeInfo>();
   for (const s of arr(obj(obj(delivery.TripResponseContext)?.Situations)?.PtSituation)) {
     const id = str(s?.SituationNumber);
     const summary = arr(
@@ -184,7 +237,10 @@ export function parseTrips(xml: string): Connection[] {
           text(obj(c?.SummaryContent)?.SummaryText) ?? str(obj(c?.SummaryContent)?.SummaryText),
       )
       .find(Boolean);
-    if (id && summary) notices.set(id, summary);
+    if (id && summary) {
+      notices.set(id, summary);
+      infos.set(id, noticeInfoOf(s));
+    }
   }
 
   return arr(delivery.TripResult).flatMap((r): Connection[] => {
@@ -205,7 +261,7 @@ export function parseTrips(xml: string): Connection[] {
     )
       return [];
     const sections = arr(trip.Leg).flatMap((leg): Section[] => {
-      if (leg?.TimedLeg) return [timedSection(obj(leg.TimedLeg), notices)];
+      if (leg?.TimedLeg) return [timedSection(obj(leg.TimedLeg), notices, infos)];
       if (leg?.TransferLeg) return [walkSection(obj(leg.TransferLeg))];
       if (leg?.ContinuousLeg) return [walkSection(obj(leg.ContinuousLeg))];
       return [];

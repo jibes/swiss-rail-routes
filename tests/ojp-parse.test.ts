@@ -103,3 +103,17 @@ describe('parseTrips on recorded OJP answers', () => {
     expect(after.intermediate.map((x) => x.name)).not.toContain(skipped.name);
   });
 });
+
+// Reported on the MCP, 5 Nov 2026: a disruption came as its headline only. A situation's
+// validity, the stops it names and the operator's remarks come with it now.
+describe('a notice in full', () => {
+  it('until when, which stops, and what the operator adds (Albula closure, 6 Nov 2026)', () => {
+    const xml = gunzipSync(readFileSync('tests/fixtures/ojp/B1R/2716ea195948.xml.gz')).toString();
+    const rides = parseTrips(xml).flatMap((c) => c.sections);
+    const s = rides.find((x) => x.notices?.some((n) => n.includes('Thusis und Preda')))!;
+    const i = s.notices!.findIndex((n) => n.includes('Thusis und Preda'));
+    const info = s.noticeInfo![i]!;
+    expect(info.until).toBe('2026-11-13T22:30:00Z');
+    expect(info.detail).toMatch(/Ersatzbusse/);
+  });
+});

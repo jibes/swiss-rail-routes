@@ -228,6 +228,31 @@ suite('acceptance tours', { timeout }, () => {
     expect(found).toBe('Filisur');
   });
 
+  // Reported on the MCP, 5 Nov 2026: Chur, then the Albula, on 6 Nov (Thusis–Preda closed, an
+  // express replacement bus Thusis–Preda): planned via the Vereina, recommended, not a word said.
+  // The line's own bus rides it by road now: nothing let go, the bus said as the Albula by road.
+  it('B1R the Albula asked for is ridden by its replacement bus, not dropped', async () => {
+    const albula = templates.find((x) => x.id === 'albula')!;
+    const route = {
+      ...insertTemplate(newTour('b', '2026-11-06', { stopRef: ref('Chur'), name: 'Chur' }), albula),
+      anchor: { departAt: '08:00' },
+    };
+    const r = await plan(route, {
+      ...ojpFor('B1R'),
+      templates,
+      ga,
+      stop: (x: string) => index.byRef(x),
+      place: placeByName(index),
+    });
+    expect(r.relaxed).toEqual([]);
+    const best = r.recommended!;
+    const at = visited(best.connections[0]!);
+    for (const s of ['Thusis', 'Filisur', 'Bergün/Bravuogn', 'Preda'])
+      expect(at.has(ref(s)), s).toBe(true);
+    expect(best.warnings.some((w) => w.type === 'replacement-bus')).toBe(true);
+    expect(best.warnings.some((w) => w.type === 'line-missed')).toBe(false);
+  });
+
   // Lines added in 0.19.0, each planned end to end on the recorded day: every station the line
   // must pass is called at, nothing relaxed. Proves the must-pass stations are ones trains stop at.
   const lines: [string, string, string][] = [

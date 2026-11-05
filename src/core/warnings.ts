@@ -37,17 +37,49 @@ const fold = (x: string) =>
 
 /** "between A and B" in an operator's notice, in the four languages OJP writes them in. */
 const BETWEEN = [
-  /zwischen (.+?) und (.+?)(?: ist| sind| wird| werden| kommt|[.,;]|$)/i,
-  /entre (.+?) et (.+?)(?: est| sont|[.,;]|$)/i,
-  /tra (.+?) e (.+?)(?: è| sono|[.,;]|$)/i,
-  /between (.+?) and (.+?)(?: is| are|[.,;]|$)/i,
+  /zwischen (.+?) und (.+?)(?: ist| sind| wird| werden| kommt|[.,;:]|$)/i,
+  /entre (.+?) et (.+?)(?: est| sont|[.,;:]|$)/i,
+  /tra (.+?) e (.+?)(?: è| sono|[.,;:]|$)/i,
+  /between (.+?) and (.+?)(?: is| are|[.,;:]|$)/i,
 ];
 
-/** The two ends a notice names, if it names a stretch. */
+/** A place's name in a notice: capitalised, up to the punctuation or verb after it. */
+const NAME = String.raw`(\p{Lu}[\p{L}\p{M}'’ ./-]*?)`;
+const END = String.raw`(?=\s*(?:[.,;:()!]|$)|\s+(?:ist|sind|wird|werden|est|sont|è|sono|is|are|und|et|e|and|ab|bis)\b)`;
+const re = (lead: string) => new RegExp(String.raw`(?:^|\s)(?:${lead}) ${NAME}${END}`, 'u');
+/** "from A to B" (capitalised places only: "de 10 minutes à cause…" is none). */
+const FROM_TO = [
+  new RegExp(String.raw`(?:^|\s)von ${NAME} bis ${NAME}${END}`, 'u'),
+  new RegExp(String.raw`(?:^|\s)de ${NAME} à ${NAME}${END}`, 'u'),
+  new RegExp(String.raw`(?:^|\s)da ${NAME} a ${NAME}${END}`, 'u'),
+  new RegExp(String.raw`(?:^|\s)from ${NAME} to ${NAME}${END}`, 'u'),
+];
+/** "from X" onwards ("ab Erstfeld"), and "up to X". */
+const FROM = [re('ab'), re('dès|à partir de'), re('da|a partire da'), re('from')];
+const UNTIL = [re('bis'), re("jusqu’à|jusqu'à|jusqu’au|jusqu'au"), re('fino a'), re('up to|until')];
+
+/** The two ends a notice names, if it names a stretch between two places. */
 export function stretchOf(text: string): [string, string] | undefined {
-  for (const re of BETWEEN) {
-    const m = re.exec(text);
-    if (m) return [m[1]!, m[2]!];
+  const s = noticeStretch(text);
+  return s?.from && s.to ? [s.from, s.to] : undefined;
+}
+
+/**
+ * The stretch a notice names: between two places, or from one onwards ("ab Erstfeld", in the
+ * direction of travel), or up to one. Undefined when it names none.
+ */
+export function noticeStretch(text: string): { from?: string; to?: string } | undefined {
+  for (const r of [...BETWEEN, ...FROM_TO]) {
+    const m = r.exec(text);
+    if (m) return { from: m[1]!.trim(), to: m[2]!.trim() };
+  }
+  for (const r of FROM) {
+    const m = r.exec(text);
+    if (m) return { from: m[1]!.trim() };
+  }
+  for (const r of UNTIL) {
+    const m = r.exec(text);
+    if (m) return { to: m[1]!.trim() };
   }
   return undefined;
 }
@@ -113,30 +145,68 @@ function nearTrack(p: LatLon, track: LatLon[]) {
  * so the notice's words decide.
  */
 export function onThisStretch(s: Section, places?: Places): boolean {
+  return stretchHere(s, places) !== null;
+}
+
+/**
+ * The stretch of the first notice that concerns the ride (`onThisStretch`): what it names, or
+ * `{}` for a notice naming none; null when no notice concerns the stretch you ride. "From X" is
+ * from X onwards in the direction of travel: a ride that ends at X, or before it, is elsewhere;
+ * "up to X" is elsewhere for a ride that starts at X, or beyond it.
+ */
+export function stretchHere(s: Section, places?: Places): { from?: string; to?: string } | null {
   const notices = s.notices ?? [];
-  if (!notices.length) return true;
+  if (!notices.length) return {};
   const stops = [s.from, ...s.intermediate, s.to].map((x) => fold(x.name));
-  const calls = (end: string) => {
+  const callAt = (end: string) => {
     const e = fold(end);
-    return stops.some(
+    return stops.findIndex(
       (x) => x === e || x.startsWith(`${e} `) || e.startsWith(`${x} `) || x.startsWith(`${e},`),
     );
   };
+  const calls = (end: string) => callAt(end) >= 0;
   let track: LatLon[] | undefined;
+  const trackHere = () => (track ??= trackOf(s, places));
   const byTrack = (end: string) => {
     const p = places?.place?.(end);
     if (!p) return undefined;
-    track ??= trackOf(s, places);
-    return track.length > 1 ? nearTrack(p, track) : undefined;
+    const t = trackHere();
+    return t.length > 1 ? nearTrack(p, t) : undefined;
   };
-  return notices.some((n) => {
-    const ends = stretchOf(n);
-    if (!ends) return true;
-    const [a, b] = ends.map(calls) as [boolean, boolean];
-    if (a && b) return true;
-    if (a || b) return byTrack(a ? ends[1] : ends[0]) ?? true;
-    return (byTrack(ends[0]) ?? false) && (byTrack(ends[1]) ?? false);
-  });
+  /** Off the track: whether the place lies past its end (else before its start). */
+  const pastEnd = (end: string) => {
+    const p = places?.place?.(end);
+    const t = trackHere();
+    if (!p || t.length < 2) return undefined;
+    return km(p, t.at(-1)!) < km(p, t[0]!);
+  };
+  for (const n of notices) {
+    const st = noticeStretch(n);
+    if (!st) return {};
+    if (st.from && st.to) {
+      const [a, b] = [st.from, st.to].map(calls) as [boolean, boolean];
+      const on =
+        a && b
+          ? true
+          : a || b
+            ? (byTrack(a ? st.to : st.from) ?? true)
+            : (byTrack(st.from) ?? false) && (byTrack(st.to) ?? false);
+      if (on) return st;
+      continue;
+    }
+    const x = (st.from ?? st.to)!;
+    const i = callAt(x);
+    let on: boolean;
+    if (i >= 0) on = st.from ? i < stops.length - 1 : i > 0;
+    else if (byTrack(x)) on = true;
+    else {
+      // From X: on when the ride lies beyond X (X before its start); up to X: when before it.
+      const past = pastEnd(x);
+      on = past === undefined ? true : st.from ? !past : past;
+    }
+    if (on) return st;
+  }
+  return null;
 }
 
 /** A highlight counts as passed at the nearest call within this distance. */
@@ -200,15 +270,18 @@ export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
 const REPLACES_KM = 1.5;
 
 /**
- * The leg's scenic line a replacement bus (category EV) stands in for: both its ends by
- * different stations of the line ("Thusis, Bahnhof" and "Filisur, Bahnhof" on the Albula).
+ * The leg's scenic line a replacement bus (category EV) stands in for, and the line's stations
+ * from where it leaves to where it arrives, in the order ridden: both its ends by different
+ * stations of the line ("Thusis, Bahnhof" and "Filisur, Bahnhof" on the Albula, or the express bus
+ * Thusis–Preda that calls nowhere between).
  */
-export function lineReplaced(s: Section, ctx: Pick<WarningContext, 'templates' | 'stop'>) {
+export function lineStretch(s: Section, ctx: Pick<WarningContext, 'templates' | 'stop'>) {
   if (s.category !== 'EV') return undefined;
-  const a = ctx.stop(s.from.stopRef);
-  const b = ctx.stop(s.to.stopRef);
+  // By the stop, not its quay ("ch:1:sloid:80179:0:667", Thusis, Bahnhof's bus stand).
+  const a = ctx.stop(stopKey(s.from.stopRef));
+  const b = ctx.stop(stopKey(s.to.stopRef));
   if (!a || !b) return undefined;
-  return ctx.templates.find((t) => {
+  for (const t of ctx.templates) {
     const at = (p: LatLon) =>
       t.chain.findIndex((c) => {
         const q = ctx.stop(c.ref);
@@ -216,7 +289,37 @@ export function lineReplaced(s: Section, ctx: Pick<WarningContext, 'templates' |
       });
     const i = at(a);
     const j = at(b);
-    return i >= 0 && j >= 0 && i !== j;
+    if (i < 0 || j < 0 || i === j) continue;
+    const run = t.chain.slice(Math.min(i, j), Math.max(i, j) + 1).map((c) => stopKey(c.ref));
+    return { template: t, stations: i < j ? run : run.reverse() };
+  }
+  return undefined;
+}
+
+/** The leg's scenic line a replacement bus stands in for (`lineStretch`). */
+export const lineReplaced = (s: Section, ctx: Pick<WarningContext, 'templates' | 'stop'>) =>
+  lineStretch(s, ctx)?.template;
+
+/**
+ * Marks each replacement bus that stands in for one of the leg's lines with the line's stations
+ * it passes by road (`Section.byRoad`), so they count as passed (reported 5 Nov 2026: the
+ * Albula's express bus Thusis–Preda counted as missing Filisur and Bergün, and the Albula asked
+ * for was planned via the Vereina instead). Copies only what changes.
+ */
+export function markByRoad(
+  list: Connection[],
+  ctx: Pick<WarningContext, 'templates' | 'stop'>,
+): Connection[] {
+  if (!ctx.templates.length) return list;
+  return list.map((c) => {
+    let changed = false;
+    const sections = c.sections.map((s) => {
+      const run = lineStretch(s, ctx);
+      if (!run) return s;
+      changed = true;
+      return { ...s, byRoad: run.stations };
+    });
+    return changed ? { ...c, sections } : c;
   });
 }
 
@@ -250,16 +353,24 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
   c.sections.forEach((s, i) => {
     if (s.mode === 'walk') return;
     const where = { from: s.from.name, to: s.to.name };
-    if (s.situationIds?.length)
+    const here = s.situationIds?.length ? stretchHere(s, ctx) : undefined;
+    if (here !== undefined)
       w.push(
-        onThisStretch(s, ctx)
+        here
           ? {
+              // Named by the stretch the notice gives, else by the ride (reported 5 Nov 2026:
+              // "ab Erstfeld" was said as the whole Zürich HB–Bellinzona).
               ...base,
               sectionIndex: i,
               type: 'disruption',
               severity: 'error',
-              key: 'wDisruption',
-              params: where,
+              ...(here.from && here.to
+                ? { key: 'wDisruption', params: { from: here.from, to: here.to } }
+                : here.from
+                  ? { key: 'wDisruptionFrom', params: { at: here.from } }
+                  : here.to
+                    ? { key: 'wDisruptionUntil', params: { at: here.to } }
+                    : { key: 'wDisruption', params: where }),
             }
           : {
               // The train's own notice, about a stretch of its route you do not ride (its

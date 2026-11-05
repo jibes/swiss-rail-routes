@@ -32,6 +32,15 @@ export function shortDate(date: string, locale: string) {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
+/** A moment's day and month in Zurich ("13 Nov"), as a notice's validity says it. */
+export function dayMonth(iso: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Europe/Zurich',
+  }).format(new Date(iso));
+}
+
 const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
   timeZone: 'Europe/Zurich',
   hour: '2-digit',

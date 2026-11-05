@@ -135,7 +135,7 @@ function build(tools: Tools, log: (line: object) => void) {
     'plan_trip',
     {
       description:
-        'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options, the recommended one marked, and links that open them in the Viadukt app. Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
+        'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options in departure order, the recommended one marked (with options: 1, the recommended one unless pick is "earliest"), and links that open them in the Viadukt app; the top-level link and notReached are the recommended option\'s. A scenic line that cannot be ridden at that time is said as a line-missed error warning (or, with strict, status "line_not_ridden", no options and the reason). Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
       inputSchema: {
         date,
         departAt: z
@@ -155,6 +155,18 @@ function build(tools: Tools, log: (line: object) => void) {
           .max(3)
           .optional()
           .describe('How many alternatives. Default 3.'),
+        pick: z
+          .enum(['recommended', 'earliest'])
+          .optional()
+          .describe(
+            'With fewer options than found: the recommended one (default) or the first to leave.',
+          ),
+        strict: z
+          .boolean()
+          .optional()
+          .describe(
+            'A scenic line asked for that cannot be ridden (closed, no service): answer no options and the reason instead of another way.',
+          ),
         reservations,
         lang,
       },

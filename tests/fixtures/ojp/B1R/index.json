@@ -1,0 +1,99 @@
+{
+  "60bc92f73e90": {
+    "from": "Chur",
+    "to": "St. Moritz",
+    "via": [
+      "Thusis",
+      "Filisur",
+      "Bergün/Bravuogn",
+      "Preda"
+    ],
+    "time": "2026-11-06T08:00"
+  },
+  "2716ea195948": {
+    "from": "Chur",
+    "to": "Filisur",
+    "via": [
+      "Thusis"
+    ],
+    "time": "2026-11-06T08:00"
+  },
+  "0ac7af409b48": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T09:54"
+  },
+  "1e4a32ca15fa": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T10:02"
+  },
+  "ffb944e14c86": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T10:54"
+  },
+  "7ef9816f7ad0": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T11:02"
+  },
+  "513ab2990210": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T11:54"
+  },
+  "58a82dd8d1a2": {
+    "from": "Filisur",
+    "to": "Preda",
+    "via": [
+      "Bergün/Bravuogn"
+    ],
+    "time": "2026-11-06T12:02"
+  },
+  "5d78a49b78f8": {
+    "from": "Chur",
+    "to": "Thusis",
+    "via": [],
+    "time": "2026-11-06T08:00"
+  },
+  "490a35b89b8b": {
+    "from": "Thusis",
+    "to": "Filisur",
+    "via": [],
+    "time": "2026-11-06T08:00"
+  },
+  "04cf58f19f92": {
+    "from": "Filisur",
+    "to": "Bergün/Bravuogn",
+    "via": [],
+    "time": "2026-11-06T08:00"
+  },
+  "04ed90209c63": {
+    "from": "Bergün/Bravuogn",
+    "to": "Preda",
+    "via": [],
+    "time": "2026-11-06T08:00"
+  },
+  "68de0998c450": {
+    "from": "Chur",
+    "to": "St. Moritz",
+    "via": [],
+    "time": "2026-11-06T08:00"
+  }
+}

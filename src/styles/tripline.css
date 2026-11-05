@@ -599,6 +599,13 @@
   color: var(--ink);
 }
 
+/* The operator's own remarks under its headline (0.19.1). */
+.trip-line .warn-wrap .detail .notice-more {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+
 .trip-screen .options-bar {
   border-radius: 12px;
   background: color-mix(in srgb, var(--ink) 5%, transparent);

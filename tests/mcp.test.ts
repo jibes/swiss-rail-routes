@@ -20,7 +20,7 @@ import { parseJourney } from '../src/core/ojp/journey';
 import { stopKey } from '../src/core/stops';
 import { isPlanned, type PlannedTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from './acceptance/ojp';
-import { ga, index, templates } from './helpers/timetable';
+import { conn, ga, index, ride, templates } from './helpers/timetable';
 
 const NOW = Date.parse('2026-11-02T08:00:00Z');
 const URL_ = 'https://viadukt.example/';
@@ -670,5 +670,94 @@ describe('over HTTP, with the real MCP client', () => {
       const r = await client.callTool({ name: 'plan_trip', arguments: T5 });
       expect(JSON.parse(text(r)).options.length).toBeGreaterThan(0);
     });
+  });
+});
+
+// Reported on the MCP, 5 Nov 2026 (second report).
+describe('plan_trip after the second report', () => {
+  type Planned = {
+    options: {
+      recommended?: boolean;
+      departure: string;
+      warnings: { type: string; validUntil?: string; detail?: string }[];
+    }[];
+    reason?: string;
+  };
+  const B1R = {
+    date: '2026-11-06',
+    departAt: '08:00',
+    stops: [{ name: 'Chur' }, { line: 'albula' }],
+  };
+  const b1 = (over: Partial<ToolDeps> = {}) =>
+    createTools(
+      deps({
+        now: () => Date.parse('2026-11-05T08:00:00Z'),
+        timetable: { ...deps().timetable, trips: ojpFor('B1R').fetchTrips },
+        ...over,
+      }),
+    );
+
+  it('the Albula asked for rides its replacement bus, said so, the notice with its end', async () => {
+    const r = (await b1().planTrip(B1R)) as Planned;
+    const best = r.options.find((o) => o.recommended)!;
+    const types = best.warnings.map((w) => w.type);
+    expect(types).toContain('replacement-bus');
+    expect(types).not.toContain('line-missed');
+    const notice = r.options
+      .flatMap((o) => o.warnings)
+      .find((w) => w.validUntil === '2026-11-13T23:30');
+    expect(notice?.detail).toMatch(/Ersatzbusse/);
+  });
+
+  it('strict: a line that cannot be ridden answers no options and why', async () => {
+    // Only the Vereina answers: the Albula cannot be ridden at all.
+    const vereinaOnly = async (q: Parameters<ReturnType<typeof ojpFor>['fetchTrips']>[0]) =>
+      q.vias.length || q.origin.name !== 'Chur' || q.destination.name !== 'St. Moritz'
+        ? []
+        : (await ojpFor('B1R').fetchTrips(q)).filter((c) =>
+            c.sections.some((s) => s.to.name === 'Klosters Platz'),
+          );
+    const tools = b1({ timetable: { ...deps().timetable, trips: vereinaOnly } });
+    const loose = (await tools.planTrip(B1R)) as Planned;
+    expect(loose.options.length).toBeGreaterThan(0);
+    expect(loose.options.flatMap((o) => o.warnings).map((w) => w.type)).toContain('line-missed');
+    const strict = (await tools.planTrip({ ...B1R, strict: true })) as Planned;
+    expect(strict).toMatchObject({ status: 'line_not_ridden', options: [] });
+    expect(strict.reason).toMatch(/Albula/);
+  });
+
+  it('pick: earliest gives the first option after departAt, not the recommended', async () => {
+    // 09:05 with two changes, 09:35 straight there: the later one is recommended.
+    const early = conn(
+      ride('R 61', [
+        ['Interlaken Ost', '09:05'],
+        ['Wilderswil', '09:10'],
+      ]),
+      ride('R 61', [
+        ['Wilderswil', '09:15'],
+        ['Lauterbrunnen', '09:30'],
+      ]),
+      ride('CC 1', [
+        ['Lauterbrunnen', '09:40'],
+        ['Kleine Scheidegg', '10:30'],
+      ]),
+    );
+    const late = conn(
+      ride('R 61', [
+        ['Interlaken Ost', '09:35'],
+        ['Kleine Scheidegg', '10:31'],
+      ]),
+    );
+    const tools = createTools(
+      deps({
+        timetable: { ...deps().timetable, trips: async () => [early, late] },
+      }),
+    );
+    const all = (await tools.planTrip(T5)) as Planned;
+    expect(all.options.find((o) => o.recommended)!.departure).toBe(`${FIXTURE_DATE}T09:35`);
+    const one = (await tools.planTrip({ ...T5, options: 1, pick: 'earliest' })) as Planned;
+    expect(one.options.map((o) => o.departure)).toEqual([`${FIXTURE_DATE}T09:05`]);
+    const rec = (await tools.planTrip({ ...T5, options: 1 })) as Planned;
+    expect(rec.options.map((o) => o.departure)).toEqual([`${FIXTURE_DATE}T09:35`]);
   });
 });

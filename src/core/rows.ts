@@ -210,6 +210,12 @@ export function plannedRows(
             ...(call.arr ? { arr: call.arr } : {}),
             ...(call.dep ? { dep: call.dep } : {}),
           });
+      // A replacement bus standing in for the line passes its stations by road: those between
+      // its ends are on the line too, without times (it calls at none of them).
+      const calling = new Set(s.intermediate.map((x) => stopKey(x.stopRef)));
+      for (const key of (s.byRoad ?? []).slice(1, -1))
+        if (wanted.has(key) && !calling.has(key))
+          seq.push({ type: 'station', name: key, key, role: 'pass', leg });
       station(s.to.name, s.to.stopRef, leg, { arr: s.to.arr, platformArr: s.to.platform });
     });
   });

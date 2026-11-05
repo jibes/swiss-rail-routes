@@ -61,7 +61,11 @@ export type WarningType =
   | 'train-gone'
   | 'seasonal'
   /** The connection after this one on the leg leaves over `GAP_MIN` later: said, not counted. */
-  | 'sparse';
+  | 'sparse'
+  /** A scenic line the leg asks for is not ridden at that time (its stations not reached). */
+  | 'line-missed'
+  /** A day trip back only the next morning (the only way back there is). */
+  | 'next-day';
 
 export interface LatLon {
   lat: number;
@@ -87,6 +91,16 @@ export interface StopCall {
 export type PlatformCall = StopCall & { platform?: string; platformEst?: string };
 
 /** One vehicle ride (or walk) inside a connection. Times are ISO 8601 with offset. */
+/** A situation beyond its headline (OJP `PtSituation`). */
+export interface NoticeInfo {
+  /** Valid until (ISO, UTC), the latest end of its validity periods. */
+  until?: string;
+  /** The stops it names (`AffectedStopPlace`), when it names any. */
+  affected?: string[];
+  /** The operator's description and remarks, in their language. */
+  detail?: string;
+}
+
 export interface Section {
   mode: Mode | 'walk';
   line?: string;
@@ -103,6 +117,8 @@ export interface Section {
   situationIds?: string[];
   /** Situation summaries, in the order of `situationIds` (operator's language). */
   notices?: string[];
+  /** More of each notice, in the order of `notices` (absent in plans saved before 0.19.1). */
+  noticeInfo?: NoticeInfo[];
   /** Product name as OJP gives it, e.g. "Luzern-Interlaken Express", "BERNINA EXPRESS". */
   product?: string;
   /** A walk's planned minutes (OJP `Duration`); walks carry no times of their own. */
@@ -111,6 +127,10 @@ export interface Section {
   journey?: string;
   /** Where the vehicle goes (OJP `DestinationText`), as the departure boards say it. */
   destination?: string;
+  /** A replacement bus standing in for the leg's scenic line: the line's stations from where it
+   * leaves to where it arrives (stop keys, in order), passed by road though it calls at none
+   * between (the Albula's express bus Thusis–Preda). Set by the planner. */
+  byRoad?: string[];
 }
 
 export interface Connection {

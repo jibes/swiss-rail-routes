@@ -33,6 +33,31 @@ describe('fold', () => {
   });
 });
 
+// Reported on the MCP, 5 Nov 2026: "Goeschenen" found nothing. ö, ü, ä are also written oe, ue,
+// ae; both sides are folded alike, so every spelling finds the stop.
+describe('umlauts written out', () => {
+  it('Goeschenen, Goschenen and Gö all find Göschenen; Bruenig finds Brünig', () => {
+    const real = createStopSearch(
+      JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile,
+    );
+    for (const q of ['Goeschenen', 'Goschenen', 'Göschenen', 'Gösch'])
+      expect(
+        real.search(q, 3).map((x) => x.name),
+        q,
+      ).toContain('Göschenen');
+    expect(
+      real
+        .search('Bruenig', 5)
+        .map((x) => x.name)
+        .join(),
+    ).toMatch(/Brünig/);
+    expect(real.search('Zuerich HB', 1)[0]?.name).toBe('Zürich HB');
+    // Names written with "ue" or "oe" themselves still find themselves.
+    for (const q of ['Bouveret', 'Oerlikon', 'Hauenstein'])
+      expect(real.search(q, 3).length, q).toBeGreaterThan(0);
+  });
+});
+
 describe('stop search', () => {
   it('ranks rail stops and whole-name starts first', () => {
     expect(names('zur')).toEqual(['Zürich HB', 'Zürich Oerlikon', 'Zürich, Bahnhofquai/HB']);

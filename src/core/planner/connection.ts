@@ -42,7 +42,11 @@ export const stopSeq = (c: Connection) => calls(c).map((x) => x.key);
  */
 export const visited = (c: Connection) =>
   new Set(
-    c.sections.flatMap((s) => [s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef))),
+    c.sections.flatMap((s) => [
+      ...[s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)),
+      // A line's stations its replacement bus passes by road (planner, `markByRoad`).
+      ...(s.byRoad ?? []),
+    ]),
   );
 
 /** Minutes between arriving with one ride and leaving with the next (walks count as transfer). */

@@ -11,7 +11,7 @@ import type { Tour } from '../core/model';
 import { towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import type { Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
-import { badge } from './format';
+import { badge, dayMonth } from './format';
 import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
 import { MissedNote, type FindSubstitute } from './MissedNote';
@@ -393,9 +393,18 @@ export function TripLine({
                       </button>
                       {more === wid && (
                         <span className="detail">
-                          {detail.map((d, k) => (
-                            <span key={k}>{d}</span>
-                          ))}
+                          {detail.map((d, k) => {
+                            // Until when, and the operator's own remarks (0.19.1).
+                            const info = s.noticeInfo?.[k];
+                            return (
+                              <span key={k}>
+                                {d}
+                                {info?.until &&
+                                  ` ${t('noticeUntil', { date: dayMonth(info.until, lang) })}`}
+                                {info?.detail && <span className="notice-more">{info.detail}</span>}
+                              </span>
+                            );
+                          })}
                         </span>
                       )}
                     </span>

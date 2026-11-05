@@ -54,13 +54,18 @@ export const toStop = ([name, sloid, lat, lon, mask]: StopRow): Stop => ({
   modes: MODES.filter((_, i) => mask & (1 << i)),
 });
 
-/** Lower case, no accents, ß → ss, punctuation to spaces. */
+/**
+ * Lower case, no accents, ß → ss, punctuation to spaces, and ä ö ü as their written-out ae oe ue
+ * (reported 5 Nov 2026: "Goeschenen" found nothing): both sides fold alike, so Göschenen,
+ * Goeschenen and Goschenen are one, and a name with a real "ue" (Hauenstein) still finds itself.
+ */
 export const fold = (s: string) =>
   s
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/ß/g, 'ss')
+    .replace(/([aou])e/g, '$1')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 

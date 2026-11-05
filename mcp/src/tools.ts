@@ -37,6 +37,10 @@ export type PlanInput = RouteInput & {
   options?: number;
   lang?: Lang;
   reservations?: Reservations;
+  /** A scenic line asked for that cannot be ridden: no options and why, not another way. */
+  strict?: boolean;
+  /** With fewer options than found: the recommended one (default) or the first to leave. */
+  pick?: 'recommended' | 'earliest';
 };
 
 export type MoreInput = Omit<PlanInput, 'departAt' | 'arriveBy' | 'options'> & {
@@ -111,10 +115,33 @@ function warningOf(w: Warning, chain: PlannedChain, lang: Lang, templates: Route
     text: note ?? translate(lang, w.key, localParams(w.params, lang, templates)),
     ...(s ? { on: `${s.line ?? s.category ?? ''} ${s.from.name}–${s.to.name}`.trim() } : {}),
     ...((w.type === 'disruption' || w.type === 'disruption-away') && s?.notices?.length
-      ? { operatorText: s.notices }
+      ? { operatorText: s.notices, ...noticeMore(s) }
       : {}),
   };
 }
+
+/** A notice beyond its headline (0.19.1): until when, the stops it names, the operator's remarks. */
+function noticeMore(s: Section) {
+  const info = s.noticeInfo ?? [];
+  const until = info
+    .map((i) => i.until)
+    .filter((x): x is string => !!x)
+    .sort()
+    .at(-1);
+  const affected = [...new Set(info.flatMap((i) => i.affected ?? []))];
+  const detail = info
+    .map((i) => i.detail)
+    .filter(Boolean)
+    .join(' ');
+  return {
+    ...(until ? { validUntil: local(until) } : {}),
+    ...(affected.length ? { affected } : {}),
+    ...(detail ? { detail } : {}),
+  };
+}
+
+/** A scenic line asked for and not ridden (`line-missed`). */
+const missesLine = (c: PlannedChain) => c.warnings.some((w) => w.type === 'line-missed');
 
 type Step =
   | ReturnType<typeof rideOf>
@@ -305,7 +332,7 @@ export function createTools(deps: ToolDeps) {
     },
 
     async planTrip(input: PlanInput) {
-      const { options: want, lang = 'en', reservations, ...route } = input;
+      const { options: want, lang = 'en', reservations, strict, pick, ...route } = input;
       const count = Math.max(1, Math.min(want ?? 3, 3));
       const key = JSON.stringify(['plan', route, reservations]);
       const job = planJob(key, () => ({
@@ -319,19 +346,41 @@ export function createTools(deps: ToolDeps) {
       // Time passed since it was planned: what has left is no longer on offer.
       const open = r.options.filter((c) => Date.parse(c.dep) >= t);
       if (!open.length) throw new ToolError('every connection found has left: plan again');
-      const best = open.includes(r.recommended!) ? r.recommended! : open[0]!;
-      const others = open.filter((c) => c !== best).slice(0, count - 1);
-      const picked = [best, ...others].sort((a, b) => Date.parse(a.dep) - Date.parse(b.dep));
+      // Strict: a line asked for that no option rides is said, not ridden another way.
+      if (strict && open.every(missesLine))
+        return {
+          status: 'line_not_ridden' as const,
+          date: job.tour.date,
+          stations: stationsOf(job.tour),
+          options: [],
+          reason: open[0]!.warnings
+            .filter((w) => w.type === 'line-missed')
+            .map((w) => translate(lang, w.key, w.params))
+            .join('; '),
+          notReached: notReached(job.tour, open[0]!),
+          relaxed: relaxedOf(r),
+        };
+      // An option that rides the lines asked for over one that does not (reported 5 Nov 2026).
+      const riding = open.filter((c) => !missesLine(c));
+      const among = riding.length ? riding : open;
+      const best = among.includes(r.recommended!) ? r.recommended! : among[0]!;
+      const byDep = [...open].sort((a, b) => Date.parse(a.dep) - Date.parse(b.dep));
+      const first = pick === 'earliest' ? byDep[0]! : best;
+      const others = byDep.filter((c) => c !== first && c !== best);
+      const picked = [...new Set([first, best, ...others])]
+        .slice(0, count)
+        .sort((a, b) => Date.parse(a.dep) - Date.parse(b.dep));
       const shaped = await Promise.all(
         picked.map((c) => optionOf(job.tour, r.legs!, c, lang, c === best)),
       );
+      const main = picked.includes(best) ? best : picked[0]!;
       return {
         date: job.tour.date,
         stations: stationsOf(job.tour),
         options: shaped,
-        notReached: notReached(job.tour, best),
+        notReached: notReached(job.tour, main),
         relaxed: relaxedOf(r),
-        link: shaped.find((o) => o.recommended)!.link,
+        link: shaped[picked.indexOf(main)]!.link,
         routeLink: routeLinkOf(job.tour, publicUrl),
       };
     },

@@ -7,7 +7,7 @@ import { zurichDateTime } from '../ojp/request';
 import { withLines } from '../line';
 import { stopKey } from '../stops';
 import { expandLegs } from '../tour';
-import { isSupplement, warningsFor, type Warning } from '../warnings';
+import { isSupplement, markByRoad, warningsFor, type Warning } from '../warnings';
 import {
   expectedArr,
   expectedDep,
@@ -44,6 +44,8 @@ export interface Weights {
   afterSunset: number;
   disruption: number;
   tightTransfer: number;
+  /** A scenic line asked for and not ridden: well behind any plan that rides it. */
+  lineMissed: number;
 }
 /** Chains kept per leg, and the shortest change planned (minutes). */
 const BEAM_WIDTH = 6;
@@ -56,6 +58,7 @@ export const DEFAULT_WEIGHTS: Weights = {
   afterSunset: 60,
   disruption: 30,
   tightTransfer: 10,
+  lineMissed: 120,
 };
 
 /** The one rule that can be let go: a leg's must-pass stations (and its lines' modes). */
@@ -230,8 +233,73 @@ function scoreOf(c: Connection, w: Warning[], wt: Weights): number {
     wt.transfer * c.transfers +
     wt.afterSunset * count('after-sunset') +
     wt.disruption * count('disruption') +
-    wt.tightTransfer * count('tight-transfer')
+    wt.tightTransfer * count('tight-transfer') +
+    wt.lineMissed * count('line-missed')
   );
+}
+
+/**
+ * The scenic lines a leg asks for that a connection does not ride (reported 5 Nov 2026: the
+ * Albula, closed, planned via the Vereina with not a word): an error naming the line and its
+ * stations not reached, or, all reached, that it is not ridden its way (by the train beside the
+ * lake). Only for a connection the planner had to let the leg's stations go for.
+ */
+export function lineMissed(c: Connection, rules: LegRules, legIndex: number): Warning[] {
+  if (!rules.templates.length) return [];
+  const at = visited(c);
+  const modes = new Set(rides(c).map(([s]) => s.mode));
+  return rules.templates.flatMap((t): Warning[] => {
+    const own = new Set(t.chain.map((x) => stopKey(x.ref)));
+    const missed = rules.leg.vias.filter(
+      (w) => own.has(stopKey(w.stopRef)) && !at.has(stopKey(w.stopRef)),
+    );
+    const base = { type: 'line-missed' as const, severity: 'error' as const, legIndex };
+    if (missed.length)
+      return [
+        {
+          ...base,
+          key: 'wLineMissed',
+          params: { line: t.name, stations: missed.map((w) => w.name).join(', ') },
+        },
+      ];
+    if (!t.modes.some((m) => modes.has(m)))
+      return [{ ...base, key: 'wLineNotRidden', params: { line: t.name } }];
+    return [];
+  });
+}
+
+/** A day trip is back the next day when its last arrival is a later day, from this hour on. */
+const NIGHT_ENDS = '03:00';
+
+/**
+ * Reported 5 Nov 2026: a day trip offered with its way back at 04:23 the next morning. A chain
+ * back on a later day than it left, past `NIGHT_ENDS`, is dropped while another is back the same
+ * day; when none is, kept and said ("back the next day at 06:55"). Routes whose stays fill the
+ * night themselves are left alone.
+ */
+export function sameDayFirst(chains: PlannedChain[], tour: Tour): PlannedChain[] {
+  const stays = tour.waypoints.reduce((m, w) => m + w.dwellMin, 0);
+  if (stays >= 12 * 60) return chains;
+  const nextDay = (c: PlannedChain) => {
+    const dep = zurichLocal(ms(c.dep)).slice(0, 10);
+    const arr = zurichLocal(ms(c.arr));
+    return arr.slice(0, 10) > dep && arr.slice(11, 16) >= NIGHT_ENDS;
+  };
+  const sameDay = chains.filter((c) => !nextDay(c));
+  if (sameDay.length) return sameDay;
+  return chains.map((c) => ({
+    ...c,
+    warnings: [
+      ...c.warnings,
+      {
+        type: 'next-day',
+        severity: 'warn',
+        legIndex: c.connections.length - 1,
+        key: 'wNextDay',
+        params: { time: zurichLocal(ms(c.arr)).slice(11, 16) },
+      },
+    ],
+  }));
 }
 
 /** ms → `YYYY-MM-DDTHH:MM` in Swiss local time. */
@@ -377,7 +445,10 @@ async function planFrom(
       const asked = step === 'reachable' ? await reachableRules(rules, ready) : rules;
       if (step === 'reachable' && !asked.mustPass.length) continue;
       const relaxed = new Set<Relaxed>(step === 'none' ? ['mustPass'] : []);
-      const all = await fetchAt(asked, ready, relaxed);
+      // A replacement bus standing in for the leg's line passes its stations by road.
+      const byRoad = (list: Connection[]) =>
+        markByRoad(list, { templates: rules.templates, stop: deps.stop });
+      const all = byRoad(await fetchAt(asked, ready, relaxed));
       let pool = all.filter((c) => !rejectReason(c, asked, relaxed));
       const why: Record<string, number> = {};
       for (const c of all) {
@@ -408,7 +479,7 @@ async function planFrom(
       for (const b of beams) {
         let opts = pool.filter((c) => ms(expectedDep(c)) >= b.ready);
         if (!opts.length && b.ready > ready) {
-          const own = (await fetchAt(asked, b.ready, relaxed)).filter(
+          const own = byRoad(await fetchAt(asked, b.ready, relaxed)).filter(
             (c) => !rejectReason(c, asked, relaxed) && ms(expectedDep(c)) >= b.ready,
           );
           opts = preferred(own);
@@ -418,6 +489,7 @@ async function planFrom(
             ...warningsFor(c, ctx),
             ...changeWarning(b.conns.at(-1), c, i),
             ...gapWarning(c, opts, i),
+            ...(step === 'all' ? [] : lineMissed(c, rules, i)),
           ];
           const dwell = Math.max(rules.leg.to.dwellMin, minTransfer);
           next.push({
@@ -450,13 +522,16 @@ async function planFrom(
     beams = [...keep];
   }
 
-  const done = beams.map((b): PlannedChain => ({
-    connections: b.conns,
-    warnings: b.warnings,
-    score: total(b),
-    dep: b.conns[0]!.dep,
-    arr: b.conns.at(-1)!.arr,
-  }));
+  const done = sameDayFirst(
+    beams.map((b): PlannedChain => ({
+      connections: b.conns,
+      warnings: b.warnings,
+      score: total(b),
+      dep: b.conns[0]!.dep,
+      arr: b.conns.at(-1)!.arr,
+    })),
+    tour,
+  );
   const picked = pickOptions(done);
   trace('plan.result', {
     chains: done.length,

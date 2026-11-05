@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Connection, Section } from '../src/core/model';
 import { placeByName, stopKey } from '../src/core/stops';
-import { onThisStretch, stretchOf, warningsFor } from '../src/core/warnings';
+import { noticeStretch, onThisStretch, stretchOf, warningsFor } from '../src/core/warnings';
 import { DATE, conn, ga, index, ride as tRide, templates } from './helpers/timetable';
 
 const call = (name: string) => ({ stopRef: name, name });
@@ -167,5 +167,74 @@ describe('replacement buses and timed changes (reported 4 Nov 2026)', () => {
     expect(types(c, ['bergbahn-muerren'])).not.toContain('tight-transfer');
     // Without the line, the same 3 minutes are a tight change.
     expect(types(c, [])).toContain('tight-transfer');
+  });
+});
+
+// Reported on the MCP, 5 Nov 2026: "Information zu IR 26 und IR 46 ab Erstfeld" was said as a
+// disruption of the whole IR46 Zürich HB–Bellinzona. "From X" is the stretch from X onwards.
+describe('a notice from (or up to) a station', () => {
+  const gotthard = ['Zürich HB', 'Zug', 'Arth-Goldau', 'Erstfeld', 'Göschenen', 'Bellinzona'];
+  const ab = 'Information zu IR 26 und IR 46 ab Erstfeld';
+  it('reads "from X" and "up to X" in each language', () => {
+    expect(noticeStretch(ab)).toEqual({ from: 'Erstfeld' });
+    expect(noticeStretch('Perturbation dès Erstfeld.')).toEqual({ from: 'Erstfeld' });
+    expect(noticeStretch('Perturbazione da Erstfeld.')).toEqual({ from: 'Erstfeld' });
+    expect(noticeStretch('Disruption from Erstfeld.')).toEqual({ from: 'Erstfeld' });
+    expect(noticeStretch('Einschränkungen bis Erstfeld.')).toEqual({ to: 'Erstfeld' });
+    expect(noticeStretch('Zwischen Thusis und Preda: Ersatzbus.')).toEqual({
+      from: 'Thusis',
+      to: 'Preda',
+    });
+  });
+  const st = (name: string) => index.search(name, 1)[0]!;
+  const real = (names: string[], notice: string): Section => {
+    const c = (n: string) => ({ stopRef: st(n).ref, name: st(n).name });
+    return {
+      mode: 'rail',
+      from: c(names[0]!),
+      to: c(names.at(-1)!),
+      intermediate: names.slice(1, -1).map(c),
+      situationIds: ['x'],
+      notices: [notice],
+    };
+  };
+  const places = { stop: (r: string) => index.byRef(stopKey(r)), place: placeByName(index) };
+  it('on a ride past X; elsewhere on one that ends before it or at it', () => {
+    expect(onThisStretch(real(gotthard, ab), places)).toBe(true);
+    expect(onThisStretch(real(['Zürich HB', 'Zug', 'Arth-Goldau'], ab), places)).toBe(false);
+    expect(onThisStretch(real(['Zürich HB', 'Arth-Goldau', 'Erstfeld'], ab), places)).toBe(false);
+    for (const n of ['Perturbation dès Erstfeld.', 'Perturbazione da Erstfeld.'])
+      expect(onThisStretch(real(['Zürich HB', 'Arth-Goldau'], n), places)).toBe(false);
+    // A ride that starts beyond X is on the stretch from X onwards.
+    expect(onThisStretch(real(['Göschenen', 'Bellinzona'], ab), places)).toBe(true);
+    // Up to X: a ride starting at X has left the stretch behind; one ending before it is on it.
+    const bis = 'Einschränkungen bis Erstfeld.';
+    expect(onThisStretch(real(['Erstfeld', 'Bellinzona'], bis), places)).toBe(false);
+    expect(onThisStretch(real(['Zürich HB', 'Arth-Goldau'], bis), places)).toBe(true);
+    // Without places to read it against: a ride that ends at X is elsewhere, else as before.
+    expect(onThisStretch(ride(['Zürich HB', 'Erstfeld'], [ab]))).toBe(false);
+    expect(onThisStretch(ride(['Zürich HB', 'Arth-Goldau'], [ab]))).toBe(true);
+  });
+  it('the warning names the stretch, not the whole ride', () => {
+    const s: Section = {
+      ...tRide('IR 46', [
+        ['Zürich HB', '08:09'],
+        ['Arth-Goldau', '08:40'],
+        ['Erstfeld', '09:00'],
+        ['Bellinzona', '10:10'],
+      ]),
+      situationIds: ['x'],
+      notices: [ab],
+    };
+    const w = warningsFor(conn(s), {
+      legIndex: 0,
+      date: DATE,
+      ticket: 'GA',
+      templates: [],
+      ga,
+      stop: (r) => index.byRef(r),
+      place: placeByName(index),
+    }).find((x) => x.type === 'disruption')!;
+    expect(w).toMatchObject({ key: 'wDisruptionFrom', params: { at: 'Erstfeld' } });
   });
 });
