@@ -109,8 +109,11 @@ function toSegment(p: LatLon, a: LatLon, b: LatLon): { km: number; t: number } {
 function trackOf(s: Section, places?: Places): LatLon[] {
   if (s.geometry && s.geometry.length > 1) return s.geometry.map(([lon, lat]) => ({ lat, lon }));
   if (!places) return [];
+  // By the stop, not its platform: a ref as it comes carries its quay (`…:9198:0:2`), which
+  // the index does not know; without them the track was empty and every notice "on" (the MCP,
+  // which drops tracks, said Thusis–Preda on the IR38 from Preda; retest, 5 Nov 2026).
   return [s.from, ...s.intermediate, s.to].flatMap((c) => {
-    const p = places.stop(c.stopRef);
+    const p = places.stop(c.stopRef) ?? places.stop(stopKey(c.stopRef));
     return p ? [p] : [];
   });
 }
@@ -154,7 +157,10 @@ export function onThisStretch(s: Section, places?: Places): boolean {
  * from X onwards in the direction of travel: a ride that ends at X, or before it, is elsewhere;
  * "up to X" is elsewhere for a ride that starts at X, or beyond it.
  */
-export function stretchHere(s: Section, places?: Places): { from?: string; to?: string } | null {
+export function stretchHere(
+  s: Section,
+  places?: Places,
+): { from?: string; to?: string; n?: number } | null {
   const notices = s.notices ?? [];
   if (!notices.length) return {};
   const stops = [s.from, ...s.intermediate, s.to].map((x) => fold(x.name));
@@ -180,9 +186,10 @@ export function stretchHere(s: Section, places?: Places): { from?: string; to?: 
     if (!p || t.length < 2) return undefined;
     return km(p, t.at(-1)!) < km(p, t[0]!);
   };
-  for (const n of notices) {
-    const st = noticeStretch(n);
-    if (!st) return {};
+  for (const [k, n] of notices.entries()) {
+    const found = noticeStretch(n);
+    if (!found) return { n: k };
+    const st = { ...found, n: k };
     if (st.from && st.to) {
       const [a, b] = [st.from, st.to].map(calls) as [boolean, boolean];
       const on =
@@ -378,6 +385,16 @@ const hhmm = (t: number) =>
     minute: '2-digit',
   }).format(t);
 
+/**
+ * A notice's weight on this ride: as its words say (`gradeNotice`, 0.21.2), a closure ridden by its
+ * own replacement bus only a warning (the way round is the plan), and an error for plans saved
+ * before notices were graded.
+ */
+function gradeHere(s: Section, n: number | undefined): Warning['severity'] {
+  const g = (n === undefined ? undefined : s.noticeInfo?.[n]?.grade) ?? 'error';
+  return g === 'error' && s.category === 'EV' ? 'warn' : g;
+}
+
 export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
   const w: Warning[] = [];
   const base = { legIndex: ctx.legIndex };
@@ -394,7 +411,7 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
               ...base,
               sectionIndex: i,
               type: 'disruption',
-              severity: 'error',
+              severity: gradeHere(s, here.n),
               ...(here.from && here.to
                 ? { key: 'wDisruption', params: { from: here.from, to: here.to } }
                 : here.from

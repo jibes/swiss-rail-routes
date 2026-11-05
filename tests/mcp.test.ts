@@ -588,6 +588,35 @@ describe('over HTTP, with the real MCP client', () => {
       expect(logged).not.toContain(secret);
   });
 
+  it('refuses a parameter it does not know, and names the one meant (retest N1)', async () => {
+    const { base } = await start();
+    const client = await connect(base);
+    const plan = (await client.listTools()).tools.find((t) => t.name === 'plan_trip')!;
+    const schema = plan.inputSchema as unknown as {
+      additionalProperties?: boolean;
+      properties: { stops: { items: { additionalProperties?: boolean } } };
+    };
+    expect(schema.additionalProperties).toBe(false);
+    expect(schema.properties.stops.items.additionalProperties).toBe(false);
+    const top = await client.callTool({
+      name: 'plan_trip',
+      arguments: { ...T5, strict: true, return: 'scenic' },
+    });
+    expect(top.isError).toBe(true);
+    expect(text(top)).toContain('`return`');
+    expect(text(top)).toContain('returnWay');
+    const inStop = await client.callTool({
+      name: 'plan_trip',
+      arguments: { ...T5, stops: [{ ...T5.stops[0], openUntil: '18:00' }, ...T5.stops.slice(1)] },
+    });
+    expect(inStop.isError).toBe(true);
+    expect(text(inStop)).toContain('`openUntil`');
+    expect(text(inStop)).toContain('leaveBy');
+    const find = await client.callTool({ name: 'find_stops', arguments: { query: 'Bern', q: 1 } });
+    expect(find.isError).toBe(true);
+    expect(text(find)).toContain('`q`');
+  });
+
   it('answers a tool’s error as one, in words, and hides what it does not know', async () => {
     const { base, lines } = await start({
       timetable: {

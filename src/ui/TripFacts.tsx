@@ -10,7 +10,10 @@ export function TripFacts({ chain }: { chain: PlannedChain }) {
   const t = useT();
   const changes = changesOf(chain.connections);
   // Disruptions are on the rides they concern; their number is said at the top.
-  const disruptions = chain.warnings.filter((w) => w.type === 'disruption').length;
+  // An information notice (graded info, 0.21.2) is no disruption to count.
+  const disruptions = chain.warnings.filter(
+    (w) => w.type === 'disruption' && w.severity !== 'info',
+  ).length;
   const trains = chain.connections.reduce(
     (n, c) => n + c.sections.filter((s) => s.mode !== 'walk').length,
     0,

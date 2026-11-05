@@ -104,6 +104,8 @@ export type PlatformCall = StopCall & { platform?: string; platformEst?: string 
 /** One vehicle ride (or walk) inside a connection. Times are ISO 8601 with offset. */
 /** A situation beyond its headline (OJP `PtSituation`). */
 export interface NoticeInfo {
+  /** How much it weighs, by the operator's words (`gradeNotice`): absent in plans saved before 0.21.2. */
+  grade?: 'info' | 'warn' | 'error';
   /** Valid until (ISO, UTC), the latest end of its validity periods. */
   until?: string;
   /** The stops it names (`AffectedStopPlace`), when it names any. */

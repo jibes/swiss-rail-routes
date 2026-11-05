@@ -28,17 +28,23 @@ describe('places people go to by train (curated)', () => {
     }
   });
 
-  it('a walk estimated from the straight line, a little longer than it', () => {
-    expect(walkMinutes(0)).toBe(1);
-    expect(walkMinutes(1)).toBe(17);
-    expect(walkMinutes(0.3)).toBe(5);
+  it('a walk estimated from the straight line, a little longer, with the way out of the station', () => {
+    // Retest, 5 Nov 2026: Melide → Swissminiatur said 1 min, really 3–5.
+    expect(walkMinutes(0)).toBe(2);
+    expect(walkMinutes(1)).toBe(20);
+    expect(walkMinutes(0.3)).toBe(8);
   });
 
   it('found by any of their names, with their stops and the walk from each', () => {
     const one = (q: string, lang: 'en' | 'de' | 'fr' | 'it' = 'en') =>
       searchAttractions(places, q, lang, at)[0];
-    expect(one('Swissminiatur')?.stops[0]).toMatchObject({ name: 'Melide' });
-    expect(one('Swissminiatur')!.stops[0]!.walkMin).toBeLessThan(5);
+    // Curated where the real walk is known (the retest's 3–5 min), an estimate elsewhere.
+    expect(one('Swissminiatur')?.stops[0]).toMatchObject({
+      name: 'Melide',
+      walkMin: 4,
+      estimate: false,
+    });
+    expect(one('Swissminiatur')?.stops[1]).toMatchObject({ estimate: true });
     for (const q of ['Rhine Falls', 'Rheinfall', 'chutes du rhin', 'cascate'])
       expect(one(q)?.id, q).toBe('rheinfall');
     expect(one('Rheinfall', 'fr')?.name).toBe('Chutes du Rhin');

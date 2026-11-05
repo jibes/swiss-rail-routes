@@ -15,6 +15,43 @@ const MAX_BODY = 256 * 1024;
 /** While a plan runs: keeps the stream alive, and clients that listen know it is working. */
 const HEARTBEAT_MS = 10_000;
 
+/**
+ * Names callers have used for a parameter that is called otherwise here (retest, 5 Nov 2026):
+ * an unknown key is refused, never dropped, so a constraint asked for is never silently not applied.
+ */
+const MEANT: Record<string, string> = {
+  return: 'returnWay',
+  returnMode: 'returnWay',
+  openUntil: 'leaveBy',
+  stayUntil: 'leaveBy',
+  closesAt: 'leaveBy',
+  openFrom: 'arriveAfter',
+  opensAt: 'arriveAfter',
+  depart: 'departAt',
+  arrive: 'arriveBy',
+  count: 'options',
+  q: 'query',
+  station: 'name',
+  dwell: 'stay',
+};
+
+/** An object that refuses keys it does not have, saying which and what was meant. */
+function strictOf<T extends z.ZodRawShape>(shape: T) {
+  return z.strictObject(shape, {
+    error: (iss) => {
+      if (iss.code !== 'unrecognized_keys') return undefined;
+      return iss.keys
+        .map((k) => {
+          const meant = MEANT[k];
+          return meant && meant in shape
+            ? `unknown parameter \`${k}\`; use \`${meant}\``
+            : `unknown parameter \`${k}\`; known: ${Object.keys(shape).join(', ')}`;
+        })
+        .join('. ');
+    },
+  });
+}
+
 const lang = z.enum(LANGS).optional().describe('Language of warnings and notes. Default en.');
 const ticket = z
   .enum(['GA', 'Tageskarte', 'Halbtax', 'none'])
@@ -29,7 +66,7 @@ const reservations = z
 const date = z.string().optional().describe('YYYY-MM-DD, Zurich. Default today.');
 const stops = z
   .array(
-    z.object({
+    strictOf({
       ref: z.string().optional().describe('Stop id from find_stops.'),
       name: z.string().optional().describe('Station name, if no ref.'),
       stay: z
@@ -121,11 +158,11 @@ function build(tools: Tools, log: (line: object) => void) {
     {
       description:
         'Finds Swiss stations and stops by name, and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route).',
-      inputSchema: {
+      inputSchema: strictOf({
         query: z.string().min(1).max(80).describe('Text, e.g. "Bern", "Kleine Sch", "Rheinfall".'),
         limit: z.number().int().min(1).max(50).optional().describe('Default 8.'),
         lang: z.enum(['en', 'de', 'fr', 'it']).optional().describe('Language of place names.'),
-      },
+      }),
       annotations: { ...readOnly, openWorldHint: false },
     },
     (a) => answer('find_stops', () => tools.findStops(a)),
@@ -135,10 +172,10 @@ function build(tools: Tools, log: (line: object) => void) {
     {
       description:
         'The curated scenic lines (Bernina, Albula, Lake Lucerne…): their ids, ends, the stations they must pass, modes and seasons.',
-      inputSchema: {
+      inputSchema: strictOf({
         query: z.string().max(80).optional().describe('Filters by line or station name.'),
         lang,
-      },
+      }),
       annotations: { ...readOnly, openWorldHint: false },
     },
     (a) => answer('list_scenic_lines', () => tools.listScenicLines(a)),
@@ -148,7 +185,7 @@ function build(tools: Tools, log: (line: object) => void) {
     {
       description:
         'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options in departure order, the recommended one marked (with options: 1, the recommended one unless pick is "earliest"), and links that open them in the Viadukt app; the top-level link and notReached are the recommended option\'s. A scenic line that cannot be ridden at that time is said as a line-missed error warning (or, with strict, status "line_not_ridden", no options and the reason). Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
-      inputSchema: {
+      inputSchema: strictOf({
         date,
         departAt: z
           .string()
@@ -193,7 +230,7 @@ function build(tools: Tools, log: (line: object) => void) {
           ),
         reservations,
         lang,
-      },
+      }),
       annotations: readOnly,
     },
     (a, extra) => withBeat(extra as never, () => answer('plan_trip', () => tools.planTrip(a))),
@@ -203,7 +240,7 @@ function build(tools: Tools, log: (line: object) => void) {
     {
       description:
         'Earlier or later connections for a plan from plan_trip, without starting over. Same route arguments; never one that has already left. If it answers status "still_planning", call it again with exactly the same arguments.',
-      inputSchema: {
+      inputSchema: strictOf({
         date,
         stops,
         roundTrip,
@@ -215,7 +252,7 @@ function build(tools: Tools, log: (line: object) => void) {
           .describe('HH:MM, Zurich: the time to search from, usually an option’s departure.'),
         reservations,
         lang,
-      },
+      }),
       annotations: readOnly,
     },
     (a, extra) =>
@@ -226,10 +263,10 @@ function build(tools: Tools, log: (line: object) => void) {
     {
       description:
         'Live status of one train: every stop with planned and expected times, delay, platform and platform changes, cancelled or not-served stops, and operator notices.',
-      inputSchema: {
+      inputSchema: strictOf({
         journey: z.string().max(120).describe('The `journey` of a ride in a plan.'),
         date: date.describe('YYYY-MM-DD. Not needed for a journey from a plan.'),
-      },
+      }),
       annotations: readOnly,
     },
     (a) => answer('train_status', () => tools.trainStatus(a)),

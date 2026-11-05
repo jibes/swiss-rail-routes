@@ -239,7 +239,11 @@ function scoreOf(c: Connection, w: Warning[], wt: Weights): number {
     wt.transfer * c.transfers +
     wt.afterSunset * count('after-sunset') +
     wt.lineAfterDark * count('line-after-dark') +
-    wt.disruption * count('disruption') +
+    // A notice weighs by its grade (0.21.2): a timetable shift is no closure.
+    wt.disruption *
+      w
+        .filter((x) => x.type === 'disruption')
+        .reduce((n, x) => n + (x.severity === 'error' ? 1 : x.severity === 'warn' ? 0.5 : 0.1), 0) +
     wt.tightTransfer * count('tight-transfer') +
     wt.lineMissed * count('line-missed') +
     wt.windowMissed * count('window-missed')

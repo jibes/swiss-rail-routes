@@ -11,7 +11,7 @@ export interface Attraction {
   lat: number;
   lon: number;
   /** Its stops, nearest or most useful first (a train station before a bus stop beside it). */
-  stops: { ref: string; name: string }[];
+  stops: { ref: string; name: string; walkMin?: number }[];
 }
 
 export interface AttractionData {
@@ -23,13 +23,22 @@ export interface AttractionData {
 const WALK_KMH = 4.5;
 const DETOUR = 1.3;
 
-/** Minutes on foot over a straight-line distance: an estimate (paths wind, hills are not seen). */
-export const walkMinutes = (km: number) => Math.max(1, Math.round(((km * DETOUR) / WALK_KMH) * 60));
+/** Out of the station and onto the street, before the walk itself. */
+const OUT_MIN = 2;
+
+/**
+ * Minutes on foot over a straight-line distance: an estimate (paths wind, hills are not seen),
+ * with the way out of the station, rounded up (retest, 5 Nov 2026: Melide → Swissminiatur said
+ * 1 min, really 3–5).
+ */
+export const walkMinutes = (km: number) =>
+  Math.max(OUT_MIN, Math.ceil(((km * DETOUR) / WALK_KMH) * 60 + OUT_MIN));
 
 export interface AttractionHit {
   id: string;
   name: string;
-  stops: { ref: string; name: string; walkMin: number }[];
+  /** `estimate`: from the straight line, unless the walk is curated (`walkMin` in the data). */
+  stops: { ref: string; name: string; walkMin: number; estimate: boolean }[];
 }
 
 /**
@@ -66,7 +75,12 @@ export function searchAttractions(
       name: a.name[lang] ?? a.name.en,
       stops: a.stops.flatMap((s) => {
         const p = at(s.ref);
-        return p ? [{ ...s, walkMin: walkMinutes(kmBetween(a, p)) }] : [];
+        if (!p) return [];
+        return [
+          s.walkMin !== undefined
+            ? { ref: s.ref, name: s.name, walkMin: s.walkMin, estimate: false }
+            : { ref: s.ref, name: s.name, walkMin: walkMinutes(kmBetween(a, p)), estimate: true },
+        ];
       }),
     }))
     .filter((h) => h.stops.length > 0);

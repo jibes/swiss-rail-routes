@@ -15,7 +15,8 @@
       "stops": [
         {
           "ref": "ch:1:sloid:5302",
-          "name": "Melide"
+          "name": "Melide",
+          "walkMin": 4
         },
         {
           "ref": "ch:1:sloid:5535",

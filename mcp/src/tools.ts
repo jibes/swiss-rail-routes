@@ -156,7 +156,7 @@ export function createTools(deps: ToolDeps) {
   const { index, timetable, templates, ga, publicUrl } = deps;
   const now = deps.now ?? Date.now;
   const waitMs = deps.waitMs ?? WAIT_MS;
-  const stop = (ref: string) => index.byRef(ref);
+  const stop = (ref: string) => index.byRef(ref) ?? index.byRef(stopKey(ref));
   const place = placeByName(index);
   const nameOf = (ref: string) => index.byRef(stopKey(ref))?.name;
 
@@ -294,7 +294,11 @@ export function createTools(deps: ToolDeps) {
       // nearest stops, each with an estimate of the walk.
       const places = searchAttractions(attractionData as AttractionData, query, lang ?? 'en', (r) =>
         index.byRef(stopKey(r)),
-      ).map((p) => ({ name: p.name, stops: p.stops, walkIsEstimate: true }));
+      ).map((p) => ({
+        name: p.name,
+        stops: p.stops.map(({ estimate, ...st }) => ({ ...st, walkIsEstimate: estimate })),
+        walkIsEstimate: p.stops.some((st) => st.estimate),
+      }));
       return {
         stops: index.search(query, Math.min(limit ?? 8, 50)).map((s) => ({
           ref: s.ref,

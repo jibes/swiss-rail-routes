@@ -238,3 +238,36 @@ describe('a notice from (or up to) a station', () => {
     expect(w).toMatchObject({ key: 'wDisruptionFrom', params: { at: 'Erstfeld' } });
   });
 });
+
+describe('a notice read without the track (the MCP drops tracks; retest N3, 5 Nov 2026)', () => {
+  it('Chur → Albula on 6 Nov: "zwischen Thusis und Preda" is not on the IR38 from Preda', async () => {
+    const { plan } = await import('../src/core/planner/plan');
+    const { ojpFor } = await import('./acceptance/ojp');
+    const { insertTemplate, newTour } = await import('./helpers/edit');
+    const { ref } = await import('./helpers/timetable');
+    const albula = templates.find((x) => x.id === 'albula')!;
+    const route = {
+      ...insertTemplate(newTour('b', '2026-11-06', { stopRef: ref('Chur'), name: 'Chur' }), albula),
+      anchor: { departAt: '08:00' },
+    };
+    const o = ojpFor('B1R');
+    const r = await plan(route, {
+      ...o,
+      // As the MCP gets them: no tracks; stops looked up by their ref as it comes.
+      fetchTrips: async (q) =>
+        (await o.fetchTrips(q)).map((c) => ({
+          ...c,
+          sections: c.sections.map((s) => ({ ...s, geometry: undefined })),
+        })),
+      templates,
+      ga,
+      stop: (x: string) => index.byRef(x),
+      place: placeByName(index),
+    });
+    const best = r.recommended!;
+    const ir38 = best.connections[0]!.sections.findIndex((s) => s.line === 'IR38');
+    expect(ir38).toBeGreaterThan(0);
+    const on = best.warnings.filter((w) => w.sectionIndex === ir38);
+    expect(on.map((w) => w.type)).toEqual(['disruption-away']);
+  });
+});

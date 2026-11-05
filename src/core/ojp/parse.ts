@@ -5,6 +5,7 @@
 // - times are UTC (`…Z`); stop point refs embed the stop's SLOID.
 import { XMLParser } from 'fast-xml-parser';
 import type { Connection, Mode, NoticeInfo, PlatformCall, Section } from '../model';
+import { gradeNotice } from '../noticeGrade';
 
 const ARRAYS = new Set([
   'TripResult',
@@ -145,7 +146,12 @@ function noticeInfoOf(s: X): NoticeInfo {
       ...said(c, 'RemarkContent', 'Remark'),
     ])
     .filter((x): x is string => !!x);
+  const words = content.flatMap((c) => [
+    ...said(c, 'SummaryContent', 'SummaryText'),
+    ...said(c, 'ConsequenceContent', 'ConsequenceText'),
+  ]);
   return {
+    grade: gradeNotice(...words.filter((x): x is string => !!x)),
     ...(ends.length ? { until: ends.at(-1)! } : {}),
     ...(affected.length ? { affected } : {}),
     ...(detail.length ? { detail: [...new Set(detail)].join(' ') } : {}),
