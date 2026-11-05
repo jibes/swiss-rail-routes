@@ -269,6 +269,8 @@ export const it = {
   fromTime: 'dalle',
   departFrom: 'Partenza dalle (ora)',
   stationsLabel: 'Stazioni e fermate',
+  placesLabel: 'Mete',
+  placeStop: '{stop} · circa {n} min a piedi',
   kindBus: 'Fermata bus',
   kindBoat: 'Imbarcadero',
   kindCable: 'Funivia',

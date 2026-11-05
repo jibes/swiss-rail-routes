@@ -119,10 +119,12 @@ function build(tools: Tools, log: (line: object) => void) {
   server.registerTool(
     'find_stops',
     {
-      description: 'Finds Swiss stations and stops by name.',
+      description:
+        'Finds Swiss stations and stops by name, and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route).',
       inputSchema: {
-        query: z.string().min(1).max(80).describe('Text, e.g. "Bern", "Kleine Sch".'),
+        query: z.string().min(1).max(80).describe('Text, e.g. "Bern", "Kleine Sch", "Rheinfall".'),
         limit: z.number().int().min(1).max(50).optional().describe('Default 8.'),
+        lang: z.enum(['en', 'de', 'fr', 'it']).optional().describe('Language of place names.'),
       },
       annotations: { ...readOnly, openWorldHint: false },
     },

@@ -1,10 +1,12 @@
-// Share a trip as its trains (`#/s/<data>`): the route and each ride's train, stops and times,
-// deflated, base64url. A few hundred characters, so messengers leave it whole (the whole
+// Share a trip as its trains (`#/s/<data>`): the route and each ride's train, stops and times.
+// Since 0.21.0 packed as numbers (tripLinkPacked.ts); until then JSON, deflated, base64url, still
+// read here. A few hundred characters, so messengers leave it whole (the whole
 // timetable, `#/j/`, ran to 5,600, and they cut it off). What anyone can get again is left out:
 // station names come from the app's own list, the rest from OJP when it opens (core/refresh.ts).
 import { fromB64Url, toB64Url } from '../b64';
 import type { Mode, Section, Waypoint, WaypointKind } from '../model';
 import { changesOf, type PlannedTrip, type Trip } from '../trip';
+import { decodePacked, encodePacked } from './tripLinkPacked';
 import { pipe, tripFromData } from './tripShare';
 
 const PREFIX = '#/s/';
@@ -29,7 +31,13 @@ const text = (x: unknown) => (typeof x === 'string' ? x : undefined);
 const hhmm = (x: unknown) =>
   typeof x === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(x) ? x : undefined;
 
+/** The link to send: the compact form (0.21.0, `tripLinkPacked.ts`). */
 export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<string> {
+  return PREFIX + (await encodePacked(t, nameOf));
+}
+
+/** The link as written until 0.20.0: JSON, deflated. Kept for tests of old links. */
+export async function encodeTripLinkV1(t: PlannedTrip, nameOf: NameOf): Promise<string> {
   const { route, chain } = t;
   const base = Date.parse(`${route.date}T00:00:00Z`);
   /** Minutes from the trip's day: no time zones or repeated dates in the link. */
@@ -92,18 +100,30 @@ export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<st
   return PREFIX + toB64Url(await pipe(json, new CompressionStream('deflate-raw')));
 }
 
-/** The trip as far as the link holds it, checked like any link; `null` if it is damaged. */
+/**
+ * The trip as far as the link holds it, checked like any link; `null` if it is damaged or cut
+ * short. The compact form first (its CRC tells), then the JSON one of 0.12–0.20, also with the
+ * `-` or `_` a messenger may have dropped from its end put back.
+ */
 export async function decodeTripLink(
   hash: string,
   id: string,
   nameOf: NameOf,
 ): Promise<Trip | null> {
   if (!hash.startsWith(PREFIX)) return null;
+  const data = hash.slice(PREFIX.length);
+  const packed = await decodePacked(data, id, nameOf);
+  if (packed !== undefined) return packed;
+  for (const d of [data, `${data}-`, `${data}_`]) {
+    const t = await decodeV1(d, id, nameOf);
+    if (t) return t;
+  }
+  return null;
+}
+
+async function decodeV1(data: string, id: string, nameOf: NameOf): Promise<Trip | null> {
   try {
-    const bytes = await pipe(
-      fromB64Url(hash.slice(PREFIX.length)),
-      new DecompressionStream('deflate-raw'),
-    );
+    const bytes = await pipe(fromB64Url(data), new DecompressionStream('deflate-raw'));
     const [v, name, routeName, date, anchor, ticket, travelClass, waypoints, connections] =
       JSON.parse(new TextDecoder().decode(bytes)) as unknown[];
     if (v !== 1 || typeof date !== 'string' || typeof anchor !== 'string') return null;

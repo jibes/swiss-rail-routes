@@ -1,6 +1,8 @@
 // The five tools: the app's planner and data, answered as JSON. Read-only: nothing about a
 // request outlives the in-memory cache of its answer.
+import { searchAttractions, type AttractionData } from '../../src/core/attractions';
 import { localParams, type GaData, type RouteTemplate } from '../../src/core/data';
+import attractionData from '../../src/data/attractions.json';
 import { encodeTripLink } from '../../src/core/export/tripLink';
 import type { Reservations } from '../../src/core/planner/plan';
 import { plan, zurichLocal, type PlannedChain, type PlanResult } from '../../src/core/planner/plan';
@@ -287,7 +289,12 @@ export function createTools(deps: ToolDeps) {
   };
 
   return {
-    findStops({ query, limit }: { query: string; limit?: number }) {
+    findStops({ query, limit, lang }: { query: string; limit?: number; lang?: Lang }) {
+      // Places people go to (Swissminiatur, the Rhine Falls), from the app's own list: their
+      // nearest stops, each with an estimate of the walk.
+      const places = searchAttractions(attractionData as AttractionData, query, lang ?? 'en', (r) =>
+        index.byRef(stopKey(r)),
+      ).map((p) => ({ name: p.name, stops: p.stops, walkIsEstimate: true }));
       return {
         stops: index.search(query, Math.min(limit ?? 8, 50)).map((s) => ({
           ref: s.ref,
@@ -296,6 +303,7 @@ export function createTools(deps: ToolDeps) {
           lat: s.lat,
           lon: s.lon,
         })),
+        ...(places.length ? { places } : {}),
       };
     },
 

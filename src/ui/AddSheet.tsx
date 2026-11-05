@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { searchAttractions, type AttractionData } from '../core/attractions';
 import type { RouteTemplate } from '../core/data';
+import attractionData from '../data/attractions.json';
 import { entriesOf, lineEntries, stationEntry, type Entry } from '../core/line';
 import type { Tour, Waypoint } from '../core/model';
 import { fold, stopKey, type Stop } from '../core/stops';
@@ -99,6 +101,11 @@ export function AddSheet({
     (x) => x.waypoints.length > 1 && has([x.name, ...x.waypoints.map((w) => w.name)]),
   );
   const stations: Stop[] = index && f.length >= 2 ? index.search(q, 8) : [];
+  // Places (Swissminiatur, the Rhine Falls): their nearest stop, with the walk from it.
+  const places =
+    index && f.length >= 3
+      ? searchAttractions(attractionData as AttractionData, q, lang, (r) => stop(r))
+      : [];
   const lines = TEMPLATES.filter((tp) => has([tp.name, ...tp.chain.map((c) => c.name)]));
   // Typed a line's own name ("Bernina"): the line comes first, before stations named after it.
   // A station named just that ("Bern") stays first.
@@ -174,7 +181,7 @@ export function AddSheet({
                 template: tp,
                 reversed: directionFrom(tp, from, stop, nextAt),
               });
-            const s = stations[0];
+            const s = stations[0] ?? places[0]?.stops[0];
             if (s) onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } });
           }}
         />
@@ -206,6 +213,22 @@ export function AddSheet({
               {kindOf(s) && <span className="r-sub">{t(kindOf(s)!)}</span>}
             </button>
           ))}
+          {places.length > 0 && <h3 className="section-label">{t('placesLabel')}</h3>}
+          {places.map((p) => {
+            const s = p.stops[0]!;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className="result"
+                onClick={() => onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
+              >
+                <span className="r-icon r-dot minor" aria-hidden="true" />
+                <span className="r-name">{p.name}</span>
+                <span className="r-sub">{t('placeStop', { stop: s.name, n: s.walkMin })}</span>
+              </button>
+            );
+          })}
           {forgot && (
             <p className="forgot" role="status">
               <span>{t('forgotten', { name: titleOf(forgot) })}</span>
@@ -253,6 +276,7 @@ export function AddSheet({
           {!linesFirst && lineList}
           {f.length >= 2 &&
             !stations.length &&
+            !places.length &&
             !trips.length &&
             !lines.length &&
             (index ? (

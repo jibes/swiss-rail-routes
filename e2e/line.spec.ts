@@ -250,3 +250,17 @@ test('a stay with a time to leave by: set, kept after reload, taken off', async 
     .click();
   await expect(page.locator('.panel .leave-by')).toHaveCount(0);
 });
+
+// Reported on the MCP (5 Nov 2026): "Swissminiatur" found only its pier. A place people go to
+// is found by its name and adds the stop nearest it, the walk said.
+test('a place found by its name adds its stop', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByPlaceholder('Station, scenic line or past trip').fill('Swissminiatur');
+  const place = page.getByRole('button', {
+    name: /^Swissminiatur Melide · about \d+ min on foot$/,
+  });
+  await expect(page.getByRole('heading', { name: 'Places' })).toBeVisible();
+  await place.click();
+  await expect(page.locator('.trip-line .station', { hasText: 'Melide' })).toBeVisible();
+});

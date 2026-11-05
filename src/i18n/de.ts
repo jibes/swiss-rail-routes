@@ -273,6 +273,8 @@ export const de = {
   fromTime: 'ab',
   departFrom: 'Abfahrt ab (Zeit)',
   stationsLabel: 'Stationen',
+  placesLabel: 'Ausflugsziele',
+  placeStop: '{stop} · etwa {n} Min. zu Fuss',
   kindBus: 'Bushaltestelle',
   kindBoat: 'Schiffstation',
   kindCable: 'Seilbahn',

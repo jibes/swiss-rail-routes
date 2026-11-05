@@ -261,6 +261,8 @@ export const en = {
   fromTime: 'from',
   departFrom: 'Leave from (time)',
   stationsLabel: 'Stations',
+  placesLabel: 'Places',
+  placeStop: '{stop} · about {n} min on foot',
   kindBus: 'Bus stop',
   kindBoat: 'Boat pier',
   kindCable: 'Cable car',

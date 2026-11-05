@@ -271,6 +271,8 @@ export const fr = {
   fromTime: 'dès',
   departFrom: 'Départ dès (heure)',
   stationsLabel: 'Gares et arrêts',
+  placesLabel: 'Lieux à visiter',
+  placeStop: '{stop} · env. {n} min à pied',
   kindBus: 'Arrêt de bus',
   kindBoat: 'Débarcadère',
   kindCable: 'Téléphérique',

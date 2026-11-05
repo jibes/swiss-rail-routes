@@ -1,0 +1,777 @@
+{
+  "v": 1,
+  "note": "Curated: places people go to by train, each with the stops nearest it (checked against the stop index, tests/attractions.test.ts). Walking minutes are estimated from the distance (core/attractions.ts). No opening hours: none certain enough.",
+  "attractions": [
+    {
+      "id": "swissminiatur",
+      "name": {
+        "en": "Swissminiatur",
+        "de": "Swissminiatur",
+        "fr": "Swissminiatur",
+        "it": "Swissminiatur"
+      },
+      "lat": 45.9563,
+      "lon": 8.9483,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:5302",
+          "name": "Melide"
+        },
+        {
+          "ref": "ch:1:sloid:5535",
+          "name": "Melide Swissminiatur (lago)"
+        }
+      ]
+    },
+    {
+      "id": "verkehrshaus",
+      "name": {
+        "en": "Swiss Museum of Transport",
+        "de": "Verkehrshaus der Schweiz",
+        "fr": "Musée Suisse des Transports",
+        "it": "Museo Svizzero dei Trasporti"
+      },
+      "lat": 47.0527,
+      "lon": 8.3356,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:17336",
+          "name": "Luzern Verkehrshaus"
+        },
+        {
+          "ref": "ch:1:sloid:77185",
+          "name": "Luzern, Verkehrshaus/Lido"
+        },
+        {
+          "ref": "ch:1:sloid:8459",
+          "name": "Verkehrshaus-Lido"
+        }
+      ]
+    },
+    {
+      "id": "chillon",
+      "name": {
+        "en": "Chillon Castle",
+        "de": "Schloss Chillon",
+        "fr": "Château de Chillon",
+        "it": "Castello di Chillon"
+      },
+      "lat": 46.4142,
+      "lon": 6.9273,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:94006",
+          "name": "Veytaux, château de Chillon"
+        },
+        {
+          "ref": "ch:1:sloid:1234",
+          "name": "Château-de-Chillon (lac)"
+        },
+        {
+          "ref": "ch:1:sloid:1302",
+          "name": "Veytaux-Chillon"
+        }
+      ]
+    },
+    {
+      "id": "rheinfall",
+      "name": {
+        "en": "Rhine Falls",
+        "de": "Rheinfall",
+        "fr": "Chutes du Rhin",
+        "it": "Cascate del Reno"
+      },
+      "lat": 47.6779,
+      "lon": 8.615,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:6039",
+          "name": "Schloss Laufen am Rheinfall"
+        },
+        {
+          "ref": "ch:1:sloid:18924",
+          "name": "Neuhausen Rheinfall"
+        },
+        {
+          "ref": "ch:1:sloid:82052",
+          "name": "Schloss Laufen, Rheinfall"
+        }
+      ]
+    },
+    {
+      "id": "ballenberg",
+      "name": {
+        "en": "Ballenberg Open-Air Museum",
+        "de": "Freilichtmuseum Ballenberg",
+        "fr": "Musée en plein air du Ballenberg",
+        "it": "Museo all'aperto del Ballenberg"
+      },
+      "lat": 46.7511,
+      "lon": 8.0788,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:8698",
+          "name": "Ballenberg West, Museum"
+        },
+        {
+          "ref": "ch:1:sloid:8699",
+          "name": "Ballenberg Ost, Museum"
+        },
+        {
+          "ref": "ch:1:sloid:8306",
+          "name": "Brienzwiler"
+        }
+      ]
+    },
+    {
+      "id": "top-of-europe",
+      "name": {
+        "en": "Jungfraujoch – Top of Europe",
+        "de": "Jungfraujoch – Top of Europe",
+        "fr": "Jungfraujoch – Top of Europe",
+        "it": "Jungfraujoch – Top of Europe"
+      },
+      "lat": 46.5475,
+      "lon": 7.9851,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7364",
+          "name": "Jungfraujoch"
+        }
+      ]
+    },
+    {
+      "id": "glacier-paradise",
+      "name": {
+        "en": "Matterhorn Glacier Paradise",
+        "de": "Matterhorn Glacier Paradise",
+        "fr": "Matterhorn Glacier Paradise",
+        "it": "Matterhorn Glacier Paradise"
+      },
+      "lat": 45.938,
+      "lon": 7.73,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:30210",
+          "name": "Klein Matterhorn"
+        }
+      ]
+    },
+    {
+      "id": "piz-gloria",
+      "name": {
+        "en": "Schilthorn – Piz Gloria",
+        "de": "Schilthorn – Piz Gloria",
+        "fr": "Schilthorn – Piz Gloria",
+        "it": "Schilthorn – Piz Gloria"
+      },
+      "lat": 46.5579,
+      "lon": 7.8353,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7457",
+          "name": "Schilthorn"
+        }
+      ]
+    },
+    {
+      "id": "aletsch-eggishorn",
+      "name": {
+        "en": "Aletsch Glacier view, Eggishorn",
+        "de": "Aletschgletscher-Blick, Eggishorn",
+        "fr": "Vue sur le glacier d'Aletsch, Eggishorn",
+        "it": "Vista sul ghiacciaio dell'Aletsch, Eggishorn"
+      },
+      "lat": 46.4271,
+      "lon": 8.0928,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:1442",
+          "name": "Eggishorn"
+        }
+      ]
+    },
+    {
+      "id": "lindt",
+      "name": {
+        "en": "Lindt Home of Chocolate",
+        "de": "Lindt Home of Chocolate",
+        "fr": "Lindt Home of Chocolate",
+        "it": "Lindt Home of Chocolate"
+      },
+      "lat": 47.3176,
+      "lon": 8.5536,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:90681",
+          "name": "Kilchberg ZH, Lindt & Sprüngli"
+        },
+        {
+          "ref": "ch:1:sloid:3200",
+          "name": "Kilchberg ZH"
+        }
+      ]
+    },
+    {
+      "id": "kapellbruecke",
+      "name": {
+        "en": "Chapel Bridge",
+        "de": "Kapellbrücke",
+        "fr": "Pont de la Chapelle",
+        "it": "Ponte della Cappella"
+      },
+      "lat": 47.0516,
+      "lon": 8.3075,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:5000",
+          "name": "Luzern"
+        },
+        {
+          "ref": "ch:1:sloid:73054",
+          "name": "Luzern, Schwanenplatz"
+        },
+        {
+          "ref": "ch:1:sloid:8492",
+          "name": "Luzern Bahnhofquai"
+        }
+      ]
+    },
+    {
+      "id": "bundeshaus",
+      "name": {
+        "en": "Federal Palace",
+        "de": "Bundeshaus",
+        "fr": "Palais fédéral",
+        "it": "Palazzo federale"
+      },
+      "lat": 46.9467,
+      "lon": 7.4441,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:90048",
+          "name": "Bern, Bundesplatz"
+        },
+        {
+          "ref": "ch:1:sloid:7000",
+          "name": "Bern"
+        }
+      ]
+    },
+    {
+      "id": "baerenpark",
+      "name": {
+        "en": "Bear Park, Bern",
+        "de": "BärenPark Bern",
+        "fr": "Fosse aux ours de Berne",
+        "it": "Parco degli orsi di Berna"
+      },
+      "lat": 46.9479,
+      "lon": 7.4597,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:90034",
+          "name": "Bern, Bärenpark"
+        }
+      ]
+    },
+    {
+      "id": "paul-klee",
+      "name": {
+        "en": "Zentrum Paul Klee",
+        "de": "Zentrum Paul Klee",
+        "fr": "Zentrum Paul Klee",
+        "it": "Zentrum Paul Klee"
+      },
+      "lat": 46.949,
+      "lon": 7.4743,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:90127",
+          "name": "Bern, Zentrum Paul Klee"
+        }
+      ]
+    },
+    {
+      "id": "zoo-zuerich",
+      "name": {
+        "en": "Zurich Zoo",
+        "de": "Zoo Zürich",
+        "fr": "Zoo de Zurich",
+        "it": "Zoo di Zurigo"
+      },
+      "lat": 47.3851,
+      "lon": 8.5741,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:91442",
+          "name": "Zürich, Zoo"
+        }
+      ]
+    },
+    {
+      "id": "landesmuseum",
+      "name": {
+        "en": "Swiss National Museum, Zurich",
+        "de": "Landesmuseum Zürich",
+        "fr": "Musée national suisse, Zurich",
+        "it": "Museo nazionale svizzero, Zurigo"
+      },
+      "lat": 47.3791,
+      "lon": 8.5405,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:3000",
+          "name": "Zürich HB"
+        },
+        {
+          "ref": "ch:1:sloid:3446",
+          "name": "Zürich Landesmuseum (See)"
+        }
+      ]
+    },
+    {
+      "id": "kunsthaus",
+      "name": {
+        "en": "Kunsthaus Zürich",
+        "de": "Kunsthaus Zürich",
+        "fr": "Kunsthaus Zürich",
+        "it": "Kunsthaus Zürich"
+      },
+      "lat": 47.3703,
+      "lon": 8.5483,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:91239",
+          "name": "Zürich, Kunsthaus"
+        }
+      ]
+    },
+    {
+      "id": "beyeler",
+      "name": {
+        "en": "Fondation Beyeler",
+        "de": "Fondation Beyeler",
+        "fr": "Fondation Beyeler",
+        "it": "Fondation Beyeler"
+      },
+      "lat": 47.5884,
+      "lon": 7.6532,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:89451",
+          "name": "Riehen, Fondation Beyeler"
+        }
+      ]
+    },
+    {
+      "id": "gruyeres-castle",
+      "name": {
+        "en": "Gruyères Castle",
+        "de": "Schloss Greyerz",
+        "fr": "Château de Gruyères",
+        "it": "Castello di Gruyères"
+      },
+      "lat": 46.5848,
+      "lon": 7.082,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:4541",
+          "name": "Gruyères, ville"
+        },
+        {
+          "ref": "ch:1:sloid:4077",
+          "name": "Gruyères"
+        }
+      ]
+    },
+    {
+      "id": "cailler",
+      "name": {
+        "en": "Maison Cailler",
+        "de": "Maison Cailler",
+        "fr": "Maison Cailler",
+        "it": "Maison Cailler"
+      },
+      "lat": 46.6061,
+      "lon": 7.1001,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:4088",
+          "name": "Broc-Village"
+        },
+        {
+          "ref": "ch:1:sloid:77727",
+          "name": "Broc-Village, gare"
+        }
+      ]
+    },
+    {
+      "id": "truemmelbach",
+      "name": {
+        "en": "Trümmelbach Falls",
+        "de": "Trümmelbachfälle",
+        "fr": "Chutes du Trümmelbach",
+        "it": "Cascate del Trümmelbach"
+      },
+      "lat": 46.565,
+      "lon": 7.913,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7774",
+          "name": "Trümmelbachfälle"
+        }
+      ]
+    },
+    {
+      "id": "staubbach",
+      "name": {
+        "en": "Staubbach Falls",
+        "de": "Staubbachfall",
+        "fr": "Chute du Staubbach",
+        "it": "Cascata dello Staubbach"
+      },
+      "lat": 46.5925,
+      "lon": 7.9055,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:85080",
+          "name": "Lauterbrunnen, Kirche"
+        },
+        {
+          "ref": "ch:1:sloid:7384",
+          "name": "Lauterbrunnen"
+        }
+      ]
+    },
+    {
+      "id": "aareschlucht",
+      "name": {
+        "en": "Aare Gorge",
+        "de": "Aareschlucht",
+        "fr": "Gorges de l'Aar",
+        "it": "Gola dell'Aare"
+      },
+      "lat": 46.7173,
+      "lon": 8.215,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:30760",
+          "name": "Aareschlucht West"
+        },
+        {
+          "ref": "ch:1:sloid:71594",
+          "name": "Aareschlucht, Ost"
+        }
+      ]
+    },
+    {
+      "id": "giessbach",
+      "name": {
+        "en": "Giessbach Falls",
+        "de": "Giessbachfälle",
+        "fr": "Chutes du Giessbach",
+        "it": "Cascate del Giessbach"
+      },
+      "lat": 46.7344,
+      "lon": 8.0241,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:8353",
+          "name": "Giessbach Hotel"
+        },
+        {
+          "ref": "ch:1:sloid:8378",
+          "name": "Giessbach See"
+        }
+      ]
+    },
+    {
+      "id": "oeschinensee",
+      "name": {
+        "en": "Lake Oeschinen",
+        "de": "Oeschinensee",
+        "fr": "Lac d'Oeschinen",
+        "it": "Lago di Oeschinen"
+      },
+      "lat": 46.4975,
+      "lon": 7.7175,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7593",
+          "name": "Oeschinen (Bergstation)"
+        }
+      ]
+    },
+    {
+      "id": "olympic-museum",
+      "name": {
+        "en": "Olympic Museum, Lausanne",
+        "de": "Olympisches Museum, Lausanne",
+        "fr": "Musée Olympique, Lausanne",
+        "it": "Museo Olimpico, Losanna"
+      },
+      "lat": 46.5086,
+      "lon": 6.6339,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:92084",
+          "name": "Lausanne, Musée Olympique"
+        },
+        {
+          "ref": "ch:1:sloid:92086",
+          "name": "Lausanne, Ouchy-Olympique"
+        }
+      ]
+    },
+    {
+      "id": "palais-nations",
+      "name": {
+        "en": "Palais des Nations, Geneva",
+        "de": "Palais des Nations, Genf",
+        "fr": "Palais des Nations, Genève",
+        "it": "Palazzo delle Nazioni, Ginevra"
+      },
+      "lat": 46.2267,
+      "lon": 6.1405,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:88196",
+          "name": "Genève, Appia"
+        },
+        {
+          "ref": "ch:1:sloid:87058",
+          "name": "Genève, Nations"
+        }
+      ]
+    },
+    {
+      "id": "cern",
+      "name": {
+        "en": "CERN",
+        "de": "CERN",
+        "fr": "CERN",
+        "it": "CERN"
+      },
+      "lat": 46.234,
+      "lon": 6.0555,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:87918",
+          "name": "Meyrin, CERN"
+        }
+      ]
+    },
+    {
+      "id": "einsiedeln-abbey",
+      "name": {
+        "en": "Einsiedeln Abbey",
+        "de": "Kloster Einsiedeln",
+        "fr": "Abbaye d'Einsiedeln",
+        "it": "Abbazia di Einsiedeln"
+      },
+      "lat": 47.1268,
+      "lon": 8.7518,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:73771",
+          "name": "Einsiedeln, Klosterplatz"
+        },
+        {
+          "ref": "ch:1:sloid:3283",
+          "name": "Einsiedeln"
+        }
+      ]
+    },
+    {
+      "id": "stiftsbibliothek",
+      "name": {
+        "en": "Abbey Library of St. Gallen",
+        "de": "Stiftsbibliothek St. Gallen",
+        "fr": "Bibliothèque de l'abbaye de Saint-Gall",
+        "it": "Biblioteca dell'abbazia di San Gallo"
+      },
+      "lat": 47.4233,
+      "lon": 9.3768,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:94346",
+          "name": "St. Gallen, Stiftsbezirk"
+        },
+        {
+          "ref": "ch:1:sloid:6302",
+          "name": "St. Gallen"
+        }
+      ]
+    },
+    {
+      "id": "castelgrande",
+      "name": {
+        "en": "Castelgrande, Bellinzona",
+        "de": "Castelgrande, Bellinzona",
+        "fr": "Castelgrande, Bellinzone",
+        "it": "Castelgrande, Bellinzona"
+      },
+      "lat": 46.1933,
+      "lon": 9.0221,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:75152",
+          "name": "Bellinzona, Viale Portone"
+        },
+        {
+          "ref": "ch:1:sloid:5213",
+          "name": "Bellinzona"
+        }
+      ]
+    },
+    {
+      "id": "first-cliff-walk",
+      "name": {
+        "en": "First Cliff Walk",
+        "de": "First Cliff Walk",
+        "fr": "First Cliff Walk",
+        "it": "First Cliff Walk"
+      },
+      "lat": 46.6597,
+      "lon": 8.0543,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7354",
+          "name": "First (Grindelwald)"
+        }
+      ]
+    },
+    {
+      "id": "titlis",
+      "name": {
+        "en": "Titlis Cliff Walk",
+        "de": "Titlis Cliff Walk",
+        "fr": "Titlis Cliff Walk",
+        "it": "Titlis Cliff Walk"
+      },
+      "lat": 46.7707,
+      "lon": 8.4229,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:8493",
+          "name": "Titlis"
+        }
+      ]
+    },
+    {
+      "id": "stoos-ridge",
+      "name": {
+        "en": "Stoos ridge (Fronalpstock)",
+        "de": "Stoos-Grat (Fronalpstock)",
+        "fr": "Crête du Stoos (Fronalpstock)",
+        "it": "Cresta dello Stoos (Fronalpstock)"
+      },
+      "lat": 46.9779,
+      "lon": 8.6625,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:5091",
+          "name": "Stoos SZ"
+        },
+        {
+          "ref": "ch:1:sloid:30391",
+          "name": "Stoos(Sesselbahn Fronalpstock)"
+        }
+      ]
+    },
+    {
+      "id": "chaplin",
+      "name": {
+        "en": "Chaplin's World",
+        "de": "Chaplin's World",
+        "fr": "Chaplin's World",
+        "it": "Chaplin's World"
+      },
+      "lat": 46.4746,
+      "lon": 6.8461,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:79165",
+          "name": "Corsier-sur-Vevey, Chaplin"
+        }
+      ]
+    },
+    {
+      "id": "lavaux",
+      "name": {
+        "en": "Lavaux vineyard terraces",
+        "de": "Weinbergterrassen Lavaux",
+        "fr": "Lavaux, vignoble en terrasses",
+        "it": "Terrazze vitate del Lavaux"
+      },
+      "lat": 46.4925,
+      "lon": 6.7458,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:1125",
+          "name": "Epesses"
+        }
+      ]
+    },
+    {
+      "id": "oberhofen-castle",
+      "name": {
+        "en": "Oberhofen Castle",
+        "de": "Schloss Oberhofen",
+        "fr": "Château d'Oberhofen",
+        "it": "Castello di Oberhofen"
+      },
+      "lat": 46.7302,
+      "lon": 7.6697,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:7152",
+          "name": "Oberhofen am Thunersee"
+        },
+        {
+          "ref": "ch:1:sloid:7174",
+          "name": "Oberhofen a. T., Dorf"
+        }
+      ]
+    },
+    {
+      "id": "rigi-kaltbad",
+      "name": {
+        "en": "Rigi Kaltbad mineral baths",
+        "de": "Mineralbad Rigi Kaltbad",
+        "fr": "Bains minéraux de Rigi Kaltbad",
+        "it": "Bagni minerali di Rigi Kaltbad"
+      },
+      "lat": 47.0618,
+      "lon": 8.4664,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:5074",
+          "name": "Rigi Kaltbad-First"
+        }
+      ]
+    },
+    {
+      "id": "lion-monument",
+      "name": {
+        "en": "Lion Monument, Lucerne",
+        "de": "Löwendenkmal, Luzern",
+        "fr": "Monument du Lion, Lucerne",
+        "it": "Monumento al Leone, Lucerna"
+      },
+      "lat": 47.0584,
+      "lon": 8.3104,
+      "stops": [
+        {
+          "ref": "ch:1:sloid:77149",
+          "name": "Luzern, Löwenplatz"
+        },
+        {
+          "ref": "ch:1:sloid:5000",
+          "name": "Luzern"
+        }
+      ]
+    }
+  ]
+}

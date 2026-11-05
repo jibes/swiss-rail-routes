@@ -206,6 +206,13 @@ describe('tools, on recorded answers', () => {
     expect(stops[0]).toMatchObject({ name: 'Kleine Scheidegg', kind: 'train' });
     expect(stops[0]!.ref).toMatch(/^ch:1:sloid:\d+$/);
     expect(tools.findStops({ query: 'Bern', limit: 2 }).stops).toHaveLength(2);
+    // Reported 5 Nov 2026: "Swissminiatur" found only its pier, not Melide's station.
+    const mini = tools.findStops({ query: 'Swissminiatur' });
+    expect(mini.places?.[0]?.stops[0]).toMatchObject({ name: 'Melide' });
+    expect(mini.places?.[0]?.walkIsEstimate).toBe(true);
+    expect(tools.findStops({ query: 'Rheinfall', lang: 'fr' }).places?.[0]?.name).toBe(
+      'Chutes du Rhin',
+    );
     const all = tools.listScenicLines({}).lines;
     expect(all.length).toBe(templates.length);
     const b = tools.listScenicLines({ query: 'bernina' }).lines.find((l) => l.id === 'bernina')!;
