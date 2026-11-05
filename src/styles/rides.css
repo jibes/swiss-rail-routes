@@ -104,13 +104,14 @@
 /* A route station on the ride: in the list like any stop, in white, tap for the panel. */
 .trip-line .ride .mids li.via {
   display: grid;
-  grid-template-columns: 3.2em minmax(0, 1fr);
+  /* The time column widens for a delay, as a plain stop's does: "21:48 +1" on one line. */
+  grid-template-columns: minmax(3.2em, max-content) minmax(0, 1fr);
   column-gap: 10px;
   align-items: baseline;
 }
 
 .trip-line .ride .mids li.via.open {
-  grid-template-columns: 3.2em minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(3.2em, max-content) minmax(0, 1fr) 44px;
 }
 
 .trip-line .ride .mids li.via.entry {

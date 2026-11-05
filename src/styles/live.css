@@ -29,6 +29,7 @@
 
 .mids time {
   min-width: 3.2em;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 

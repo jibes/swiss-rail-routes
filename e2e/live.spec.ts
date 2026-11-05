@@ -227,3 +227,35 @@ test('under way at a stay, the rail splits at the station’s dot', async ({ pag
   expect(split.at, split.image).toBeDefined();
   expect(Math.abs(split.at! - split.dot)).toBeLessThan(1.5);
 });
+
+// In a ride's stop list a delay stays beside its time, for a route station (a via row) as for
+// any other stop: on via rows "+1" wrapped under the time (reported 5 Nov 2026).
+test('a delay in a stop list stays on the time’s line, via rows included', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T1!, name: 'T1' }));
+  for (const toggle of await page.locator('.trip-line .ride .mids-toggle').all())
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+  await expect(page.locator('.trip-line .ride .mids li.via').first()).toBeVisible();
+  const rows = await page.locator('.trip-line .ride .mids li:not(.here-mid)').evaluateAll((lis) =>
+    lis.flatMap((li) => {
+      const time = li.querySelector('time');
+      if (!time) return [];
+      const late = document.createElement('span');
+      late.className = 'late';
+      late.textContent = ' +12';
+      time.append(late);
+      const t = time.getBoundingClientRect();
+      const n = (li.querySelector('.n') ??
+        li.querySelector('span:not(.late)'))!.getBoundingClientRect();
+      return [
+        {
+          via: li.classList.contains('via'),
+          oneLine: t.height < 24,
+          beside: n.left >= t.right - 1,
+        },
+      ];
+    }),
+  );
+  expect(rows.some((r) => r.via)).toBe(true);
+  expect(rows.filter((r) => !r.oneLine || !r.beside)).toEqual([]);
+});
