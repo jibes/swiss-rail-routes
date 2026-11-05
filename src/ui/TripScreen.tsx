@@ -8,6 +8,7 @@ import {
   removeEntry,
   replaceEntry,
   setEntryStay,
+  setEntryLeaveBy,
 } from '../core/line';
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
@@ -463,6 +464,7 @@ export function TripScreen({ id }: { id: string }) {
                 replace: (k: number, s: { stopRef: string; name: string }) =>
                   edit((r) => replaceEntry(r, k, s)),
                 stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
+                leaveBy: (k, hm) => edit((r) => setEntryLeaveBy(r, k, hm)),
                 move: (from, to) => {
                   edit((r) => moveEntry(r, from, to));
                   setOpen(to);

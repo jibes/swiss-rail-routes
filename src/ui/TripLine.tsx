@@ -19,6 +19,7 @@ import { StopPicker } from './StopPicker';
 import { TEMPLATES } from './TemplatePicker';
 import { platformAt } from '../core/live';
 import { ChangePlatform } from './ChangePlatform';
+import { LeaveBy } from './LeaveBy';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
@@ -26,6 +27,8 @@ import { seatOn } from '../core/seat';
 export interface LineActions {
   replace: (k: number, stop: { stopRef: string; name: string }) => void;
   stay: (k: number, min: number | null) => void;
+  /** A stay's time to leave by (the place closes), or any time. */
+  leaveBy?: (k: number, hhmm: string | null) => void;
   move: (from: number, to: number) => void;
   remove: (k: number) => void;
   dropLine: (k: number) => void;
@@ -46,8 +49,9 @@ const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amb
 const isWalk = (r?: LineRow) => r?.type === 'ride' && r.section.mode === 'walk';
 
 /** Only a stay is said: a change shows as a big dot with two times. */
-function stayLabel(t: ReturnType<typeof useT>, r: StationRow) {
-  return r.role === 'stop' && r.stay ? t('stayFor', { min: r.stay }) : '';
+function stayLabel(t: ReturnType<typeof useT>, r: StationRow, leaveBy?: string) {
+  if (r.role !== 'stop' || !r.stay) return '';
+  return leaveBy ? t('stayUntil', { min: r.stay, time: leaveBy }) : t('stayFor', { min: r.stay });
 }
 
 /**
@@ -160,7 +164,7 @@ export function TripLine({
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
-    const label = stayLabel(t, r);
+    const label = stayLabel(t, r, r.entry !== undefined ? entries[r.entry]?.w.leaveBy : undefined);
     if (!act && r.entry !== undefined)
       return (
         // Nothing to edit: a station you entered is just its name.
@@ -226,6 +230,7 @@ export function TripLine({
             fixed={fixedFirst ? 1 : 0}
             name={r.name}
             stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
+            leaveBy={entries[k]!.w.leaveBy}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
             act={act}
@@ -503,6 +508,7 @@ function Panel({
   fixed,
   name,
   stay,
+  leaveBy,
   line,
   change,
   act,
@@ -516,6 +522,7 @@ function Panel({
   fixed: number;
   name: string;
   stay: number | null;
+  leaveBy?: string;
   line: string;
   act: LineActions;
   close: () => void;
@@ -577,6 +584,9 @@ function Panel({
           </div>
           {stay === null && change && <p className="panel-note">{t('changeNeeded')}</p>}
           {!!stay && <StayStepper k={k} name={name} stay={stay} act={act} />}
+          {!!stay && act.leaveBy && (
+            <LeaveBy name={name} value={leaveBy} set={(hm) => act.leaveBy!(k, hm)} />
+          )}
         </>
       )}
       {line && (

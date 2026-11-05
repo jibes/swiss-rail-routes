@@ -23,6 +23,13 @@ export interface Waypoint {
   line?: string;
   /** A scenic line's must-pass station between the two you entered (0.4.0): part of the line. */
   ring?: boolean;
+  /**
+   * Leave by then (`HH:MM`, Zurich, on the trip's date): the place closes (0.20.0). The planner
+   * keeps to it, and says so where no connection can.
+   */
+  leaveBy?: string;
+  /** Not there before then (`HH:MM`): the place opens; a stay starts then at the earliest. */
+  arriveAfter?: string;
 }
 
 export interface Tour {
@@ -50,6 +57,8 @@ export type WarningType =
   /** A notice of the train about a stretch you do not ride: said, not counted. */
   | 'disruption-away'
   | 'after-sunset'
+  /** A scenic line's own stretch ridden after sunset (and dusk): little to see. */
+  | 'line-after-dark'
   | 'not-ga'
   | 'reservation'
   | 'tight-transfer'
@@ -65,7 +74,9 @@ export type WarningType =
   /** A scenic line the leg asks for is not ridden at that time (its stations not reached). */
   | 'line-missed'
   /** A day trip back only the next morning (the only way back there is). */
-  | 'next-day';
+  | 'next-day'
+  /** No connection leaves a stop by the time you asked to leave it (`leaveBy`). */
+  | 'window-missed';
 
 export interface LatLon {
   lat: number;

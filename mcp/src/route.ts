@@ -16,6 +16,10 @@ export interface StopInput {
   /** Minutes to get off for; 0 or left out rides through (or changes, as the plan needs). */
   stay?: number;
   line?: string;
+  /** Leave by then (`HH:MM`): the place closes. */
+  leaveBy?: string;
+  /** Not there before then (`HH:MM`): the place opens. */
+  arriveAfter?: string;
 }
 
 export interface RouteInput {
@@ -24,6 +28,8 @@ export interface RouteInput {
   arriveBy?: string;
   stops: StopInput[];
   roundTrip?: boolean;
+  /** A round trip's way back after its last stay: as listed (default), or the fastest home. */
+  returnWay?: 'fastest' | 'as_listed';
   ticket?: TicketType;
 }
 
@@ -114,10 +120,24 @@ export function buildRoute(
       prev && stopKey(prev.w.stopRef) === stopKey(stop.ref)
         ? entries.pop()!
         : stationEntry({ stopRef: stop.ref, name: stop.name });
-    const w: Waypoint = stay ? { ...entry.w, kind: 'stop', dwellMin: stay } : entry.w;
+    for (const t of [s.leaveBy, s.arriveAfter])
+      if (t !== undefined && !TIME.test(t)) throw new ToolError(`not a time (HH:MM): ${t}`);
+    const w: Waypoint = {
+      ...(stay ? { ...entry.w, kind: 'stop', dwellMin: stay } : entry.w),
+      ...(s.leaveBy ? { leaveBy: s.leaveBy } : {}),
+      ...(s.arriveAfter ? { arriveAfter: s.arriveAfter } : {}),
+    };
     entries.push({ ...entry, w });
   });
   if (input.roundTrip && entries.length) entries.push(stationEntry(entries[0]!.w));
+  if (input.returnWay === 'fastest') {
+    if (!input.roundTrip) throw new ToolError('returnWay needs roundTrip');
+    // After the last stay, straight home: its stations and lines left out, so the planner
+    // takes the fastest way back (scenic out, fast back).
+    const last = entries.findLastIndex((e, k) => k < entries.length - 1 && e.w.kind === 'stop');
+    if (last < 1) throw new ToolError('returnWay fastest needs a stay to turn at');
+    entries.splice(last + 1, entries.length - 1 - (last + 1));
+  }
   if (entries.length < 2) throw new ToolError('a trip needs at least two stations');
   const { date, anchor } = resolveWhen(input, now);
   return fromEntries(
@@ -147,6 +167,8 @@ export function routeLinkOf(tour: Tour, publicUrl: string): string {
       `${slug}.${code}`,
       ...(w.kind === 'stop' ? [String(w.dwellMin)] : []),
       ...(w.templateId ? [`@${w.templateId}`] : []),
+      ...(w.arriveAfter ? [`f${w.arriveAfter.replace(':', '')}`] : []),
+      ...(w.leaveBy ? [`u${w.leaveBy.replace(':', '')}`] : []),
     ].join('.');
   });
   const when =

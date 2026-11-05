@@ -368,6 +368,13 @@
   gap: 8px;
 }
 
+.panel .leave-by {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
 .stay-input {
   display: flex;
   align-items: baseline;

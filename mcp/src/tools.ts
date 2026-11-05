@@ -41,6 +41,8 @@ export type PlanInput = RouteInput & {
   strict?: boolean;
   /** With fewer options than found: the recommended one (default) or the first to leave. */
   pick?: 'recommended' | 'earliest';
+  /** Scenic lines by daylight: said and ranked behind (preferred), or left out (required). */
+  daylight?: 'preferred' | 'required';
 };
 
 export type MoreInput = Omit<PlanInput, 'departAt' | 'arriveBy' | 'options'> & {
@@ -332,7 +334,7 @@ export function createTools(deps: ToolDeps) {
     },
 
     async planTrip(input: PlanInput) {
-      const { options: want, lang = 'en', reservations, strict, pick, ...route } = input;
+      const { options: want, lang = 'en', reservations, strict, pick, daylight, ...route } = input;
       const count = Math.max(1, Math.min(want ?? 3, 3));
       const key = JSON.stringify(['plan', route, reservations]);
       const job = planJob(key, () => ({
@@ -344,8 +346,27 @@ export function createTools(deps: ToolDeps) {
       if (!r.options?.length || !r.legs) return failed({ ...r, legs: r.legs });
       const t = now();
       // Time passed since it was planned: what has left is no longer on offer.
-      const open = r.options.filter((c) => Date.parse(c.dep) >= t);
-      if (!open.length) throw new ToolError('every connection found has left: plan again');
+      const left = r.options.filter((c) => Date.parse(c.dep) >= t);
+      if (!left.length) throw new ToolError('every connection found has left: plan again');
+      // Daylight required: an option riding a scenic line after dark is left out, and said when
+      // that leaves none.
+      const dark = (c: PlannedChain) => c.warnings.some((w) => w.type === 'line-after-dark');
+      const open = daylight === 'required' ? left.filter((c) => !dark(c)) : left;
+      if (!open.length)
+        return {
+          status: 'after_dark' as const,
+          date: job.tour.date,
+          stations: stationsOf(job.tour),
+          options: [],
+          reason: [
+            ...new Set(
+              left[0]!.warnings
+                .filter((w) => w.type === 'line-after-dark')
+                .map((w) => translate(lang, w.key, w.params)),
+            ),
+          ].join('; '),
+          relaxed: relaxedOf(r),
+        };
       // Strict: a line asked for that no option rides is said, not ridden another way.
       if (strict && open.every(missesLine))
         return {

@@ -217,3 +217,36 @@ test('search: a line typed by its name comes first, a station named so stays fir
   await expect(page.locator('.trip-line .station.entry').first()).toContainText('Bern');
   await expect(page.locator('.trip-line .station.entry').first()).not.toContainText('Bernina');
 });
+
+test('a stay with a time to leave by: set, kept after reload, taken off', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern', 'bern');
+  const entries = page.getByRole('list', { name: 'The trip' }).locator('.station.entry');
+  await entries.nth(1).getByRole('button').first().click();
+  // Only a stay has a time to leave by.
+  await expect(page.getByLabel('Leave Luzern by')).toHaveCount(0);
+  await page
+    .getByRole('group', { name: 'At this station' })
+    .getByRole('button', { name: 'Stay', exact: true })
+    .click();
+  await expect(page.locator('.panel .leave-by')).toContainText('Leave by Any time');
+  const field = page.getByLabel('Leave Luzern by');
+  await field.fill('17:30');
+  await field.press('Enter');
+  await expect(page.locator('.panel .leave-by')).toContainText('Leave by 17:30');
+  // The line says it without the panel.
+  await expect(entries.nth(1)).toContainText('Stay 30 min, by 17:30');
+
+  await page.reload();
+  await entries.nth(1).getByRole('button').first().click();
+  await expect(page.locator('.panel .leave-by')).toContainText('Leave by 17:30');
+  await page.getByRole('button', { name: 'Leave Luzern at any time' }).click();
+  await expect(page.locator('.panel .leave-by')).toContainText('Leave by Any time');
+  // Riding through again, the time goes with the stay.
+  await page
+    .getByRole('group', { name: 'At this station' })
+    .getByRole('button', { name: 'No stop' })
+    .click();
+  await expect(page.locator('.panel .leave-by')).toHaveCount(0);
+});

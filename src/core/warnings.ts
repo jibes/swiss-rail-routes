@@ -5,7 +5,7 @@ import { highlightName, type GaData, type GaRule, type RouteTemplate } from './d
 import type { Connection, LatLon, Section, WarningType } from './model';
 import { calls, transferGaps, isTight } from './planner/connection';
 import { stopKey } from './stops';
-import { isAfterSunset } from './sun';
+import { isAfterSunset, sunset } from './sun';
 
 export interface Warning {
   type: WarningType;
@@ -266,6 +266,37 @@ export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
   return out;
 }
 
+/** Dusk this long after sunset counts as dark: little left to see from the train. */
+export const DUSK_MIN = 15;
+
+/**
+ * The scenic lines a connection rides into the dark (reported on the MCP, 5 Nov 2026: a 16:05
+ * Gotthard option rode the mountain line after sunset, said only for one of its highlights):
+ * the line's own stations the connection calls at, two or more, the last of them after sunset
+ * plus `DUSK_MIN` at the middle one. From when it is dark, or from the first of them when all is.
+ */
+export function linesAfterDark(
+  c: Connection,
+  ctx: Pick<WarningContext, 'templates' | 'stop' | 'date'>,
+) {
+  const cs = calls(c).filter((x) => x.at !== undefined);
+  const out: { template: RouteTemplate; from: number; sectionIndex: number }[] = [];
+  for (const t of ctx.templates) {
+    const own = new Set(t.chain.map((x) => stopKey(x.ref)));
+    const on = cs.filter((x) => own.has(x.key));
+    if (on.length < 2) continue;
+    const mid = ctx.stop(on[Math.floor((on.length - 1) / 2)]!.key);
+    const set = mid && sunset(ctx.date, mid);
+    if (!set) continue;
+    const dark = set.getTime() + DUSK_MIN * 60_000;
+    const last = on.at(-1)!;
+    if (last.at! <= dark) continue;
+    const first = on.find((x) => x.at! > dark) ?? last;
+    out.push({ template: t, from: Math.max(on[0]!.at!, dark), sectionIndex: first.sectionIndex });
+  }
+  return out;
+}
+
 /** A replacement bus's ends this near stations of a line: it stands in for that line. */
 const REPLACES_KM = 1.5;
 
@@ -449,6 +480,15 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
       severity: 'warn',
       key: 'wAfterSunset',
       params: { name: h.name, highlight: h.id, time: hhmm(h.at) },
+    });
+  for (const d of linesAfterDark(c, ctx))
+    w.push({
+      ...base,
+      sectionIndex: d.sectionIndex,
+      type: 'line-after-dark',
+      severity: 'warn',
+      key: 'wLineAfterDark',
+      params: { line: d.template.name, time: hhmm(d.from) },
     });
   const month = Number(ctx.date.slice(5, 7));
   for (const t of ctx.templates)

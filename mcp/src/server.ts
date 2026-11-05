@@ -44,6 +44,16 @@ const stops = z
         .describe(
           'A scenic line id from list_scenic_lines, instead of a station. Runs in the direction that continues the route.',
         ),
+      leaveBy: z
+        .string()
+        .optional()
+        .describe(
+          'HH:MM, Zurich: leave this stop by then (it closes). Options that cannot are kept only when none can, with a window-missed error.',
+        ),
+      arriveAfter: z
+        .string()
+        .optional()
+        .describe('HH:MM, Zurich: not there before then (it opens); the stay starts then.'),
     }),
   )
   .min(1)
@@ -167,6 +177,18 @@ function build(tools: Tools, log: (line: object) => void) {
           .describe(
             'A scenic line asked for that cannot be ridden (closed, no service): answer no options and the reason instead of another way.',
           ),
+        daylight: z
+          .enum(['preferred', 'required'])
+          .optional()
+          .describe(
+            'Scenic lines by daylight: preferred (default; an option riding a line after sunset is said, line-after-dark, and ranked behind) or required (such options left out; status "after_dark" with the reason when none is left).',
+          ),
+        returnWay: z
+          .enum(['as_listed', 'fastest'])
+          .optional()
+          .describe(
+            'With roundTrip: the way back after the last stay as listed (default), or the fastest way home (scenic out, fast back).',
+          ),
         reservations,
         lang,
       },
@@ -183,6 +205,7 @@ function build(tools: Tools, log: (line: object) => void) {
         date,
         stops,
         roundTrip,
+        returnWay: z.enum(['as_listed', 'fastest']).optional().describe('As in plan_trip.'),
         ticket,
         direction: z.enum(['earlier', 'later']),
         from: z

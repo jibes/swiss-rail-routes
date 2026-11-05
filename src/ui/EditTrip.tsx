@@ -7,6 +7,7 @@ import {
   removeEntry,
   replaceEntry,
   setEntryStay,
+  setEntryLeaveBy,
 } from '../core/line';
 import { expectedArrival } from '../core/live';
 import type { Tour } from '../core/model';
@@ -274,6 +275,7 @@ export function EditTrip({ id }: { id: string }) {
         act={{
           replace: (k, s) => edit((r) => replaceEntry(r, k, s)),
           stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
+          leaveBy: (k, hm) => edit((r) => setEntryLeaveBy(r, k, hm)),
           move: (from, to) => {
             edit((r) => moveEntry(r, from, to));
             setOpen(to);

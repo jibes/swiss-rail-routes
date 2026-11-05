@@ -22,6 +22,8 @@ function token(w: OldWaypoint): string {
   if (w.templateId) mods.push(`@${w.templateId}`);
   if (w.earliestArr) mods.push(`a${hhmm(w.earliestArr)}`);
   if (w.latestDep) mods.push(`b${hhmm(w.latestDep)}`);
+  if (w.arriveAfter) mods.push(`f${hhmm(w.arriveAfter)}`);
+  if (w.leaveBy) mods.push(`u${hhmm(w.leaveBy)}`);
   return [slug(w.name), code(w.stopRef), ...mods].join('.');
 }
 

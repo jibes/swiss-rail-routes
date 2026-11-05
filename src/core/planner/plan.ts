@@ -42,10 +42,14 @@ export interface PlanDeps {
 export interface Weights {
   transfer: number;
   afterSunset: number;
+  /** A scenic line's stretch ridden in the dark: of otherwise equal options, the one by day. */
+  lineAfterDark: number;
   disruption: number;
   tightTransfer: number;
   /** A scenic line asked for and not ridden: well behind any plan that rides it. */
   lineMissed: number;
+  /** A stop left later than you asked (`leaveBy`): only when no connection leaves in time. */
+  windowMissed: number;
 }
 /** Chains kept per leg, and the shortest change planned (minutes). */
 const BEAM_WIDTH = 6;
@@ -56,9 +60,11 @@ const DAY_START = '05:00';
 export const DEFAULT_WEIGHTS: Weights = {
   transfer: 15,
   afterSunset: 60,
+  lineAfterDark: 20,
   disruption: 30,
   tightTransfer: 10,
   lineMissed: 120,
+  windowMissed: 120,
 };
 
 /** The one rule that can be let go: a leg's must-pass stations (and its lines' modes). */
@@ -232,9 +238,11 @@ function scoreOf(c: Connection, w: Warning[], wt: Weights): number {
   return (
     wt.transfer * c.transfers +
     wt.afterSunset * count('after-sunset') +
+    wt.lineAfterDark * count('line-after-dark') +
     wt.disruption * count('disruption') +
     wt.tightTransfer * count('tight-transfer') +
-    wt.lineMissed * count('line-missed')
+    wt.lineMissed * count('line-missed') +
+    wt.windowMissed * count('window-missed')
   );
 }
 
@@ -318,6 +326,44 @@ export function zurichLocal(t: number): string {
       .map((x) => [x.type, x.value]),
   );
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/** A stop's time on the trip's day (`leaveBy`, `arriveAfter`), as ms; undefined when unset. */
+const timeOn = (date: string, hhmm: string | undefined) =>
+  hhmm ? ms(zurichDateTime(`${date}T${hhmm}`)) : undefined;
+
+/**
+ * Connections that leave `from` by its `leaveBy` (reported on the MCP, 5 Nov 2026: a stay at
+ * Melide ran past Swissminiatur's closing). None in time: all of them, each said as leaving late
+ * (`window-missed`, scored well behind one in time).
+ */
+export function leavingBy(
+  opts: Connection[],
+  from: Waypoint,
+  date: string,
+  legIndex: number,
+): { opts: Connection[]; late: (c: Connection) => Warning[] } {
+  const by = timeOn(date, from.leaveBy);
+  if (by === undefined) return { opts, late: () => [] };
+  const inTime = opts.filter((c) => ms(expectedDep(c)) <= by);
+  if (inTime.length) return { opts: inTime, late: () => [] };
+  return {
+    opts,
+    late: (c) => [
+      {
+        type: 'window-missed',
+        severity: 'error',
+        legIndex,
+        ...(rides(c)[0] ? { sectionIndex: rides(c)[0]![1] } : {}),
+        key: 'wWindowMissed',
+        params: {
+          at: from.name,
+          time: from.leaveBy!,
+          dep: zurichLocal(ms(expectedDep(c))).slice(11, 16),
+        },
+      },
+    ],
+  };
 }
 
 interface Beam {
@@ -484,11 +530,13 @@ async function planFrom(
           );
           opts = preferred(own);
         }
-        for (const c of opts) {
+        const fit = leavingBy(opts, rules.leg.from, tour.date, i);
+        for (const c of fit.opts) {
           const w = [
+            ...fit.late(c),
             ...warningsFor(c, ctx),
             ...changeWarning(b.conns.at(-1), c, i),
-            ...gapWarning(c, opts, i),
+            ...gapWarning(c, fit.opts, i),
             ...(step === 'all' ? [] : lineMissed(c, rules, i)),
           ];
           const dwell = Math.max(rules.leg.to.dwellMin, minTransfer);
@@ -496,7 +544,10 @@ async function planFrom(
             conns: [...b.conns, c],
             warnings: [...b.warnings, ...w],
             penalty: b.penalty + scoreOf(c, w, wt),
-            ready: ms(expectedArr(c)) + dwell * MIN,
+            // A place that opens later: the stay starts when it does.
+            ready:
+              Math.max(ms(expectedArr(c)), timeOn(tour.date, rules.leg.to.arriveAfter) ?? 0) +
+              dwell * MIN,
           });
         }
       }

@@ -26,6 +26,8 @@ const row = (...xs: unknown[]) => {
   return xs.slice(0, n).map((x) => x ?? 0);
 };
 const text = (x: unknown) => (typeof x === 'string' ? x : undefined);
+const hhmm = (x: unknown) =>
+  typeof x === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(x) ? x : undefined;
 
 export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<string> {
   const { route, chain } = t;
@@ -59,6 +61,11 @@ export async function encodeTripLink(t: PlannedTrip, nameOf: NameOf): Promise<st
         w.templateId,
         w.line,
         w.ring ? 1 : 0,
+        // Slots 7 and 8 held never-enforced windows until 0.15.0: the stay's window goes after.
+        0,
+        0,
+        w.arriveAfter,
+        w.leaveBy,
       ),
     ),
     chain.connections.map((c) => [
@@ -165,6 +172,8 @@ export async function decodeTripLink(
         ...(text(w[5]) ? { line: text(w[5]) } : {}),
         ...(w[6] === 1 ? { ring: true } : {}),
         // Slots 7 and 8 (arrive no earlier, leave no later) were written until 0.15.0: read past.
+        ...(hhmm(w[9]) ? { arriveAfter: hhmm(w[9]) } : {}),
+        ...(hhmm(w[10]) ? { leaveBy: hhmm(w[10]) } : {}),
       };
     };
     const when = anchor.slice(1);

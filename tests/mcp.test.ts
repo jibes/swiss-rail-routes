@@ -761,3 +761,88 @@ describe('plan_trip after the second report', () => {
     expect(rec.options.map((o) => o.departure)).toEqual([`${FIXTURE_DATE}T09:35`]);
   });
 });
+
+describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2026)', () => {
+  type Planned = {
+    status?: string;
+    reason?: string;
+    options: { departure: string; warnings: { type: string }[] }[];
+  };
+  const route = (input: Parameters<typeof buildRoute>[0]) =>
+    buildRoute(input, { index, templates, now: NOW });
+  const albulaRide = (dep: string, mid: string, arr: string) =>
+    conn(
+      ride('RE 1141', [
+        ['Chur', dep],
+        ['Thusis', dep],
+        ['Filisur', mid],
+        ['Bergün/Bravuogn', mid],
+        ['Preda', mid],
+        ['St. Moritz', arr],
+      ]),
+    );
+  const ALBULA = {
+    date: FIXTURE_DATE,
+    departAt: '12:00',
+    stops: [{ name: 'Chur' }, { line: 'albula' }],
+  };
+  const tools = (list: ReturnType<typeof conn>[]) =>
+    createTools(deps({ timetable: { ...deps().timetable, trips: async () => list } }));
+  const day = albulaRide('12:58', '14:00', '15:00');
+  const late = albulaRide('15:58', '17:00', '18:00');
+
+  it('daylight: an option riding the line after dark is said; required leaves it out', async () => {
+    const said = (await tools([day, late]).planTrip(ALBULA)) as Planned;
+    const after = said.options.find((o) => o.departure === `${FIXTURE_DATE}T15:58`)!;
+    expect(after.warnings.map((w) => w.type)).toContain('line-after-dark');
+    const req = (await tools([day, late]).planTrip({
+      ...ALBULA,
+      daylight: 'required',
+    })) as Planned;
+    expect(req.options.map((o) => o.departure)).toEqual([`${FIXTURE_DATE}T12:58`]);
+    const none = (await tools([late]).planTrip({ ...ALBULA, daylight: 'required' })) as Planned;
+    expect(none).toMatchObject({ status: 'after_dark', options: [] });
+    expect(none.reason).toMatch(/Albula/);
+  });
+
+  it('a stop’s time to leave by and to arrive after, kept in the route and its link', () => {
+    const t = route({
+      date: FIXTURE_DATE,
+      stops: [
+        { name: 'Zürich HB' },
+        { name: 'Melide', stay: 150, arriveAfter: '09:00', leaveBy: '17:30' },
+        { name: 'Lugano' },
+      ],
+    });
+    expect(t.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '09:00' });
+    expect(routeLinkOf(t, URL_)).toContain('.f0900.u1730');
+    expect(() =>
+      route({ stops: [{ name: 'Zürich HB' }, { name: 'Melide', leaveBy: '5pm' }] }),
+    ).toThrow(/not a time/);
+  });
+
+  it('returnWay fastest: after the last stay, straight home', () => {
+    const stops = [
+      { name: 'Zürich HB' },
+      { line: 'voralpen-express' },
+      { name: 'Luzern', stay: 60 },
+      { name: 'Bern' },
+      { name: 'Olten' },
+    ];
+    const listed = route({ date: FIXTURE_DATE, stops, roundTrip: true });
+    expect(listed.waypoints.map((w) => w.name).slice(-3)).toEqual(['Bern', 'Olten', 'Zürich HB']);
+    const fast = route({ date: FIXTURE_DATE, stops, roundTrip: true, returnWay: 'fastest' });
+    expect(fast.waypoints.map((w) => w.name).slice(-2)).toEqual(['Luzern', 'Zürich HB']);
+    // The way out keeps its line.
+    expect(fast.waypoints.some((w) => w.name === 'St. Gallen')).toBe(true);
+    expect(() => route({ date: FIXTURE_DATE, stops, returnWay: 'fastest' })).toThrow(/roundTrip/);
+    expect(() =>
+      route({
+        date: FIXTURE_DATE,
+        stops: [{ name: 'Zürich HB' }, { name: 'Luzern' }],
+        roundTrip: true,
+        returnWay: 'fastest',
+      }),
+    ).toThrow(/stay/);
+  });
+});
