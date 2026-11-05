@@ -94,6 +94,7 @@ export const en = {
   map: 'Map',
   mapOffline: 'Map tiles could not be loaded.',
   mapLocate: 'Show my location',
+  mapNorth: 'North up',
   mapEstimate: 'Your estimated position',
   mapAtStop: 'By the timetable you are at {stop}.',
   mapBetween: 'By the timetable you are between {from} and {to}.',

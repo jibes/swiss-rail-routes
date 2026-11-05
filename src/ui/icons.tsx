@@ -47,3 +47,26 @@ export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
     </svg>
   );
 }
+
+/** North on a map: the red half points north, so the icon turns with the map. */
+export function Compass({ bearing, size = 22 }: { bearing: number; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      style={{ transform: `rotate(${-bearing}deg)` }}
+    >
+      <path d="M12 3l4 9H8z" fill="var(--rail)" />
+      <path
+        d="M8 12h8l-4 9z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

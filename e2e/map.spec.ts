@@ -3,10 +3,12 @@ import type { Locator, Page } from '@playwright/test';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { encodeTour } from '../tests/helpers/share';
-import { BEFORE, expect, newTrip, planShared, test } from './fixtures';
+import { allowUnrecorded, BEFORE, expect, newTrip, planShared, test } from './fixtures';
 
 test('map opens for a trip and says so when tiles are unreachable', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
+  // The map needs no timetable: the trip may be planned meanwhile, from an hour nothing answers.
+  allowUnrecorded(page);
   await newTrip(page, 'Chur', 'St. Moritz');
 
   await page.getByRole('button', { name: 'Map' }).click();
@@ -51,6 +53,8 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
 test('the plain ground follows dark mode', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.clock.install({ time: BEFORE });
+  // The map needs no timetable: the trip may be planned meanwhile, from an hour nothing answers.
+  allowUnrecorded(page);
   await newTrip(page, 'Chur', 'St. Moritz');
   await page.getByRole('button', { name: 'Map' }).click();
   await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
@@ -214,4 +218,42 @@ test('before the first train, and with the trip over: no marker by the time', as
   await page.clock.runFor(16_000);
   await expect(page.locator('.map-here')).toHaveCount(0);
   await expect(page.locator('.map-source')).toHaveCount(0);
+});
+
+// Android 15 draws edge to edge: the map runs under the system bars, its controls never (the
+// attribution's "i" sat behind the bar). The inset is set as the variable the styles read
+// before env(), which Playwright cannot set.
+test('map controls clear the system bars; turned or tilted, a tap puts north up', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.style.setProperty('--inset-bottom', '48px');
+      document.documentElement.style.setProperty('--inset-top', '24px');
+    });
+  });
+  allowUnrecorded(page);
+  await newTrip(page, 'Chur', 'St. Moritz');
+  await page.getByRole('button', { name: 'Map' }).click();
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+  const height = page.viewportSize()!.height;
+  const corner = await page.locator('.maplibregl-ctrl-bottom-right').boundingBox();
+  expect(corner!.y + corner!.height).toBeLessThanOrEqual(height - 48 + 0.5);
+  const bar = await page.locator('.map-bar').boundingBox();
+  expect(bar!.y).toBeGreaterThanOrEqual(24 + 12 - 0.5);
+
+  // Not turned: no compass. Shift + arrows turn and tilt the map, as a two-finger gesture does.
+  const north = page.getByRole('button', { name: 'North up' });
+  await expect(north).toHaveCount(0);
+  await page.locator('.maplibregl-canvas').focus();
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+ArrowUp');
+  await expect(north).toBeVisible();
+  // The needle points north: turned against the map.
+  const turned = await north.locator('svg').evaluate((s) => (s as SVGElement).style.transform);
+  expect(turned).toMatch(/rotate\(-?\d/);
+  expect(turned).not.toBe('rotate(0deg)');
+  await north.click();
+  await expect(north).toHaveCount(0);
 });

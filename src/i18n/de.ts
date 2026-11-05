@@ -98,6 +98,7 @@ export const de = {
   map: 'Karte',
   mapOffline: 'Kartenkacheln konnten nicht geladen werden.',
   mapLocate: 'Meinen Standort zeigen',
+  mapNorth: 'Norden nach oben',
   mapEstimate: 'Deine geschätzte Position',
   mapAtStop: 'Laut Fahrplan bist du in {stop}.',
   mapBetween: 'Laut Fahrplan bist du zwischen {from} und {to}.',

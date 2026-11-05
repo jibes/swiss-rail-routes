@@ -99,6 +99,7 @@ export const fr = {
   map: 'Carte',
   mapOffline: 'Impossible de charger la carte.',
   mapLocate: 'Afficher ma position',
+  mapNorth: 'Nord en haut',
   mapEstimate: 'Ta position estimée',
   mapAtStop: 'D’après l’horaire, tu es à {stop}.',
   mapBetween: 'D’après l’horaire, tu es entre {from} et {to}.',

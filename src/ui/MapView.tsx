@@ -17,7 +17,7 @@ import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { NotFound } from './NotFound';
 import { TEMPLATES } from './TemplatePicker';
-import { Icon } from './icons';
+import { Compass, Icon } from './icons';
 import { go } from './useHash';
 import { useLive, useLiveStatus } from './useLive';
 import { canLocate, useLocation } from './useLocation';
@@ -124,6 +124,8 @@ export default function MapView({ id }: { id: string }) {
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   // A move of the map: whether the location is in view is read from it.
   const [, setMoved] = useState(0);
+  // Turned or tilted by a gesture: the compass shows, and a tap brings north up again.
+  const [turn, setTurn] = useState({ bearing: 0, pitch: 0 });
 
   // Where you are: by the time while the trip is under way, by the device when asked to.
   const now = useNow();
@@ -193,6 +195,11 @@ export default function MapView({ id }: { id: string }) {
       });
       map.on('error', () => setFailed(true));
       map.on('moveend', () => setMoved((n) => n + 1));
+      const turned = () => {
+        if (map) setTurn({ bearing: map.getBearing(), pitch: map.getPitch() });
+      };
+      map.on('rotate', turned);
+      map.on('pitch', turned);
       map.on('load', () => {
         if (!map) return;
         map.addSource('lines', { type: 'geojson', data: d.lines });
@@ -327,20 +334,33 @@ export default function MapView({ id }: { id: string }) {
         >
           <Icon name="back" />
         </button>
-        {canLocate() && (
-          <button
-            type="button"
-            className={locating ? 'icon locating' : 'icon'}
-            aria-label={t('mapLocate')}
-            aria-pressed={locating}
-            onClick={() => {
-              setDenied(false);
-              setLocating(!locating);
-            }}
-          >
-            <Icon name="locate" />
-          </button>
-        )}
+        <div className="map-tools">
+          {canLocate() && (
+            <button
+              type="button"
+              className={locating ? 'icon locating' : 'icon'}
+              aria-label={t('mapLocate')}
+              aria-pressed={locating}
+              onClick={() => {
+                setDenied(false);
+                setLocating(!locating);
+              }}
+            >
+              <Icon name="locate" />
+            </button>
+          )}
+          {map && (Math.abs(turn.bearing) > 0.5 || turn.pitch > 0.5) && (
+            <button
+              type="button"
+              className="icon compass"
+              aria-label={t('mapNorth')}
+              // Only the view turns back: never moved, so tiles tell nothing new.
+              onClick={() => map.easeTo({ bearing: 0, pitch: 0 })}
+            >
+              <Compass bearing={turn.bearing} />
+            </button>
+          )}
+        </div>
       </div>
       {failed && (
         <p role="status" className="notice map-note">

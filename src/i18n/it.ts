@@ -98,6 +98,7 @@ export const it = {
   map: 'Mappa',
   mapOffline: 'Impossibile caricare la mappa.',
   mapLocate: 'Mostra la mia posizione',
+  mapNorth: 'Nord in alto',
   mapEstimate: 'La tua posizione stimata',
   mapAtStop: 'Secondo l’orario sei a {stop}.',
   mapBetween: 'Secondo l’orario sei tra {from} e {to}.',

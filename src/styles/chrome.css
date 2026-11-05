@@ -3,6 +3,33 @@
 .mapview {
   position: fixed;
   inset: 0;
+  /* The system bars' room (edge to edge on Android 15): the map runs under them, its controls
+     never. A variable first, so a test can set it; else what the WebView says. */
+  --in-t: var(--inset-top, env(safe-area-inset-top));
+  --in-r: var(--inset-right, env(safe-area-inset-right));
+  --in-b: var(--inset-bottom, env(safe-area-inset-bottom));
+  --in-l: var(--inset-left, env(safe-area-inset-left));
+}
+
+/* MapLibre's own corners (the attribution's "i" at the bottom) clear the bars too. */
+.mapview .maplibregl-ctrl-top-left,
+.mapview .maplibregl-ctrl-top-right {
+  top: var(--in-t);
+}
+
+.mapview .maplibregl-ctrl-bottom-left,
+.mapview .maplibregl-ctrl-bottom-right {
+  bottom: var(--in-b);
+}
+
+.mapview .maplibregl-ctrl-top-left,
+.mapview .maplibregl-ctrl-bottom-left {
+  left: var(--in-l);
+}
+
+.mapview .maplibregl-ctrl-top-right,
+.mapview .maplibregl-ctrl-bottom-right {
+  right: var(--in-r);
 }
 
 .mapview .map {
@@ -13,12 +40,24 @@
 .map-bar {
   position: absolute;
   z-index: 2;
-  top: calc(12px + env(safe-area-inset-top));
-  left: 12px;
-  right: 12px;
+  top: calc(12px + var(--in-t));
+  left: calc(12px + var(--in-l));
+  right: calc(12px + var(--in-r));
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   pointer-events: none;
+}
+
+/* Right of the bar: locate, and under it north up once the map is turned or tilted. */
+.map-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-tools > * {
+  pointer-events: auto;
 }
 
 .map-bar > * {
@@ -47,9 +86,9 @@
 .map-note {
   position: absolute;
   z-index: 2;
-  left: 12px;
-  right: 12px;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: calc(12px + var(--in-l));
+  right: calc(12px + var(--in-r));
+  bottom: calc(16px + var(--in-b));
 }
 
 /* ─── Update banner ─── */
@@ -146,9 +185,9 @@ a.secondary {
 .map-notes {
   position: absolute;
   z-index: 2;
-  left: 12px;
-  right: 12px;
-  bottom: calc(60px + env(safe-area-inset-bottom));
+  left: calc(12px + var(--in-l));
+  right: calc(12px + var(--in-r));
+  bottom: calc(60px + var(--in-b));
   display: flex;
   flex-direction: column;
   gap: 8px;
