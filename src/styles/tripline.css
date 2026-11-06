@@ -731,7 +731,12 @@
   color: var(--ink-2);
 }
 
-/* A station the plan chose, made yours (TripLine pinMenu): pin, stay, add on. */
+/* A station the plan chose, opened (TripLine planPanel): a card as yours, its actions a row. */
+.mids li .plan-panel {
+  flex-basis: 100%;
+  margin: 6px 0 8px;
+}
+
 .pin-menu {
   display: flex;
   flex-wrap: wrap;
@@ -756,7 +761,7 @@
   cursor: pointer;
 }
 
-.mids li:has(.pin-menu) {
+.mids li:has(.plan-panel) {
   flex-wrap: wrap;
 }
 
@@ -794,4 +799,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Opened, a stop inside a ride keeps its ring beside its name, not beside the card. */
+.trip-line .ride.with-mids .mids li:has(.plan-panel)::before {
+  top: calc(0.5lh - 5px);
 }

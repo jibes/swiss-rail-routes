@@ -18,9 +18,11 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   const entries = line.locator('.station.entry');
   await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
   await expect(line.locator('.station.ring').first()).toBeVisible();
-  // Grey is the timetable's: a tap says why it is not editable, and opens no panel.
+  // Grey is the line's: a tap opens its card, saying why it is not editable, and no editing.
   await line.locator('.station.ring button').first().click();
-  await expect(page.getByText(/Part of the Brünig line/)).toBeVisible();
+  await expect(page.locator('.plan-panel').getByText(/Part of the Brünig line/)).toBeVisible();
+  await expect(page.locator('.panel:not(.plan-panel)')).toHaveCount(0);
+  await page.locator('.plan-panel').getByRole('button', { name: 'Close' }).click();
   await expect(page.locator('.panel')).toHaveCount(0);
 
   // The panel: what you do there, the line that leads there, add after, up, down, remove.
@@ -59,16 +61,14 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   await page.getByRole('button', { name: 'Unpin Interlaken Ost' }).click();
   await expect(entries).toHaveCount(3);
 
-  // Another station in the field keeps the stay.
+  // The panel names its station, it does not rename it (0.35.1: add another, remove this one).
   await entries.nth(1).getByRole('button').first().click();
-  const field = page.getByRole('combobox', { name: 'Station' });
-  await field.fill('Zug');
-  await field.press('Enter');
-  await expect(entries.nth(1)).toContainText('Zug');
+  await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
+  await expect(page.locator('.panel .panel-name')).toHaveText('Luzern');
   await expect(entries.nth(1)).toContainText('Stay 60 min');
 
   await page.reload();
-  await expect(entries).toHaveText([/^Zürich HB/, /^Zug/, /^Zürich HB/]);
+  await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Zürich HB/]);
 });
 
 test('drag the open station by its grip; rename the trip', async ({ page }) => {

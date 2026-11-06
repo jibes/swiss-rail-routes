@@ -277,7 +277,6 @@ export const en = {
   nowSection: 'Now',
   planSharedRoute: 'Plan this trip',
   removeStation: 'Remove {stop}',
-  replaceStation: 'Station',
   scenicLines: 'Scenic lines',
   searchAdd: 'Station, scenic line or past trip',
   station: 'Station',

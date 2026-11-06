@@ -178,7 +178,7 @@ test('under way, the stations beside a walk passed are grey', async ({ page }) =
   // A station the timetable added, beside a walk: a tap opens its note, the row grows.
   const added = page.locator('.trip-line .station.auto.walk-from');
   await added.locator('.m.locked').first().click();
-  await expect(added.first().locator('.why')).toBeVisible();
+  await expect(added.first().locator('.plan-panel')).toBeVisible();
   expect((await spans()).flat().every(Boolean)).toBe(true);
 });
 

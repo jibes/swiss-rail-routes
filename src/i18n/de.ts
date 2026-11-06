@@ -288,7 +288,6 @@ export const de = {
   nowSection: 'Jetzt',
   planSharedRoute: 'Diese Reise planen',
   removeStation: '{stop} entfernen',
-  replaceStation: 'Station',
   scenicLines: 'Panoramalinien',
   searchAdd: 'Station, Panoramalinie oder frühere Reise',
   station: 'Station',

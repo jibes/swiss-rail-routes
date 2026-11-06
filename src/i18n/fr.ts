@@ -287,7 +287,6 @@ export const fr = {
   nowSection: 'Maintenant',
   planSharedRoute: 'Planifier ce voyage',
   removeStation: 'Retirer {stop}',
-  replaceStation: 'Gare',
   scenicLines: 'Lignes panoramiques',
   searchAdd: 'Gare, ligne panoramique ou voyage passé',
   station: 'Gare',
