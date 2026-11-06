@@ -113,21 +113,35 @@ export function pickTrip(answer: string, journeys: string[]): string | undefined
 }
 
 /** OJP Fare's question for that trip (NOVA, the Swiss tariff), with a Half Fare card or none. */
-export function fareRequestXml(trip: string, q: FareQuery, now: Date, requestor: string): string {
-  const card = q.halfFare
-    ? '<EntitlementProducts><EntitlementProduct><FareAuthorityRef>ch:1:NOVA</FareAuthorityRef>' +
-      '<EntitlementProductRef>HTA</EntitlementProductRef>' +
-      '<EntitlementProductName>Halbtax-Abonnement</EntitlementProductName>' +
-      '</EntitlementProduct></EntitlementProducts>'
-    : '';
+/** The ways a request without a card can say so; OJP2NOVA answers some with a 500 (Nov 2026:
+ *  a traveller of age 30, adult, no card; no traveller at all). The Worker tries them in turn. */
+export const NO_CARD_FORMS = 4;
+
+export function fareRequestXml(
+  trip: string,
+  q: FareQuery,
+  now: Date,
+  requestor: string,
+  form = 0,
+): string {
+  const hta =
+    '<EntitlementProducts><EntitlementProduct><FareAuthorityRef>ch:1:NOVA</FareAuthorityRef>' +
+    '<EntitlementProductRef>HTA</EntitlementProductRef>' +
+    '<EntitlementProductName>Halbtax-Abonnement</EntitlementProductName>' +
+    '</EntitlementProduct></EntitlementProducts>';
+  const adult = '<Age>30</Age><PassengerCategory>Adult</PassengerCategory>';
+  const fareClass = `<FareClass>${q.travelClass === 1 ? 'firstClass' : 'secondClass'}</FareClass>`;
+  const params = q.halfFare
+    ? `${fareClass}<Traveller>${adult}${hta}</Traveller>`
+    : [
+        `${fareClass}<Traveller>${adult}<EntitlementProducts/></Traveller>`,
+        `${fareClass}<Traveller><PassengerCategory>Adult</PassengerCategory></Traveller>`,
+        `<Traveller>${adult}</Traveller>`,
+        '',
+      ][form % NO_CARD_FORMS];
   const body =
     `<OJPFareRequest>%TS%<TripFareRequest>${trip}</TripFareRequest>` +
-    '<Params><FareAuthorityFilter>ch:1:NOVA</FareAuthorityFilter>' +
-    `<FareClass>${q.travelClass === 1 ? 'firstClass' : 'secondClass'}</FareClass>` +
-    // Without a card, no traveller at all: OJP2NOVA answers a traveller without one with a 500.
-    (q.halfFare
-      ? `<Traveller><Age>30</Age><PassengerCategory>Adult</PassengerCategory>${card}</Traveller>`
-      : '') +
-    '</Params></OJPFareRequest>';
+    `<Params><FareAuthorityFilter>ch:1:NOVA</FareAuthorityFilter>${params}</Params>` +
+    '</OJPFareRequest>';
   return envelope(body, now, requestor);
 }
