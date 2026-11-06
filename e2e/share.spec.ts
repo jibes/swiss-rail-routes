@@ -15,7 +15,12 @@ import { allowUnrecorded, BEFORE, expect, guard, planShared, test } from './fixt
 function recordAnswers(page: Page) {
   let xml = '';
   page.on('response', (r) => {
-    if (r.url().endsWith('/trip') && r.ok()) void r.text().then((t) => (xml = t || xml));
+    // A body read after the page moved on is gone: the answer before it stays.
+    if (r.url().endsWith('/trip') && r.ok())
+      void r.text().then(
+        (t) => (xml = t || xml),
+        () => undefined,
+      );
   });
   return () => xml;
 }

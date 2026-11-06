@@ -116,7 +116,7 @@ export async function guard(page: Page) {
     const failedLoad = /Failed to load resource|ERR_FAILED/.test(m.text());
     const meant =
       failedLoad &&
-      (/openfreemap|ojp\.invalid\/(journey|trip)/.test(url + m.text()) ||
+      (/openfreemap|ojp\.invalid\/(journey|trip|departures)/.test(url + m.text()) ||
         // Sync's own answers: a write that lost the race (409), a replaced key (410).
         (/ojp\.invalid\/sync\//.test(url) && /\b(409|410)\b/.test(m.text())) ||
         // OJP had no recorded answer: the Worker passes on the upstream failure (502).
