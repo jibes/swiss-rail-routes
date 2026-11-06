@@ -72,6 +72,29 @@ const fullFare = new Map(
 );
 
 const sections = new Map<string, GaData['sections'][number]>();
+// Evidence the GA does cover a summit line (the app says a cable car or cog railway with none as
+// not known): a GA fare of 0 on a stretch with a cable car, cog or funicular stop at one end. Its
+// ends take the stops within 1 km too, as the line may leave from its own stop beside the
+// station the fare names (Lauterbrunnen → Lauterbrunnen (Seilbahn)).
+const summit = (x: Stop) =>
+  x.modes.some(
+    (m) => m !== 'TRAIN' && m !== 'BUS' && m !== 'BOAT' && m !== 'TRAM' && m !== 'METRO',
+  );
+const around = (x: Stop) =>
+  [x.ref, ...stops.near(x, 1).map((n) => n.ref)].filter((r, i, all) => all.indexOf(r) === i);
+const covered = new Map<string, NonNullable<GaData['covered']>[number]>();
+for (const f of s.fares) {
+  if (f.reductionConstraintRef !== 'GA_2KL_CONSTRAINT' || amount.get(f.priceRef) !== 0) continue;
+  const route = (regional.get(f.regionalConstraintRef)?.regionalValidity ?? [])
+    .flatMap((v) => v.viaStations?.route ?? [])
+    .map((x) => (x.station ? stops.byRef(stopKey(x.station.code)) : undefined));
+  for (let i = 0; i + 1 < route.length; i++) {
+    const [a, b] = [route[i], route[i + 1]];
+    if (!a || !b || !(summit(a) || summit(b))) continue;
+    const [x, y] = a.ref < b.ref ? [a, b] : [b, a];
+    covered.set(`${x.ref}|${y.ref}`, { from: around(x), to: around(y), names: [x.name, y.name] });
+  }
+}
 for (const f of s.fares) {
   if (f.reductionConstraintRef !== 'GA_2KL_CONSTRAINT' || amount.get(f.priceRef) === 0) continue;
   const full = amount.get(fullFare.get(f.regionalConstraintRef) ?? '');
@@ -109,7 +132,10 @@ const out: GaData & { source: string } = {
   source: DATASET,
   reviewed: null,
   sections: [...sections.values()].sort((a, b) => a.names.join().localeCompare(b.names.join())),
+  covered: [...covered.values()].sort((a, b) => a.names.join().localeCompare(b.names.join())),
   supplementTrains: current.supplementTrains,
 };
 await writeFile(OUT, JSON.stringify(out, null, 2) + '\n');
-console.log(`${out.sections.length} GA sections from OSDM ${out.version} → ${OUT}`);
+console.log(
+  `${out.sections.length} GA sections, ${out.covered!.length} covered summit stretches from OSDM ${out.version} → ${OUT}`,
+);

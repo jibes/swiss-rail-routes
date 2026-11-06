@@ -1,6 +1,9 @@
 // A train's notice counts against the plan only when it concerns the stretch you ride.
+import { readFileSync, readdirSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Connection, Section } from '../src/core/model';
+import { parseTrips } from '../src/core/ojp/parse';
 import { placeByName, stopKey } from '../src/core/stops';
 import { noticeStretch, onThisStretch, stretchOf, warningsFor } from '../src/core/warnings';
 import { DATE, conn, ga, index, ride as tRide, templates } from './helpers/timetable';
@@ -38,12 +41,18 @@ describe('a notice and the stretch you ride', () => {
     expect(onThisStretch(s)).toBe(false);
   });
   it('an end you pass, or a notice naming no stretch: on your stretch', () => {
-    // Without places to read it against (as before): one end you pass is enough.
+    // An end passed mid-ride, without places to read it against: on.
+    const through = ride(
+      ['Spiez', 'Interlaken West', 'Interlaken Ost'],
+      ['Der Bahnverkehr zwischen Interlaken West und Wilderswil ist unterbrochen.'],
+    );
+    expect(onThisStretch(through)).toBe(true);
+    // Touched only at its first call, and nothing shows it lies inside: away (round 3, 6 Nov 2026).
     const s = ride(
       ['Interlaken West', 'Spiez', 'Bern'],
       ['Der Bahnverkehr zwischen Interlaken Ost und Interlaken West ist unterbrochen.'],
     );
-    expect(onThisStretch(s)).toBe(true);
+    expect(onThisStretch(s)).toBe(false);
     expect(onThisStretch(ride(['Bern', 'Zürich HB'], ['Personenunfall, Verspätungen.']))).toBe(
       true,
     );
@@ -269,5 +278,47 @@ describe('a notice read without the track (the MCP drops tracks; retest N3, 5 No
     expect(ir38).toBeGreaterThan(0);
     const on = best.warnings.filter((w) => w.sectionIndex === ir38);
     expect(on.map((w) => w.type)).toEqual(['disruption-away']);
+  });
+});
+
+// Retest round 3, 6 Nov 2026: a ride touching one end of a notice's stretch at its first or last
+// call is on it when it lies inside the stretch, away when it comes from the other side.
+describe('a ride touching one end of the stretch', () => {
+  const places = { stop: (r: string) => index.byRef(stopKey(r)), place: placeByName(index) };
+  const recorded = (tour: string, line: string, from: string, to: string) => {
+    for (const f of readdirSync(`tests/fixtures/ojp/${tour}`).filter((x) => x.endsWith('.xml.gz')))
+      for (const c of parseTrips(
+        gunzipSync(readFileSync(`tests/fixtures/ojp/${tour}/${f}`)).toString(),
+      ))
+        for (const s of c.sections)
+          if (s.line === line && s.from.name === from && s.to.name === to && s.notices?.length)
+            return s;
+    throw new Error(`${tour}: no ${line} ${from}–${to} with a notice`);
+  };
+  it('inside: the Mont-Blanc Express Les Marécottes–Vallorcine for "Martigny–Vallorcine" (7 Nov)', () => {
+    const r85 = recorded('LMBE', 'R85', 'Les Marécottes', 'Vallorcine (F)');
+    expect(onThisStretch(r85, places)).toBe(true);
+    expect(onThisStretch({ ...r85, geometry: undefined }, places)).toBe(true);
+  });
+  it('from the other side: Olten–Luzern and Bern–Luzern for "Luzern–Ebikon" (7 Nov)', () => {
+    for (const [line, from] of [
+      ['IR27', 'Olten'],
+      ['IR15', 'Bern'],
+    ]) {
+      const s = recorded('T7S', line!, from!, 'Luzern');
+      expect(onThisStretch(s, places), line).toBe(false);
+      expect(onThisStretch({ ...s, geometry: undefined }, places), line).toBe(false);
+    }
+  });
+  it('the S1 Sursee–Luzern, by hand: away; where things are not known, away too', () => {
+    const s1 = {
+      ...tRide('S1', [
+        ['Sursee', '10:18'],
+        ['Luzern', '10:45'],
+      ]),
+      notices: ['Der Bahnverkehr zwischen Luzern und Ebikon ist unterbrochen.'],
+    } as Section;
+    expect(onThisStretch(s1, places)).toBe(false);
+    expect(onThisStretch(s1, { stop: () => undefined })).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 // Where you change trains: the platform you arrive on and the one the next train leaves from,
 // "Pl. 7 → 8" or "Pl. 7 · Same platform" (0.17.3). Under way the trains' reports win, and an
 // arrival platform moved shows the planned one struck, as a ride's departure does.
-import { changeAt, changePlatforms } from '../core/changePlatform';
+import { changeAt, changePlatforms, continuesAs } from '../core/changePlatform';
 import { platformAt } from '../core/live';
 import type { LineRow } from '../core/rows';
 import { useT } from '../store';
@@ -17,6 +17,8 @@ export function ChangePlatform({
   live: LiveCtx | undefined;
 }) {
   const t = useT();
+  const on = continuesAs(rows, i);
+  if (on) return <span className="change-pl">{t('continuesAs', { line: on })}</span>;
   const at = changeAt(rows, i);
   if (!at) return null;
   const arr = platformAt(at.arr.section.to, rideOf(live, at.arr)?.stops.at(-1));

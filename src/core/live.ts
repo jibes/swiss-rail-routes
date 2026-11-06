@@ -2,7 +2,7 @@
 // when known. Position comes from the timetable only (no GPS, SPEC "Now").
 import type { Connection, PlatformCall, Section } from './model';
 import type { JourneyStatus, LiveCall } from './ojp/journey';
-import { isTight, walkMinutes } from './planner/connection';
+import { isTight, runsOn, walkMinutes } from './planner/connection';
 import { stopKey } from './stops';
 
 export interface LiveStop {
@@ -143,7 +143,7 @@ export function liveState(
   for (let i = 0; i < rides.length && stuck === undefined; i++) {
     const b = rides[i]!;
     const a = rides[i - 1];
-    const sameVehicle = !!a && !!a.s.journey && a.s.journey === b.s.journey;
+    const sameVehicle = !!a && runsOn(a.s, b.s);
     const walk = a && !sameVehicle ? walkMin(chain, a, b) : 0;
     const margin = a && !sameVehicle ? (depOf(b) - arrOf(a)) / 60_000 : Infinity;
     const boardGone = b.stops[0]!.cancelled;

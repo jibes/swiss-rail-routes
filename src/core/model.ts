@@ -60,6 +60,8 @@ export type WarningType =
   /** A scenic line's own stretch ridden after sunset (and dusk): little to see. */
   | 'line-after-dark'
   | 'not-ga'
+  /** A cable car or cog railway the GA data does not name: its cover is not known. */
+  | 'ga-unknown'
   | 'reservation'
   | 'tight-transfer'
   /** A tight change the operator times its vehicles for (`timedChanges`): said, not counted. */

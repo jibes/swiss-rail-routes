@@ -12,6 +12,7 @@ import {
   expectedArr,
   expectedDep,
   isTight,
+  runsOn,
   MIN,
   ms,
   rides,
@@ -169,7 +170,7 @@ function changeWarning(prev: Connection | undefined, c: Connection, legIndex: nu
   const a = rides(prev ?? c).at(-1);
   const b = rides(c)[0];
   if (!prev || !a || !b || !a[0].to.arr || !b[0].from.dep) return [];
-  if (a[0].journey && a[0].journey === b[0].journey) return [];
+  if (runsOn(a[0], b[0])) return [];
   const walk = [...prev.sections.slice(a[1] + 1), ...c.sections.slice(0, b[1])].reduce(
     (m, s) => m + (s.mode === 'walk' ? walkMinutes(s) : 0),
     0,
@@ -312,6 +313,16 @@ export function sameDayFirst(chains: PlannedChain[], tour: Tour): PlannedChain[]
       },
     ],
   }));
+}
+
+/**
+ * Retest round 3, 6 Nov 2026: options that leave a stay later than asked (`leaveBy`) were listed
+ * beside one that leaves in time. Once any leaves in time, those that cannot go; when none can,
+ * all stay, each said (`window-missed`).
+ */
+export function inTime(chains: PlannedChain[]): PlannedChain[] {
+  const ok = chains.filter((c) => !c.warnings.some((w) => w.type === 'window-missed'));
+  return ok.length ? ok : chains;
 }
 
 /** ms → `YYYY-MM-DDTHH:MM` in Swiss local time. */
@@ -587,7 +598,7 @@ async function planFrom(
     })),
     tour,
   );
-  const picked = pickOptions(done);
+  const picked = pickOptions(inTime(done));
   trace('plan.result', {
     chains: done.length,
     options: picked.options?.map(

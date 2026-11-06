@@ -253,6 +253,28 @@ suite('acceptance tours', { timeout }, () => {
     expect(best.warnings.some((w) => w.type === 'line-missed')).toBe(false);
   });
 
+  // Retest round 3, 6 Nov 2026: Interlaken Ost → Jungfraujoch with a GA said nothing, though the
+  // Eiger Express and the Jungfraubahn from Eigergletscher are not the GA's. A cable car or cog
+  // railway the fare data does not name is said as not known, never taken as covered.
+  it('JJ a summit ride the GA data does not name is said as not known', async () => {
+    const route = {
+      ...newTour('j', DATE, { stopRef: ref('Interlaken Ost'), name: 'Interlaken Ost' }),
+      anchor: { departAt: '08:00' },
+    };
+    const tour = addWaypoint(route, { stopRef: ref('Jungfraujoch'), name: 'Jungfraujoch' });
+    const r = await plan(tour, {
+      ...ojpFor('JJ'),
+      templates,
+      ga,
+      stop: (x: string) => index.byRef(x),
+      place: placeByName(index),
+    });
+    const unknown = r
+      .recommended!.warnings.filter((w) => w.type === 'ga-unknown')
+      .map((w) => `${w.params.from}–${w.params.to}`);
+    expect(unknown).toEqual(['Grindelwald Terminal–Eigergletscher', 'Eigergletscher–Jungfraujoch']);
+  });
+
   // Lines added in 0.19.0, each planned end to end on the recorded day: every station the line
   // must pass is called at, nothing relaxed. Proves the must-pass stations are ones trains stop at.
   const lines: [string, string, string][] = [

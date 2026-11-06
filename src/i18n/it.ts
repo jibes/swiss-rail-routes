@@ -23,6 +23,8 @@ export const it = {
   wGaHalf: '{from}–{to}: non coperto da AG o carta giornaliera (50 % di sconto con questi)',
   wGaReduced: '{from}–{to}: non coperto da AG o carta giornaliera (tariffa ridotta con questi)',
   wGaNone: '{from}–{to}: non coperto da AG o carta giornaliera',
+  wGaUnknown:
+    '{from}–{to}: validità di AG o carta giornaliera non nota, da verificare prima di partire',
   wTightTransfer: 'Coincidenza stretta a {at}: {min} min',
   wTimedChange: 'Coincidenza garantita a {at}: {min} min, il treno aspetta',
   wReplacementBus: 'Bus sostitutivo {from}–{to}: il tratto {line} è su strada',
@@ -66,6 +68,7 @@ export const it = {
   platform: 'Bin. {p}',
   platformChanged: 'Binario cambiato: ora {p}, invece di {was}',
   samePl: 'Stesso binario',
+  continuesAs: 'Il treno prosegue come {line}',
   arrPl: 'Arrivo',
   changePlSr: 'Arrivo al binario {a}, treno successivo dal binario {d}',
   samePlSr: 'Arrivo al binario {p}, treno successivo dallo stesso binario',

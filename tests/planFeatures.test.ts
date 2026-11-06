@@ -94,13 +94,17 @@ const day = [
 ];
 
 describe('a stay with a time to leave by, or not before (F3)', () => {
-  it('leave by: a later start that cannot leave in time is said, and the one that can recommended', async () => {
+  // Retest round 3, 6 Nov 2026: the option that cannot leave in time was still offered beside
+  // the one that can. Once one can, only those that can are offered; when none can, each is said.
+  it('leave by: only the options that leave in time are offered while any can', async () => {
     const r = await plan(visit({ leaveBy: '10:30' }), deps(day).deps);
     expect(r.recommended!.dep).toBe(day[0]!.dep);
     expect(r.recommended!.warnings.map((w) => w.type)).not.toContain('window-missed');
-    const late = r.options!.find((o) => o.dep === day[1]!.dep)!;
-    const w = late.warnings.find((x) => x.type === 'window-missed')!;
-    expect(w.params).toMatchObject({ at: 'Luzern', time: '10:30', dep: '11:00' });
+    expect(r.options!.map((o) => o.dep)).not.toContain(day[1]!.dep);
+    // None can leave by 09:30: all are offered, each said late.
+    const none = await plan(visit({ leaveBy: '09:30' }), deps(day).deps);
+    const w = none.recommended!.warnings.find((x) => x.type === 'window-missed')!;
+    expect(w.params).toMatchObject({ at: 'Luzern', time: '09:30' });
     // Without the time, both are just options.
     const free = await plan(visit({}), deps(day).deps);
     expect(free.options!.flatMap((o) => o.warnings).map((x) => x.type)).not.toContain(

@@ -60,6 +60,13 @@ function call(c: X, passed: boolean): LiveCall {
   };
 }
 
+/** The timetable has no such journey on that day: an answer, not the service failing. */
+export class UnknownJourneyError extends OjpError {
+  constructor() {
+    super('no such journey on that day');
+  }
+}
+
 export function parseJourney(xml: string): JourneyStatus {
   const delivery = obj(
     obj(obj(obj(parser.parse(xml))?.OJP)?.OJPResponse)?.ServiceDelivery,
@@ -67,7 +74,9 @@ export function parseJourney(xml: string): JourneyStatus {
   const d = obj(delivery);
   if (!d) throw new OjpError('no TripInfoDelivery');
   const err = obj(d.ErrorCondition);
-  if (err) throw new OjpError(str(err.TripInfoProblemType) ?? 'OJP error');
+  const problem = err && str(err.TripInfoProblemType);
+  if (problem === 'TRIPINFO_NOJOURNEYFOUND') throw new UnknownJourneyError();
+  if (err) throw new OjpError(problem ?? 'OJP error');
   const r = obj(d.TripInfoResult);
   const notices = arr(obj(obj(d.TripInfoResponseContext)?.Situations)?.PtSituation).flatMap((s) =>
     arr(

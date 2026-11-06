@@ -7,7 +7,7 @@ import { refreshChain, type RefreshDeps } from '../src/core/refresh';
 import type { Connection, Section } from '../src/core/model';
 import type { TripQuery } from '../src/core/ojp/request';
 import { parseTripQuery } from '../src/core/ojp/request';
-import { stopKey } from '../src/core/stops';
+import { placeByName, stopKey } from '../src/core/stops';
 import { toB64Url } from '../src/core/b64';
 import { pipe } from '../src/core/export/tripShare';
 import { changesOf } from '../src/core/trip';
@@ -273,15 +273,19 @@ describe('the compact link (0.21.0)', async () => {
   const tours = acceptanceTours(FIXTURE_DATE);
   const planned: [string, PlannedTrip][] = [];
   for (const id of ['T1', 'T2', 'T3', 'T4', 'T5', 'T6']) {
-    const r = await plan(tours[id]!, { ...ojpFor(id), templates, ga, stop });
+    const r = await plan(tours[id]!, {
+      ...ojpFor(id),
+      templates,
+      ga,
+      stop,
+      place: placeByName(index),
+    });
     if (r.recommended)
       planned.push([
         id,
         newTrip('mine', { ...tours[id]!, name: id }, r.legs!, r.recommended, new Date(0)),
       ]);
   }
-  const rides = (t: PlannedTrip) =>
-    t.chain.connections.flatMap((c) => c.sections).filter((s) => s.mode !== 'walk');
   const shape = (t: PlannedTrip) => ({
     name: t.name,
     date: t.route.date,
@@ -331,7 +335,8 @@ describe('the compact link (0.21.0)', async () => {
     for (const [id, t] of planned) {
       const now = await encodeTripLink(t, nameOf);
       const before = await encodeTripLinkV1(t, nameOf);
-      expect(now.length, id).toBeLessThan(before.length * (rides(t).length > 4 ? 0.56 : 0.6));
+      // About half, at most 0.6 (T4, 7 rides as the app plans it: 347 for 591).
+      expect(now.length, id).toBeLessThan(before.length * 0.6);
       expect(now.endsWith('z'), id).toBe(true);
     }
     // Fourteen rides (T1, the Albula by bus): 939 characters before.

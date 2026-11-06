@@ -62,6 +62,24 @@ export const TIGHT_TRANSFER_MIN = 4;
 export const isTight = (gapMin: number, walkMin: number) =>
   gapMin < Math.max(walkMin, TIGHT_TRANSFER_MIN);
 
+/**
+ * The same train runs on from `a` into `b`: the same journey, or (retest round 3, 6 Nov 2026: a
+ * train continuing under another number was a "0 min" change) two rail rides meeting at the
+ * same stop within a minute, from the same platform. OJP marks neither: no stay-seated element in
+ * any recorded answer, only two rides. Not a change: no change counted, no tight warning.
+ */
+export function runsOn(a: Section, b: Section): boolean {
+  if (a.journey && a.journey === b.journey) return true;
+  if (a.mode !== 'rail' || b.mode !== 'rail' || !a.to?.arr || !b.from?.dep) return false;
+  if (stopKey(a.to.stopRef) !== stopKey(b.from.stopRef)) return false;
+  const gap = (ms(b.from.dep) - ms(a.to.arr)) / MIN;
+  const pa = track(a.to.platform);
+  return gap >= 0 && gap <= 1 && !!pa && pa === track(b.from.platform);
+}
+
+/** A platform's track, its sector letters left out ("2AB" and "2CD" are both track 2). */
+const track = (p?: string) => (p && /^\d+/.exec(p)?.[0]) || p;
+
 /** The changes of a connection: minutes between the rides, and the walk between them. */
 export function transferGaps(c: Connection): { afterSection: number; min: number; walk: number }[] {
   const r = rides(c);
@@ -70,6 +88,7 @@ export function transferGaps(c: Connection): { afterSection: number; min: number
     const [a, i] = r[k]!;
     const [b, j] = r[k + 1]!;
     const walk = c.sections.slice(i + 1, j).reduce((m, s) => m + walkMinutes(s), 0);
+    if (j === i + 1 && runsOn(a, b)) continue;
     if (a.to.arr && b.from.dep)
       gaps.push({ afterSection: i, min: (ms(b.from.dep) - ms(a.to.arr)) / MIN, walk });
   }

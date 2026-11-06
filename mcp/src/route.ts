@@ -115,6 +115,15 @@ export function buildRoute(
     const stop = stations[i]!;
     const stay = s.stay && s.stay > 0 ? Math.round(s.stay) : 0;
     const prev = entries.at(-1);
+    // The same station listed twice in a row (retest round 3: Zürich HB → Zürich HB was said as
+    // "needs at least two stations"). After a line ending there it is that end, with its stay.
+    const same = (x?: { ref: string }) => !!x && stopKey(x.ref) === stopKey(stop.ref);
+    if (i > 0 && !items[i - 1]!.line && same(stations[i - 1]))
+      throw new ToolError(
+        items.length === 2
+          ? 'Start and end are the same station: use roundTrip, or add a station between.'
+          : `${stop.name} is listed twice in a row: leave one out, or add a station between.`,
+      );
     // A station a line just ended at: that end, now with its stay.
     const entry =
       prev && stopKey(prev.w.stopRef) === stopKey(stop.ref)

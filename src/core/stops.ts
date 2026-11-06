@@ -69,6 +69,44 @@ export const fold = (s: string) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
+/** A query word this long may hold one typo. */
+const TYPO_MIN = 5;
+/** Words a station's name may leave out ("Gare de Lausanne" is Lausanne), in the typo pass. */
+const FILLER = new Set([
+  'gare',
+  'bahnhof',
+  'bhf',
+  'stazione',
+  'station',
+  'de',
+  'du',
+  'des',
+  'di',
+  'von',
+]);
+
+/** At most one letter wrong, missing, extra or swapped (Damerau–Levenshtein ≤ 1). */
+export function withinOne(a: string, b: string): boolean {
+  if (a === b) return true;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i++;
+  if (la === lb)
+    return (
+      a.slice(i + 1) === b.slice(i + 1) ||
+      (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    );
+  return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+
+/** A query word of `min`+ letters one typo from the start of a name's word, its first letter right. */
+const nearStart = (q: string, w: string, min = TYPO_MIN) =>
+  q.length >= min &&
+  q[0] === w[0] &&
+  [q.length - 1, q.length, q.length + 1].some((n) => n <= w.length && withinOne(q, w.slice(0, n)));
+
 const RAIL_MASK = modeMask(['TRAIN', 'RACK_RAILWAY', 'CABLE_RAILWAY', 'CABLE_CAR', 'BOAT']);
 
 /** Kilometres between two points (equirectangular: exact enough within the country). */
@@ -140,6 +178,23 @@ export function createStopSearch(file: StopIndexFile): StopSearch {
         const rank = f === q ? 0 : f.startsWith(q) ? 1 : 2;
         const rail = file.rows[i]![4] & RAIL_MASK ? 0 : 1;
         hits.push([i, rank * 1000 + rail * 500 + Math.min(f.length, 499)]);
+      }
+      // A typo (retest round 3, 6 Nov 2026: "Gare de Lausane" found nothing): only when the
+      // exact pass leaves room, and after every exact hit.
+      if (hits.length < limit && qWords.some((w) => w.length >= TYPO_MIN)) {
+        const seen = new Set(hits.map(([i]) => i));
+        const content = qWords.filter((w) => !FILLER.has(w));
+        for (let i = 0; i < file.rows.length && content.length; i++) {
+          if (seen.has(i)) continue;
+          const ws = words[i]!;
+          // A short word may hold a typo too while another word is right ("Interlaken Ots").
+          const exact = content.filter((qw) => ws.some((w) => w.startsWith(qw)));
+          const min = exact.length ? 3 : TYPO_MIN;
+          if (!content.every((qw) => exact.includes(qw) || ws.some((w) => nearStart(qw, w, min))))
+            continue;
+          const rail = file.rows[i]![4] & RAIL_MASK ? 0 : 1;
+          hits.push([i, 3000 + rail * 500 + Math.min(folded[i]!.length, 499)]);
+        }
       }
       return hits
         .sort((a, b) => a[1] - b[1])

@@ -49,6 +49,23 @@ describe('routes from a request', () => {
   const route = (input: Parameters<typeof buildRoute>[0]) =>
     buildRoute(input, { index, templates, now: NOW });
 
+  // Retest round 3, 6 Nov 2026: Zürich HB → Zürich HB said "needs at least two stations".
+  it('the same station twice in a row is said as such', () => {
+    expect(() => route({ stops: [{ name: 'Zürich HB' }, { name: 'Zürich HB' }] })).toThrow(
+      'Start and end are the same station: use roundTrip',
+    );
+    expect(() => route({ stops: [{ name: 'Bern' }, { name: 'Thun' }, { name: 'Thun' }] })).toThrow(
+      'Thun is listed twice in a row',
+    );
+    // A line ending at the station listed next is that end, not a repeat.
+    expect(() =>
+      route({
+        date: FIXTURE_DATE,
+        stops: [{ name: 'Chur' }, { line: 'albula' }, { name: 'St. Moritz', stay: 60 }],
+      }),
+    ).not.toThrow();
+  });
+
   it('the request in the spec: a line, 2 h at its end, home by 21:00', () => {
     const t = route({
       date: FIXTURE_DATE,
@@ -370,17 +387,37 @@ describe('tools, on recorded answers', () => {
   it('train_status: stops with planned and expected times, delays, and when it was asked', async () => {
     const tools = createTools(deps());
     const r = await tools.trainStatus({ journey: '2026-11-07:ch:1:sjyid:100001:726-001' });
+    const stops = r.stops ?? [];
     expect(r.date).toBe('2026-11-07');
     expect(r.journey).toBe('ch:1:sjyid:100001:726-001');
-    expect(r.stops.length).toBeGreaterThan(1);
-    expect(r.stops[0]).toHaveProperty('plannedDep');
-    expect(r.stops.some((s) => s.passed)).toBe(true);
+    expect(stops.length).toBeGreaterThan(1);
+    expect(stops[0]).toHaveProperty('plannedDep');
+    expect(stops.some((s) => s.passed)).toBe(true);
     expect(r.fetchedAt).toBe('2026-11-02T09:00');
     await expect(tools.trainStatus({ journey: 'ch:1:sjyid:100001:726-001' })).rejects.toThrow(
       'bad date',
     );
     await expect(tools.trainStatus({ journey: '<x/>', date: '2026-11-07' })).rejects.toThrow(
       'bad journey',
+    );
+  });
+
+  // Retest round 3, 6 Nov 2026: an unknown journey id was said as the service being down.
+  it('train_status: a journey the timetable does not have is said as such, not as an outage', async () => {
+    const unknown = readFileSync('tests/fixtures/ojp/tripinfo/unknown.xml', 'utf8');
+    const tools = createTools(
+      deps({ timetable: { ...deps().timetable, journey: async () => parseJourney(unknown) } }),
+    );
+    const r = await tools.trainStatus({ journey: '2026-11-07:ch:1:sjyid:100001:99999-001' });
+    expect(r).toMatchObject({ status: 'unknown_journey', date: '2026-11-07' });
+    // Through the Worker adapter, as the server meets it.
+    const worker = createWorker({
+      url: 'https://w.example',
+      fetch: async () => new Response(unknown, { status: 200 }),
+      budget: { take: async () => {} } as never,
+    });
+    await expect(worker.journey({ journey: 'ch:1:sjyid:1', day: '2026-11-07' })).rejects.toThrow(
+      'no such journey',
     );
   });
 

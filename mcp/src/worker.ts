@@ -1,7 +1,7 @@
 // The app's core talking to the OJP Worker from Node: a call budget, an in-memory cache, and
 // answers read without their tracks. Nothing here is written to disk or logged by content.
 import type { Connection } from '../../src/core/model';
-import { parseJourney, type JourneyStatus } from '../../src/core/ojp/journey';
+import { parseJourney, UnknownJourneyError, type JourneyStatus } from '../../src/core/ojp/journey';
 import { parseTrips } from '../../src/core/ojp/parse';
 import type { JourneyQuery, TripQuery } from '../../src/core/ojp/request';
 import { dayOf, zurichTime } from '../../src/core/trip';
@@ -179,7 +179,9 @@ export function createWorker(o: WorkerOptions): Timetable {
       const res = await post('/journey', q);
       try {
         return parseJourney(await res.text());
-      } catch {
+      } catch (e) {
+        // No such train that day is an answer (retest round 3: it was said as an outage).
+        if (e instanceof UnknownJourneyError) throw e;
         throw new UnavailableError();
       }
     },

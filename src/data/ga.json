@@ -10,6 +10,12 @@
       "rule": "half"
     },
     {
+      "from": "8774678",
+      "to": "8774687",
+      "names": ["Chamonix-Mont-Blanc", "Vallorcine"],
+      "rule": "none"
+    },
+    {
       "from": "ch:1:sloid:8455",
       "to": "ch:1:sloid:8456",
       "names": ["Fräkmüntegg", "Pilatus Kulm"],
@@ -34,12 +40,6 @@
       "rule": "half"
     },
     {
-      "from": "8774687",
-      "to": "ch:1:sloid:1568",
-      "names": ["Vallorcine", "Le Châtelard-Frontière"],
-      "rule": "none"
-    },
-    {
       "from": "ch:1:sloid:7455",
       "to": "ch:1:sloid:7456",
       "names": ["Mürren (Schilthornbahn)", "Birg (Schilthornbahn)"],
@@ -58,9 +58,9 @@
       "rule": "half"
     },
     {
-      "from": "8774678",
-      "to": "8774687",
-      "names": ["Chamonix-Mont-Blanc", "Vallorcine"],
+      "from": "8774687",
+      "to": "ch:1:sloid:1568",
+      "names": ["Vallorcine", "Le Châtelard-Frontière"],
       "rule": "none"
     },
     {
@@ -74,6 +74,191 @@
       "to": "ch:1:sloid:1694",
       "names": ["Zermatt GGB", "Gornergrat"],
       "rule": "half"
+    }
+  ],
+  "covered": [
+    {
+      "from": ["ch:1:sloid:5004", "ch:1:sloid:5063", "ch:1:sloid:5062"],
+      "to": ["ch:1:sloid:5069", "ch:1:sloid:5068"],
+      "names": ["Arth-Goldau", "Rigi Kulm"]
+    },
+    {
+      "from": ["ch:1:sloid:1675", "ch:1:sloid:30243", "ch:1:sloid:1955"],
+      "to": ["ch:1:sloid:1954", "ch:1:sloid:30803"],
+      "names": ["Bettmeralp Talstation", "Bettmeralp"]
+    },
+    {
+      "from": ["ch:1:sloid:1609", "ch:1:sloid:15296", "ch:1:sloid:19606"],
+      "to": ["ch:1:sloid:1954", "ch:1:sloid:30803"],
+      "names": ["Brig", "Bettmeralp"]
+    },
+    {
+      "from": ["ch:1:sloid:1596", "ch:1:sloid:30163", "ch:1:sloid:1595"],
+      "to": ["ch:1:sloid:1605"],
+      "names": ["Crans-Montana gare", "Visp"]
+    },
+    {
+      "from": [
+        "ch:1:sloid:1230",
+        "ch:1:sloid:1370",
+        "ch:1:sloid:1308",
+        "ch:1:sloid:30031",
+        "ch:1:sloid:1363",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:92618",
+        "ch:1:sloid:1362",
+        "ch:1:sloid:1361",
+        "ch:1:sloid:1384",
+        "ch:1:sloid:30673",
+        "ch:1:sloid:1301",
+        "ch:1:sloid:1313"
+      ],
+      "to": [
+        "ch:1:sloid:1300",
+        "ch:1:sloid:1077",
+        "ch:1:sloid:1380",
+        "ch:1:sloid:1381",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:1390",
+        "ch:1:sloid:1384"
+      ],
+      "names": ["Glion-Alpes", "Montreux"]
+    },
+    {
+      "from": ["ch:1:sloid:5226", "ch:1:sloid:7376"],
+      "to": ["ch:1:sloid:7492", "ch:1:sloid:8370", "ch:1:sloid:7368"],
+      "names": ["Grindelwald Terminal", "Interlaken Ost"]
+    },
+    {
+      "from": ["ch:1:sloid:7378"],
+      "to": ["ch:1:sloid:7492", "ch:1:sloid:8370", "ch:1:sloid:7368"],
+      "names": ["Grütschalp", "Interlaken Ost"]
+    },
+    {
+      "from": ["ch:1:sloid:7378"],
+      "to": ["ch:1:sloid:7384", "ch:1:sloid:7377"],
+      "names": ["Grütschalp", "Lauterbrunnen"]
+    },
+    {
+      "from": ["ch:1:sloid:7378"],
+      "to": ["ch:1:sloid:7379", "ch:1:sloid:7358", "ch:1:sloid:7359", "ch:1:sloid:7455"],
+      "names": ["Grütschalp", "Mürren BLM"]
+    },
+    {
+      "from": ["ch:1:sloid:1120", "ch:1:sloid:1181", "ch:1:sloid:1160"],
+      "to": ["ch:1:sloid:1596", "ch:1:sloid:30163", "ch:1:sloid:1595"],
+      "names": ["Lausanne", "Crans-Montana gare"]
+    },
+    {
+      "from": ["ch:1:sloid:1579", "ch:1:sloid:30676"],
+      "to": ["ch:1:sloid:30095"],
+      "names": ["Le Châble VS", "Verbier (télécabine)"]
+    },
+    {
+      "from": ["ch:1:sloid:3240", "ch:1:sloid:3260", "ch:1:sloid:3239"],
+      "to": ["ch:1:sloid:3261", "ch:1:sloid:30524", "ch:1:sloid:3645", "ch:1:sloid:3611"],
+      "names": ["Linthal Braunwaldbahn", "Braunwald"]
+    },
+    {
+      "from": [
+        "ch:1:sloid:1300",
+        "ch:1:sloid:1077",
+        "ch:1:sloid:1380",
+        "ch:1:sloid:1381",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:1390",
+        "ch:1:sloid:1384"
+      ],
+      "to": [
+        "ch:1:sloid:1371",
+        "ch:1:sloid:1364",
+        "ch:1:sloid:1363",
+        "ch:1:sloid:1362",
+        "ch:1:sloid:1357",
+        "ch:1:sloid:1361",
+        "ch:1:sloid:1308"
+      ],
+      "names": ["Montreux", "Caux"]
+    },
+    {
+      "from": [
+        "ch:1:sloid:1300",
+        "ch:1:sloid:1077",
+        "ch:1:sloid:1380",
+        "ch:1:sloid:1381",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:1390",
+        "ch:1:sloid:1384"
+      ],
+      "to": [
+        "ch:1:sloid:1370",
+        "ch:1:sloid:30031",
+        "ch:1:sloid:1230",
+        "ch:1:sloid:92618",
+        "ch:1:sloid:1308",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:1362",
+        "ch:1:sloid:1361",
+        "ch:1:sloid:30673",
+        "ch:1:sloid:1301",
+        "ch:1:sloid:1313",
+        "ch:1:sloid:1363",
+        "ch:1:sloid:1384"
+      ],
+      "names": ["Montreux", "Glion"]
+    },
+    {
+      "from": [
+        "ch:1:sloid:1300",
+        "ch:1:sloid:1077",
+        "ch:1:sloid:1380",
+        "ch:1:sloid:1381",
+        "ch:1:sloid:1360",
+        "ch:1:sloid:1390",
+        "ch:1:sloid:1384"
+      ],
+      "to": ["ch:1:sloid:1369", "ch:1:sloid:1368"],
+      "names": ["Montreux", "Rochers-de-Naye"]
+    },
+    {
+      "from": ["ch:1:sloid:1676", "ch:1:sloid:30237"],
+      "to": ["ch:1:sloid:1698", "ch:1:sloid:30688", "ch:1:sloid:30808"],
+      "names": ["Mörel", "Riederalp Mitte"]
+    },
+    {
+      "from": ["ch:1:sloid:7379", "ch:1:sloid:7358", "ch:1:sloid:7359", "ch:1:sloid:7455"],
+      "to": ["ch:1:sloid:7454"],
+      "names": ["Mürren BLM", "Gimmelwald (Schilthornbahn)"]
+    },
+    {
+      "from": ["ch:1:sloid:5069", "ch:1:sloid:5068"],
+      "to": ["ch:1:sloid:8464"],
+      "names": ["Rigi Kulm", "Vitznau"]
+    },
+    {
+      "from": ["ch:1:sloid:1509", "ch:1:sloid:1590"],
+      "to": ["ch:1:sloid:1596", "ch:1:sloid:30163", "ch:1:sloid:1595"],
+      "names": ["Sierre/Siders", "Crans-Montana gare"]
+    },
+    {
+      "from": ["ch:1:sloid:8363"],
+      "to": ["ch:1:sloid:8391", "ch:1:sloid:8360"],
+      "names": ["Stanserhorn", "Stans"]
+    },
+    {
+      "from": ["ch:1:sloid:7453", "ch:1:sloid:7455", "ch:1:sloid:7358"],
+      "to": ["ch:1:sloid:7454"],
+      "names": ["Stechelberg (Schilthornbahn)", "Gimmelwald (Schilthornbahn)"]
+    },
+    {
+      "from": ["ch:1:sloid:7372", "ch:1:sloid:7356", "ch:1:sloid:7555"],
+      "to": ["ch:1:sloid:7492", "ch:1:sloid:8370", "ch:1:sloid:7368"],
+      "names": ["Wengen", "Interlaken Ost"]
+    },
+    {
+      "from": ["ch:1:sloid:7372", "ch:1:sloid:7356", "ch:1:sloid:7555"],
+      "to": ["ch:1:sloid:7384", "ch:1:sloid:7377"],
+      "names": ["Wengen", "Lauterbrunnen"]
     }
   ],
   "supplementTrains": {

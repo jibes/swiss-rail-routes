@@ -186,6 +186,31 @@ export function stretchHere(
     if (!p || t.length < 2) return undefined;
     return km(p, t.at(-1)!) < km(p, t[0]!);
   };
+  const all = [s.from, ...s.intermediate, s.to];
+  const at = (i: number) => {
+    const c = all[i]!;
+    return places?.stop(c.stopRef) ?? places?.stop(stopKey(c.stopRef));
+  };
+  /**
+   * One end of the stretch is a call (`end`), the other (`other`) is not. Passing the other on
+   * its track: on. Touching `end` only at its first or last call (retest round 3, 6 Nov 2026):
+   * on when the ride lies inside the stretch, its far end between the two (the Mont-Blanc Express
+   * Les Marécottes–Vallorcine for "Martigny–Vallorcine"), else away (the S1 Sursee–Luzern for
+   * "Luzern–Ebikon" comes from the other side); away too when where things are is not known.
+   * Through `end` mid-ride: on unless its track shows it misses the other.
+   */
+  const oneEnd = (end: string, other: string): boolean => {
+    const near = byTrack(other);
+    if (near) return true;
+    const i = callAt(end);
+    if (i !== 0 && i !== stops.length - 1) return near ?? true;
+    const e = at(i);
+    const far = at(i === 0 ? stops.length - 1 : 0);
+    const o = places?.place?.(other);
+    if (!e || !far || !o) return false;
+    const span = km(e, o);
+    return km(far, e) < span && km(far, o) < span;
+  };
   for (const [k, n] of notices.entries()) {
     const found = noticeStretch(n);
     if (!found) return { n: k };
@@ -196,7 +221,7 @@ export function stretchHere(
         a && b
           ? true
           : a || b
-            ? (byTrack(a ? st.to : st.from) ?? true)
+            ? oneEnd(a ? st.from : st.to, a ? st.to : st.from)
             : (byTrack(st.from) ?? false) && (byTrack(st.to) ?? false);
       if (on) return st;
       continue;
@@ -241,6 +266,18 @@ export function gaStretchOf(
     return { rule: x.rule, from: calls[a]!.name, to: calls[b]!.name };
   }
   return null;
+}
+
+/**
+ * A ride whose GA cover nothing shows: a cable car or cog railway (where the private summit
+ * lines are) with no fare rule and no GA fare of 0 on a stretch it rides (`ga.covered`, the
+ * evidence from SBB's fare data: Rigi, Grütschalp…). Trains, buses and boats count as covered.
+ */
+export function gaUnknown(s: Section, ga: GaData): boolean {
+  if (s.mode !== 'cableCar' && s.mode !== 'cog') return false;
+  const keys = new Set([s.from, ...s.intermediate, s.to].map((x) => stopKey(x.stopRef)));
+  const has = (refs: string[]) => refs.some((r) => keys.has(r));
+  return !(ga.covered ?? []).some((c) => has(c.from) && has(c.to));
 }
 
 export function gaRuleOf(s: Section, ga: GaData): GaRule | null {
@@ -462,6 +499,18 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
         severity: 'info',
         key: ga.rule === 'half' ? 'wGaHalf' : ga.rule === 'reduced' ? 'wGaReduced' : 'wGaNone',
         params: { from: ga.from, to: ga.to },
+      });
+    // Unknown is never covered (retest round 3: the Eiger Express and the Jungfraubahn from
+    // Eigergletscher said nothing): the fare data names the summit lines SBB sells, so a cable
+    // car or cog railway it does not name may well not be the GA's. Said, not counted.
+    else if (gaUnknown(s, ctx.ga))
+      w.push({
+        ...base,
+        sectionIndex: i,
+        type: 'ga-unknown',
+        severity: 'info',
+        key: 'wGaUnknown',
+        params: { from: s.from.name, to: s.to.name },
       });
   });
   for (const g of transferGaps(c))

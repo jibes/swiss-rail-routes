@@ -5,6 +5,7 @@ import { linesOf } from './line';
 import { highlightName, type RouteTemplate } from './data';
 import type { LatLon } from './model';
 import { liveRides, type LiveRide } from './live';
+import { runsOn } from './planner/connection';
 import { directionOn, flipSide } from './seat';
 import { sunset } from './sun';
 import type { PlannedTrip as Trip } from './trip';
@@ -63,8 +64,7 @@ export function noticesFor(
   const rides = liveRides(trip.chain.connections, new Map());
   // The same train on both sides of a stop (a replan from on board): you stay seated, so
   // neither its exit nor the next departure is a notice.
-  const through = (a?: LiveRide, b?: LiveRide) =>
-    !!a && !!b && !!a.s.journey && a.s.journey === b.s.journey;
+  const through = (a?: LiveRide, b?: LiveRide) => !!a && !!b && runsOn(a.s, b.s);
   rides.forEach((r, i) => {
     const board = r.stops[0]!;
     const exit = r.stops.at(-1)!;

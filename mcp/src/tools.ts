@@ -7,7 +7,7 @@ import { encodeTripLink } from '../../src/core/export/tripLink';
 import type { Reservations } from '../../src/core/planner/plan';
 import { plan, zurichLocal, type PlannedChain, type PlanResult } from '../../src/core/planner/plan';
 import type { Leg, Section, Tour } from '../../src/core/model';
-import { delayMin } from '../../src/core/ojp/journey';
+import { delayMin, UnknownJourneyError } from '../../src/core/ojp/journey';
 import { journeyQueryOf, parseJourneyQuery } from '../../src/core/ojp/request';
 import { missedByDisruption, plannedRows } from '../../src/core/rows';
 import {
@@ -462,7 +462,18 @@ export function createTools(deps: ToolDeps) {
       const dated = journeyQueryOf(journey);
       const q = parseJourneyQuery(dated ?? { journey, day: date });
       if (typeof q === 'string') throw new ToolError(`bad ${q === 'day' ? 'date' : 'journey'}`);
-      const s = await timetable.journey(q);
+      let s;
+      try {
+        s = await timetable.journey(q);
+      } catch (e) {
+        if (!(e instanceof UnknownJourneyError)) throw e;
+        return {
+          status: 'unknown_journey',
+          journey: q.journey,
+          date: q.day,
+          message: 'No such journey on that day: check the journey id and date (from plan_trip).',
+        };
+      }
       return {
         journey: q.journey,
         date: q.day,

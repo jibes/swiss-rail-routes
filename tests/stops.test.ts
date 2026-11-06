@@ -6,8 +6,10 @@ import {
   modeMask,
   stopKey,
   toStop,
+  withinOne,
   type StopIndexFile,
 } from '../src/core/stops';
+import { index } from './helpers/timetable';
 
 const small: StopIndexFile = {
   v: 1,
@@ -156,5 +158,28 @@ describe('stops near a point', () => {
     expect(near[0]!.km).toBe(0);
     expect(near[1]!.km).toBeGreaterThan(3);
     expect(s.near({ lat: 47.37818, lon: 8.54021 }, 1).map((x) => x.name)).toEqual(['Zürich HB']);
+  });
+});
+
+// Retest round 3, 6 Nov 2026: "Gare de Lausane" found nothing. One letter wrong, missing, extra
+// or swapped in a word of 5+ letters (a shorter one while another word is right), after every
+// exact hit; words a station's name may leave out (Gare, Bahnhof…) count as matched.
+describe('a typo in the stop search', () => {
+  const first = (q: string) => index.search(q, 8)[0]?.name;
+  it('finds the stop', () => {
+    expect(first('Gare de Lausane')).toBe('Lausanne');
+    expect(first('Lausane')).toBe('Lausanne');
+    expect(first('Interlaken Ots')).toBe('Interlaken Ost');
+    expect(first('Grindelwlad')).toBe('Grindelwald');
+  });
+  it('never before an exact hit, and nothing from noise', () => {
+    expect(first('Bern')).toBe('Bern');
+    expect(index.search('xyzzyq', 8)).toEqual([]);
+    expect(index.search('Zug', 8).length).toBeLessThanOrEqual(8);
+  });
+  it('one edit at most', () => {
+    expect(withinOne('lausane', 'lausann')).toBe(true);
+    expect(withinOne('grindelwlad', 'grindelwald')).toBe(true);
+    expect(withinOne('lausne', 'lausanne')).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import type { Connection, Leg, Tour } from './model';
 import { zurichDateTime } from './ojp/request';
 import { simplify } from './polyline';
 import type { PlannedChain } from './planner/plan';
+import { runsOn } from './planner/connection';
 
 export interface TripVersion {
   /** The route (waypoints, date, anchor). */
@@ -80,10 +81,12 @@ export const zurichTime = (date: string, time: string): number =>
  * between is no change of its own). The one count for the trip screen and a shared trip.
  */
 export const changesOf = (connections: Pick<Connection, 'sections'>[]): number =>
-  connections.reduce(
-    (n, c) => n + Math.max(0, c.sections.filter((s) => s.mode !== 'walk').length - 1),
-    0,
-  );
+  connections.reduce((n, c) => {
+    const rides = c.sections.filter((s) => s.mode !== 'walk');
+    // The same train running on (another number at a stop) is no change.
+    const on = rides.filter((s, i) => i > 0 && runsOn(rides[i - 1]!, s)).length;
+    return n + Math.max(0, rides.length - 1 - on);
+  }, 0);
 
 /**
  * `arrival`: the expected arrival with live delays, so a late last train keeps it live. A trip

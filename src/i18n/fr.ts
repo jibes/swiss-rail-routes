@@ -23,6 +23,8 @@ export const fr = {
   wGaHalf: '{from}–{to} : non couvert par l’AG ou la carte journalière (50 % de réduction avec)',
   wGaReduced: '{from}–{to} : non couvert par l’AG ou la carte journalière (tarif réduit avec)',
   wGaNone: '{from}–{to} : non couvert par l’AG ou la carte journalière',
+  wGaUnknown:
+    '{from}–{to} : validité de l’AG ou de la carte journalière inconnue, à vérifier avant le départ',
   wTightTransfer: 'Correspondance serrée à {at} : {min} min',
   wTimedChange: 'Correspondance assurée à {at} : {min} min, le train attend',
   wReplacementBus: 'Bus de remplacement {from}–{to} : le tronçon {line} se fait par la route',
@@ -66,6 +68,7 @@ export const fr = {
   platform: 'Voie {p}',
   platformChanged: 'Voie modifiée : maintenant {p}, au lieu de {was}',
   samePl: 'Même voie',
+  continuesAs: 'Le train continue en tant que {line}',
   arrPl: 'Arrivée',
   changePlSr: 'Arrivée voie {a}, train suivant voie {d}',
   samePlSr: 'Arrivée voie {p}, train suivant sur la même voie',

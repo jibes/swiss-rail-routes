@@ -48,6 +48,12 @@ export interface GaData {
   /** Date a person checked the list by hand; null = generated only. */
   reviewed: string | null;
   sections: { from: string; to: string; names: [string, string]; rule: GaRule }[];
+  /**
+   * Summit stretches (a cable car, cog or funicular stop at one end) with a GA fare of 0: the
+   * evidence that the GA covers them. Each end lists the stops within 1 km, where the line may
+   * leave from. A cable car or cog ride with neither a rule nor this is said as not known.
+   */
+  covered?: { from: string[]; to: string[]; names: [string, string] }[];
   supplementTrains: { categories: string[]; names: string[] };
 }
 

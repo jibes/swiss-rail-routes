@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { delayMin, parseJourney } from '../src/core/ojp/journey';
+import { delayMin, parseJourney, UnknownJourneyError } from '../src/core/ojp/journey';
 import { journeyQueryOf, journeyRequestXml, parseJourneyQuery } from '../src/core/ojp/request';
 
 describe('journey (TripInfo) request', () => {
@@ -39,5 +39,12 @@ describe('parseJourney on a recorded running train', () => {
 
   it('reports 0 when no estimate is known', () => {
     expect(delayMin({ dep: '2026-11-01T10:00:00Z' }, 'dep')).toBe(0);
+  });
+});
+
+describe('parseJourney on a journey the timetable does not have', () => {
+  it('is its own answer, not a failure (TRIPINFO_NOJOURNEYFOUND, recorded 6 Nov 2026)', () => {
+    const xml = readFileSync('tests/fixtures/ojp/tripinfo/unknown.xml', 'utf8');
+    expect(() => parseJourney(xml)).toThrow(UnknownJourneyError);
   });
 });
