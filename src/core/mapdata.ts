@@ -104,3 +104,17 @@ export function mapData(
 
   return { stops: fc(stops), lines: fc(lines), highlights: fc(highlights), bounds };
 }
+
+/**
+ * The font the style's own labels use, for the map's added names: without one, MapLibre asks
+ * for its default ("Open Sans Regular, Arial Unicode MS Regular"), which the tile host does not
+ * have (404 on every label, seen in a debug log, 5 Nov 2026).
+ */
+export function styleFont(style: { layers?: readonly unknown[] }): string[] {
+  for (const layer of style.layers ?? []) {
+    const font = (layer as { layout?: { 'text-font'?: unknown } }).layout?.['text-font'];
+    if (Array.isArray(font) && font.length && font.every((f) => typeof f === 'string'))
+      return font as string[];
+  }
+  return ['Noto Sans Regular'];
+}

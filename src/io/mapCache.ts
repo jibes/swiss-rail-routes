@@ -44,7 +44,8 @@ async function keep(cache: Cache, rule: MapCacheRule, url: string, res: Response
     kept.set(rule.name, n);
     if (n % TRIM_EVERY === 1) await trim(cache, rule, d);
   } catch (e) {
-    log('mapcache.keep.fail', { e });
+    // A tile the map no longer wanted (panned past, closed): its body was cut off, nothing kept.
+    if ((e as Error).name !== 'AbortError') log('mapcache.keep.fail', { e });
   }
 }
 

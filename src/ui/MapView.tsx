@@ -5,7 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import { fromProtocol, MAP_PROTOCOL, toProtocol } from '../core/mapCache';
-import { mapData } from '../core/mapdata';
+import { mapData, styleFont } from '../core/mapdata';
 import type { Connection } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
@@ -269,6 +269,7 @@ export default function MapView({ id }: { id: string }) {
             source: 'highlights',
             layout: {
               'text-field': ['get', 'name'],
+              'text-font': styleFont(style),
               'text-size': 12,
               'text-offset': [0, 1.2],
               'text-anchor': 'top',

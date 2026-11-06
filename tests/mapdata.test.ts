@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { insertTemplate, newTour } from './helpers/edit';
 import { highlightName, localParams } from '../src/core/data';
-import { mapData } from '../src/core/mapdata';
+import { mapData, styleFont } from '../src/core/mapdata';
 import { conn, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (r: string) => index.byRef(r);
@@ -83,5 +83,21 @@ describe('highlight names in the reader’s language', () => {
       for (const h of t.highlights)
         for (const l of ['en', 'de', 'fr', 'it'] as const)
           expect(typeof h.name === 'object' && h.name[l], `${h.id} ${l}`).toBeTruthy();
+  });
+});
+
+describe('styleFont', () => {
+  it('names the font of the style’s own labels, never MapLibre’s default', () => {
+    expect(
+      styleFont({
+        layers: [
+          { id: 'water', type: 'fill' },
+          { id: 'expr', layout: { 'text-font': ['literal', 1] } },
+          { id: 'place', type: 'symbol', layout: { 'text-font': ['Noto Sans Bold'] } },
+        ],
+      }),
+    ).toEqual(['Noto Sans Bold']);
+    expect(styleFont({ layers: [] })).toEqual(['Noto Sans Regular']);
+    expect(styleFont({})).toEqual(['Noto Sans Regular']);
   });
 });
