@@ -1,4 +1,4 @@
-// Europe (0.30.0) through Transitous (https://transitous.org, MOTIS, community-run): what the
+// Europe (0.33.0) through Transitous (https://transitous.org, MOTIS, community-run): what the
 // app may ask, checked here, shared with the Worker, which alone talks to Transitous (fair use:
 // rail only, few results, cached). Pure.
 

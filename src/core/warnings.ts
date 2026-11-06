@@ -258,6 +258,17 @@ export function gaStretchOf(
 ): { rule: GaRule; from: string; to: string } | null {
   const calls = [s.from, ...s.intermediate, s.to];
   const at = (k: string) => calls.findIndex((x) => stopKey(x.stopRef) === k);
+  // Abroad (Transitous, 0.33.0): from the last station before the border to the last abroad.
+  const out = calls.map((x) => x.stopRef.startsWith('eu:'));
+  const a = out.indexOf(true);
+  if (a >= 0) {
+    const b = out.lastIndexOf(true);
+    return {
+      rule: 'none',
+      from: calls[Math.max(0, a - 1)]!.name,
+      to: calls[Math.min(calls.length - 1, b + 1)]!.name,
+    };
+  }
   for (const x of ga.sections) {
     const i = at(x.from);
     const j = at(x.to);

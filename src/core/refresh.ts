@@ -64,6 +64,8 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
   const one = async (x: (typeof asked)[number]) => {
     const { from, to, journey } = x.s;
     if (!from.dep) return void failed++;
+    // A ride abroad (Transitous, 0.33.0): OJP does not know it; it stays as planned.
+    if ([from.stopRef, to.stopRef, journey ?? ''].some((r) => r.startsWith('eu:'))) return;
     const q: TripQuery = {
       // The station, not its platform: a platform may have changed, and OJP's own ids for some
       // platforms are not ids it takes back.

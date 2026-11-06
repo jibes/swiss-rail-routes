@@ -34,6 +34,15 @@ export function recordedFare(body: string): { trip: string; fare: string } | nul
   return { trip: read(`${f}-trip.xml.gz`), fare: read(`${f}.xml.gz`) };
 }
 
+/** A Transitous answer (stations or a plan abroad) for the Worker's question (tests/fixtures/eu/e2e). */
+export function recordedEu(body: string): string | null {
+  const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
+  const f = `tests/fixtures/eu/e2e/${key}.json.gz`;
+  if (!existsSync(f)) return null;
+  if (process.env.FIXTURE_LOG) appendFileSync(process.env.FIXTURE_LOG, f + '\n');
+  return gunzipSync(readFileSync(f)).toString('utf8');
+}
+
 /** The sync mailbox, shared by every page of a run (ids are random per key). */
 const boxes = new Map<string, SyncRecord>();
 
@@ -58,12 +67,14 @@ export async function answerWorker(page: Page, problems: string[] = []) {
   await page.route('https://ojp.invalid/**', async (route) => {
     const req = route.request();
     const body = req.postData() ?? undefined;
-    const fare = body && new URL(req.url()).pathname === '/fare' ? recordedFare(body) : null;
-    const recorded = body ? (fare?.trip ?? recordedAnswer(body)) : null;
+    const path = new URL(req.url()).pathname;
+    const fare = body && path === '/fare' ? recordedFare(body) : null;
+    const eu = body && path.startsWith('/eu/') ? recordedEu(body) : null;
+    const recorded = body ? (fare?.trip ?? eu ?? recordedAnswer(body)) : null;
     if (
       body &&
       !recorded &&
-      /\/(trip|departures|fare)$/.test(new URL(req.url()).pathname) &&
+      /\/(trip|departures|fare|eu\/stops|eu\/plan)$/.test(path) &&
       !lenient.has(page)
     )
       problems.push(`no recorded answer for ${body}`);
@@ -81,6 +92,7 @@ export async function answerWorker(page: Page, problems: string[] = []) {
         upstream: 'https://ojp.example/',
         fareKey: 'e2e',
         fareUpstream: 'https://fare.example/',
+        transitous: 'https://transitous.example',
         allowedOrigins: [
           new URL(page.url() || 'http://localhost:4173').origin,
           'http://localhost:4173',

@@ -219,7 +219,7 @@ test('search: a line typed by its name comes first, a station named so stays fir
   // A bus stop is said to be one.
   await search.fill('Bernina Suot, Bahnhof');
   await expect(
-    page.locator('.add-sheet .result', { hasText: 'Bernina Suot, Bahnhof' }),
+    page.locator('.add-sheet .result', { hasText: /^Bernina Suot, Bahnhof/ }),
   ).toContainText('Bus stop');
   await search.fill('Bern');
   await search.press('Enter');

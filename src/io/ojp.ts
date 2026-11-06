@@ -41,6 +41,9 @@ export class WorkerError extends Error {
 export async function fetchTrips(q: TripQuery, signal?: AbortSignal): Promise<Connection[]> {
   const url = import.meta.env.VITE_OJP_URL;
   if (!url) throw new PlanningUnavailable();
+  // A leg with an end abroad (0.33.0): Transitous, through the Worker, the whole leg.
+  if ([q.origin, q.destination].some((s) => s.ref.startsWith('eu:')))
+    return fetchEuTrips(url, q, signal);
   const { parseTrips } = await import('../core/ojp/parse');
   const what = {
     from: q.origin.name,
@@ -178,5 +181,90 @@ export async function fetchFare(
   }
   const out = parseFares(await res.text());
   log('ojp.fare', { ...what, fares: out.length, cache: res.headers.get('X-Cache') ?? undefined });
+  return out;
+}
+
+/**
+ * A leg abroad (0.33.0) from Transitous through the Worker: from the leg's first station to its
+ * last (a via abroad is not asked: Transitous plans the way), its ends the stations asked for
+ * (`pinEnds`), a Swiss stop it names by its SLOID the app's own station.
+ */
+async function fetchEuTrips(
+  url: string,
+  q: TripQuery,
+  signal?: AbortSignal,
+): Promise<Connection[]> {
+  const [{ stopSearch }, { euConnections, pinEnds }, { zurichDateTime }] = await Promise.all([
+    import('./stops'),
+    import('../core/eu/plan'),
+    import('../core/ojp/request'),
+  ]);
+  const index = await stopSearch();
+  const where = (ref: string) => {
+    const s = index.byRef(ref);
+    return s ? { lat: s.lat, lon: s.lon } : undefined;
+  };
+  const from = where(q.origin.ref);
+  const to = where(q.destination.ref);
+  const what = { from: q.origin.name, to: q.destination.name, time: q.time, arriveBy: q.arriveBy };
+  if (!from || !to) {
+    log('eu.plan.fail', { ...what, detail: 'no position' });
+    throw new WorkerError('no position');
+  }
+  const t0 = performance.now();
+  const res = await fetch(`${url.replace(/[/]$/, '')}/eu/plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to,
+      time: zurichDateTime(q.time),
+      arriveBy: q.arriveBy,
+      results: Math.min(5, Math.max(1, q.results)),
+    }),
+    signal: withTimeout(signal),
+  });
+  const ms = Math.round(performance.now() - t0);
+  if (!res.ok) {
+    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+    log('eu.plan.fail', { ...what, detail, ms });
+    throw new WorkerError(detail);
+  }
+  const local = (p: { name: string; lat: number; lon: number; id?: string }) => {
+    const n = /ch:1:sloid:(\d+)/.exec(p.id ?? '')?.[1];
+    const s = n ? index.byRef(`ch:1:sloid:${Number(n)}`) : undefined;
+    return s ? { stopRef: s.ref, name: s.name } : undefined;
+  };
+  const out = pinEnds(euConnections(await res.json(), 0, local), q, where);
+  log('eu.plan', {
+    ...what,
+    ms,
+    cache: res.headers.get('X-Cache') ?? undefined,
+    connections: out.length,
+    vias: q.vias.length || undefined,
+  });
+  return out;
+}
+
+/** Stations abroad by name (Transitous through the Worker), asked only when the person asks. */
+export async function fetchEuStops(
+  text: string,
+  signal?: AbortSignal,
+): Promise<import('../core/eu/request').EuStop[]> {
+  const url = import.meta.env.VITE_OJP_URL;
+  if (!url) throw new PlanningUnavailable();
+  const res = await fetch(`${url.replace(/[/]$/, '')}/eu/stops`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+    signal: withTimeout(signal),
+  });
+  if (!res.ok) {
+    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+    log('eu.stops.fail', { detail });
+    throw new WorkerError(detail);
+  }
+  const out = (await res.json()) as import('../core/eu/request').EuStop[];
+  log('eu.stops', { results: out.length });
   return out;
 }

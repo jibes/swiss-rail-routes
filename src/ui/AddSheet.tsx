@@ -16,6 +16,9 @@ import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
 import { dayOf } from '../core/trip';
 import { useLayer } from './layers';
+import { euRef } from '../core/eu/plan';
+import type { EuStop } from '../core/eu/request';
+import { fetchEuStops } from '../io/ojp';
 
 export type Picked =
   | { kind: 'station'; stop: Pick<Waypoint, 'stopRef' | 'name'> }
@@ -53,6 +56,17 @@ export function AddSheet({
   const mine = useTours((s) => s.tours);
   const removeMine = useTours((s) => s.remove);
   const [q, setQ] = useState('');
+  // Stations abroad (0.33.0, Transitous): asked only on the tap, for the text as it was then.
+  const [abroad, setAbroad] = useState<{ q: string; found: EuStop[] | 'asking' | 'failed' }>();
+  const askAbroad = () => {
+    const text = q.trim();
+    setAbroad({ q: text, found: 'asking' });
+    fetchEuStops(text).then(
+      (found) => setAbroad((a) => (a?.q === text ? { q: text, found } : a)),
+      () => setAbroad((a) => (a?.q === text ? { q: text, found: 'failed' } : a)),
+    );
+  };
+  const abroadNow = abroad?.q === q.trim() ? abroad.found : undefined;
   const input = useRef<HTMLInputElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
   // Focus goes into the sheet, and back to where it was when the sheet closes.
@@ -249,6 +263,47 @@ export function AddSheet({
               </button>
             );
           })}
+          {f.length >= 3 && !abroadNow && (
+            <button type="button" className="result" onClick={askAbroad}>
+              <span className="r-icon" aria-hidden="true">
+                <Icon name="globe" />
+              </span>
+              <span className="r-name">{t('searchAbroad', { q: q.trim() })}</span>
+              <span className="r-sub">{t('abroadSource')}</span>
+            </button>
+          )}
+          {abroadNow === 'asking' && <RailLoader label={t('abroadAsking')} />}
+          {abroadNow === 'failed' && (
+            <p className="muted" role="status">
+              {t('abroadFailed')}{' '}
+              <button type="button" className="text-button" onClick={askAbroad}>
+                {t('retry')}
+              </button>
+            </p>
+          )}
+          {Array.isArray(abroadNow) && (
+            <>
+              <h3 className="section-label">{t('abroadLabel')}</h3>
+              {!abroadNow.length && <p className="muted">{t('abroadNone')}</p>}
+              {abroadNow.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="result"
+                  onClick={() =>
+                    onPick({
+                      kind: 'station',
+                      stop: { stopRef: euRef(s.lat, s.lon, s.id), name: s.name },
+                    })
+                  }
+                >
+                  <span className="r-icon r-dot" aria-hidden="true" />
+                  <span className="r-name">{s.name}</span>
+                  <span className="r-sub">{s.country ?? t('abroadLabel')}</span>
+                </button>
+              ))}
+            </>
+          )}
           {forgot && (
             <p className="forgot" role="status">
               <span>{t('forgotten', { name: titleOf(forgot) })}</span>

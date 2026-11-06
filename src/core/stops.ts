@@ -176,7 +176,12 @@ export function createStopSearch(
   return {
     byRef: (ref) => {
       const r = byRef.get(ref);
-      return r && toStop(r);
+      if (r) return toStop(r);
+      // A station abroad (0.33.0) is not in the index: its ref says where it lies.
+      const eu = /^eu:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?):/.exec(ref);
+      return eu
+        ? { ref, name: '', lat: Number(eu[1]), lon: Number(eu[2]), modes: ['TRAIN'] }
+        : undefined;
     },
     near(at, km, all = false) {
       const out: (Stop & { km: number })[] = [];

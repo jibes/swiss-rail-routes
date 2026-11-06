@@ -1,8 +1,9 @@
-// A Transitous (MOTIS) plan → the app's own connections (0.30.0), for legs that leave
+// A Transitous (MOTIS) plan → the app's own connections (0.33.0), for legs that leave
 // Switzerland. A station abroad has no SLOID: its ref is `eu:<lat>,<lon>:<id>`, which carries
 // where it lies (the map, the line) and Transitous' own id; a Swiss station a foreign operator
 // names its own way (Trenitalia's "ZUERICH HB") is the app's own, when `local` finds it. Pure.
 import type { Connection, LatLon, Mode, PlatformCall, Section, StopCall } from '../model';
+import { kmBetween } from '../stops';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -19,6 +20,8 @@ export function euPos(ref: string): LatLon | undefined {
 }
 
 export const isEu = (ref: string) => ref.startsWith('eu:');
+
+const isStop = (p: unknown) => isObj(p) && typeof p.stopId === 'string';
 
 /** Google's encoded polyline, at MOTIS' precision (6 by default) → [lon, lat]. */
 export function decodePolyline(s: string, precision = 6): [number, number][] {
@@ -59,6 +62,8 @@ export type Local = (p: {
   name: string;
   lat: number;
   lon: number;
+  /** Transitous' own id (`de-DELFI_ch:1:sloid:3000`: a Swiss feed's SLOID). */
+  id?: string;
 }) => { stopRef: string; name: string } | undefined;
 
 export function euConnections(
@@ -74,7 +79,7 @@ export function euConnections(
     const name = str(p.name) ?? '';
     if (lat === undefined || lon === undefined) return undefined;
     return (
-      local({ name, lat, lon }) ?? {
+      local({ name, lat, lon, id: str(p.parentId) ?? str(p.stopId) }) ?? {
         stopRef: euRef(lat, lon, str(p.parentId) ?? str(p.stopId) ?? name),
         name,
       }
@@ -105,6 +110,8 @@ export function euConnections(
       const from = call(l.from, 'dep') as PlatformCall | undefined;
       const to = call(l.to, 'arr') as PlatformCall | undefined;
       if (!from || !to) return [];
+      // A walk to or from the bare point asked (Transitous' START and END) is no stop of the trip.
+      if (l.mode === 'WALK' && (!isStop(l.from) || !isStop(l.to))) return [];
       if (l.mode === 'WALK')
         return [
           {
@@ -145,5 +152,33 @@ export function euConnections(
     const arr = rides.at(-1)?.to.arr ?? str(it.endTime);
     if (!rides.length || !dep || !arr) return [];
     return [{ legIndex, dep, arr, transfers: Math.max(0, rides.length - 1), sections }];
+  });
+}
+
+/**
+ * The leg's own ends: Transitous names a station by its feed's id and platform (München Hbf is
+ * `de-DELFI_de:09162:100` in one, `…_de:09162:100:11:11` in another, 200 m apart), so the first
+ * stop and the last of each connection become the stations asked for, where they lie within
+ * `END_KM` of them; the rows then find their stations, as with OJP's answers.
+ */
+export const END_KM = 1;
+export function pinEnds(
+  connections: Connection[],
+  ends: { origin: { ref: string; name: string }; destination: { ref: string; name: string } },
+  where: (ref: string) => LatLon | undefined,
+): Connection[] {
+  const near = (a: LatLon | undefined, b: LatLon | undefined) =>
+    !!a && !!b && kmBetween(a, b) <= END_KM;
+  const pin = <T extends { stopRef: string; name: string }>(
+    c: T,
+    to: { ref: string; name: string },
+  ) => (near(where(c.stopRef), where(to.ref)) ? { ...c, stopRef: to.ref, name: to.name } : c);
+  return connections.map((c) => {
+    const sections = c.sections.map((s) => ({ ...s }));
+    const first = sections[0];
+    const last = sections.at(-1);
+    if (first) first.from = pin(first.from, ends.origin);
+    if (last) last.to = pin(last.to, ends.destination);
+    return { ...c, sections };
   });
 }
