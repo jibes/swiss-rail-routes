@@ -1,6 +1,6 @@
 // The map as seen, kept in the page's Cache Storage where no service worker does it: the
 // Android shell (which has none) and a web page its worker does not control yet. Only what the
-// map asks for is kept, nothing is fetched ahead, so the tile host learns nothing new. The
+// map asks for is kept, nothing is fetched ahead (but a trip's route when the person asks: ui/keepMap.ts), so the tile host learns nothing new. The
 // rules are in core/mapCache.ts; a storage failure only means asking the network.
 import {
   expired,

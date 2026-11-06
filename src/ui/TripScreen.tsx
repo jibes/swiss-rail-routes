@@ -46,6 +46,8 @@ import { log } from '../io/log';
 import { findSubstitute } from '../io/substitute';
 import { leaveTime } from '../core/spider';
 import { useMapAdd } from './mapAdd';
+import type { Kept } from './keepMap';
+import { useDark } from './useDark';
 
 /** Into that element (the map's column), else where it stands. */
 
@@ -157,6 +159,24 @@ export function TripScreen({ id }: { id: string }) {
   // Beside the trip (desktop columns) it takes the map's column, not the trip's.
   const startMapAdd = useMapAdd((s) => s.start);
   const [prices, setPrices] = useState(false);
+  // Keep map for offline (0.34.0): its progress while it runs, then what came of it.
+  const [keeping, setKeeping] = useState<(Kept & { over: boolean }) | null>(null);
+  const dark = useDark();
+  const keepMap = () => {
+    const ctrl = new AbortController();
+    setKeeping({ done: 0, total: 0, failed: 0, over: false });
+    // Loaded on the tap: it brings the map's own setup (MapLibre), not on the trip screen.
+    import('./keepMap')
+      .then((m) =>
+        m.keepTripMap(route, trip?.chain?.connections, lang, dark, ctrl.signal, (k) =>
+          setKeeping({ ...k, over: false }),
+        ),
+      )
+      .then(
+        (k) => setKeeping({ ...k, over: true }),
+        () => setKeeping({ done: 0, total: 0, failed: 1, over: true }),
+      );
+  };
   const closePrices = useCallback(() => setPrices(false), []);
   // A via just unpinned, for a few seconds: Undo pins it back where it was.
   const [unpinned, setUnpinned] = useState<{
@@ -381,6 +401,20 @@ export function TripScreen({ id }: { id: string }) {
                 {t('pricesOnSbb')}
               </button>
             )}
+            {isPlanned(trip) && status !== 'past' && (
+              <button
+                type="button"
+                disabled={!!keeping && !keeping.over}
+                onClick={() => {
+                  log('trip.keepMap', { trip: id });
+                  setMenu(false);
+                  keepMap();
+                }}
+              >
+                <Icon name="map" size={18} />
+                {t('keepMap')}
+              </button>
+            )}
             {/* Before it leaves only: under way, Replan from here changes the rest. */}
             {!liveTrip && status !== 'past' && entries.length >= 2 && (
               <button
@@ -597,6 +631,24 @@ export function TripScreen({ id }: { id: string }) {
       )}
       {prices && trip.chain && (
         <PricesSheet connections={trip.chain.connections} onClose={closePrices} />
+      )}
+      {keeping && (
+        <p className="toast kept" role="status">
+          <span>
+            {!keeping.over
+              ? t('keepMapRunning', { done: keeping.done, total: keeping.total || '…' })
+              : !keeping.total
+                ? t('keepMapFailed')
+                : keeping.failed
+                  ? t('keepMapPartly', { n: keeping.done - keeping.failed, total: keeping.total })
+                  : t('keepMapDone', { n: keeping.total })}
+          </span>
+          {keeping.over && (
+            <button type="button" className="text-button" onClick={() => setKeeping(null)}>
+              {t('close')}
+            </button>
+          )}
+        </p>
       )}
       {unpinned && (
         <p className="toast unpinned" role="status">

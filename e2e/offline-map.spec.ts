@@ -115,3 +115,59 @@ test.describe('without a service worker', () => {
     await expect(page.getByText('Map tiles could not be loaded.')).toHaveCount(0);
   });
 });
+
+// Keep map for offline (0.34.0): the trip's route at zoom 10–13, asked of the tile host only on
+// the tap, kept where the map as seen is (here the page's own cache, no service worker).
+test.describe('keep the map for offline', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('on the tap only: the style, its tiles along the route, kept on the device', async ({
+    page,
+    context,
+  }) => {
+    await page.clock.install({ time: BEFORE });
+    const asked: string[] = [];
+    await context.unrouteAll();
+    await context.route('https://tiles.openfreemap.org/**', (r) => {
+      const url = r.request().url();
+      asked.push(url);
+      const cors = { 'Access-Control-Allow-Origin': '*' };
+      if (url.endsWith('/styles/positron'))
+        return r.fulfill({
+          json: {
+            ...STYLE,
+            sources: {
+              openmaptiles: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
+            },
+          },
+          headers: cors,
+        });
+      if (url.endsWith('/planet'))
+        return r.fulfill({
+          json: { tiles: ['https://tiles.openfreemap.org/planet/w1/{z}/{x}/{y}.pbf'] },
+          headers: cors,
+        });
+      return r.fulfill({ body: 'tile', headers: cors });
+    });
+    await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+    // Nothing of the route's map is asked before the tap.
+    expect(asked.filter((u) => u.endsWith('.pbf'))).toEqual([]);
+    await page.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Keep map for offline' }).click();
+    await expect(page.getByText(/^Map kept for offline \(\d+ parts\)\.$/)).toBeVisible({
+      timeout: 20_000,
+    });
+    const tiles = asked.filter((u) => u.endsWith('.pbf'));
+    expect(tiles.length).toBeGreaterThan(20);
+    expect(tiles.length).toBeLessThanOrEqual(400);
+    // Zoom 10 to 13 only, around Interlaken (zoom 10: x 536, y 361).
+    expect(new Set(tiles.map((u) => /\/(\d+)\/\d+\/\d+\.pbf$/.exec(u)![1]))).toEqual(
+      new Set(['10', '11', '12', '13']),
+    );
+    expect(tiles.some((u) => /\/10\/53[5-7]\/36[0-2]\.pbf$/.test(u))).toBe(true);
+    const kept = await page.evaluate(
+      async () => (await (await caches.open('srr-tiles-v1')).keys()).length,
+    );
+    expect(kept).toBe(tiles.length);
+  });
+});
