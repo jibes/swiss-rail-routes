@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { insertTemplate, newTour } from './helpers/edit';
 import { highlightName, localParams } from '../src/core/data';
+import { markRings } from '../src/core/line';
 import { mapData, styleFont } from '../src/core/mapdata';
 import { conn, index, ref, ride, templates } from './helpers/timetable';
 
@@ -25,6 +26,16 @@ describe('mapData', () => {
     expect(w).toBeLessThan(8.6); // Zürich
     expect(e).toBeGreaterThan(9.8); // St. Moritz
     expect(s).toBeLessThan(n);
+  });
+
+  it('a scenic line’s own stations are marked as such; a station you chose never is', () => {
+    const d = mapData(tour, undefined, templates, stop);
+    const rings = d.stops.features.filter((f) => f.properties.ring);
+    // The Albula's must-pass stations, read as the line reads them (the old builder marked none).
+    expect(rings.length).toBe(markRings(tour.waypoints).filter((w) => w.ring).length);
+    expect(rings.length).toBeGreaterThan(0);
+    const yours = d.stops.features.filter((f) => !f.properties.ring);
+    expect(yours.map((f) => f.properties.name)).toContain('Zürich HB');
   });
 
   it('uses track geometry when present, else the calls', () => {

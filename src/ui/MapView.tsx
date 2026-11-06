@@ -204,7 +204,8 @@ export default function MapView({ id }: { id: string }) {
           type: 'circle',
           source: 'stops',
           paint: {
-            'circle-radius': ['match', ['get', 'kind'], 'via', 4, 7],
+            // Yours one size, a via as a stop (picked on the map or by name); a line's stations small.
+            'circle-radius': ['case', ['get', 'ring'], 4, 7],
             'circle-color': '#ffffff',
             'circle-stroke-color': ACCENT,
             'circle-stroke-width': 3,
@@ -249,9 +250,9 @@ export default function MapView({ id }: { id: string }) {
             paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
           });
         // Named without the style's fonts (HTML markers), so the plain ground has names too:
-        // the stations where you board, stay and get off, not every one passed.
+        // every station you chose (a via picked on the map as one typed), not a line's own.
         for (const f of d.stops.features) {
-          if (f.properties.kind === 'via') continue;
+          if (f.properties.ring) continue;
           const el = document.createElement('div');
           el.className = 'map-name';
           el.textContent = String(f.properties.name ?? '');
