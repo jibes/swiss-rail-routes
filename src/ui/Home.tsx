@@ -13,7 +13,7 @@ import { Icon } from './icons';
 import { LiveBar } from './LiveBar';
 import { Logo } from './Logo';
 import { MiniLine } from './MiniLine';
-import { go } from './useHash';
+import { go, useHash } from './useHash';
 import { useLiveStatus } from './useLive';
 import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
@@ -24,9 +24,11 @@ function Card({
   trip,
   live,
   stop,
+  open,
 }: {
   trip: Trip;
   live: boolean;
+  open?: boolean;
   stop: Parameters<typeof autoName>[1];
 }) {
   const t = useT();
@@ -37,7 +39,12 @@ function Card({
   const c = trip.chain;
   return (
     <li>
-      <a href={`#/trip/${trip.id}`} className={`card ${live ? 'live' : ''}`}>
+      <a
+        href={`#/trip/${trip.id}`}
+        className={`card ${live ? 'live' : ''}`}
+        // Beside the open trip (desktop columns): which one it is.
+        aria-current={open ? 'page' : undefined}
+      >
         <span className="day" aria-hidden="true">
           <b>{d.getUTCDate()}</b>
           <i>{fmt({ weekday: 'short' })}</i>
@@ -69,6 +76,7 @@ function Card({
  * whose day is over waits in search (New trip → your trips).
  */
 export function Home() {
+  const openId = /^\/trip\/([\w-]+)/.exec(useHash())?.[1];
   const t = useT();
   const trips = useTrips((s) => s.trips);
   const tripsFailed = useTrips((s) => s.failed);
@@ -121,7 +129,7 @@ export function Home() {
           {ahead.length > 0 && <h2 className="section-label">{t('nowSection')}</h2>}
           <ul className="cards" aria-label={t('nowSection')}>
             {live.map((x) => (
-              <Card key={x.id} trip={x} live stop={stop} />
+              <Card key={x.id} trip={x} open={x.id === openId} live stop={stop} />
             ))}
           </ul>
         </section>
@@ -131,7 +139,7 @@ export function Home() {
           <h2 className="section-label">{t('upcoming')}</h2>
           <ul className="cards" aria-label={t('upcoming')}>
             {ahead.map((x) => (
-              <Card key={x.id} trip={x} live={false} stop={stop} />
+              <Card key={x.id} trip={x} open={x.id === openId} live={false} stop={stop} />
             ))}
           </ul>
         </section>
@@ -161,7 +169,7 @@ export function Home() {
           <h2 className="section-label">{t('doneTodaySection')}</h2>
           <ul className="cards done" aria-label={t('doneTodaySection')}>
             {doneToday.map((x) => (
-              <Card key={x.id} trip={x} live={false} stop={stop} />
+              <Card key={x.id} trip={x} open={x.id === openId} live={false} stop={stop} />
             ))}
           </ul>
         </section>

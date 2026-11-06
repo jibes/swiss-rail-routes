@@ -276,7 +276,7 @@ export function TripScreen({ id }: { id: string }) {
         <span className="sp" />
         <button
           type="button"
-          className="icon"
+          className="icon open-map"
           aria-label={t('map')}
           disabled={route.waypoints.length < 2}
           onClick={() => go(`/trip/${id}/map`)}

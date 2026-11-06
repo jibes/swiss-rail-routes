@@ -230,6 +230,7 @@ export const fr = {
   windowsDropped: 'Plages horaires des arrêts retirées.',
   forgetTrip: 'Oublier {name}',
   more: 'Plus',
+  colsPick: 'Choisissez un voyage dans la liste ou commencez-en un nouveau.',
   noTripsYet:
     'Un nouveau voyage part d’une gare, d’une ligne panoramique ou d’un de tes voyages passés.',
   notPlanned: 'Pas encore d’horaire',

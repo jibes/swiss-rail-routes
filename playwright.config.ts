@@ -23,7 +23,12 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    // One column, as each screen is on its own; the columns of a wide screen (useColumns.ts,
+    // from 860 px) have their own test at their own size (e2e/columns.spec.ts).
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 840, height: 800 } },
+    },
     { name: 'phone', use: { ...devices['Pixel 7'] } },
   ],
 });

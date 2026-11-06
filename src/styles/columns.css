@@ -1,0 +1,72 @@
+/* ─── Desktop columns (App.tsx, useColumns.ts): list | trip | map, or trip | map ─── */
+
+html.columns,
+html.columns body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.cols {
+  display: grid;
+  height: 100dvh;
+}
+
+.cols-3 {
+  grid-template-columns: minmax(320px, 400px) minmax(440px, 600px) minmax(0, 1fr);
+}
+
+.cols-2 {
+  grid-template-columns: minmax(440px, 560px) minmax(0, 1fr);
+}
+
+/* A column holds what is fixed on a phone (the dock, sheets, notes, the map): a transformed box
+   is their frame. It does not scroll itself, so they stay put while its content scrolls. */
+.col {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.col + .col {
+  border-left: 1px solid var(--hair);
+}
+
+.col-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.col .page {
+  max-width: none;
+}
+
+.col-map {
+  background: var(--map-ground);
+}
+
+/* Beside its trip the map needs no way back to it. */
+.col-map .map-back {
+  display: none;
+}
+
+.col-pick {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: var(--pad);
+  color: var(--ink-2);
+  text-align: center;
+}
+
+/* The map is beside the trip: no button to open it. */
+.cols:has(.col-map .mapview) .col-main .open-map {
+  display: none;
+}
+
+/* The trip open beside the list. */
+.col-list .card[aria-current='page'] {
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--rail);
+}

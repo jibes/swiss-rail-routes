@@ -230,6 +230,7 @@ export const de = {
   windowsDropped: 'Zeitfenster der Aufenthalte entfernt.',
   forgetTrip: '{name} vergessen',
   more: 'Mehr',
+  colsPick: 'Wähle eine Reise aus der Liste oder beginne eine neue.',
   noTripsYet:
     'Eine neue Reise beginnt bei einer Station, einer Panoramalinie oder einer deiner früheren Reisen.',
   notPlanned: 'Noch kein Fahrplan',

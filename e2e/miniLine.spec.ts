@@ -15,6 +15,8 @@ test('the list’s mini line: round dots, evenly spaced, across the row at any w
 
   for (const width of [360, 1400]) {
     await page.setViewportSize({ width, height: 800 });
+    // Wide, the list is a column of its own (drawn anew).
+    await expect(line).toBeVisible();
     const box = (await line.boundingBox())!;
     const dots = await line.locator('b').evaluateAll((els) =>
       els.map((e) => {

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
-import { usePrefs } from './store';
+import { usePrefs, useT } from './store';
 import { useTours } from './tours';
 import { Home } from './ui/Home';
 import { SharedTour } from './ui/SharedTour';
@@ -23,6 +23,8 @@ import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
 import { useNow } from './ui/useNow';
 import { NotFound } from './ui/NotFound';
+import { useColumns } from './ui/useColumns';
+import { useFocusStop } from './ui/focusStop';
 
 /** Set once the app opened in this tab (srr.<name>.v<N>). */
 const OPENED = 'srr.opened.v1';
@@ -101,6 +103,76 @@ function Route({ hash: full }: { hash: string }) {
   return hash.startsWith('/tour/') ? <Home /> : <NotFound />;
 }
 
+/**
+ * Desktop: the list, the trip and its map side by side (3 columns), or the trip and its map (2).
+ * The trip's own map address shows the trip beside it. Each column frames what a phone shows
+ * fixed (dock, sheets, notes), so every screen works in it unchanged.
+ */
+function Columns({ hash, n }: { hash: string; n: 2 | 3 }) {
+  const t = useT();
+  const path = hash.split('?')[0]!;
+  const id = /^\/trip\/([\w-]+)/.exec(path)?.[1];
+  const main = id && /\/map$/.test(path) ? `/trip/${id}` : hash;
+  const home = path === '/' || path === '/trips';
+  const setFocus = useFocusStop((s) => s.set);
+  useEffect(() => {
+    document.documentElement.classList.add('columns');
+    return () => document.documentElement.classList.remove('columns');
+  }, []);
+  return (
+    <div className={`cols cols-${n}`}>
+      {n === 3 && (
+        <div
+          className="col col-list"
+          // Up and down the trips with the arrow keys; Enter opens one.
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('a.card')];
+            const at = cards.indexOf(document.activeElement as HTMLElement);
+            const next = cards[at < 0 ? 0 : at + (e.key === 'ArrowDown' ? 1 : -1)];
+            if (!next) return;
+            e.preventDefault();
+            next.focus();
+          }}
+        >
+          <div className="col-scroll">
+            <Home />
+          </div>
+        </div>
+      )}
+      <div
+        className="col col-main"
+        // The station under the pointer, ringed on the map beside it.
+        onMouseOver={(e) =>
+          setFocus(
+            (e.target as Element).closest?.('[data-stop]')?.getAttribute('data-stop') ?? null,
+          )
+        }
+        onMouseLeave={() => setFocus(null)}
+      >
+        <div className="col-scroll">
+          {n === 3 && home ? (
+            <p className="col-pick">{t('colsPick')}</p>
+          ) : (
+            <ErrorBoundary resetKey={main.split('?')[0]!}>
+              <Route hash={main} />
+            </ErrorBoundary>
+          )}
+        </div>
+      </div>
+      {n === 3 || id ? (
+        <div className="col col-map">
+          {id && (
+            <Suspense fallback={null}>
+              <MapView key={id} id={id} />
+            </Suspense>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function App() {
   const lang = usePrefs((s) => s.lang);
   const load = useTours((s) => s.load);
@@ -108,6 +180,7 @@ export function App() {
   const loadTrips = useTrips((s) => s.load);
   const tripsLoaded = useTrips((s) => s.loaded);
   const hash = useHash();
+  const columns = useColumns();
   const opened = useRef(false);
 
   useEffect(() => {
@@ -177,9 +250,13 @@ export function App() {
     <>
       <Retire loaded={loaded} tripsLoaded={tripsLoaded} />
       {loaded && tripsLoaded ? (
-        <ErrorBoundary resetKey={hash.split('?')[0]!}>
-          <Route hash={hash} />
-        </ErrorBoundary>
+        columns > 1 ? (
+          <Columns hash={hash} n={columns as 2 | 3} />
+        ) : (
+          <ErrorBoundary resetKey={hash.split('?')[0]!}>
+            <Route hash={hash} />
+          </ErrorBoundary>
+        )
       ) : null}
       {!isNative && <UpdateBanner />}
     </>

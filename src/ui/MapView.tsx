@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import { fromProtocol, MAP_PROTOCOL, toProtocol } from '../core/mapCache';
 import { mapData, styleFont } from '../core/mapdata';
+import { useFocusStop } from './focusStop';
 import type { Connection } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
@@ -109,6 +110,19 @@ async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
   }
 }
 
+const focusPoint = (p: [number, number] | null) => ({
+  type: 'FeatureCollection' as const,
+  features: p
+    ? [
+        {
+          type: 'Feature' as const,
+          geometry: { type: 'Point' as const, coordinates: p },
+          properties: {},
+        },
+      ]
+    : [],
+});
+
 /** A trip's map: its saved connections, or its last plan while it has none. */
 export default function MapView({ id }: { id: string }) {
   const t = useT();
@@ -206,6 +220,7 @@ export default function MapView({ id }: { id: string }) {
         map.addSource('stops', { type: 'geojson', data: d.stops });
         map.addSource('highlights', { type: 'geojson', data: d.highlights });
         map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
+        map.addSource('focus', { type: 'geojson', data: focusPoint(null) });
         map.addLayer({
           id: 'accuracy',
           type: 'fill',
@@ -259,6 +274,18 @@ export default function MapView({ id }: { id: string }) {
             'circle-color': '#f2a900',
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
+          },
+        });
+        // The station the pointer is on in the trip beside the map (desktop columns).
+        map.addLayer({
+          id: 'focus',
+          type: 'circle',
+          source: 'focus',
+          paint: {
+            'circle-radius': 13,
+            'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': ACCENT,
+            'circle-stroke-width': 3,
           },
         });
         // Names need the style's fonts: none on the plain ground (the highlights still show).
@@ -317,6 +344,15 @@ export default function MapView({ id }: { id: string }) {
   useEffect(() => {
     marker.current?.setLngLat([lon, lat]);
   }, [map, placed, source, hereLabel, lon, lat]);
+  const focus = useFocusStop((s) => s.key);
+  const focusAt = focus && index ? index.byRef(focus) : undefined;
+  const fLon = focusAt?.lon;
+  const fLat = focusAt?.lat;
+  useEffect(() => {
+    map
+      ?.getSource<maplibregl.GeoJSONSource>('focus')
+      ?.setData(focusPoint(fLon !== undefined && fLat !== undefined ? [fLon, fLat] : null));
+  }, [map, fLon, fLat]);
   const shownFix = shown?.source === 'location' ? shown.fix : null;
   useEffect(() => {
     map?.getSource<maplibregl.GeoJSONSource>('accuracy')?.setData(accuracyArea(shownFix));
@@ -328,7 +364,7 @@ export default function MapView({ id }: { id: string }) {
       <div className="map-bar">
         <button
           type="button"
-          className="icon"
+          className="icon map-back"
           aria-label={t('back')}
           // Up to the trip, as on every screen: the map may have been opened from a link.
           onClick={() => go(`/trip/${id}`)}

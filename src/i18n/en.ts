@@ -221,6 +221,7 @@ export const en = {
   windowsDropped: 'Stay time windows removed.',
   forgetTrip: 'Forget {name}',
   more: 'More',
+  colsPick: 'Pick a trip from the list, or start a new one.',
   noTripsYet: 'New trip starts from a station, a scenic line or one of your past trips.',
   notPlanned: 'No timetable yet',
   nothingPlanned: 'Nothing planned',

@@ -248,6 +248,7 @@ export function TripLine({
     return (
       <li
         key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
+        data-stop={r.key}
         className={[
           'station',
           'pass',
@@ -438,6 +439,7 @@ export function TripLine({
         return (
           <li
             key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
+            data-stop={r.key}
             className={[
               'station',
               big ? 'off' : 'pass',

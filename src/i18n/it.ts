@@ -229,6 +229,7 @@ export const it = {
   windowsDropped: 'Fasce orarie delle soste rimosse.',
   forgetTrip: 'Dimentica {name}',
   more: 'Altro',
+  colsPick: 'Scegli un viaggio dalla lista o iniziane uno nuovo.',
   noTripsYet:
     'Un nuovo viaggio parte da una stazione, da una linea panoramica o da un tuo viaggio passato.',
   notPlanned: 'Ancora nessun orario',
