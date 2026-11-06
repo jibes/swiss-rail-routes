@@ -8,6 +8,8 @@ import { mapFetch } from '../io/mapCache';
 maplibregl.setWorkerUrl(workerUrl);
 
 export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+/** On a dark device (0.32.0): the same tiles, OpenFreeMap's dark style. */
+export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 /** Without the tile host (offline, blocked): the route on a plain ground, still readable; the
     ground follows the theme (`--map-ground`), as a light one glares on a dark screen. */
 export function plain(): maplibregl.StyleSpecification {
@@ -50,10 +52,11 @@ export function registerMapProtocol() {
 }
 
 /** The map's style, fetched first: if it cannot be had, the plain one (and say so). */
-export async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
+export async function styleOf(dark = false): Promise<maplibregl.StyleSpecification | null> {
+  const url = dark ? MAP_STYLE_DARK : MAP_STYLE;
   try {
     const signal = AbortSignal.timeout(8000);
-    const res = inPage() ? await mapFetch(MAP_STYLE, signal) : await fetch(MAP_STYLE, { signal });
+    const res = inPage() ? await mapFetch(url, signal) : await fetch(url, { signal });
     return res.ok ? ((await res.json()) as maplibregl.StyleSpecification) : null;
   } catch {
     return null;

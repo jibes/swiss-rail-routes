@@ -261,12 +261,13 @@ export const de = {
   mapPickFailed: 'Die Züge ab hier konnten nicht geladen werden.',
   mapPickNone: 'Keine direkten Züge ab hier in den nächsten drei Stunden.',
   mapPickHint:
-    'Die Linien sind die Züge ab hier ohne Umsteigen. Tippe auf einen Bahnhof oder irgendwo für die Haltestellen in der Nähe.',
+    'Blau: die Züge ab {stop} ohne Umsteigen, je dunkler, desto früher. Tippe irgendwo, um einen Halt hinzuzufügen.',
   mapPickDirect: 'Direkt: um {time} mit dem {line} ab {dep}.',
   mapPickAboutVia: 'Etwa {h}, umsteigen in {via} (geschätzt; der Plan sagt es genau).',
   mapPickAbout: 'Etwa {h} (geschätzt; der Plan sagt es genau).',
   mapPickAdd: 'Hinzufügen',
-  mapPickAddOn: 'Hinzufügen und von dort weiter',
+  mapPickDone: 'Fertig',
+  mapAddStops: 'Halte auf der Karte hinzufügen',
   noTripsYet:
     'Eine neue Reise beginnt bei einer Station, einer Panoramalinie oder einer deiner früheren Reisen.',
   notPlanned: 'Noch kein Fahrplan',

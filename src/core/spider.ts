@@ -28,6 +28,8 @@ export interface Reached {
   mode: Mode;
   destination?: string;
   pos: LatLon;
+  /** How many of the trains from here call there: a place's weight on the map (its name). */
+  calls: number;
 }
 
 export interface WebLine {
@@ -54,6 +56,7 @@ export function spiderWeb(
   const until = ms(o.at) + HORIZON_MIN * 60_000;
   const where = (key: string) => o.place(key) ?? d.places.get(key);
   const best = new Map<string, Reached>();
+  const trains = new Map<string, number>();
   const lines = new Map<string, WebLine>();
   for (const s of d.rides) {
     if (!s.from.dep || ms(s.from.dep) < ms(o.at) || ms(s.from.dep) > until) continue;
@@ -65,6 +68,7 @@ export function spiderWeb(
       const arr = c.arr ?? c.dep;
       if (!pos || !arr || key === start) continue;
       keys.push(key);
+      trains.set(key, (trains.get(key) ?? 0) + 1);
       const was = best.get(key);
       if (!was || ms(arr) < ms(was.arr))
         best.set(key, {
@@ -77,6 +81,7 @@ export function spiderWeb(
           mode: s.mode,
           destination: s.destination,
           pos,
+          calls: 0,
         });
     }
     const sig = keys.join('>');
@@ -101,9 +106,21 @@ export function spiderWeb(
   );
   return {
     from: start,
-    reached: [...best.values()].sort((a, b) => ms(a.arr) - ms(b.arr)),
+    reached: [...best.values()]
+      .map((r) => ({ ...r, calls: trains.get(r.key) ?? 1 }))
+      .sort((a, b) => ms(a.arr) - ms(b.arr)),
     lines: kept,
   };
+}
+
+/** The places named on the map from the start: the `n` most trains call at (the biggest). */
+export function biggest(web: Web, n = 10): Set<string> {
+  return new Set(
+    [...web.reached]
+      .sort((a, b) => b.calls - a.calls || ms(a.arr) - ms(b.arr))
+      .slice(0, n)
+      .map((r) => r.key),
+  );
 }
 
 export interface Estimate {

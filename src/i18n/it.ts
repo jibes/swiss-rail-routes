@@ -259,12 +259,13 @@ export const it = {
   mapPickFailed: 'Non è stato possibile caricare i treni da qui.',
   mapPickNone: 'Nessun treno diretto da qui nelle prossime tre ore.',
   mapPickHint:
-    'Le linee sono i treni da qui senza cambi. Tocca una stazione, o un punto qualsiasi per le fermate vicine.',
+    'In blu: i treni da {stop} senza cambi, più scuri prima. Tocca un punto qualsiasi per aggiungere una fermata.',
   mapPickDirect: 'Diretto: alle {time} con il {line} delle {dep}.',
   mapPickAboutVia: 'Circa {h}, cambio a {via} (una stima; il piano lo dice esatto).',
   mapPickAbout: 'Circa {h} (una stima; il piano lo dice esatto).',
   mapPickAdd: 'Aggiungi',
-  mapPickAddOn: 'Aggiungi e prosegui da lì',
+  mapPickDone: 'Fatto',
+  mapAddStops: 'Aggiungi fermate sulla mappa',
   noTripsYet:
     'Un nuovo viaggio parte da una stazione, da una linea panoramica o da un tuo viaggio passato.',
   notPlanned: 'Ancora nessun orario',

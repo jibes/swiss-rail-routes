@@ -1,5 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
   dropLine,
@@ -46,12 +45,9 @@ import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
 import { findSubstitute } from '../io/substitute';
 import { leaveTime } from '../core/spider';
-
-const MapPicker = lazy(() => import('./MapPicker'));
+import { useMapAdd } from './mapAdd';
 
 /** Into that element (the map's column), else where it stands. */
-const portalTo = (into: Element | null, node: ReactNode) =>
-  into ? createPortal(node, into) : node;
 
 const addDays = (date: string, n: number) => {
   const d = new Date(`${date}T12:00:00Z`);
@@ -159,8 +155,7 @@ export function TripScreen({ id }: { id: string }) {
   const closeSheet = useCallback(() => setSheet(null), []);
   // The map planner: it adds after this entry, one after the other.
   // Beside the trip (desktop columns) it takes the map's column, not the trip's.
-  const [mapPick, setMapPick] = useState<{ after: number; into: Element | null } | null>(null);
-  const closeMap = useCallback(() => setMapPick(null), []);
+  const startMapAdd = useMapAdd((s) => s.start);
   const [prices, setPrices] = useState(false);
   const closePrices = useCallback(() => setPrices(false), []);
   // A via just unpinned, for a few seconds: Undo pins it back where it was.
@@ -584,9 +579,17 @@ export function TripScreen({ id }: { id: string }) {
           onMap={
             sheet.after >= 0
               ? () => {
+                  const w = entries[sheet.after]!.w;
                   log('mapPick.open', { trip: id, after: sheet.after });
-                  setMapPick({ after: sheet.after, into: document.querySelector('.col-map') });
+                  // On the trip's own map: beside the trip (desktop columns), else its screen.
+                  startMapAdd({
+                    trip: id,
+                    after: sheet.after,
+                    from: { stopRef: w.stopRef, name: w.name },
+                    at: leaveTime(route, trip.chain?.connections, w.stopRef),
+                  });
                   setSheet(null);
+                  if (!document.querySelector('.col-map .mapview')) go(`/trip/${id}/map`);
                 }
               : undefined
           }
@@ -611,23 +614,6 @@ export function TripScreen({ id }: { id: string }) {
           </button>
         </p>
       )}
-      {mapPick &&
-        entries[mapPick.after] &&
-        portalTo(
-          mapPick.into,
-          <Suspense fallback={null}>
-            <MapPicker
-              start={entries[mapPick.after]!.w}
-              at={leaveTime(route, trip.chain?.connections, entries[mapPick.after]!.w.stopRef)}
-              onAdd={(stop) => {
-                const at = mapPick.after;
-                edit((r) => insertEntries(r, at, [stationEntry(stop)]));
-                setMapPick({ after: at + 1, into: mapPick.into });
-              }}
-              onClose={closeMap}
-            />
-          </Suspense>,
-        )}
     </main>
   );
 }

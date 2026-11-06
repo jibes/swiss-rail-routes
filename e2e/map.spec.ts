@@ -53,11 +53,18 @@ test('map opens for a trip and says so when tiles are unreachable', async ({ pag
 test('the plain ground follows dark mode', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.clock.install({ time: BEFORE });
+  // A dark device asks for the dark map (0.32.0), never the light one.
+  const styles: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/styles/')) styles.push(new URL(r.url()).pathname);
+  });
   // The map needs no timetable: the trip may be planned meanwhile, from an hour nothing answers.
   allowUnrecorded(page);
   await newTrip(page, 'Chur', 'St. Moritz');
   await page.getByRole('button', { name: 'Map' }).click();
   await expect(page.getByRole('status')).toHaveText('Map tiles could not be loaded.');
+  expect(styles).toContain('/styles/dark');
+  expect(styles).not.toContain('/styles/positron');
   await expect
     .poll(
       async () => {

@@ -83,6 +83,17 @@
   pointer-events: none;
 }
 
+/* On the dark map (a dark device): light names, dark glow. */
+@media (prefers-color-scheme: dark) {
+  .map-name {
+    color: #f2f2f2;
+    text-shadow:
+      0 0 2px #1b1d21,
+      0 0 4px #1b1d21,
+      0 1px 3px #1b1d21;
+  }
+}
+
 .map-note {
   position: absolute;
   z-index: 2;
@@ -242,80 +253,128 @@ a.secondary {
   color: #1a73e8;
 }
 
-/* ─── Map planner (MapPicker.tsx): over the trip, as a sheet is ─── */
+/* ─── Adding on the map (MapAdd.tsx): over the trip's own map ─── */
 
-.map-picker {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  background: var(--map-ground);
-}
-
-.map-picker .map {
+/* Where the web starts, and Done: at the top, between the back button and the tools. */
+.map-add-bar {
   position: absolute;
-  inset: 0;
-}
-
-.map-picker-bar {
-  position: absolute;
-  z-index: 2;
-  top: calc(12px + var(--inset-top, env(safe-area-inset-top)));
-  left: 12px;
-  right: 12px;
+  z-index: 3;
+  top: calc(12px + var(--in-t));
+  left: calc(68px + var(--in-l));
+  right: calc(68px + var(--in-r));
+  max-width: 520px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 4px 12px 4px 4px;
+  padding: 4px 4px 4px 14px;
   border-radius: 999px;
   background: var(--surface);
-  box-shadow: 0 1px 6px rgb(0 0 0 / 0.15);
+  box-shadow: var(--shadow);
 }
 
-.map-picker-from {
+.map-add-from {
   margin: 0;
+  min-width: 0;
   font-weight: 600;
   font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.map-picker-notes {
+.map-add-notes {
   position: absolute;
   z-index: 2;
-  top: calc(68px + var(--inset-top, env(safe-area-inset-top)));
-  left: 12px;
-  right: 12px;
+  top: calc(68px + var(--in-t));
+  left: calc(12px + var(--in-l));
+  right: calc(68px + var(--in-r));
   display: grid;
   gap: 8px;
   justify-items: start;
+  pointer-events: none;
+}
+
+.map-add-notes > * {
+  pointer-events: auto;
+}
+
+/* The hint says what blue is, by a swatch of it. */
+.map-add-hint {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  max-width: 420px;
+}
+
+.web-key {
+  flex: none;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: #2b5c8a;
+  transform: translateY(-3px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .web-key {
+    background: #8cb4e0;
+  }
+}
+
+/* Tap anywhere: a crosshair over the map, a pointer over a place; its name by the pointer. */
+.maplibregl-canvas.adding {
+  cursor: crosshair;
+}
+
+.maplibregl-canvas.adding.on-place {
+  cursor: pointer;
+}
+
+.map-add-tip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(12px, -50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .map-picker-card {
   position: absolute;
-  z-index: 2;
-  left: 12px;
-  right: 12px;
-  bottom: calc(16px + var(--inset-bottom, env(safe-area-inset-bottom)));
+  z-index: 3;
+  left: calc(12px + var(--in-l));
+  right: calc(12px + var(--in-r));
+  bottom: calc(16px + var(--in-b));
   max-width: 520px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 12px 16px 16px;
   border-radius: 16px;
   background: var(--surface);
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
 }
 
+.map-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .map-picker-card h2 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 18px;
 }
 
 .map-picker-card p {
-  margin: 0 0 12px;
+  margin: 4px 0 12px;
   color: var(--ink-2);
-}
-
-.map-picker-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .map-picker-list {
@@ -394,4 +453,9 @@ a.secondary {
 .map-picker-near .r-sub {
   color: var(--ink-2);
   font-size: 13px;
+}
+
+/* Its swatch says what it is about: no notice dot beside it. */
+.notice.map-add-hint::before {
+  display: none;
 }

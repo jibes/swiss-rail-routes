@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Section } from '../src/core/model';
 import type { Departures } from '../src/core/ojp/departures';
-import { estimate, HORIZON_MIN, leaveTime, spiderWeb } from '../src/core/spider';
+import { biggest, estimate, HORIZON_MIN, leaveTime, spiderWeb } from '../src/core/spider';
 
 const P: Record<string, { lat: number; lon: number }> = {
   A: { lat: 46.0, lon: 7.0 },
@@ -66,6 +66,16 @@ describe('the map planner’s web', () => {
       'A>D',
     ]);
     expect(web.lines[0]!.coords[0]).toEqual([7.0, 46.0]);
+  });
+
+  it('the biggest places: those most trains from here call at', () => {
+    // B: three trains, C two, D one.
+    expect(web.reached.map((r) => [r.name, r.calls])).toEqual([
+      ['B', 3],
+      ['C', 2],
+      ['D', 1],
+    ]);
+    expect([...biggest(web, 2)].map((k) => k.slice(-1))).toEqual(['B', 'C']);
   });
 
   it('a place no train reaches: about, by the nearest place reached and a change', () => {

@@ -260,12 +260,13 @@ export const fr = {
   mapPickFailed: 'Les trains depuis ici n’ont pas pu être chargés.',
   mapPickNone: 'Aucun train direct depuis ici dans les trois prochaines heures.',
   mapPickHint:
-    'Les lignes sont les trains depuis ici sans changement. Touchez une gare, ou n’importe où pour les arrêts à proximité.',
+    'En bleu : les trains depuis {stop} sans changement, plus foncés plus tôt. Touchez n’importe où pour ajouter un arrêt.',
   mapPickDirect: 'Direct : à {time} avec le {line} au départ de {dep}.',
   mapPickAboutVia: 'Environ {h}, changement à {via} (une estimation ; le plan le dit exactement).',
   mapPickAbout: 'Environ {h} (une estimation ; le plan le dit exactement).',
   mapPickAdd: 'Ajouter',
-  mapPickAddOn: 'Ajouter et continuer depuis là',
+  mapPickDone: 'Terminé',
+  mapAddStops: 'Ajouter des arrêts sur la carte',
   noTripsYet:
     'Un nouveau voyage part d’une gare, d’une ligne panoramique ou d’un de tes voyages passés.',
   notPlanned: 'Pas encore d’horaire',

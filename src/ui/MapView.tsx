@@ -6,6 +6,12 @@ import { expectedArrival } from '../core/live';
 import { toProtocol } from '../core/mapCache';
 import { mapData, styleFont } from '../core/mapdata';
 import { useFocusStop } from './focusStop';
+import { entriesOf } from '../core/line';
+import { leaveTime } from '../core/spider';
+import { log } from '../io/log';
+import { MapAdd } from './MapAdd';
+import { useMapAdd } from './mapAdd';
+import { useDark } from './useDark';
 import { inPage, plain, registerMapProtocol, styleOf } from './mapBase';
 export { MAP_STYLE } from './mapBase';
 import type { Connection } from '../core/model';
@@ -103,6 +109,7 @@ export default function MapView({ id }: { id: string }) {
     [state, index],
   );
   const lang = usePrefs((s) => s.lang);
+  const dark = useDark();
   const locating = usePrefs((s) => s.location);
   const setLocating = usePrefs((s) => s.setLocation);
   // Refused: off again, so the next visit does not ask or fail again; said until tapped.
@@ -123,33 +130,24 @@ export default function MapView({ id }: { id: string }) {
   // Never moved to the location: tiles for that place would tell the tile host where you are.
   const away = !!map && source === 'location' && !map.getBounds().contains(here!);
 
+  // The map, once per trip and theme: what is drawn on it follows the trip below, so adding a
+  // stop (on the map or beside it) never builds it again.
+  const [font, setFont] = useState<string[] | null>(null);
   useEffect(() => {
-    if (!json || !box.current) return;
-    const [current, savedChain] = JSON.parse(json) as [
-      NonNullable<typeof tour>,
-      Connection[] | null,
-    ];
-    const routeJson = JSON.stringify(current);
+    if (!id || !box.current) return;
     let map: maplibregl.Map | undefined;
     let gone = false;
     (async () => {
-      const [index, plans, style] = await Promise.all([stopSearch(), loadPlans(), styleOf()]);
+      const style = await styleOf(dark);
       if (!style) setFailed(true);
       if (gone || !box.current) return;
-      const saved = plans[id];
-      const chain: Connection[] | undefined =
-        savedChain ??
-        (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
-      const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r), lang);
-      setStraight(d.lines.features.some((f) => !f.properties.exact));
       const page = inPage();
       if (page) registerMapProtocol();
       map = new maplibregl.Map({
         container: box.current,
         transformRequest: page ? (url) => ({ url: toProtocol(url) }) : undefined,
         style: style ?? plain(),
-        bounds: d.bounds ?? [5.9, 45.8, 10.5, 47.8],
-        fitBoundsOptions: { padding: 40 },
+        bounds: [5.9, 45.8, 10.5, 47.8],
         attributionControl: { compact: true },
       });
       map.on('error', () => setFailed(true));
@@ -161,11 +159,12 @@ export default function MapView({ id }: { id: string }) {
       map.on('pitch', turned);
       map.on('load', () => {
         if (!map) return;
-        map.addSource('lines', { type: 'geojson', data: d.lines });
-        map.addSource('stops', { type: 'geojson', data: d.stops });
-        map.addSource('highlights', { type: 'geojson', data: d.highlights });
+        const empty = focusPoint(null);
+        map.addSource('lines', { type: 'geojson', data: empty });
+        map.addSource('stops', { type: 'geojson', data: empty });
+        map.addSource('highlights', { type: 'geojson', data: empty });
         map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
-        map.addSource('focus', { type: 'geojson', data: focusPoint(null) });
+        map.addSource('focus', { type: 'geojson', data: empty });
         map.addLayer({
           id: 'accuracy',
           type: 'fill',
@@ -206,7 +205,7 @@ export default function MapView({ id }: { id: string }) {
           paint: {
             // Yours one size, a via as a stop (picked on the map or by name); a line's stations small.
             'circle-radius': ['case', ['get', 'ring'], 4, 7],
-            'circle-color': '#ffffff',
+            'circle-color': dark ? '#1b1d21' : '#ffffff',
             'circle-stroke-color': ACCENT,
             'circle-stroke-width': 3,
           },
@@ -235,7 +234,7 @@ export default function MapView({ id }: { id: string }) {
           },
         });
         // Names need the style's fonts: none on the plain ground (the highlights still show).
-        if (style)
+        if (style) {
           map.addLayer({
             id: 'labels',
             type: 'symbol',
@@ -247,18 +246,13 @@ export default function MapView({ id }: { id: string }) {
               'text-offset': [0, 1.2],
               'text-anchor': 'top',
             },
-            paint: { 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+            paint: {
+              'text-color': dark ? '#f2f2f2' : '#1a1a1a',
+              'text-halo-color': dark ? '#1b1d21' : '#ffffff',
+              'text-halo-width': 1.5,
+            },
           });
-        // Named without the style's fonts (HTML markers), so the plain ground has names too:
-        // every station you chose (a via picked on the map as one typed), not a line's own.
-        for (const f of d.stops.features) {
-          if (f.properties.ring) continue;
-          const el = document.createElement('div');
-          el.className = 'map-name';
-          el.textContent = String(f.properties.name ?? '');
-          new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 9] })
-            .setLngLat(f.geometry.coordinates)
-            .addTo(map);
+          setFont(styleFont(style));
         }
         setMap(map);
       });
@@ -266,9 +260,86 @@ export default function MapView({ id }: { id: string }) {
     return () => {
       gone = true;
       setMap(null);
+      setFont(null);
       map?.remove();
     };
-  }, [json, id, lang]);
+  }, [id, dark]);
+
+  // What is drawn: the trip as it is now, its saved connections or its last plan; the view takes
+  // it in once, when the map opens.
+  const fittedFor = useRef<maplibregl.Map | null>(null);
+  useEffect(() => {
+    if (!map || !json) return;
+    const [current, savedChain] = JSON.parse(json) as [
+      NonNullable<typeof tour>,
+      Connection[] | null,
+    ];
+    const routeJson = JSON.stringify(current);
+    let gone = false;
+    const names: maplibregl.Marker[] = [];
+    (async () => {
+      const [index, plans] = await Promise.all([stopSearch(), loadPlans()]);
+      if (gone) return;
+      const saved = plans[id];
+      const chain: Connection[] | undefined =
+        savedChain ??
+        (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
+      const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r), lang);
+      setStraight(d.lines.features.some((f) => !f.properties.exact));
+      map.getSource<maplibregl.GeoJSONSource>('lines')?.setData(d.lines);
+      map.getSource<maplibregl.GeoJSONSource>('stops')?.setData(d.stops);
+      map.getSource<maplibregl.GeoJSONSource>('highlights')?.setData(d.highlights);
+      // Named without the style's fonts (HTML markers), so the plain ground has names too:
+      // every station you chose (a via picked on the map as one typed), not a line's own.
+      for (const f of d.stops.features) {
+        if (f.properties.ring) continue;
+        const el = document.createElement('div');
+        el.className = 'map-name';
+        el.textContent = String(f.properties.name ?? '');
+        names.push(
+          new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 9] })
+            .setLngLat(f.geometry.coordinates)
+            .addTo(map),
+        );
+      }
+      if (fittedFor.current !== map && d.bounds) {
+        fittedFor.current = map;
+        map.fitBounds(d.bounds, { padding: 40, duration: 0 });
+      }
+    })().catch(() => setFailed(true));
+    return () => {
+      gone = true;
+      for (const m of names) m.remove();
+    };
+  }, [map, json, id, lang]);
+
+  // Adding on the map: the web from a station of this trip, under its red.
+  const adding = useMapAdd((s) => s.add?.trip === id);
+  const startAdd = useMapAdd((s) => s.start);
+  const fitWeb = useCallback(
+    (pts: [number, number][]) => {
+      if (!map || !pts.length) return;
+      const b = new maplibregl.LngLatBounds(pts[0]!, pts[0]!);
+      for (const p of pts) b.extend(p);
+      map.fitBounds(b, { padding: { top: 120, bottom: 160, left: 40, right: 40 }, maxZoom: 11 });
+    },
+    [map],
+  );
+  /** From the trip's last station, when the plan leaves it (or arrives and stays). */
+  const addFromEnd = () => {
+    if (!tour) return;
+    const entries = entriesOf(tour);
+    const after = entries.length - 1;
+    const w = entries[after]?.w;
+    if (!w) return;
+    log('mapPick.open', { trip: id, after, from: 'map' });
+    startAdd({
+      trip: id,
+      after,
+      from: { stopRef: w.stopRef, name: w.name },
+      at: leaveTime(tour, tripChain, w.stopRef),
+    });
+  };
 
   // The marker: one, its look by what it is from (made anew only when that changes).
   const marker = useRef<maplibregl.Marker | null>(null);
@@ -318,6 +389,17 @@ export default function MapView({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="map-tools">
+          {!adding && status === 'upcoming' && map && (
+            <button
+              type="button"
+              className="icon"
+              aria-label={t('mapAddStops')}
+              title={t('mapAddStops')}
+              onClick={addFromEnd}
+            >
+              <Icon name="plus" />
+            </button>
+          )}
           {canLocate() && (
             <button
               type="button"
@@ -373,6 +455,7 @@ export default function MapView({ id }: { id: string }) {
         )}
         {straight && !failed && <p className="notice map-legend">{t('mapStraight')}</p>}
       </div>
+      {map && adding && <MapAdd map={map} dark={dark} font={font} fit={fitWeb} />}
       <div ref={box} className="map" />
     </main>
   );
