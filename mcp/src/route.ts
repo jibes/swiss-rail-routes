@@ -47,6 +47,11 @@ export function resolveStop(s: StopInput, index: StopSearch): Stop {
   if (s.ref) {
     const hit = index.byRef(stopKey(s.ref));
     if (!hit) throw new ToolError(`unknown stop: ${s.ref}`);
+    // A station abroad (find_stops with abroad): its ref says where it is, not what it is called.
+    if (s.ref.startsWith('eu:')) {
+      if (!s.name) throw new ToolError(`a station abroad needs its name too: ${s.ref}`);
+      return { ...hit, name: s.name };
+    }
     return hit;
   }
   const hit = s.name ? index.search(s.name, 1)[0] : undefined;

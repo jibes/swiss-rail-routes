@@ -184,83 +184,45 @@ export async function fetchFare(
   return out;
 }
 
-/**
- * A leg abroad (0.33.0) from Transitous through the Worker: from the leg's first station to its
- * last by its vias (0.33.2, two at most), its ends the stations asked for
- * (`pinEnds`), a Swiss stop it names by its SLOID the app's own station.
- */
+/** A leg abroad (0.33.0) from Transitous through the Worker (`euLeg`, shared with the MCP). */
 async function fetchEuTrips(
   url: string,
   q: TripQuery,
   signal?: AbortSignal,
 ): Promise<Connection[]> {
-  const [
-    { stopSearch },
-    { euConnections, pinEnds, transitousId },
-    { zurichDateTime },
-    { CH_FEED },
-  ] = await Promise.all([
+  const [{ stopSearch }, { euLeg }] = await Promise.all([
     import('./stops'),
-    import('../core/eu/plan'),
-    import('../core/ojp/request'),
-    import('../core/eu/request'),
+    import('../core/eu/leg'),
   ]);
   const index = await stopSearch();
-  const where = (ref: string) => {
-    const s = index.byRef(ref);
-    return s ? { lat: s.lat, lon: s.lon } : undefined;
-  };
-  const from = where(q.origin.ref);
-  const to = where(q.destination.ref);
   const what = { from: q.origin.name, to: q.destination.name, time: q.time, arriveBy: q.arriveBy };
-  if (!from || !to) {
-    log('eu.plan.fail', { ...what, detail: 'no position' });
-    throw new WorkerError('no position');
-  }
-  // Its vias as Transitous names them, two at most (its limit); none it cannot name.
-  const vias = q.vias
-    .map((v) => transitousId(v.ref, CH_FEED))
-    .filter((v): v is string => !!v)
-    .slice(0, 2);
-  const ask = (withVias: boolean) =>
-    fetch(`${url.replace(/[/]$/, '')}/eu/plan`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to,
-        ...(withVias && vias.length ? { vias } : {}),
-        time: zurichDateTime(q.time),
-        arriveBy: q.arriveBy,
-        results: Math.min(5, Math.max(1, q.results)),
-      }),
-      signal: withTimeout(signal),
-    });
   const t0 = performance.now();
-  let res = await ask(true);
-  // A via Transitous does not know (its feed renamed): asked once more without it.
-  if (!res.ok && vias.length && res.status !== 429 && res.status !== 503) {
-    log('eu.plan.retry', { ...what, status: res.status, vias: vias.length });
-    res = await ask(false);
-  }
-  const ms = Math.round(performance.now() - t0);
-  if (!res.ok) {
-    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
-    log('eu.plan.fail', { ...what, detail, ms });
-    throw new WorkerError(detail);
-  }
-  const local = (p: { name: string; lat: number; lon: number; id?: string }) => {
-    const n = /ch:1:sloid:(\d+)/.exec(p.id ?? '')?.[1];
-    const s = n ? index.byRef(`ch:1:sloid:${Number(n)}`) : undefined;
-    return s ? { stopRef: s.ref, name: s.name } : undefined;
-  };
-  const out = pinEnds(euConnections(await res.json(), 0, local), q, where);
+  let cache: string | undefined;
+  const out = await euLeg(q, {
+    index,
+    trace: (event, data) => log(event, { ...what, ...(data as object) }),
+    plan: async (body) => {
+      const res = await fetch(`${url.replace(/[/]$/, '')}/eu/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: withTimeout(signal),
+      });
+      if (!res.ok) {
+        const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+        log('eu.plan.fail', { ...what, detail });
+        throw new WorkerError(detail);
+      }
+      cache = res.headers.get('X-Cache') ?? undefined;
+      return res.json();
+    },
+  });
   log('eu.plan', {
     ...what,
-    ms,
-    cache: res.headers.get('X-Cache') ?? undefined,
+    ms: Math.round(performance.now() - t0),
+    cache,
     connections: out.length,
-    vias: vias.length || undefined,
+    vias: q.vias.length || undefined,
   });
   return out;
 }

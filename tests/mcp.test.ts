@@ -241,17 +241,17 @@ describe('routes from a request', () => {
 });
 
 describe('tools, on recorded answers', () => {
-  it('find_stops and list_scenic_lines', () => {
+  it('find_stops and list_scenic_lines', async () => {
     const tools = createTools(deps());
-    const stops = tools.findStops({ query: 'Kleine Sch' }).stops;
+    const stops = (await tools.findStops({ query: 'Kleine Sch' })).stops;
     expect(stops[0]).toMatchObject({ name: 'Kleine Scheidegg', kind: 'train' });
     expect(stops[0]!.ref).toMatch(/^ch:1:sloid:\d+$/);
-    expect(tools.findStops({ query: 'Bern', limit: 2 }).stops).toHaveLength(2);
+    expect((await tools.findStops({ query: 'Bern', limit: 2 })).stops).toHaveLength(2);
     // Reported 5 Nov 2026: "Swissminiatur" found only its pier, not Melide's station.
-    const mini = tools.findStops({ query: 'Swissminiatur' });
+    const mini = await tools.findStops({ query: 'Swissminiatur' });
     expect(mini.places?.[0]?.stops[0]).toMatchObject({ name: 'Melide' });
     expect(mini.places?.[0]?.walkIsEstimate).toBe(true);
-    expect(tools.findStops({ query: 'Rheinfall', lang: 'fr' }).places?.[0]?.name).toBe(
+    expect((await tools.findStops({ query: 'Rheinfall', lang: 'fr' })).places?.[0]?.name).toBe(
       'Chutes du Rhin',
     );
     const all = tools.listScenicLines({}).lines;
@@ -1082,14 +1082,14 @@ describe('the map planner’s tools (0.28.0)', () => {
     expect(r.estimates[2]).toMatchObject({ unknown: true });
   });
 
-  it('find_stops near a point: the station first, bus stops close by only when asked', () => {
+  it('find_stops near a point: the station first, bus stops close by only when asked', async () => {
     const at = { lat: 46.6243, lon: 8.0336, km: 5 };
-    const trains = tools.findStops({ near: at });
+    const trains = await tools.findStops({ near: at });
     expect(trains.stops[0]!.name).toBe('Grindelwald');
     expect(trains.stops.every((s) => s.kind !== 'bus')).toBe(true);
-    const all = tools.findStops({ near: { ...at, buses: true } });
+    const all = await tools.findStops({ near: { ...at, buses: true } });
     expect(all.stops.some((s) => s.kind === 'bus')).toBe(true);
-    expect(() => tools.findStops({})).toThrow('give query');
+    await expect(tools.findStops({})).rejects.toThrow('give query');
   });
 
   it('plan_trip says whose each station is: yours, the plan’s', async () => {
@@ -1100,5 +1100,80 @@ describe('the map planner’s tools (0.28.0)', () => {
     expect(rides[0]!.from!.source).toBe('yours');
     expect(rides.at(-1)!.to!.source).toBe('yours');
     if (rides.length > 1) expect(rides[0]!.to!.source).toBe('plan');
+  });
+});
+
+describe('abroad (0.35.0): stations and legs through Transitous, as the app plans them', () => {
+  const eu = (name: string) =>
+    gunzipSync(readFileSync(`tests/fixtures/eu/${name}.json.gz`)).toString('utf8');
+  // The Worker as the MCP asks it: its stations answer (already Transitous' railway stations)
+  // and its plan (Transitous' own); nothing else is asked.
+  const asked: string[] = [];
+  const worker = createWorker({
+    url: 'https://w.example',
+    index,
+    budget: { take: async () => {} } as never,
+    fetch: (async (url: string) => {
+      asked.push(new URL(url).pathname);
+      if (url.endsWith('/eu/stops'))
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'de-DELFI_de:09162:100',
+              name: 'München Hbf',
+              lat: 48.14016,
+              lon: 11.5539,
+              country: 'DE',
+            },
+          ]),
+        );
+      if (url.endsWith('/eu/plan')) return new Response(eu('muenchen'));
+      return new Response('', { status: 500 });
+    }) as never,
+  });
+  const tools = createTools(
+    deps({ timetable: { ...deps().timetable, ...worker, trips: worker.trips } }),
+  );
+
+  it('find_stops with abroad: stations abroad, each a ref to give plan_trip with its name', async () => {
+    const r = await tools.findStops({ query: 'München', abroad: true });
+    expect(r.abroad).toEqual([
+      expect.objectContaining({
+        name: 'München Hbf',
+        country: 'DE',
+        ref: expect.stringMatching(/^eu:48\.14016,11\.5539/),
+      }),
+    ]);
+    // Without abroad, nothing is asked of Transitous.
+    asked.length = 0;
+    expect((await tools.findStops({ query: 'Bern' })).abroad).toBeUndefined();
+    expect(asked).toEqual([]);
+  });
+
+  it('plan_trip to a station abroad: Transitous’ train, the GA ending at the border', async () => {
+    const [m] = (await tools.findStops({ query: 'München', abroad: true })).abroad!;
+    const r = (await tools.planTrip({
+      date: FIXTURE_DATE,
+      departAt: '08:00',
+      stops: [{ name: 'Zürich HB' }, { ref: m!.ref, name: m!.name }],
+    })) as {
+      options: {
+        recommended?: boolean;
+        legs: { type: string; from: { name: string }; to: { name: string } }[];
+        warnings: { type: string }[];
+      }[];
+    };
+    const best = r.options.find((o) => o.recommended)!;
+    const rides = best.legs.filter((l) => l.type === 'ride');
+    expect(rides[0]!.from.name).toBe('Zürich HB');
+    expect(rides.at(-1)!.to.name).toBe('München Hbf');
+    expect(best.warnings.map((w) => w.type)).toContain('not-ga');
+    await expect(
+      tools.planTrip({
+        date: FIXTURE_DATE,
+        departAt: '08:00',
+        stops: [{ name: 'Zürich HB' }, { ref: m!.ref }],
+      }),
+    ).rejects.toThrow('needs its name too');
   });
 });

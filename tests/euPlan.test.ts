@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { euConnections, euRef, pinEnds } from '../src/core/eu/plan';
+import { euLeg } from '../src/core/eu/leg';
+import { euRef } from '../src/core/eu/plan';
 import type { Tour } from '../src/core/model';
 import type { TripQuery } from '../src/core/ojp/request';
 import { plan } from '../src/core/planner/plan';
@@ -16,16 +17,8 @@ const answer = JSON.parse(
 ) as unknown;
 // München Hbf as Transitous' station search gives it: another feed's id, 200 m from the plan's.
 const MUENCHEN = euRef(48.13988, 11.557491, 'at-Railway-Current-Reference-Data-2026_de:09162:100');
-const where = (r: string) => {
-  const s = index.byRef(r);
-  return s && { lat: s.lat, lon: s.lon };
-};
-const local = (p: { id?: string }) => {
-  const n = /ch:1:sloid:(\d+)/.exec(p.id ?? '')?.[1];
-  const s = n ? index.byRef(`ch:1:sloid:${Number(n)}`) : undefined;
-  return s && { stopRef: s.ref, name: s.name };
-};
-const abroad = async (q: TripQuery) => pinEnds(euConnections(answer, 0, local), q, where);
+// As the app and the MCP ask it (`euLeg`), the Worker answering with the recording.
+const abroad = (q: TripQuery) => euLeg(q, { index, plan: async () => answer });
 
 describe('a leg abroad (Transitous)', () => {
   const tour: Tour = {

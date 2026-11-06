@@ -6,6 +6,9 @@ import { parseTrips } from '../../src/core/ojp/parse';
 import { parseDepartures, type Departures } from '../../src/core/ojp/departures';
 import type { DeparturesQuery, JourneyQuery, TripQuery } from '../../src/core/ojp/request';
 import { dayOf, zurichTime } from '../../src/core/trip';
+import { euLeg, isEuLeg } from '../../src/core/eu/leg';
+import type { EuStop } from '../../src/core/eu/request';
+import type { StopSearch } from '../../src/core/stops';
 
 /** Said to the caller: it can try again, so it is not the service being down. */
 export class BusyError extends Error {
@@ -89,6 +92,8 @@ const CACHE_ENTRIES = 300;
 
 export interface WorkerOptions {
   url: string;
+  /** Places a station abroad (its ref) and names Swiss stops in Transitous' answers (0.35.0). */
+  index?: Pick<StopSearch, 'byRef'>;
   fetch?: typeof fetch;
   now?: () => number;
   budget?: CallBudget;
@@ -100,6 +105,8 @@ export interface Timetable {
   journey: (q: JourneyQuery) => Promise<JourneyStatus>;
   /** A stop's trains with their onward stops (reachable_from). */
   departures?: (q: DeparturesQuery) => Promise<Departures>;
+  /** Stations abroad by name (Transitous through the Worker, 0.35.0). */
+  stopsAbroad?: (text: string) => Promise<EuStop[]>;
 }
 
 export function createWorker(o: WorkerOptions): Timetable {
@@ -146,6 +153,14 @@ export function createWorker(o: WorkerOptions): Timetable {
   };
 
   const ask = async (q: TripQuery): Promise<Connection[]> => {
+    // A leg with an end abroad: Transitous, the whole leg, as the app asks it (`euLeg`).
+    if (isEuLeg(q)) {
+      if (!o.index) throw new UnavailableError();
+      return euLeg(q, {
+        index: o.index,
+        plan: async (body) => (await post('/eu/plan', body)).json(),
+      });
+    }
     const res = await post('/trip', q);
     try {
       return parseTrips(await withoutTracks(res));
@@ -177,6 +192,17 @@ export function createWorker(o: WorkerOptions): Timetable {
         .finally(() => asking.delete(key));
       asking.set(key, p);
       return p;
+    },
+    stopsAbroad: async (text) => {
+      const res = await post('/eu/stops', { text });
+      try {
+        // The Worker answers Transitous' railway stations already (`euStations`).
+        const list = (await res.json()) as EuStop[];
+        if (!Array.isArray(list)) throw new Error('not a list');
+        return list;
+      } catch {
+        throw new UnavailableError();
+      }
     },
     departures: async (q) => {
       const res = await post('/departures', q);

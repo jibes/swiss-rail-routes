@@ -67,7 +67,11 @@ const date = z.string().optional().describe('YYYY-MM-DD, Zurich. Default today.'
 const stops = z
   .array(
     strictOf({
-      ref: z.string().optional().describe('Stop id from find_stops.'),
+      ref: z
+        .string()
+        .max(200)
+        .optional()
+        .describe('Stop id from find_stops; a station abroad (eu:…) with its name too.'),
       name: z.string().optional().describe('Station name, if no ref.'),
       stay: z
         .number()
@@ -157,7 +161,7 @@ function build(tools: Tools, log: (line: object) => void) {
     'find_stops',
     {
       description:
-        "Finds Swiss stations and stops by name (also by a city's name in another language: Genf, Ginevra; one typo per word is forgiven), and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route). Stations abroad only where a scenic line ends (Tirano, Domodossola, Chamonix-Mont-Blanc, Vallorcine), not others (Milano Centrale).",
+        "Finds Swiss stations and stops by name (also by a city's name in another language: Genf, Ginevra; one typo per word is forgiven), and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route). Stations abroad (München Hbf, Milano Centrale, Lyon Part-Dieu…) with `abroad: true`, as `abroad`: from Transitous, a community-run European timetable; give one to plan_trip by its ref and name. A leg to or from one is planned by Transitous: no live data, no GA beyond the border (said as not-ga).",
       inputSchema: strictOf({
         query: z
           .string()
@@ -187,6 +191,12 @@ function build(tools: Tools, log: (line: object) => void) {
           ),
         limit: z.number().int().min(1).max(50).optional().describe('Default 8 (5 with near).'),
         lang: z.enum(['en', 'de', 'fr', 'it']).optional().describe('Language of place names.'),
+        abroad: z
+          .boolean()
+          .optional()
+          .describe(
+            'Also stations abroad by this name (one request to Transitous). Default false.',
+          ),
       }),
       annotations: { ...readOnly, openWorldHint: false },
     },

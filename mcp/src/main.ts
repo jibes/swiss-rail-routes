@@ -25,13 +25,14 @@ const stops = JSON.parse(
   readFileSync(new URL('./stops.v1.json', import.meta.url), 'utf8'),
 ) as StopIndexFile;
 
+const index = createStopSearch(stops, EXONYMS);
 const server = createHttpServer({
   keys: fileKeys(keysPath, secret, (e) =>
     console.log(JSON.stringify({ outcome: 'keys-unreadable', kind: (e as Error).name })),
   ),
   tools: createTools({
-    index: createStopSearch(stops, EXONYMS),
-    timetable: createWorker({ url }),
+    index,
+    timetable: createWorker({ url, index }),
     templates: TEMPLATES,
     ga: GA,
     publicUrl: process.env.VIADUKT_URL ?? 'https://jibes.github.io/swiss-rail-routes/',

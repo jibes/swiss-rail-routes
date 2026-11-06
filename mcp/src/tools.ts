@@ -1,5 +1,6 @@
 // The five tools: the app's planner and data, answered as JSON. Read-only: nothing about a
 // request outlives the in-memory cache of its answer.
+import { euRef, placeName } from '../../src/core/eu/plan';
 import { searchAttractions, type AttractionData } from '../../src/core/attractions';
 import { localParams, templateName, type GaData, type RouteTemplate } from '../../src/core/data';
 import attractionData from '../../src/data/attractions.json';
@@ -312,16 +313,18 @@ export function createTools(deps: ToolDeps) {
   };
 
   return {
-    findStops({
+    async findStops({
       query,
       limit,
       lang,
       near,
+      abroad,
     }: {
       query?: string;
       limit?: number;
       lang?: Lang;
       near?: { lat: number; lon: number; km?: number; buses?: boolean };
+      abroad?: boolean;
     }) {
       // Around a point, as the app's map offers them: stations from further, bus and tram stops
       // close by (with `buses`), how far by `km` (the width looked at).
@@ -350,7 +353,20 @@ export function createTools(deps: ToolDeps) {
         stops: p.stops.map(({ estimate, ...st }) => ({ ...st, walkIsEstimate: estimate })),
         walkIsEstimate: p.stops.some((st) => st.estimate),
       }));
+      // Stations abroad (0.35.0, Transitous through the Worker), only when asked: each a ref to
+      // give plan_trip with its name.
+      const away =
+        abroad && timetable.stopsAbroad
+          ? (await timetable.stopsAbroad(query)).map((s) => ({
+              ref: euRef(s.lat, s.lon, s.id),
+              name: placeName(s.name, s),
+              ...(s.country ? { country: s.country } : {}),
+              lat: s.lat,
+              lon: s.lon,
+            }))
+          : undefined;
       return {
+        ...(away ? { abroad: away } : {}),
         stops: index.search(query, Math.min(limit ?? 8, 50)).map((s) => ({
           ref: s.ref,
           name: s.name,
