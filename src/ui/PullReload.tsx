@@ -64,7 +64,8 @@ export function PullReload({
       start =
         e.touches.length === 1 &&
         window.scrollY <= 0 &&
-        !document.querySelector('.menu-scrim, .scrim, dialog[open]') &&
+        // Not over what lies on top: a sheet, the menu, the map planner (its map pans by finger).
+        !document.querySelector('.menu-scrim, .scrim, dialog[open], .map-picker') &&
         !el.closest?.('input, textarea, select') &&
         getComputedStyle(el).touchAction !== 'none'
           ? { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }

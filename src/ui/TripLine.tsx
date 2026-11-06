@@ -160,6 +160,14 @@ export function TripLine({
   };
 
   const onRide = viasOnRides(rows);
+  /** Your via between your first and last station: pinned (the plan must pass it). */
+  const pinnedAt = (k: number) =>
+    k > 0 &&
+    k < n - 1 &&
+    entries[k]?.w.kind === 'via' &&
+    // A scenic line's ends are the line's (you chose the line): they keep the whole panel.
+    !lineTo(entries, k) &&
+    !lineTo(entries, k + 1);
   const onRideRows = new Set([...onRide.values()].flat().map((v) => v.row));
 
   /** A station's name: opens the panel (yours), says why not (the timetable's), or just is. */
@@ -194,7 +202,13 @@ export function TripLine({
         aria-expanded={isOpen}
         onClick={() => setOpen?.(isOpen ? null : k)}
       >
+        {pinnedAt(k) && (
+          <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">
+            <Icon name="pin" size={14} />
+          </span>
+        )}
         <span className="n">{r.name}</span>
+        {pinnedAt(k) && <span className="sr-only">{t('pinnedVia')}</span>}
         {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
       </button>
     );
@@ -239,7 +253,7 @@ export function TripLine({
     if (k === undefined || open !== k) return null;
     return (
       <>
-        {n > 1 && !(fixedFirst && k === 0) && (
+        {n > 1 && !(fixedFirst && k === 0) && !pinnedAt(k) && (
           <button
             type="button"
             className="grip"
@@ -259,6 +273,7 @@ export function TripLine({
             leaveBy={entries[k]!.w.leaveBy}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
+            pinnedHere={pinnedAt(k)}
             act={act}
             close={() => setOpen?.(null)}
           />
@@ -553,7 +568,10 @@ function Panel({
   change,
   act,
   close,
+  pinnedHere,
 }: {
+  /** A pinned via (TripLine's pinnedAt): neither renamed nor moved. */
+  pinnedHere?: boolean;
   /** You asked to ride through, but the plan changes trains here. */
   change: boolean;
   k: number;
@@ -587,17 +605,28 @@ function Panel({
         </div>
       </div>
     );
+  // A via between your first and last station is pinned: the plan must pass it, where the
+  // train does. So it is neither renamed nor moved: unpin it, or stay there.
+  const pinned = !!pinnedHere;
   return (
     <div className="panel">
       {/* The name is the field (type another station); the cross closes the panel. */}
       <div className="panel-head">
-        <StopPicker
-          // Another station picked: the field shows its name (the panel stays open).
-          key={name}
-          label={t('replaceStation')}
-          initial={name}
-          onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
-        />
+        {pinned ? (
+          <p className="panel-name">
+            <Icon name="pin" size={16} />
+            <span>{name}</span>
+            <span className="muted">{t('pinnedVia')}</span>
+          </p>
+        ) : (
+          <StopPicker
+            // Another station picked: the field shows its name (the panel stays open).
+            key={name}
+            label={t('replaceStation')}
+            initial={name}
+            onPick={(s) => act.replace(k, { stopRef: s.ref, name: s.name })}
+          />
+        )}
         {closeButton}
       </div>
       {inner && (
@@ -648,36 +677,40 @@ function Panel({
         {t('addAfter')}
       </button>
       <div className="acts">
-        <button
-          type="button"
-          className="sq"
-          aria-label={t('moveUp', { name })}
-          disabled={k <= fixed}
-          onClick={() => act.move(k, k - 1)}
-        >
-          <Icon name="up" size={18} />
-        </button>
-        <button
-          type="button"
-          className="sq"
-          aria-label={t('moveDown', { name })}
-          disabled={k === n - 1}
-          onClick={() => act.move(k, k + 1)}
-        >
-          <Icon name="down" size={18} />
-        </button>
-        <span className="sp" />
-        {n > 1 &&
-          // A via between your first and last station is pinned: unpinning leaves the way to
-          // the plan again. Any other station of yours is taken out.
-          (stay === null && k > 0 && k < n - 1 ? (
+        {!pinned && (
+          <>
             <button
               type="button"
-              className="sq pinned"
+              className="sq"
+              aria-label={t('moveUp', { name })}
+              disabled={k <= fixed}
+              onClick={() => act.move(k, k - 1)}
+            >
+              <Icon name="up" size={18} />
+            </button>
+            <button
+              type="button"
+              className="sq"
+              aria-label={t('moveDown', { name })}
+              disabled={k === n - 1}
+              onClick={() => act.move(k, k + 1)}
+            >
+              <Icon name="down" size={18} />
+            </button>
+          </>
+        )}
+        <span className="sp" />
+        {n > 1 &&
+          (pinned ? (
+            // The action in words: the pin by the name is the state.
+            <button
+              type="button"
+              className="pill unpin"
               aria-label={t('unpin', { stop: name })}
               onClick={() => act.remove(k)}
             >
-              <Icon name="pin" size={18} />
+              <Icon name="pin" size={16} />
+              {t('unpinAction')}
             </button>
           ) : (
             <button

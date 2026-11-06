@@ -233,6 +233,8 @@ export const en = {
   pricesOnSbb: 'Prices on SBB',
   pricesHint: 'Each part of the trip opens on sbb.ch, with its tickets and prices.',
   pricesLeg: 'Leaves {time}',
+  pinnedVia: 'Pinned',
+  unpinAction: 'Unpin',
   mapPickOpen: 'Pick on the map',
   mapPickTitle: 'Pick on the map',
   mapPickFrom: 'From {stop} at {time}',

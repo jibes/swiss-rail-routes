@@ -243,6 +243,8 @@ export const de = {
   pricesOnSbb: 'Preise bei der SBB',
   pricesHint: 'Jeder Teil der Reise öffnet sich auf sbb.ch, mit Billetten und Preisen.',
   pricesLeg: 'Ab {time}',
+  pinnedVia: 'Angeheftet',
+  unpinAction: 'Lösen',
   mapPickOpen: 'Auf der Karte wählen',
   mapPickTitle: 'Auf der Karte wählen',
   mapPickFrom: 'Ab {stop} um {time}',

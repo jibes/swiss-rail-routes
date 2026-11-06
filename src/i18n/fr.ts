@@ -242,6 +242,8 @@ export const fr = {
   pricesOnSbb: 'Prix sur CFF',
   pricesHint: 'Chaque partie du voyage s’ouvre sur sbb.ch, avec ses billets et ses prix.',
   pricesLeg: 'Départ {time}',
+  pinnedVia: 'Épinglé',
+  unpinAction: 'Désépingler',
   mapPickOpen: 'Choisir sur la carte',
   mapPickTitle: 'Choisir sur la carte',
   mapPickFrom: 'Depuis {stop} à {time}',

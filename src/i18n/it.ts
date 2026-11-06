@@ -241,6 +241,8 @@ export const it = {
   pricesOnSbb: 'Prezzi su FFS',
   pricesHint: 'Ogni parte del viaggio si apre su sbb.ch, con biglietti e prezzi.',
   pricesLeg: 'Partenza {time}',
+  pinnedVia: 'Fissata',
+  unpinAction: 'Sblocca',
   mapPickOpen: 'Scegli sulla mappa',
   mapPickTitle: 'Scegli sulla mappa',
   mapPickFrom: 'Da {stop} alle {time}',

@@ -763,3 +763,35 @@
 .sq.pinned {
   color: var(--rail);
 }
+
+/* A pinned via: the pin is its state, by the name; the panel's Unpin is the action. */
+.pin-mark {
+  display: inline-flex;
+  margin-right: 4px;
+  color: var(--rail);
+  vertical-align: -2px;
+}
+
+.panel-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+  flex: 1;
+}
+
+.panel-name svg {
+  color: var(--rail);
+}
+
+.panel-name .muted {
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.pill.unpin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

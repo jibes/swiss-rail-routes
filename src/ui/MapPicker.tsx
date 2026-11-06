@@ -172,8 +172,10 @@ export default function MapPicker({
         bounds: [5.9, 45.8, 10.5, 47.8],
         attributionControl: { compact: true },
       });
+      m.on('error', (e) => log('mapPick.mapError', { e: e.error?.message }));
       m.on('load', () => {
         if (!m) return;
+        log('mapPick.ready', { style: !!style });
         m.addSource('web-lines', { type: 'geojson', data: empty() });
         m.addSource('web-stops', { type: 'geojson', data: empty() });
         m.addSource('web-origin', { type: 'geojson', data: empty() });
@@ -240,6 +242,7 @@ export default function MapPicker({
   useEffect(() => {
     if (!map || !webJson) return;
     const data = JSON.parse(webJson) as ReturnType<typeof webData>;
+    log('mapPick.web', { lines: data.lines.features.length, places: data.stops.features.length });
     map.getSource<maplibregl.GeoJSONSource>('web-lines')?.setData(data.lines);
     map.getSource<maplibregl.GeoJSONSource>('web-stops')?.setData(data.stops);
     map.getSource<maplibregl.GeoJSONSource>('web-origin')?.setData(data.origin);
@@ -263,6 +266,7 @@ export default function MapPicker({
       const key = hit?.properties?.key as string | undefined;
       const direct = key ? web.reached.find((r) => r.key === key) : undefined;
       if (direct) {
+        log('mapPick.tap', { direct: true });
         setNear(null);
         setChosen({
           stop: { stopRef: direct.key, name: direct.name },
@@ -282,6 +286,7 @@ export default function MapPicker({
       const choices = nearbyChoices(index, { lat: e.lngLat.lat, lon: e.lngLat.lng }, viewKm).filter(
         (c) => stopKey(c.ref) !== web.from,
       );
+      log('mapPick.tap', { direct: false, near: choices.length, viewKm: Math.round(viewKm) });
       setChosen(null);
       setNear(choices.length ? choices : null);
     };
