@@ -345,6 +345,64 @@ describe('weather (0.37.0)', () => {
     expect((await ok200.call('/weather', { body: JSON.stringify(q) })).status).toBe(503);
   });
 
+  it('Open-Meteo refusing: MET Norway instead, a place a request, in Open-Meteo’s form', async () => {
+    const s = setup({ weatherUpstream: 'https://wx.example', metNo: 'https://met.example' });
+    const met = {
+      properties: {
+        timeseries: [
+          {
+            time: '2026-11-07T11:00:00Z',
+            data: {
+              instant: { details: { cloud_area_fraction: 80 } },
+              next_1_hours: { details: { precipitation_amount: 0.4 } },
+            },
+          },
+          {
+            time: '2026-11-07T20:00:00Z',
+            data: {
+              instant: { details: { cloud_area_fraction: 10 } },
+              next_1_hours: {
+                details: { precipitation_amount: 0, probability_of_precipitation: 3 },
+              },
+            },
+          },
+        ],
+      },
+    };
+    s.upstream.mockImplementation(async (url: string | URL | Request) =>
+      String(url).startsWith('https://met.example')
+        ? new Response(JSON.stringify(met))
+        : new Response('{"error":true,"reason":"Daily API request limit exceeded."}'),
+    );
+    const res = await s.call('/weather', { body: JSON.stringify(q) });
+    expect(res.status).toBe(200);
+    const [x] = (await res.json()) as {
+      source: string;
+      hourly: {
+        time: string[];
+        cloud_cover: number[];
+        precipitation_probability: number[];
+        is_day: number[];
+      };
+    }[];
+    expect(x!.source).toBe('met.no');
+    expect(x!.hourly).toEqual({
+      time: ['2026-11-07T11:00', '2026-11-07T20:00'],
+      cloud_cover: [80, 10],
+      // No chance given at 11:00: from the amount expected; at 20:00 its own.
+      precipitation_probability: [70, 3],
+      // By the sun at St. Moritz.
+      is_day: [1, 0],
+    });
+    const asked = s.upstream.mock.calls.map((c) => String(c[0]));
+    expect(asked[1]).toBe(
+      'https://met.example/weatherapi/locationforecast/2.0/complete?lat=46.5&lon=9.85',
+    );
+    expect(
+      (s.upstream.mock.calls[1]![1]!.headers as Record<string, string>)['User-Agent'],
+    ).toContain('Viadukt');
+  });
+
   it('refuses what is no question for it', async () => {
     const { call } = wx('{}');
     const bad = (v: unknown) => call('/weather', { body: JSON.stringify(v) });

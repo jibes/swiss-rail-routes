@@ -53,7 +53,7 @@ SHA-256 (release certificate): FA:B7:AC:4C:B6:4F:D1:BE:7A:AC:EC:7B:F6:46:E5:CE:4
 
 ## OJP Worker
 
-`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`, `/departures`, `/fare` with its own key `OJP_FARE_API_KEY`, and `/eu/stops`, `/eu/plan`, answered by Transitous for trains abroad, and `/weather`, answered by Open-Meteo, not yet used by the app) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
+`workers/ojp/` holds the opentransportdata.swiss key, so the app never sees it. It takes typed JSON (`POST /trip`, `/stops`, `/journey`, `/departures`, `/fare` with its own key `OJP_FARE_API_KEY`, and `/eu/stops`, `/eu/plan`, answered by Transitous for trains abroad, and `/weather`, answered by Open-Meteo (MET Norway when Open-Meteo refuses), not yet used by the app) and stores sync blobs (`GET/PUT/DELETE /sync/<id>`, one Durable Object per id, created by the deploy), builds the OJP 2.0 XML itself (`src/core/ojp/request.ts`), caches answers (trips and stop searches 10 min, live train data 30 s) and allows 120 uncached requests a minute per IP. `deploy-worker-ojp.yml` deploys it after CI when its files change.
 
 One-time setup:
 

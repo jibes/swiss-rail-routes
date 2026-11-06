@@ -28,8 +28,22 @@ export interface EuLegDeps {
 }
 
 /**
+ * Transitous' feed for Switzerland, as its answers name it (`ch-opentransportdataswiss26_ch:1:…`):
+ * the name carries the timetable year, so it is read from every answer rather than kept fixed;
+ * until one is read, the name known when this was written (`CH_FEED`).
+ */
+let chFeed = CH_FEED;
+export const currentChFeed = () => chFeed;
+const FEED = /"(ch-[\w-]+?)_ch:1:sloid:\d+/;
+/** The Swiss feed's name an answer uses, if it names a Swiss stop by it. */
+export function feedIn(answer: unknown): string | undefined {
+  return FEED.exec(JSON.stringify(answer ?? null))?.[1];
+}
+
+/**
  * From the leg's first station to its last by its vias (two at most, as Transitous names them),
- * asked once more without them when that fails (a via it does not know); the leg's ends are the
+ * asked again without them when that fails (a via it does not know), and with them once more
+ * by the Swiss feed's name that answer gives; the leg's ends are the
  * stations asked for (`pinEnds`).
  */
 export async function euLeg(q: TripQuery, d: EuLegDeps): Promise<Connection[]> {
@@ -40,25 +54,47 @@ export async function euLeg(q: TripQuery, d: EuLegDeps): Promise<Connection[]> {
   const from = where(q.origin.ref);
   const to = where(q.destination.ref);
   if (!from || !to) throw new Error('no position');
-  const vias = q.vias
-    .map((v) => transitousId(v.ref, CH_FEED))
-    .filter((v): v is string => !!v)
-    .slice(0, 2);
-  const body = (withVias: boolean) => ({
+  const viasOf = (feed: string) =>
+    q.vias
+      .map((v) => transitousId(v.ref, feed))
+      .filter((v): v is string => !!v)
+      .slice(0, 2);
+  const body = (vias: string[]) => ({
     from,
     to,
-    ...(withVias && vias.length ? { vias } : {}),
+    ...(vias.length ? { vias } : {}),
     time: zurichDateTime(q.time),
     arriveBy: q.arriveBy,
     results: Math.min(5, Math.max(1, q.results)),
   });
+  const ask = async (vias: string[]) => {
+    const answer = await d.plan(body(vias));
+    const feed = feedIn(answer);
+    if (feed && feed !== chFeed) {
+      d.trace?.('eu.feed', { was: chFeed, now: feed });
+      chFeed = feed;
+    }
+    return answer;
+  };
+  const vias = viasOf(chFeed);
   let answer: unknown;
   try {
-    answer = await d.plan(body(true));
+    answer = await ask(vias);
   } catch (e) {
     if (!vias.length) throw e;
+    // A via Transitous does not know: perhaps the Swiss feed renamed. Asked without, which says
+    // the feed's name now; with a new one, once more with the vias by it.
     d.trace?.('eu.plan.retry', { vias: vias.length });
-    answer = await d.plan(body(false));
+    const was = vias.join();
+    answer = await ask([]);
+    const again = viasOf(chFeed);
+    if (again.length && again.join() !== was) {
+      try {
+        answer = await ask(again);
+      } catch {
+        d.trace?.('eu.plan.retry', { vias: again.length, without: true });
+      }
+    }
   }
   return pinEnds(euConnections(answer, 0, localBySloid(d.index)), q, where);
 }

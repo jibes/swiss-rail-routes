@@ -49,3 +49,41 @@ describe('a leg abroad (Transitous)', () => {
     expect(ga.params).toEqual({ from: 'St. Margrethen SG', to: 'München Hbf' });
   });
 });
+
+describe('the Swiss feed’s name, read from Transitous’ answers (it carries the timetable year)', () => {
+  it('a via refused under the old name: asked without, the new name read, then with it', async () => {
+    const { currentChFeed, feedIn } = await import('../src/core/eu/leg');
+    // Innsbruck's recording names its Swiss stops by the Swiss feed (München's by the German).
+    const innsbruck = gunzipSync(readFileSync('tests/fixtures/eu/innsbruck.json.gz')).toString(
+      'utf8',
+    );
+    const renamed = JSON.parse(
+      innsbruck.replaceAll('ch-opentransportdataswiss26_', 'ch-opentransportdataswiss27_'),
+    ) as unknown;
+    expect(feedIn(renamed)).toBe('ch-opentransportdataswiss27');
+    const asked: string[][] = [];
+    const plan = async (body: unknown) => {
+      const vias = ((body as { vias?: string[] }).vias ?? []).slice();
+      asked.push(vias);
+      if (vias.some((v) => v.startsWith('ch-opentransportdataswiss26_')))
+        throw new Error('502 unknown location');
+      return renamed;
+    };
+    const q = {
+      origin: { ref: ref('Zürich HB'), name: 'Zürich HB' },
+      destination: { ref: MUENCHEN, name: 'München Hbf' },
+      vias: [{ ref: ref('St. Gallen'), name: 'St. Gallen' }],
+      notVias: [],
+      time: '2026-11-07T08:00',
+      arriveBy: false,
+      results: 3,
+    };
+    await euLeg(q, { index, plan });
+    expect(asked).toEqual([
+      [`ch-opentransportdataswiss26_ch:1:sloid:${ref('St. Gallen').split(':')[3]}`],
+      [],
+      [`ch-opentransportdataswiss27_ch:1:sloid:${ref('St. Gallen').split(':')[3]}`],
+    ]);
+    expect(currentChFeed()).toBe('ch-opentransportdataswiss27');
+  });
+});

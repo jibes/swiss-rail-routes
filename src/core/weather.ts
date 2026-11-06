@@ -5,6 +5,7 @@
 import type { LatLon } from './model';
 import type { LineRow } from './rows';
 import { stopKey } from './stops';
+import { sunTimes } from './sun';
 
 export interface WeatherQuery {
   /** Where, rounded to `GRID`° (a forecast cell, and fewer distinct questions to cache). */
@@ -70,6 +71,8 @@ export interface Sky {
 }
 
 export interface Forecast {
+  /** Whose forecast: Open-Meteo's, or MET Norway's when Open-Meteo refused (credited then). */
+  source: 'open-meteo' | 'met.no';
   /** The forecast's hour for a place (its grid cell) and time; none outside what was asked. */
   at: (p: LatLon, t: number) => Sky | undefined;
 }
@@ -84,10 +87,12 @@ const nums = (v: unknown) =>
 export function parseWeather(answer: unknown, points: LatLon[]): Forecast {
   const list = Array.isArray(answer) ? answer : [answer];
   const cells = new Map<string, { t: number[]; cloud: number[]; rain: number[]; day: number[] }>();
+  let source: Forecast['source'] = 'open-meteo';
   list.forEach((x, i) => {
     const p = points[i];
     if (!p || !isObj(x) || !isObj(x.hourly) || !Array.isArray(x.hourly.time)) return;
     const h = x.hourly;
+    if (x.source === 'met.no') source = 'met.no';
     cells.set(keyOf(gridPoint(p)), {
       t: (h.time as unknown[]).map((s) => (typeof s === 'string' ? Date.parse(`${s}Z`) : NaN)),
       cloud: nums(h.cloud_cover),
@@ -96,6 +101,7 @@ export function parseWeather(answer: unknown, points: LatLon[]): Forecast {
     });
   });
   return {
+    source,
     at: (p, t) => {
       const c = cells.get(keyOf(gridPoint(p)));
       if (!c) return undefined;
@@ -187,4 +193,70 @@ export function weatherDays(rows: LineRow[]): { from: string; to: string } | und
   const last = day(Math.max(...ok));
   const next = day(Date.parse(from) + 86_400_000);
   return { from, to: last > next ? next : last };
+}
+
+/** MET Norway's address for one place (its Locationforecast, the complete form). */
+export const metNoUrl = (base: string, p: LatLon) =>
+  `${base.replace(/[/]$/, '')}/weatherapi/locationforecast/2.0/complete?lat=${p.lat}&lon=${p.lon}`;
+
+/**
+ * MET Norway's answers (one per place, in the order asked) in Open-Meteo's form, so the app reads
+ * one form: cloud cover and its chance of rain where it gives one (the next hour's, else the next
+ * six hours'), else one from the amount it expects; day by the sun (it says none).
+ */
+export function fromMetNo(answers: unknown[], q: WeatherQuery): unknown[] {
+  const start = Date.parse(`${q.from}T00:00:00Z`);
+  const end = Date.parse(`${q.to}T23:59:59Z`);
+  return answers.map((a, i) => {
+    const p = q.points[i]!;
+    const series =
+      isObj(a) && isObj(a.properties) && Array.isArray(a.properties.timeseries)
+        ? (a.properties.timeseries as unknown[])
+        : [];
+    const time: string[] = [];
+    const cloud: number[] = [];
+    const rain: number[] = [];
+    const day: number[] = [];
+    for (const e of series) {
+      if (!isObj(e) || typeof e.time !== 'string' || !isObj(e.data)) continue;
+      const t = Date.parse(e.time);
+      if (!(t >= start && t <= end)) continue;
+      const d = e.data;
+      const inst = isObj(d.instant) && isObj(d.instant.details) ? d.instant.details : {};
+      const next = (k: string) =>
+        isObj(d[k]) && isObj((d[k] as Record<string, unknown>).details)
+          ? ((d[k] as Record<string, unknown>).details as Record<string, unknown>)
+          : {};
+      const n1 = next('next_1_hours');
+      const n6 = next('next_6_hours');
+      const prob = [n1.probability_of_precipitation, n6.probability_of_precipitation].find(
+        (x) => typeof x === 'number',
+      ) as number | undefined;
+      const amount = [n1.precipitation_amount, n6.precipitation_amount].find(
+        (x) => typeof x === 'number',
+      ) as number | undefined;
+      time.push(e.time.slice(0, 16));
+      cloud.push(typeof inst.cloud_area_fraction === 'number' ? inst.cloud_area_fraction : NaN);
+      rain.push(
+        prob ??
+          (amount === undefined
+            ? NaN
+            : amount >= 1
+              ? 90
+              : amount >= 0.3
+                ? 70
+                : amount > 0
+                  ? 40
+                  : 5),
+      );
+      const sun = sunTimes(e.time.slice(0, 10), p);
+      day.push(sun && t >= sun.rise.getTime() && t < sun.set.getTime() ? 1 : 0);
+    }
+    return {
+      latitude: p.lat,
+      longitude: p.lon,
+      source: 'met.no',
+      hourly: { time, cloud_cover: cloud, precipitation_probability: rain, is_day: day },
+    };
+  });
 }

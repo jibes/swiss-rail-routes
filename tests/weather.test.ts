@@ -97,5 +97,7 @@ describe('a recorded Open-Meteo answer (through the Worker, 6 Nov 2026)', () => 
     const at10 = Date.parse('2026-11-07T10:30:00Z');
     expect(f.at(STM, at10)).toEqual({ cloud: 0.46, rain: 0.18, day: true });
     expect(f.at(TIR, at10)).toEqual({ cloud: 0.86, rain: 0.15, day: true });
+    expect(f.source).toBe('open-meteo');
+    expect(parseWeather([{ source: 'met.no', hourly: { time: [] } }], [STM]).source).toBe('met.no');
   });
 });

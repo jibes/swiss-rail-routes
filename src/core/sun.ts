@@ -13,6 +13,11 @@ const H0 = -0.833 * RAD;
  * Returns null when the sun does not set (polar day / night; never in Switzerland).
  */
 export function sunset(date: string, at: LatLon): Date | null {
+  return sunTimes(date, at)?.set ?? null;
+}
+
+/** Sunrise and sunset at `at` on `date` (UTC calendar day); null where the sun does not set. */
+export function sunTimes(date: string, at: LatLon): { rise: Date; set: Date } | null {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
   const jdNoon = Date.UTC(y, m - 1, d, 12) / DAY_MS + UNIX_EPOCH_JD;
   const n = Math.ceil(jdNoon - J2000 - 0.5 + 0.0008);
@@ -26,8 +31,9 @@ export function sunset(date: string, at: LatLon): Date | null {
   const phi = at.lat * RAD;
   const cosW = (Math.sin(H0) - Math.sin(phi) * sinDec) / (Math.cos(phi) * cosDec);
   if (cosW < -1 || cosW > 1) return null;
-  const jSet = jTransit + Math.acos(cosW) / RAD / 360;
-  return new Date(Math.round((jSet - UNIX_EPOCH_JD) * DAY_MS));
+  const half = Math.acos(cosW) / RAD / 360;
+  const at_ = (j: number) => new Date(Math.round((j - UNIX_EPOCH_JD) * DAY_MS));
+  return { rise: at_(jTransit - half), set: at_(jTransit + half) };
 }
 
 /** True when `passAt` is later than sunset − `marginMin` at that place (SPEC §3). */

@@ -2,7 +2,13 @@
 // POST /trip and /stops (cached 10 min), POST /journey (live calls of one train, cached 30 s),
 // GET/PUT/DELETE /sync/<id> (an encrypted blob per sync id, see sync.ts).
 // Standard Fetch API only, so tests run it in Node with fakes.
-import { parseWeatherQuery, weatherUrl } from '../../../src/core/weather';
+import {
+  fromMetNo,
+  metNoUrl,
+  parseWeatherQuery,
+  weatherUrl,
+  type WeatherQuery,
+} from '../../../src/core/weather';
 import {
   cacheKeyOf,
   departuresRequestXml,
@@ -47,6 +53,8 @@ export interface Deps {
   fareUpstream?: string;
   /** Open-Meteo (weather, 0.37.0): asked by the Worker alone, rounded places and days. */
   weatherUpstream?: string;
+  /** MET Norway (0.36.4): asked when Open-Meteo refuses, a place a request. */
+  metNo?: string;
   /** Transitous (Europe, 0.30.0): asked by the Worker alone, trains only. */
   transitous?: string;
   upstream: string;
@@ -376,10 +384,15 @@ async function weather(
   } catch {
     return reply(502, 'upstream');
   }
-  const text = await up.text();
-  // Open-Meteo says a refusal in the body too ({"error":true,"reason":"Daily API request limit…"}).
-  if (!up.ok || /^\s*\{\s*"error"\s*:\s*true/.test(text))
-    return reply(up.status === 429 || /limit/i.test(text) ? 503 : 502, 'weather busy');
+  let text = await up.text();
+  // Open-Meteo says a refusal in the body too ({"error":true,"reason":"Daily API request limit…"}):
+  // MET Norway instead, a place a request, as many as the Worker may ask at once.
+  if (!up.ok || /^\s*\{\s*"error"\s*:\s*true/.test(text)) {
+    const fallback = d.metNo ? await metNoWeather(d.metNo, q, d) : null;
+    if (!fallback)
+      return reply(up.status === 429 || /limit/i.test(text) ? 503 : 502, 'weather busy');
+    text = fallback;
+  }
   d.defer(
     d.cache.put(
       cacheReq,
@@ -392,4 +405,28 @@ async function weather(
     ),
   );
   return new Response(text, { status: 200, headers: { ...json, 'X-Cache': 'miss' } });
+}
+
+/** At most this many places from MET Norway: the Worker may make 50 requests a call. */
+const MET_MAX = 20;
+
+/** MET Norway for each place (the first `MET_MAX`), in Open-Meteo's form; null when it fails. */
+async function metNoWeather(base: string, q: WeatherQuery, d: Deps): Promise<string | null> {
+  const points = q.points.slice(0, MET_MAX);
+  try {
+    const answers = await Promise.all(
+      points.map(async (p) => {
+        const r = await d.fetch(metNoUrl(base, p), {
+          // MET Norway asks every client to say who it is.
+          headers: { 'User-Agent': UA, Accept: 'application/json' },
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        });
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      }),
+    );
+    return JSON.stringify(fromMetNo(answers, { ...q, points }));
+  } catch {
+    return null;
+  }
 }
