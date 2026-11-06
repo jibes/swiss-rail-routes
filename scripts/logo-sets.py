@@ -9,8 +9,9 @@
 #
 # Colour: flat red #D40000 tile, white #FFFFFF mark. The arches are the tile showing through, so
 # the one-colour versions (status bar, Android themed icon, notification) are the same shape.
-# Adaptive icons: the system's mask shows the middle of the 108 tile (about a radius of 36),
-# still three arches: the bridge runs on out of the icon there too.
+# Adaptive and maskable icons: a launcher shows only the middle 72 of the 108 tile, so there the
+# design is drawn at 2/3 in that middle, its deck and arches running on to the edges (0.22.1:
+# drawn over the whole 108, the launcher cut off the valley and the sky and showed an "m").
 #
 #   python3 scripts/logo-sets.py           docs/design/logos/v14/
 #   python3 scripts/logo-sets.py --apply   public/icons/{icon,maskable}.svg and the Android
@@ -43,39 +44,42 @@ def f(v):
     return f'{v:.2f}'.rstrip('0').rstrip('.')
 
 
-def viaduct():
-    """The white shape as one path, clockwise from the deck's top left: along the deck, then
-    from the right side leftwards under it, pier by pier, the arches as holes cut from below."""
-    centres = [OFFSET + k * PERIOD for k in range(-4, 5)]
-    centres = [c for c in centres if -R_ARCH < c < SIZE + R_ARCH]
-    d = [f'M0,{DECK_TOP} H{SIZE}']
-    # The arch at the right side: from its top at the edge down its left half.
-    right = max(centres)
-    d.append(f'V{f(DECK_TOP + DECK)} A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(right - R_ARCH)},{f(SPRING)}')
-    for c in sorted(centres, reverse=True)[1:]:
-        # the pier between this arch and the one to its right, from b leftwards to a
-        a, b = c + R_ARCH, min(x for x in centres if x > c) - R_ARCH
-        # down the pier's right side, along the valley, up its left side
-        d.append(f'V{f(ground(b))}')
-        steps = 6
-        for i in range(1, steps + 1):
-            x = b + (a - b) * i / steps
-            d.append(f'L{f(x)},{f(ground(x))}')
-        d.append(f'V{f(SPRING)}')
-        if c - R_ARCH <= 0:  # the arch at the left side: up its right half to its top at the edge
-            d.append(f'A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 0,{f(DECK_TOP + DECK)}')
-        else:
-            d.append(f'A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(c - R_ARCH)},{f(SPRING)}')
-    d.append('Z')
+def viaduct(x_from=0, x_to=SIZE):
+    """The white shape from x_from to x_to: the deck, then each pier between two arches as its
+    own clockwise piece overlapping the deck by half a unit (non-zero fill joins them). Past the
+    tile's sides the arches go on, the ground level with its sides."""
+    centres = [OFFSET + k * PERIOD for k in range(-8, 9)]
+    d = [f'M{f(x_from)},{DECK_TOP} H{f(x_to)} V{DECK_TOP + DECK} H{f(x_from)} Z']
+    top = DECK_TOP + DECK
+    for c, n in zip(centres, centres[1:]):
+        if n + R_ARCH < x_from or c - R_ARCH > x_to:
+            continue
+        a, b = c + R_ARCH, n - R_ARCH  # the pier, from a to b
+        p = [f'M{f(c)},{top - 0.5} H{f(n)} V{top}',
+             f'A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(b)},{f(SPRING)} V{f(ground(b))}']
+        for i in range(1, 7):
+            x = b + (a - b) * i / 6
+            p.append(f'L{f(x)},{f(ground(x))}')
+        p.append(f'V{f(SPRING)} A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(c)},{top} Z')
+        d.append(' '.join(p))
     return ' '.join(d)
 
 
 PATH = viaduct()
+# Adaptive and maskable icons: a launcher shows only the middle 72 of 108 (and masks that), so
+# there the whole design is drawn in that middle at 2/3, its deck and arches running on to the
+# 108 edges, which only some launchers' zoom ever shows.
+INNER = 72 / SIZE
+INSET = (SIZE - 72) / 2
+WIDE = viaduct(-INSET / INNER, SIZE + INSET / INNER)
 TILE = f'<rect width="{SIZE}" height="{SIZE}" fill="{RED}"/>'
 ROUNDED = f'<rect width="{SIZE}" height="{SIZE}" rx="24" fill="{RED}"/>'
 
 
-def mark(colour, clip=None):
+def mark(colour, clip=None, inner=False):
+    if inner:
+        return (f'<g transform="translate({f(INSET)} {f(INSET)}) scale({INNER:.4f})">'
+                f'<path d="{WIDE}" fill="{colour}"/></g>')
     if clip:
         return (f'<defs><clipPath id="t">{clip}</clipPath></defs>'
                 f'<path d="{PATH}" fill="{colour}" clip-path="url(#t)"/>')
@@ -89,10 +93,10 @@ def docs():
     os.makedirs(DOCS, exist_ok=True)
     files = {
         'icon': TILE + mark(WHITE),
-        'maskable': TILE + mark(WHITE),
-        'adaptive-foreground': mark(WHITE),
+        'maskable': TILE + mark(WHITE, inner=True),
+        'adaptive-foreground': mark(WHITE, inner=True),
         'adaptive-background': TILE,
-        'monochrome': mark('#000'),
+        'monochrome': mark('#000', inner=True),
         'favicon': ROUNDED + mark(WHITE, ROUND_CLIP),
     }
     for name, body in files.items():
@@ -110,11 +114,12 @@ def vector(body, size=SIZE, viewport=SIZE):
             f'android:viewportWidth="{viewport}" android:viewportHeight="{viewport}">\n{body}</vector>\n')
 
 
-def android_mark(colour, at=(1, 0, 0)):
-    k, dx, dy = at
+def android_mark(colour, at=None, path=None):
+    k, dx, dy = at or (INNER, INSET, INSET)
+    path = path or WIDE
     return (f'    <group android:translateX="{dx:.2f}" android:translateY="{dy:.2f}" '
             f'android:scaleX="{k:.4f}" android:scaleY="{k:.4f}">\n'
-            f'        <path android:pathData="{PATH}" android:fillColor="{colour}"/>\n'
+            f'        <path android:pathData="{path}" android:fillColor="{colour}"/>\n'
             '    </group>\n')
 
 
@@ -123,8 +128,8 @@ def apply():
     with open(os.path.join(icons, 'icon.svg'), 'w') as fh:
         fh.write(SVG.format(v=SIZE, body=ROUNDED + mark(WHITE, ROUND_CLIP)))
     with open(os.path.join(icons, 'maskable.svg'), 'w') as fh:
-        fh.write(SVG.format(v=SIZE, body=TILE + mark(WHITE)))
-    # The foreground and themed icon run past the 108 box; the launcher clips them.
+        fh.write(SVG.format(v=SIZE, body=TILE + mark(WHITE, inner=True)))
+    # The foreground and themed icon: the design in the middle 72, running on to the edges.
     with open(os.path.join(RES, 'ic_launcher_foreground.xml'), 'w') as fh:
         fh.write(vector(android_mark(WHITE)))
     with open(os.path.join(RES, 'ic_launcher_monochrome.xml'), 'w') as fh:
@@ -136,7 +141,7 @@ def apply():
     k = 22 / SIZE
     at = (k, 1, 12 - (top + bottom) / 2 * k)
     with open(os.path.join(RES, 'ic_stat_rail.xml'), 'w') as fh:
-        fh.write(vector(android_mark(WHITE, at), size=24, viewport=24))
+        fh.write(vector(android_mark(WHITE, at, PATH), size=24, viewport=24))
 
 
 if __name__ == '__main__':
