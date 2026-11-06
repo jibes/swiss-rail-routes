@@ -9,22 +9,31 @@ describe('prices on SBB', () => {
     expect(uicOf('de:08111:6115')).toBeUndefined();
   });
 
-  it('SBB’s own deep link: stops by number, the Swiss date and time in quotes', () => {
+  it('as sbb.ch writes its own: Name_I<number>~…, the date in quotes, the time as HH_MM', () => {
     const url = sbbLink(
-      { stopRef: 'ch:1:sloid:7000', name: 'Bern' },
-      { stopRef: 'ch:1:sloid:9000', name: 'Chur' },
-      '2026-11-07T08:32:00Z',
-      'de',
+      [
+        { stopRef: 'ch:1:sloid:3000', name: 'Zürich HB' },
+        { stopRef: 'ch:1:sloid:1120', name: 'Lausanne' },
+        { stopRef: 'ch:1:sloid:1008', name: 'Genève' },
+      ],
+      '2026-11-08T13:46:00Z',
     );
-    expect(url.startsWith('https://www.sbb.ch/de?')).toBe(true);
-    const p = new URL(url).searchParams;
-    expect(JSON.parse(p.get('stops')!)).toEqual([
-      { value: '8507000', type: 'ID', label: 'Bern' },
-      { value: '8509000', type: 'ID', label: 'Chur' },
-    ]);
-    expect(p.get('date')).toBe('"2026-11-07"');
-    // 08:32 UTC in November is 09:32 in Switzerland.
-    expect(p.get('time')).toBe('"09:32"');
+    // The address sbb.ch made for this very search (6 Nov 2026), less its `day`.
+    expect(url).toBe(
+      'https://www.sbb.ch/en?stops=Z%C3%BCrich+HB_I8503000~Lausanne_I8501120~Gen%C3%A8ve_I8501008&date=%222026-11-08%22&time=14_46&moment=dep&via=1',
+    );
+    expect(
+      sbbLink(
+        [
+          { stopRef: 'ch:1:sloid:7000', name: 'Bern' },
+          { stopRef: 'de:08111:6115', name: 'Stuttgart' },
+        ],
+        '2026-11-08T13:46:00Z',
+        'de',
+      ),
+    ).toBe(
+      'https://www.sbb.ch/de?stops=Bern_I8507000~Stuttgart&date=%222026-11-08%22&time=14_46&moment=dep',
+    );
   });
 
   it('one per leg, from its first ride to its last, walks left out', () => {

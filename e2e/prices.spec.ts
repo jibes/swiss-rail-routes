@@ -14,8 +14,8 @@ test('prices on SBB: each leg opens sbb.ch with its stops, date and time', async
   await expect(link).toContainText('Interlaken Ost → Kleine Scheidegg');
   const url = new URL((await link.getAttribute('href'))!);
   expect(url.origin).toBe('https://www.sbb.ch');
-  const stops = JSON.parse(url.searchParams.get('stops')!) as { value: string }[];
-  expect(stops.map((s) => s.value)).toEqual(['8507492', '8507374']);
+  expect(url.searchParams.get('stops')).toBe('Interlaken Ost_I8507492~Kleine Scheidegg_I8507374');
+  expect(url.searchParams.get('moment')).toBe('dep');
   expect(url.searchParams.get('date')).toBe(`"${FIXTURE_DATE}"`);
   expect(await link.getAttribute('target')).toBe('_blank');
 });

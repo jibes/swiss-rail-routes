@@ -1,8 +1,7 @@
 // Prices on SBB (0.27.0): a link to sbb.ch's own timetable for a stretch of the trip, where the
 // ticket and its price are, for every operator SBB sells (most of Switzerland's, the scenic
-// lines' included). The format is SBB's documented deep link (timetable integration, "Deep
-// Linking SBB Fahrplan"): stops as a list of {value: UIC number, type: "ID", label}, the date
-// and time each in quotes. A station SBB does not know by its number still opens SBB's planner.
+// lines' included). In the form sbb.ch writes its own addresses (0.28.2, from one it made:
+// `stops=Zürich+HB_I8503000~Lausanne_I8501120&date="2026-11-08"&time=14_46&moment=dep`).
 import type { Connection } from '../model';
 import { zurichLocal } from '../planner/plan';
 import { stopKey } from '../stops';
@@ -18,23 +17,25 @@ export function uicOf(ref: string): string | undefined {
 }
 
 export function sbbLink(
-  from: { stopRef: string; name: string },
-  to: { stopRef: string; name: string },
+  stops: { stopRef: string; name: string }[],
   /** When it leaves, ISO. */
   dep: string,
   lang: keyof typeof SBB_LANG = 'en',
 ): string {
+  // As sbb.ch writes it itself: `Zürich HB_I8503000~Lausanne_I8501120`, the name as a form
+  // value (spaces as +), the number after `_I`; a stop without a number by its name alone.
+  const form = (x: string) => encodeURIComponent(x).replace(/%20/g, '+');
   const stop = (s: { stopRef: string; name: string }) => {
     const uic = uicOf(s.stopRef);
-    return uic
-      ? { value: uic, type: 'ID', label: s.name }
-      : { value: s.name, type: 'NAME', label: s.name };
+    return uic ? `${form(s.name)}_I${uic}` : form(s.name);
   };
   const local = zurichLocal(Date.parse(dep));
   const q = [
-    `stops=${encodeURIComponent(JSON.stringify([stop(from), stop(to)]))}`,
-    `date=${encodeURIComponent(JSON.stringify(local.slice(0, 10)))}`,
-    `time=${encodeURIComponent(JSON.stringify(local.slice(11, 16)))}`,
+    `stops=${stops.map(stop).join('~')}`,
+    `date=${encodeURIComponent(`"${local.slice(0, 10)}"`)}`,
+    `time=${local.slice(11, 13)}_${local.slice(14, 16)}`,
+    'moment=dep',
+    ...(stops.length > 2 ? ['via=1'] : []),
   ];
   return `https://www.sbb.ch/${SBB_LANG[lang]}?${q.join('&')}`;
 }
@@ -51,7 +52,7 @@ export function legLinks(connections: Connection[], lang: keyof typeof SBB_LANG 
         from: first.from.name,
         to: last.to.name,
         dep: first.from.dep,
-        url: sbbLink(first.from, last.to, first.from.dep, lang),
+        url: sbbLink([first.from, last.to], first.from.dep, lang),
       },
     ];
   });
