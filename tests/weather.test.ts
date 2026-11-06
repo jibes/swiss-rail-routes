@@ -83,3 +83,19 @@ describe('weather along a trip', () => {
     expect(weatherDays(rows)).toEqual({ from: '2026-11-07', to: '2026-11-07' });
   });
 });
+
+describe('a recorded Open-Meteo answer (through the Worker, 6 Nov 2026)', () => {
+  it('reads it as the made-up one: St. Moritz at 1818 m and Tirano, hour by hour', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { gunzipSync } = await import('node:zlib');
+    const answer = JSON.parse(
+      gunzipSync(
+        readFileSync('tests/fixtures/weather/stmoritz-tirano-2026-11-07.json.gz'),
+      ).toString(),
+    ) as unknown;
+    const f = parseWeather(answer, [STM, TIR]);
+    const at10 = Date.parse('2026-11-07T10:30:00Z');
+    expect(f.at(STM, at10)).toEqual({ cloud: 0.46, rain: 0.18, day: true });
+    expect(f.at(TIR, at10)).toEqual({ cloud: 0.86, rain: 0.15, day: true });
+  });
+});
