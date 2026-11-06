@@ -7,9 +7,9 @@ observability = { enabled = false }
 
 [vars]
 OJP_URL = "https://api.opentransportdata.swiss/ojp20"
-# OJP Fare (beta), its own key: `npx wrangler secret put OJP_FARE_API_KEY -c workers/ojp/wrangler.toml`.
-OJP_FARE_URL = "https://api.opentransportdata.swiss/ojpfare/"
-# Europe (0.31.0): Transitous, community-run; asked by the Worker alone, trains only.
+# OJP Fare (beta): the OJP 2.0 endpoint, its own key: `npx wrangler secret put OJP_FARE_API_KEY -c workers/ojp/wrangler.toml`.
+OJP_FARE_URL = "https://api.opentransportdata.swiss/ojp20"
+# Europe (0.30.0): Transitous, community-run; asked by the Worker alone, trains only.
 TRANSITOUS_URL = "https://api.transitous.org"
 # https://localhost: the Android app (Capacitor). Local dev servers are not here: `npm run
 # worker:dev` adds them with --var, so no page on anyone's localhost can spend the key.

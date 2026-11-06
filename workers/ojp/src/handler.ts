@@ -44,7 +44,7 @@ export interface Deps {
   /** OJP Fare's own key (one per API) and address; without a key /fare answers 503. */
   fareKey?: string;
   fareUpstream?: string;
-  /** Transitous (Europe, 0.31.0): asked by the Worker alone, trains only. */
+  /** Transitous (Europe, 0.30.0): asked by the Worker alone, trains only. */
   transitous?: string;
   upstream: string;
   allowedOrigins: string[];

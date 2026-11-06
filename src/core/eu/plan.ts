@@ -1,4 +1,4 @@
-// A Transitous (MOTIS) plan → the app's own connections (0.31.0), for legs that leave
+// A Transitous (MOTIS) plan → the app's own connections (0.30.0), for legs that leave
 // Switzerland. A station abroad has no SLOID: its ref is `eu:<lat>,<lon>:<id>`, which carries
 // where it lies (the map, the line) and Transitous' own id; a Swiss station a foreign operator
 // names its own way (Trenitalia's "ZUERICH HB") is the app's own, when `local` finds it. Pure.
