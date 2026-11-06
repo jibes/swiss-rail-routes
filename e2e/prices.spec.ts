@@ -19,3 +19,19 @@ test('prices on SBB: each leg opens sbb.ch with its stops, date and time', async
   expect(url.searchParams.get('date')).toBe(`"${FIXTURE_DATE}"`);
   expect(await link.getAttribute('target')).toBe('_blank');
 });
+
+// Show prices: the cheapest tickets of each leg, without and with Half Fare, asked on the tap.
+test('show prices: each leg’s cheapest tickets from SBB’s fare service', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Prices' }));
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Prices on SBB' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Prices on SBB' });
+  await expect(sheet.getByText(/Asking the fare service/)).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Show prices' }).click();
+  await expect(sheet.getByRole('button', { name: 'Show prices' })).toHaveCount(0);
+  await expect(
+    sheet.getByText(/^2nd class CHF \d+\.\d\d · Half Fare CHF \d+\.\d\d/).first(),
+  ).toBeVisible();
+  await expect(sheet.getByText(/Asking the fare service/)).toHaveCount(0);
+});

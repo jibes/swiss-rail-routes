@@ -337,7 +337,7 @@
   color: var(--rail-ink);
 }
 
-/* The add sheet */
+/* Sheets (the add sheet, prices) */
 .scrim {
   position: fixed;
   inset: 0;
@@ -348,7 +348,7 @@
   background: rgb(0 0 0 / 35%);
 }
 
-.add-sheet {
+.sheet {
   width: 100%;
   max-width: 560px;
   max-height: 86dvh;
@@ -368,13 +368,13 @@
   background: var(--hair);
 }
 
-.add-sheet .sheet-head {
+.sheet .sheet-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.add-sheet h2 {
+.sheet h2 {
   margin: 0;
   font-size: 17px;
 }
@@ -653,8 +653,12 @@ html.pull-reload {
 }
 
 /* Prices on SBB (PricesSheet.tsx): one row per leg. */
+.prices-sheet {
+  overflow-y: auto;
+}
+
 .prices {
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -671,4 +675,26 @@ html.pull-reload {
 .prices .r-sub {
   color: var(--ink-2);
   font-size: 13px;
+}
+
+.prices .fare {
+  font-variant-numeric: tabular-nums;
+}
+
+.prices .fare-main {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.prices-sheet > .pill.wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.prices-sheet > p {
+  margin: 0;
+}
+
+.prices .fare-main .muted {
+  font-weight: 400;
 }

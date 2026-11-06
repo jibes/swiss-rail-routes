@@ -24,6 +24,16 @@ export function recordedAnswer(body: string): string | null {
   return null;
 }
 
+/** A fare question's recorded answers (tests/fixtures/fares/<sha1>: OJP's trip, then OJP Fare's). */
+export function recordedFare(body: string): { trip: string; fare: string } | null {
+  const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
+  const f = `tests/fixtures/fares/${key}`;
+  if (!existsSync(`${f}.xml.gz`)) return null;
+  if (process.env.FIXTURE_LOG) appendFileSync(process.env.FIXTURE_LOG, f + '\n');
+  const read = (x: string) => gunzipSync(readFileSync(x)).toString('utf8');
+  return { trip: read(`${f}-trip.xml.gz`), fare: read(`${f}.xml.gz`) };
+}
+
 /** The sync mailbox, shared by every page of a run (ids are random per key). */
 const boxes = new Map<string, SyncRecord>();
 
@@ -48,11 +58,12 @@ export async function answerWorker(page: Page, problems: string[] = []) {
   await page.route('https://ojp.invalid/**', async (route) => {
     const req = route.request();
     const body = req.postData() ?? undefined;
-    const recorded = body ? recordedAnswer(body) : null;
+    const fare = body && new URL(req.url()).pathname === '/fare' ? recordedFare(body) : null;
+    const recorded = body ? (fare?.trip ?? recordedAnswer(body)) : null;
     if (
       body &&
       !recorded &&
-      /\/(trip|departures)$/.test(new URL(req.url()).pathname) &&
+      /\/(trip|departures|fare)$/.test(new URL(req.url()).pathname) &&
       !lenient.has(page)
     )
       problems.push(`no recorded answer for ${body}`);
@@ -68,15 +79,19 @@ export async function answerWorker(page: Page, problems: string[] = []) {
       {
         apiKey: 'e2e',
         upstream: 'https://ojp.example/',
+        fareKey: 'e2e',
+        fareUpstream: 'https://fare.example/',
         allowedOrigins: [
           new URL(page.url() || 'http://localhost:4173').origin,
           'http://localhost:4173',
         ],
         // OJP: the recorded answer to this very query, else a failure the app must show.
-        fetch: (async () =>
-          recorded
-            ? new Response(recorded, { status: 200 })
-            : new Response('no recorded answer', { status: 500 })) as typeof fetch,
+        fetch: (async (url: string) => {
+          const answer = String(url).startsWith('https://fare.example/') ? fare?.fare : recorded;
+          return answer
+            ? new Response(answer, { status: 200 })
+            : new Response('no recorded answer', { status: 500 });
+        }) as typeof fetch,
         cache: { match: async () => undefined, put: async () => undefined },
         limit: async () => true,
         limitWrite: async () => true,

@@ -42,13 +42,15 @@ export function sbbLink(
 
 /** One link per leg of the plan: from where it starts to where it ends, at its time. */
 export function legLinks(connections: Connection[], lang: keyof typeof SBB_LANG = 'en') {
-  return connections.flatMap((c) => {
+  return connections.flatMap((c, i) => {
     const rides = c.sections.filter((s) => s.mode !== 'walk');
     const first = rides[0];
     const last = rides.at(-1);
     if (!first?.from.dep || !last) return [];
     return [
       {
+        /** Which of the connections. */
+        at: i,
         from: first.from.name,
         to: last.to.name,
         dep: first.from.dep,

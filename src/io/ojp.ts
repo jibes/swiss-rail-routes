@@ -153,3 +153,30 @@ export async function fetchDepartures(
   });
   return out;
 }
+
+/** A leg's cheapest tickets (OJP Fare, 0.31.0): asked only when the person asks for prices. */
+export async function fetchFare(
+  q: import('../core/ojp/fareRequest').FareQuery,
+  signal?: AbortSignal,
+): Promise<import('../core/ojp/fare').Fare[]> {
+  const url = import.meta.env.VITE_OJP_URL;
+  if (!url) throw new PlanningUnavailable();
+  const [res, { parseFares }] = await Promise.all([
+    fetch(`${url.replace(/[/]$/, '')}/fare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(q),
+      signal: withTimeout(signal),
+    }),
+    import('../core/ojp/fare'),
+  ]);
+  const what = { from: q.origin.name, to: q.destination.name, halfFare: q.halfFare };
+  if (!res.ok) {
+    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+    log('ojp.fare.fail', { ...what, detail });
+    throw new WorkerError(detail);
+  }
+  const out = parseFares(await res.text());
+  log('ojp.fare', { ...what, fares: out.length, cache: res.headers.get('X-Cache') ?? undefined });
+  return out;
+}

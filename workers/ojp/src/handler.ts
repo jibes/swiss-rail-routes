@@ -15,7 +15,6 @@ import {
 } from '../../../src/core/ojp/request';
 import {
   fareRequestXml,
-  NO_CARD_FORMS,
   fareTripRequestXml,
   parseFareQuery,
   pickTrip,
@@ -76,7 +75,7 @@ function cors(origin: string | null, allowed: string[]): Record<string, string> 
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Max-Age': '86400',
     // The app logs whether an answer came from the cache (debug log).
-    'Access-Control-Expose-Headers': 'X-Cache, X-Fare-Form, Retry-After',
+    'Access-Control-Expose-Headers': 'X-Cache, Retry-After',
     Vary: 'Origin',
   };
 }
@@ -248,13 +247,7 @@ async function fare(
   if (!trips?.ok) return reply(502, `upstream ${trips?.status ?? 'none'}`);
   const trip = pickTrip(await trips.text(), q.journeys);
   if (!trip) return reply(404, 'trip not found');
-  // Without a card, the forms in turn until one is answered (the service gives a 500 for some).
-  let up: Response | null = null;
-  let form = 0;
-  for (; form < (q.halfFare ? 1 : NO_CARD_FORMS); form++) {
-    up = await ask(d.fareUpstream, d.fareKey, fareRequestXml(trip, q, d.now(), REQUESTOR, form));
-    if (up?.status !== 500) break;
-  }
+  const up = await ask(d.fareUpstream, d.fareKey, fareRequestXml(trip, q, d.now(), REQUESTOR));
   if (!up?.ok) {
     // The service's own words (its gateway says why it refused), never our request or key.
     const why = up ? (await up.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200) : '';
@@ -283,7 +276,6 @@ async function fare(
       ...h,
       'Content-Type': 'application/xml',
       'X-Cache': 'miss',
-      'X-Fare-Form': String(form),
     },
   });
 }
