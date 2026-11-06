@@ -334,3 +334,64 @@ a.secondary {
   display: grid;
   gap: 2px;
 }
+
+.map-picker-near {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+/* A station is the line's round dot; other stops their means of transport. */
+.map-picker-near .r-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--ink-2);
+}
+
+.map-picker-near .r-icon.kind-train::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid var(--rail);
+  background: var(--surface);
+}
+
+.map-picker-near .r-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.map-picker-near .result {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map-picker-near li:last-child .result {
+  border-bottom: 0;
+}
+
+.map-picker-near .r-icon {
+  grid-row: span 2;
+  justify-self: center;
+}
+
+.map-picker-near .r-sub {
+  color: var(--ink-2);
+  font-size: 13px;
+}

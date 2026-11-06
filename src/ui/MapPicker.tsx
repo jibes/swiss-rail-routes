@@ -10,7 +10,8 @@ import type { Waypoint } from '../core/model';
 import type { Departures } from '../core/ojp/departures';
 import { zurichLocal } from '../core/planner/plan';
 import { estimate, spiderWeb, type Reached, type Web } from '../core/spider';
-import { stopKey } from '../core/stops';
+import { kmBetween, stopKey } from '../core/stops';
+import { nearbyChoices, type NearChoice } from '../core/nearby';
 import { fetchDepartures } from '../io/ojp';
 import { log } from '../io/log';
 import { useT } from '../store';
@@ -24,8 +25,6 @@ import { useStopIndex } from './useStopIndex';
 type Stop = Pick<Waypoint, 'stopRef' | 'name'>;
 const ACCENT = '#c0261b';
 const BUS = '#6b7280';
-/** A tap on the map takes the nearest station within this. */
-const TAP_KM = 3;
 
 interface Chosen {
   stop: Stop;
@@ -34,6 +33,14 @@ interface Chosen {
   direct?: Reached;
   about?: { minutes: number; via?: string };
 }
+
+const KIND_LABEL = {
+  train: 'kindTrain',
+  cable: 'kindCable',
+  boat: 'kindBoat',
+  tram: 'kindTram',
+  bus: 'kindBus',
+} as const;
 
 const empty = () => ({ type: 'FeatureCollection' as const, features: [] });
 
@@ -93,6 +100,25 @@ export default function MapPicker({
   const [attempt, setAttempt] = useState(0);
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const [added, setAdded] = useState(0);
+  const [near, setNear] = useState<NearChoice[] | null>(null);
+  /** A stop picked by name or nearby: its train when one goes there direct, else about how long. */
+  const choose = (s: { ref: string; name: string; lat: number; lon: number }) => {
+    if (!web || !originAt) return;
+    setNear(null);
+    const direct = web.reached.find((r) => r.key === stopKey(s.ref));
+    if (direct)
+      return setChosen({
+        stop: { stopRef: direct.key, name: direct.name },
+        at: zurichLocal(Date.parse(direct.arr)),
+        direct,
+      });
+    const est = estimate(web, isoOf(from.at), originAt, s);
+    setChosen({
+      stop: { stopRef: s.ref, name: s.name },
+      at: zurichLocal(Date.parse(isoOf(from.at)) + est.minutes * 60_000),
+      about: { minutes: est.minutes, via: est.via?.name },
+    });
+  };
   useLayer(true, onClose);
 
   const fromKey = `${stopKey(from.stop.stopRef)}@${from.at}`;
@@ -237,6 +263,7 @@ export default function MapPicker({
       const key = hit?.properties?.key as string | undefined;
       const direct = key ? web.reached.find((r) => r.key === key) : undefined;
       if (direct) {
+        setNear(null);
         setChosen({
           stop: { stopRef: direct.key, name: direct.name },
           at: zurichLocal(Date.parse(direct.arr)),
@@ -244,14 +271,19 @@ export default function MapPicker({
         });
         return;
       }
-      const near = index.near({ lat: e.lngLat.lat, lon: e.lngLat.lng }, TAP_KM)[0];
-      if (!near || stopKey(near.ref) === web.from) return setChosen(null);
-      const est = estimate(web, isoOf(from.at), originAt, near);
-      setChosen({
-        stop: { stopRef: near.ref, name: near.name },
-        at: zurichLocal(Date.parse(isoOf(from.at)) + est.minutes * 60_000),
-        about: { minutes: est.minutes, via: est.via?.name },
-      });
+      // Anywhere else: the stops near it to choose from, how far by the zoom.
+      const b = map?.getBounds();
+      const viewKm = b
+        ? kmBetween(
+            { lat: e.lngLat.lat, lon: b.getWest() },
+            { lat: e.lngLat.lat, lon: b.getEast() },
+          )
+        : 50;
+      const choices = nearbyChoices(index, { lat: e.lngLat.lat, lon: e.lngLat.lng }, viewKm).filter(
+        (c) => stopKey(c.ref) !== web.from,
+      );
+      setChosen(null);
+      setNear(choices.length ? choices : null);
     };
   });
   useEffect(() => {
@@ -310,11 +342,7 @@ export default function MapPicker({
                     type="button"
                     className="text-button"
                     onClick={() =>
-                      setChosen({
-                        stop: { stopRef: r.key, name: r.name },
-                        at: zurichLocal(Date.parse(r.arr)),
-                        direct: r,
-                      })
+                      choose({ ref: r.key, name: r.name, lat: r.pos.lat, lon: r.pos.lon })
                     }
                   >
                     {r.name} <span className="muted">{hhmm(r.arr)}</span>
@@ -325,6 +353,27 @@ export default function MapPicker({
           </details>
         )}
       </div>
+      {near && !chosen && (
+        <div className="map-picker-card" role="status">
+          <h2>{t('mapPickNear')}</h2>
+          <ul className="map-picker-near">
+            {near.map((c) => (
+              <li key={c.ref}>
+                <button type="button" className="result" onClick={() => choose(c)}>
+                  <span className={`r-icon kind-${c.kind}`} aria-hidden="true">
+                    {c.kind !== 'train' && <Icon name={c.kind} />}
+                  </span>
+                  <span className="r-name">{c.name}</span>
+                  <span className="r-sub">
+                    {t(KIND_LABEL[c.kind])} ·{' '}
+                    {c.km < 1 ? `${Math.round(c.km * 1000)} m` : `${c.km.toFixed(1)} km`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {chosen && (
         <div className="map-picker-card" role="status">
           <h2>{chosen.stop.name}</h2>

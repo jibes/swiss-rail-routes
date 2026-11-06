@@ -26,6 +26,11 @@ const P = {
   locate: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v4M12 18v4M2 12h4M18 12h4',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
+  // Means of transport (the map planner's stops; a train station is the plain round dot).
+  bus: 'M6 4h12a2 2 0 0 1 2 2v10H4V6a2 2 0 0 1 2-2zM4 11h16M7 16v3M17 16v3M7.5 13.5h.01M16.5 13.5h.01',
+  tram: 'M7 7h10a2 2 0 0 1 2 2v8H5V9a2 2 0 0 1 2-2zM9 3h6M12 3v4M5 13h14M8 17l-2 3M16 17l2 3',
+  cable: 'M3 4l18 4M12 6v4M7 10h10l1 9H6zM6.5 14h11',
+  boat: 'M3 15l2 5h14l2-5zM6 15V10h12v5M12 10V4',
 } as const;
 
 export type IconName = keyof typeof P;

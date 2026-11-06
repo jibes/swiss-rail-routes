@@ -26,3 +26,26 @@ test('pick on the map: the trains from the last station, a tap adds a place', as
   await expect(dialog).toBeHidden();
   await expect(page.locator('li.station').filter({ hasText: 'Wengen' }).first()).toBeVisible();
 });
+
+test('a tap anywhere: the stops near it, stations further, bus stops close, by their means', async ({
+  page,
+}, info) => {
+  // Where to tap is a point on the screen: the phone's, which this was measured on.
+  test.skip(info.project.name !== 'phone', 'the tap is placed on the phone screen');
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Map tap' }));
+  allowUnrecorded(page);
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await page.getByRole('button', { name: /Pick on the map/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Pick on the map' });
+  await expect(dialog.getByText(/Lines are the trains from here/)).toBeVisible({ timeout: 15_000 });
+  // West of Kleine Scheidegg, by Wengen (the web fitted to the phone's screen).
+  const box = (await dialog.locator('.map').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.42);
+  await expect(dialog.getByRole('heading', { name: 'Near here' })).toBeVisible();
+  await expect(dialog.locator('.map-picker-near .kind-cable')).toHaveCount(1);
+  await dialog.getByRole('button', { name: /^Wengen Station/ }).click();
+  // Wengen has a direct train from here: its train, not an estimate.
+  await expect(dialog.getByRole('heading', { name: 'Wengen' })).toBeVisible();
+  await expect(dialog.getByText(/^Direct: at /)).toBeVisible();
+});

@@ -107,6 +107,18 @@ const nearStart = (q: string, w: string, min = TYPO_MIN) =>
   q[0] === w[0] &&
   [q.length - 1, q.length, q.length + 1].some((n) => n <= w.length && withinOne(q, w.slice(0, n)));
 
+/** How a stop is served, for its icon: by its most lasting way (a station with buses is a station). */
+export type StopKind = 'train' | 'cable' | 'boat' | 'tram' | 'bus';
+export function stopKind(s: Pick<Stop, 'modes'>): StopKind {
+  const m = s.modes;
+  if (m.includes('TRAIN') || m.includes('RACK_RAILWAY') || m.includes('METRO')) return 'train';
+  if (m.includes('BOAT')) return 'boat';
+  if (m.some((x) => x === 'CABLE_CAR' || x === 'CABLE_RAILWAY' || x === 'CHAIRLIFT'))
+    return 'cable';
+  if (m.includes('TRAM')) return 'tram';
+  return m.includes('BUS') ? 'bus' : 'train';
+}
+
 const RAIL_MASK = modeMask(['TRAIN', 'RACK_RAILWAY', 'CABLE_RAILWAY', 'CABLE_CAR', 'BOAT']);
 
 /** Kilometres between two points (equirectangular: exact enough within the country). */
@@ -136,7 +148,9 @@ export interface StopSearch {
   search(query: string, limit?: number): Stop[];
   byRef(ref: string): Stop | undefined;
   /** Rail, cable and boat stops within `km` of a point, nearest first, each with its distance. */
-  near(at: { lat: number; lon: number }, km: number): (Stop & { km: number })[];
+  /** Rail, cable and boat stops within `km` of a point, nearest first; with `all`, bus and tram
+   *  stops too. */
+  near(at: { lat: number; lon: number }, km: number, all?: boolean): (Stop & { km: number })[];
 }
 
 /**
@@ -164,13 +178,13 @@ export function createStopSearch(
       const r = byRef.get(ref);
       return r && toStop(r);
     },
-    near(at, km) {
+    near(at, km, all = false) {
       const out: (Stop & { km: number })[] = [];
       // A box first: most stops are far, and the box is cheap.
       const dLat = km / 111;
       const dLon = km / (111 * Math.cos((at.lat * Math.PI) / 180));
       for (const r of file.rows) {
-        if (!(r[4] & RAIL_MASK)) continue;
+        if (!all && !(r[4] & RAIL_MASK)) continue;
         if (Math.abs(r[2] - at.lat) > dLat || Math.abs(r[3] - at.lon) > dLon) continue;
         const d = kmBetween(at, { lat: r[2], lon: r[3] });
         if (d <= km) out.push({ ...toStop(r), km: d });
