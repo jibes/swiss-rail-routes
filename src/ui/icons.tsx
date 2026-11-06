@@ -26,6 +26,7 @@ const P = {
   locate: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v4M12 18v4M2 12h4M18 12h4',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
+  ticket: 'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10',
   pin: 'M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v8',
   // Means of transport (the map planner's stops; a train station is the plain round dot).
   bus: 'M6 4h12a2 2 0 0 1 2 2v10H4V6a2 2 0 0 1 2-2zM4 11h16M7 16v3M17 16v3M7.5 13.5h.01M16.5 13.5h.01',

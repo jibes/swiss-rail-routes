@@ -32,6 +32,7 @@ import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
 import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
+import { PricesSheet } from './PricesSheet';
 import { PlanNotices } from './PlanNotices';
 import { TripFacts } from './TripFacts';
 import { go } from './useHash';
@@ -160,6 +161,8 @@ export function TripScreen({ id }: { id: string }) {
   // Beside the trip (desktop columns) it takes the map's column, not the trip's.
   const [mapPick, setMapPick] = useState<{ after: number; into: Element | null } | null>(null);
   const closeMap = useCallback(() => setMapPick(null), []);
+  const [prices, setPrices] = useState(false);
+  const closePrices = useCallback(() => setPrices(false), []);
   // A via just unpinned, for a few seconds: Undo pins it back where it was.
   const [unpinned, setUnpinned] = useState<{
     k: number;
@@ -370,6 +373,19 @@ export function TripScreen({ id }: { id: string }) {
                 {t('print')}
               </button>
             )}
+            {isPlanned(trip) && (
+              <button
+                type="button"
+                onClick={() => {
+                  log('trip.prices', { trip: id });
+                  setMenu(false);
+                  setPrices(true);
+                }}
+              >
+                <Icon name="ticket" size={18} />
+                {t('pricesOnSbb')}
+              </button>
+            )}
             {/* Before it leaves only: under way, Replan from here changes the rest. */}
             {!liveTrip && status !== 'past' && entries.length >= 2 && (
               <button
@@ -575,6 +591,9 @@ export function TripScreen({ id }: { id: string }) {
               : undefined
           }
         />
+      )}
+      {prices && trip.chain && (
+        <PricesSheet connections={trip.chain.connections} onClose={closePrices} />
       )}
       {unpinned && (
         <p className="toast unpinned" role="status">
