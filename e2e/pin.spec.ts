@@ -24,6 +24,8 @@ test('pin the plan’s change as a via; unpin it; undo', async ({ page }) => {
   // Pinned: the pin by its name is the state; its panel has no name field and no moves (the
   // plan must pass it where the train does), and Unpin, in words, is the action.
   await expect(yours().nth(1).locator('.pin-mark')).toBeVisible();
+  // The plan's note goes with the tap that made it yours.
+  await expect(line.getByText(/Added by the timetable/)).toHaveCount(0);
   const panel = page.locator('.panel');
   await expect(panel.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
   await expect(panel.getByRole('button', { name: `Move ${name} up` })).toHaveCount(0);

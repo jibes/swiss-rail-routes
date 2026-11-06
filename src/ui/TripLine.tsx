@@ -202,13 +202,17 @@ export function TripLine({
         aria-expanded={isOpen}
         onClick={() => setOpen?.(isOpen ? null : k)}
       >
-        {pinnedAt(k) && (
-          <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">
-            <Icon name="pin" size={14} />
-          </span>
-        )}
-        <span className="n">{r.name}</span>
-        {pinnedAt(k) && <span className="sr-only">{t('pinnedVia')}</span>}
+        <span className="n">
+          {r.name}
+          {pinnedAt(k) && (
+            <>
+              <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">
+                <Icon name="pin" size={14} />
+              </span>
+              <span className="sr-only">{t('pinnedVia')}</span>
+            </>
+          )}
+        </span>
         {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
       </button>
     );
@@ -218,14 +222,35 @@ export function TripLine({
   const pinMenu = (k: number, stop: { stopRef: string; name: string }) =>
     act?.pin && (
       <span className="pin-menu">
-        <button type="button" className="pill" onClick={() => act.pin!(k, stop)}>
+        <button
+          type="button"
+          className="pill"
+          onClick={() => {
+            setHint(null);
+            act.pin!(k, stop);
+          }}
+        >
           <Icon name="pin" size={16} />
           {t('pinVia')}
         </button>
-        <button type="button" className="pill" onClick={() => act.pin!(k, stop, 'stay')}>
+        <button
+          type="button"
+          className="pill"
+          onClick={() => {
+            setHint(null);
+            act.pin!(k, stop, 'stay');
+          }}
+        >
           {t('pinStay')}
         </button>
-        <button type="button" className="pill" onClick={() => act.pin!(k, stop, 'add')}>
+        <button
+          type="button"
+          className="pill"
+          onClick={() => {
+            setHint(null);
+            act.pin!(k, stop, 'add');
+          }}
+        >
           <Icon name="plus" size={16} />
           {t('pinAdd')}
         </button>
@@ -614,8 +639,8 @@ function Panel({
       <div className="panel-head">
         {pinned ? (
           <p className="panel-name">
-            <Icon name="pin" size={16} />
             <span>{name}</span>
+            <Icon name="pin" size={16} />
             <span className="muted">{t('pinnedVia')}</span>
           </p>
         ) : (

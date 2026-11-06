@@ -767,9 +767,9 @@
 /* A pinned via: the pin is its state, by the name; the panel's Unpin is the action. */
 .pin-mark {
   display: inline-flex;
-  margin-right: 4px;
+  margin-left: 6px;
   color: var(--rail);
-  vertical-align: -2px;
+  vertical-align: -1px;
 }
 
 .panel-name {
