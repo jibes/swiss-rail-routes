@@ -2,6 +2,7 @@
 // POST /trip and /stops (cached 10 min), POST /journey (live calls of one train, cached 30 s),
 // GET/PUT/DELETE /sync/<id> (an encrypted blob per sync id, see sync.ts).
 // Standard Fetch API only, so tests run it in Node with fakes.
+import { parseWeatherQuery, weatherUrl } from '../../../src/core/weather';
 import {
   cacheKeyOf,
   departuresRequestXml,
@@ -44,6 +45,8 @@ export interface Deps {
   /** OJP Fare's own key (one per API) and address; without a key /fare answers 503. */
   fareKey?: string;
   fareUpstream?: string;
+  /** Open-Meteo (weather, 0.37.0): asked by the Worker alone, rounded places and days. */
+  weatherUpstream?: string;
   /** Transitous (Europe, 0.30.0): asked by the Worker alone, trains only. */
   transitous?: string;
   upstream: string;
@@ -130,6 +133,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
 
   if (path === '/fare') return fare(req, d, reply, h);
   if (path === '/eu/stops' || path === '/eu/plan') return europe(path, req, d, reply, h);
+  if (path === '/weather') return weather(req, d, reply, h);
 
   const kind = path.slice(1) as Kind;
   if (!Object.hasOwn(KINDS, kind)) return reply(404, 'path');
@@ -327,6 +331,63 @@ async function europe(
       cacheReq,
       new Response(text, {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
+      }),
+    ),
+  );
+  return new Response(text, { status: 200, headers: { ...json, 'X-Cache': 'miss' } });
+}
+
+/** A forecast is kept an hour: the models run every few hours, and Open-Meteo's free use counts. */
+const WEATHER_CACHE_S = 3600;
+
+/**
+ * Weather along a trip (0.37.0): Open-Meteo for rounded places and at most two days, from typed
+ * JSON. Its free use is limited per address, which the Worker shares with others: refused, it
+ * says busy (503), and the app shows no stripe that time.
+ */
+async function weather(
+  req: Request,
+  d: Deps,
+  reply: (status: number, body: string, extra?: Record<string, string>) => Response,
+  h: Record<string, string>,
+): Promise<Response> {
+  if (!d.weatherUpstream) return reply(503, 'not configured: WEATHER_URL');
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return reply(400, 'json');
+  }
+  const q = parseWeatherQuery(body);
+  if (typeof q === 'string') return reply(400, q);
+  const url = weatherUrl(d.weatherUpstream, q);
+  const cacheReq = new Request(`https://cache.invalid/${await sha256(url)}`);
+  const json = { ...h, 'Content-Type': 'application/json' };
+  const hit = await d.cache.match(cacheReq);
+  if (hit) return new Response(hit.body, { status: 200, headers: { ...json, 'X-Cache': 'hit' } });
+  if (!(await d.limit(req.headers.get('CF-Connecting-IP') ?? 'unknown')))
+    return reply(429, 'rate', { 'Retry-After': '60' });
+  let up: Response;
+  try {
+    up = await d.fetch(url, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch {
+    return reply(502, 'upstream');
+  }
+  const text = await up.text();
+  // Open-Meteo says a refusal in the body too ({"error":true,"reason":"Daily API request limit…"}).
+  if (!up.ok || /^\s*\{\s*"error"\s*:\s*true/.test(text))
+    return reply(up.status === 429 || /limit/i.test(text) ? 503 : 502, 'weather busy');
+  d.defer(
+    d.cache.put(
+      cacheReq,
+      new Response(text, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `public, max-age=${WEATHER_CACHE_S}`,
+        },
       }),
     ),
   );

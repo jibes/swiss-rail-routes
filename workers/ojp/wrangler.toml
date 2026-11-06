@@ -11,6 +11,8 @@ OJP_URL = "https://api.opentransportdata.swiss/ojp20"
 OJP_FARE_URL = "https://api.opentransportdata.swiss/ojpfare"
 # Europe (0.30.0): Transitous, community-run; asked by the Worker alone, trains only.
 TRANSITOUS_URL = "https://api.transitous.org"
+# Weather (0.37.0): Open-Meteo, free and keyless, asked by the Worker alone (rounded places, cached 1 h).
+WEATHER_URL = "https://api.open-meteo.com"
 # https://localhost: the Android app (Capacitor). Local dev servers are not here: `npm run
 # worker:dev` adds them with --var, so no page on anyone's localhost can spend the key.
 ALLOWED_ORIGINS = "https://jibes.github.io,https://localhost"

@@ -10,6 +10,7 @@ interface Env {
   OJP_FARE_API_KEY?: string;
   OJP_FARE_URL: string;
   TRANSITOUS_URL: string;
+  WEATHER_URL: string;
   ALLOWED_ORIGINS: string;
   LIMIT: RateLimit;
   WRITES: RateLimit;
@@ -56,6 +57,7 @@ export default {
       fareKey: env.OJP_FARE_API_KEY,
       fareUpstream: env.OJP_FARE_URL,
       transitous: env.TRANSITOUS_URL,
+      weatherUpstream: env.WEATHER_URL,
       allowedOrigins: env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
       fetch: (...a) => fetch(...a),
       cache: caches.default,

@@ -318,6 +318,43 @@ describe('Europe through Transitous (0.31.0)', () => {
   });
 });
 
+describe('weather (0.37.0)', () => {
+  const q = { points: [{ lat: 46.4983, lon: 9.8459 }], from: '2026-11-07', to: '2026-11-07' };
+  const wx = (answer: string, status = 200) => {
+    const s = setup({ weatherUpstream: 'https://wx.example' });
+    s.upstream.mockImplementation(async () => new Response(answer, { status }));
+    return s;
+  };
+
+  it('asks Open-Meteo for rounded places and the days, by the Worker; cached', async () => {
+    const { call, upstream } = wx('{"hourly":{"time":[]}}');
+    const res = await call('/weather', { body: JSON.stringify(q) });
+    expect(res.status).toBe(200);
+    const url = new URL(String(upstream.mock.calls[0]![0]));
+    expect(url.origin + url.pathname).toBe('https://wx.example/v1/forecast');
+    expect(url.searchParams.get('latitude')).toBe('46.5');
+    expect(url.searchParams.get('longitude')).toBe('9.85');
+    expect(url.searchParams.get('hourly')).toBe('cloud_cover,precipitation_probability,is_day');
+    expect(url.searchParams.get('start_date')).toBe('2026-11-07');
+  });
+
+  it('refused by Open-Meteo (its daily limit, said in the body): busy, not kept', async () => {
+    const { call } = wx('{"error":true,"reason":"Daily API request limit exceeded."}', 429);
+    expect((await call('/weather', { body: JSON.stringify(q) })).status).toBe(503);
+    const ok200 = wx('{"error":true,"reason":"Daily API request limit exceeded."}');
+    expect((await ok200.call('/weather', { body: JSON.stringify(q) })).status).toBe(503);
+  });
+
+  it('refuses what is no question for it', async () => {
+    const { call } = wx('{}');
+    const bad = (v: unknown) => call('/weather', { body: JSON.stringify(v) });
+    expect((await bad({ ...q, points: [] })).status).toBe(400);
+    expect((await bad({ ...q, points: [{ lat: 0, lon: 0 }] })).status).toBe(400);
+    expect((await bad({ ...q, to: '2026-11-10' })).status).toBe(400);
+    expect((await setup().call('/weather', { body: JSON.stringify(q) })).status).toBe(503);
+  });
+});
+
 describe('sync mailbox', () => {
   const ID = 'a'.repeat(43);
   const sync = (method: string, body?: unknown, id = ID) => {
