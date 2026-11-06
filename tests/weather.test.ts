@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import type { LineRow } from '../src/core/rows';
-import { parseWeather, rowWeather, weatherDays, weatherPoints } from '../src/core/weather';
+import {
+  parseWeather,
+  rowWeather,
+  skyKind,
+  tempText,
+  weatherDays,
+  weatherPoints,
+} from '../src/core/weather';
+import { weatherMap } from '../src/core/weatherMap';
 import { conn, index, ride } from './helpers/timetable';
 
 // Open-Meteo's answer for two places (its documented form: one object each, in the order asked).
 const hours = (day: string) =>
   Array.from({ length: 24 }, (_, h) => `${day}T${String(h).padStart(2, '0')}:00`);
-const cell = (cloud: number[], rain: number[]) => ({
+const cell = (cloud: number[], rain: number[], temp?: number[]) => ({
   latitude: 0,
   longitude: 0,
   hourly: {
@@ -14,6 +22,7 @@ const cell = (cloud: number[], rain: number[]) => ({
     cloud_cover: cloud,
     precipitation_probability: rain,
     is_day: hours('2026-11-07').map((_, h) => (h >= 6 && h < 16 ? 1 : 0)),
+    ...(temp ? { temperature_2m: temp } : {}),
   },
 });
 const flat = (v: number) => Array.from({ length: 24 }, () => v);
@@ -23,13 +32,17 @@ const TIR = { lat: 46.2163, lon: 10.1676 };
 describe('weather along a trip', () => {
   // St. Moritz sunny and dry; Tirano rain at 13–15 UTC (14:00–16:00 Swiss time).
   const tiranoRain = flat(0).map((_, h) => (h >= 13 && h <= 14 ? 70 : 10));
-  const f = parseWeather([cell(flat(10), flat(0)), cell(flat(80), tiranoRain)], [STM, TIR]);
+  const f = parseWeather(
+    [cell(flat(10), flat(0), flat(-2.4)), cell(flat(80), tiranoRain, flat(9))],
+    [STM, TIR],
+  );
 
   it('reads an hour for a place, by its forecast cell', () => {
     expect(f.at(STM, Date.parse('2026-11-07T11:30:00Z'))).toEqual({
       cloud: 0.1,
       rain: 0,
       day: true,
+      temp: -2.4,
     });
     // A stop 1 km away is the same cell.
     expect(f.at({ lat: 46.505, lon: 9.84 }, Date.parse('2026-11-07T11:30:00Z'))?.cloud).toBe(0.1);
@@ -99,5 +112,62 @@ describe('a recorded Open-Meteo answer (through the Worker, 6 Nov 2026)', () => 
     expect(f.at(TIR, at10)).toEqual({ cloud: 0.86, rain: 0.15, day: true });
     expect(f.source).toBe('open-meteo');
     expect(parseWeather([{ source: 'met.no', hourly: { time: [] } }], [STM]).source).toBe('met.no');
+  });
+});
+
+describe('the sky in words and on the map (0.38.0)', () => {
+  it('four kinds of sky; temperatures with a true minus sign', () => {
+    expect(skyKind({ cloud: 0.1, rain: 0, day: true })).toBe('sun');
+    expect(skyKind({ cloud: 0.5, rain: 0, day: true })).toBe('part');
+    expect(skyKind({ cloud: 0.9, rain: 0.8, day: true })).toBe('cloud');
+    expect(skyKind({ cloud: 0, rain: 0, day: false })).toBe('night');
+    expect(tempText(-2.4)).toBe('\u22122°');
+    expect(tempText(-0.4)).toBe('0°');
+    expect(tempText(12.6)).toBe('13°');
+  });
+
+  const place = (ref: string) => {
+    const s = index.byRef(ref);
+    return s && { lat: s.lat, lon: s.lon };
+  };
+  const bernina = ride('R 1631', [
+    ['St. Moritz', '12:15'],
+    ['Poschiavo', '13:58'],
+    ['Tirano', '14:32'],
+  ]);
+  const rows: LineRow[] = [
+    {
+      type: 'station',
+      name: 'St. Moritz',
+      key: bernina.from.stopRef,
+      role: 'start',
+      dep: bernina.from.dep,
+    },
+    { type: 'ride', section: bernina, leg: 0, sectionIndex: 0 },
+    { type: 'station', name: 'Tirano', key: bernina.to.stopRef, role: 'end', arr: bernina.to.arr },
+  ];
+
+  it('rain above the stations where it is likely, the ride’s sky by its middle stop, temperatures by key', () => {
+    const w = [
+      { cloud: 0.1, rain: 0.05, day: true, temp: -2 },
+      { cloud: 0.5, rain: 0.7, day: true },
+      { cloud: 0.9, rain: 0.66, day: false, temp: 9 },
+    ];
+    const m = weatherMap(rows, w, place, Date.parse(bernina.from.dep!) + 60_000);
+    // Dry St. Moritz has no column; Tirano 7 tenths, at night.
+    expect(m.rain.features.map((x) => x.properties)).toEqual([
+      { row: 2, tenths: 7, day: false, past: false },
+    ]);
+    const p = place(bernina.intermediate[0]!.stopRef)!;
+    expect(m.sky.features).toEqual([
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+        properties: { row: 1, kind: 'part', past: false },
+      },
+    ]);
+    expect(m.temps.get(bernina.from.stopRef)).toBe(-2);
+    expect(m.temps.get(bernina.to.stopRef)).toBe(9);
+    expect(m.temps.get('name:Tirano')).toBe(9);
   });
 });

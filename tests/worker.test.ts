@@ -334,7 +334,9 @@ describe('weather (0.37.0)', () => {
     expect(url.origin + url.pathname).toBe('https://wx.example/v1/forecast');
     expect(url.searchParams.get('latitude')).toBe('46.5');
     expect(url.searchParams.get('longitude')).toBe('9.85');
-    expect(url.searchParams.get('hourly')).toBe('cloud_cover,precipitation_probability,is_day');
+    expect(url.searchParams.get('hourly')).toBe(
+      'cloud_cover,precipitation_probability,is_day,temperature_2m',
+    );
     expect(url.searchParams.get('start_date')).toBe('2026-11-07');
   });
 
@@ -353,7 +355,7 @@ describe('weather (0.37.0)', () => {
           {
             time: '2026-11-07T11:00:00Z',
             data: {
-              instant: { details: { cloud_area_fraction: 80 } },
+              instant: { details: { cloud_area_fraction: 80, air_temperature: -1.5 } },
               next_1_hours: { details: { precipitation_amount: 0.4 } },
             },
           },
@@ -383,6 +385,7 @@ describe('weather (0.37.0)', () => {
         cloud_cover: number[];
         precipitation_probability: number[];
         is_day: number[];
+        temperature_2m: (number | null)[];
       };
     }[];
     expect(x!.source).toBe('met.no');
@@ -393,6 +396,8 @@ describe('weather (0.37.0)', () => {
       precipitation_probability: [70, 3],
       // By the sun at St. Moritz.
       is_day: [1, 0],
+      // Its air temperature; none given, none said.
+      temperature_2m: [-1.5, null],
     });
     const asked = s.upstream.mock.calls.map((c) => String(c[0]));
     expect(asked[1]).toBe(

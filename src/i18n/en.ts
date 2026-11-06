@@ -248,6 +248,7 @@ export const en = {
   wxCloudy: 'Cloudy',
   wxNight: 'Night',
   wxRain: 'Rain {n} %',
+  wxRainAlong: 'Rain up to {n} % along the way',
   wxByMeteo: 'Forecast of {time}, Open-Meteo (MeteoSwiss)',
   wxByMet: 'Forecast of {time}, MET Norway',
   wxFrom: 'Weather from {date}',

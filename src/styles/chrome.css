@@ -83,6 +83,30 @@
   pointer-events: none;
 }
 
+/* The temperature there (0.38.0), after the name, muted. */
+.map-name .map-temp {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* A tap on the weather on the map: the line's own card. */
+.wx-pop .maplibregl-popup-content {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+.wx-pop span {
+  opacity: 0.8;
+}
+.wx-pop .maplibregl-popup-tip {
+  display: none;
+}
+
 /* On the dark map (a dark device): light names, dark glow. */
 @media (prefers-color-scheme: dark) {
   .map-name {

@@ -69,6 +69,8 @@ function madeUpWeather(url: string): Response {
         i % 3 === 2 && hour(t) >= 12 && hour(t) < 16 ? 70 : 5,
       ),
       is_day: time.map((t) => (hour(t) >= 6 && hour(t) < 16 ? 1 : 0)),
+      // Below zero early, at every place.
+      temperature_2m: time.map((t) => hour(t) - 9 - i),
     },
   });
   const body = lats.length === 1 ? one(0) : lats.map((_, i) => one(i));

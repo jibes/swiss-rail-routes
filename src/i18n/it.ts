@@ -256,6 +256,7 @@ export const it = {
   wxCloudy: 'Nuvoloso',
   wxNight: 'Notte',
   wxRain: 'Pioggia {n} %',
+  wxRainAlong: 'Pioggia fino al {n} % lungo il tragitto',
   wxByMeteo: 'Previsione delle {time}, Open-Meteo (MeteoSvizzera)',
   wxByMet: 'Previsione delle {time}, MET Norway',
   wxFrom: 'Meteo dal {date}',

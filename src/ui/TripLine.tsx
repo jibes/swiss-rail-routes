@@ -334,7 +334,7 @@ export function TripLine({
   // A row without weather of its own (a walk, a stop not placed) takes its neighbour's sky, so
   // the stripe runs on unbroken; its rain stays its own (none).
   const skyAt = (i: number) => (wx ? (wx.rows[i] ?? wx.rows[i - 1] ?? wx.rows[i + 1]) : undefined);
-  const cell = (i: number, where: string, when?: string) =>
+  const cell = (i: number, where: string, when?: string, along?: { open: boolean }) =>
     wx && (
       <WeatherCell
         w={wx.rows[i] ?? (skyAt(i) && { ...skyAt(i)!, rain: 0 })}
@@ -343,6 +343,7 @@ export function TripLine({
         when={when}
         source={wx.source}
         at={wx.at}
+        along={along}
       />
     );
   return (
@@ -520,7 +521,12 @@ export function TripLine({
                   );
                 })}
               </div>
-              {cell(i, s.mode === 'walk' ? s.to.name : `${s.from.name} – ${s.to.name}`, s.from.dep)}
+              {cell(
+                i,
+                s.mode === 'walk' ? s.to.name : `${s.from.name} – ${s.to.name}`,
+                s.from.dep,
+                s.mode === 'walk' ? undefined : { open: shown },
+              )}
             </li>
           );
         }

@@ -2,9 +2,39 @@
 // and a bar from the right as wide as the chance of rain or snow (none under RAIN_MIN). A tap says
 // its values, the forecast's time and whose it is; the same words for screen readers.
 import { useState } from 'react';
-import { RAIN_MIN, skyColour, type Sky } from '../core/weather';
+import { RAIN_MIN, skyColour, skyKind, tempText, type Sky } from '../core/weather';
 import { useT } from '../store';
 import { hhmm } from './format';
+
+type T = ReturnType<typeof useT>;
+
+/** What a piece of weather says, on the line and on the map: the same words in both. */
+export function weatherWords(
+  t: T,
+  w: Sky,
+  where: string,
+  when: string | undefined,
+  source: 'open-meteo' | 'met.no',
+  at: number,
+  along = false,
+) {
+  const sky = t(
+    ({ sun: 'wxSunny', part: 'wxSomeSun', cloud: 'wxCloudy', night: 'wxNight' } as const)[
+      skyKind(w)
+    ],
+  );
+  const n = Math.round(w.rain * 100);
+  const rain = w.rain >= RAIN_MIN ? t(along ? 'wxRainAlong' : 'wxRain', { n }) : '';
+  const title = when ? `${where} ${hhmm(when)}` : where;
+  return {
+    title,
+    label: [title, rain || sky].join(': '),
+    detail: [
+      [sky, w.temp !== undefined ? tempText(w.temp) : '', rain].filter(Boolean).join(' · '),
+      t(source === 'met.no' ? 'wxByMet' : 'wxByMeteo', { time: hhmm(new Date(at).toISOString()) }),
+    ],
+  };
+}
 
 export function WeatherCell({
   w,
@@ -14,6 +44,7 @@ export function WeatherCell({
   source,
   at,
   mid,
+  along,
 }: {
   w: Sky | undefined;
   /** The next row's sky: this one fades into it. */
@@ -26,23 +57,14 @@ export function WeatherCell({
   at: number;
   /** A stop inside a ride: a bar only, beside its name. */
   mid?: boolean;
+  /** A ride: its rain is the highest along the way, said so; no bar while its stops show theirs. */
+  along?: { open: boolean };
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   if (!w) return mid ? null : <span className="wx-cell" aria-hidden="true" />;
-  const sky = w.day
-    ? t(w.cloud >= 0.7 ? 'wxCloudy' : w.cloud >= 0.3 ? 'wxSomeSun' : 'wxSunny')
-    : t('wxNight');
-  const rain = Math.round(w.rain * 100);
-  const label = [
-    when ? `${where} ${hhmm(when)}` : where,
-    w.rain >= RAIN_MIN ? t('wxRain', { n: rain }) : sky,
-  ].join(': ');
-  const detail = [
-    `${sky}${w.rain >= RAIN_MIN ? ` · ${t('wxRain', { n: rain })}` : ''}`,
-    t(source === 'met.no' ? 'wxByMet' : 'wxByMeteo', { time: hhmm(new Date(at).toISOString()) }),
-  ];
-  const bar = w.rain >= RAIN_MIN && (
+  const { title, label, detail } = weatherWords(t, w, where, when, source, at, !!along);
+  const bar = w.rain >= RAIN_MIN && !along?.open && (
     <span
       className={`wx-bar ${w.day ? '' : 'night'}`}
       style={{ width: `${Math.round(w.rain * 100)}%` }}
@@ -65,7 +87,7 @@ export function WeatherCell({
       {bar}
       {open && (
         <span className="wx-tip" role="status">
-          <b>{when ? `${where} ${hhmm(when)}` : where}</b>
+          <b>{title}</b>
           {detail.map((d) => (
             <span key={d}>{d}</span>
           ))}

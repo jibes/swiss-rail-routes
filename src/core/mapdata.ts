@@ -45,7 +45,7 @@ export function mapData(
           {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: pos(p) },
-            properties: { name: w.name, kind: w.kind, i, ring: !!w.ring },
+            properties: { name: w.name, kind: w.kind, i, ring: !!w.ring, key: stopKey(w.stopRef) },
           },
         ]
       : [];

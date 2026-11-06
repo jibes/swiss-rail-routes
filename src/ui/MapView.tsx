@@ -18,6 +18,12 @@ import type { Connection } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isPlanned, tripStatus } from '../core/trip';
+import { plannedRows } from '../core/rows';
+import { tempText } from '../core/weather';
+import { weatherMap } from '../core/weatherMap';
+import { addWeatherLayers, setWeather } from './mapWeather';
+import { weatherWords } from './WeatherCell';
+import { useWeather } from './useWeather';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { usePrefs, useT } from '../store';
@@ -104,6 +110,24 @@ const focusPoint = (p: [number, number] | null) => ({
     : [],
 });
 
+/** A station's temperature by its key, else by its name (`<key>\n<name>`). */
+function tempAt(temps: Map<string, number>, both: string) {
+  const [key, name] = both.split('\n');
+  return temps.get(key!) ?? temps.get(`name:${name}`);
+}
+
+/** A name on the map with the temperature there after it, muted (none without one). */
+function showTemp(el: HTMLElement, c: number | undefined) {
+  let span = el.querySelector<HTMLElement>('.map-temp');
+  if (c === undefined) return span?.remove();
+  if (!span) {
+    span = document.createElement('span');
+    span.className = 'map-temp';
+    el.append(span);
+  }
+  span.textContent = ` ${tempText(c)}`;
+}
+
 /** A trip's map: its saved connections, or its last plan while it has none. */
 export default function MapView({ id }: { id: string }) {
   const t = useT();
@@ -111,6 +135,9 @@ export default function MapView({ id }: { id: string }) {
   const tour = trip?.route;
   const tripChain = trip?.chain?.connections;
   const box = useRef<HTMLDivElement>(null);
+  // The station names on the map, by key, and the temperature at each (0.38.0).
+  const nameEls = useRef(new Map<string, HTMLElement>());
+  const temps = useRef(new Map<string, number>());
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
   const [straight, setStraight] = useState(false);
@@ -264,6 +291,7 @@ export default function MapView({ id }: { id: string }) {
             'circle-stroke-width': 3,
           },
         });
+        addWeatherLayers(map, dark);
         // Names need the style's fonts: none on the plain ground (the highlights still show).
         if (style) {
           map.addLayer({
@@ -308,6 +336,7 @@ export default function MapView({ id }: { id: string }) {
     const routeJson = JSON.stringify(current);
     let gone = false;
     const names: maplibregl.Marker[] = [];
+    nameEls.current = new Map();
     (async () => {
       const [index, plans] = await Promise.all([stopSearch(), loadPlans()]);
       if (gone) return;
@@ -327,6 +356,9 @@ export default function MapView({ id }: { id: string }) {
         const el = document.createElement('div');
         el.className = 'map-name';
         el.textContent = String(f.properties.name ?? '');
+        const key = `${String(f.properties.key)}\n${String(f.properties.name)}`;
+        nameEls.current.set(key, el);
+        showTemp(el, tempAt(temps.current, key));
         names.push(
           new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 9] })
             .setLngLat(f.geometry.coordinates)
@@ -343,6 +375,89 @@ export default function MapView({ id }: { id: string }) {
       for (const m of names) m.remove();
     };
   }, [map, json, id, lang]);
+
+  // The weather (0.38.0): the line's own answer (the same question, kept), drawn on the map;
+  // each named station's temperature after its name.
+  const rows = useMemo(
+    () => (tour && tripChain ? plannedRows(tour, tripChain) : []),
+    [tour, tripChain],
+  );
+  const weather = useWeather(rows, rows.length > 0);
+  const wx = weather && 'rows' in weather ? weather : null;
+  const wmap = useMemo(
+    () =>
+      wx && index
+        ? weatherMap(
+            rows,
+            wx.rows,
+            (r) => {
+              const s = index.byRef(r);
+              return s ? { lat: s.lat, lon: s.lon } : undefined;
+            },
+            now,
+          )
+        : null,
+    [wx, index, rows, now],
+  );
+  useEffect(() => {
+    temps.current = wmap?.temps ?? new Map();
+    for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
+    if (map) setWeather(map, wmap);
+  }, [map, wmap]);
+  // A tap on a column or an icon: the line's own words for it.
+  useEffect(() => {
+    if (!map || !wx) return;
+    let pop: maplibregl.Popup | null = null;
+    const open = (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      const r = f && rows[Number(f.properties.row)];
+      const w = f && wx.rows[Number(f.properties.row)];
+      if (!r || !w || f.geometry.type !== 'Point') return;
+      const words =
+        r.type === 'station'
+          ? weatherWords(t, w, r.name, r.arr ?? r.dep, wx.source, wx.at)
+          : weatherWords(
+              t,
+              w,
+              `${r.section.from.name} – ${r.section.to.name}`,
+              r.section.from.dep,
+              wx.source,
+              wx.at,
+              true,
+            );
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      const b = document.createElement('b');
+      b.textContent = words.title;
+      el.append(b);
+      for (const d of words.detail) {
+        const line = document.createElement('span');
+        line.textContent = d;
+        el.append(line);
+      }
+      pop?.remove();
+      pop = new maplibregl.Popup({ closeButton: false, className: 'wx-pop', offset: 12 })
+        .setLngLat(f.geometry.coordinates as [number, number])
+        .setDOMContent(el)
+        .addTo(map);
+      log('weather.map.tap', { row: Number(f.properties.row), type: r.type });
+    };
+    const pointer = () => (map.getCanvas().style.cursor = 'pointer');
+    const plain = () => (map.getCanvas().style.cursor = '');
+    for (const id of ['wx-rain', 'wx-sky']) {
+      map.on('click', id, open);
+      map.on('mouseenter', id, pointer);
+      map.on('mouseleave', id, plain);
+    }
+    return () => {
+      pop?.remove();
+      for (const id of ['wx-rain', 'wx-sky']) {
+        map.off('click', id, open);
+        map.off('mouseenter', id, pointer);
+        map.off('mouseleave', id, plain);
+      }
+    };
+  }, [map, wx, rows, t]);
 
   // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
   // the timetable comes (at most WAVE_MS, so offline it does not run on for good).

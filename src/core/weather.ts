@@ -54,7 +54,7 @@ export function weatherUrl(base: string, q: WeatherQuery): string {
   const p = new URLSearchParams({
     latitude: q.points.map((x) => x.lat).join(','),
     longitude: q.points.map((x) => x.lon).join(','),
-    hourly: 'cloud_cover,precipitation_probability,is_day',
+    hourly: 'cloud_cover,precipitation_probability,is_day,temperature_2m',
     timezone: 'UTC',
     start_date: q.from,
     end_date: q.to,
@@ -68,6 +68,8 @@ export interface Sky {
   /** Chance of rain or snow, 0 to 1. */
   rain: number;
   day: boolean;
+  /** Air temperature, °C, when the forecast gives one. */
+  temp?: number;
 }
 
 export interface Forecast {
@@ -86,7 +88,10 @@ const nums = (v: unknown) =>
  */
 export function parseWeather(answer: unknown, points: LatLon[]): Forecast {
   const list = Array.isArray(answer) ? answer : [answer];
-  const cells = new Map<string, { t: number[]; cloud: number[]; rain: number[]; day: number[] }>();
+  const cells = new Map<
+    string,
+    { t: number[]; cloud: number[]; rain: number[]; day: number[]; temp: number[] }
+  >();
   let source: Forecast['source'] = 'open-meteo';
   list.forEach((x, i) => {
     const p = points[i];
@@ -98,6 +103,7 @@ export function parseWeather(answer: unknown, points: LatLon[]): Forecast {
       cloud: nums(h.cloud_cover),
       rain: nums(h.precipitation_probability),
       day: nums(h.is_day),
+      temp: nums(h.temperature_2m),
     });
   });
   return {
@@ -108,7 +114,13 @@ export function parseWeather(answer: unknown, points: LatLon[]): Forecast {
       // The hour it falls in.
       const i = c.t.findIndex((x, j) => x <= t && (c.t[j + 1] ?? x + 3_600_000) > t);
       if (i < 0 || !Number.isFinite(c.cloud[i]!) || !Number.isFinite(c.rain[i]!)) return undefined;
-      return { cloud: c.cloud[i]! / 100, rain: c.rain[i]! / 100, day: c.day[i] !== 0 };
+      const temp = c.temp[i];
+      return {
+        cloud: c.cloud[i]! / 100,
+        rain: c.rain[i]! / 100,
+        day: c.day[i] !== 0,
+        ...(temp !== undefined && Number.isFinite(temp) ? { temp } : {}),
+      };
     },
   };
 }
@@ -140,14 +152,16 @@ export function weatherPoints(rows: LineRow[], place: Place): LatLon[] {
 const ms = (s?: string) => (s ? Date.parse(s) : NaN);
 const HOUR = 3_600_000;
 
-/** Of several hours: cloud on average, rain at its highest, day when any is. */
+/** Of several hours: cloud and temperature on average, rain at its highest, day when any is. */
 function combine(xs: (Sky | undefined)[]): Sky | undefined {
   const got = xs.filter((x): x is Sky => !!x);
   if (!got.length) return undefined;
+  const temps = got.flatMap((x) => (x.temp === undefined ? [] : [x.temp]));
   return {
     cloud: got.reduce((a, x) => a + x.cloud, 0) / got.length,
     rain: Math.max(...got.map((x) => x.rain)),
     day: got.some((x) => x.day),
+    ...(temps.length ? { temp: temps.reduce((a, x) => a + x, 0) / temps.length } : {}),
   };
 }
 
@@ -217,6 +231,7 @@ export function fromMetNo(answers: unknown[], q: WeatherQuery): unknown[] {
     const cloud: number[] = [];
     const rain: number[] = [];
     const day: number[] = [];
+    const temp: number[] = [];
     for (const e of series) {
       if (!isObj(e) || typeof e.time !== 'string' || !isObj(e.data)) continue;
       const t = Date.parse(e.time);
@@ -236,6 +251,7 @@ export function fromMetNo(answers: unknown[], q: WeatherQuery): unknown[] {
         (x) => typeof x === 'number',
       ) as number | undefined;
       time.push(e.time.slice(0, 16));
+      temp.push(typeof inst.air_temperature === 'number' ? inst.air_temperature : NaN);
       cloud.push(typeof inst.cloud_area_fraction === 'number' ? inst.cloud_area_fraction : NaN);
       rain.push(
         prob ??
@@ -256,7 +272,13 @@ export function fromMetNo(answers: unknown[], q: WeatherQuery): unknown[] {
       latitude: p.lat,
       longitude: p.lon,
       source: 'met.no',
-      hourly: { time, cloud_cover: cloud, precipitation_probability: rain, is_day: day },
+      hourly: {
+        time,
+        cloud_cover: cloud,
+        precipitation_probability: rain,
+        is_day: day,
+        temperature_2m: temp,
+      },
     };
   });
 }
@@ -268,3 +290,14 @@ export function skyColour(s: Sky | undefined): string {
   const mix = (a: number, b: number) => Math.round(a + (b - a) * Math.min(1, Math.max(0, s.cloud)));
   return `rgb(${mix(0xf2, 0xb9)}, ${mix(0xb7, 0xbc)}, ${mix(0x05, 0xc1)})`;
 }
+
+/** The sky in four kinds, as the line's words and the map's icons say it. */
+export type SkyKind = 'sun' | 'part' | 'cloud' | 'night';
+export const skyKind = (s: Sky): SkyKind =>
+  !s.day ? 'night' : s.cloud >= 0.7 ? 'cloud' : s.cloud >= 0.3 ? 'part' : 'sun';
+
+/** A temperature as said: whole degrees, a true minus sign (−2°, not -2°). */
+export const tempText = (c: number) => {
+  const n = Math.round(c);
+  return `${n < 0 ? '\u2212' : ''}${Math.abs(n)}°`;
+};
