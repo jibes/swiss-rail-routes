@@ -21,8 +21,17 @@ import {
 import { newTrip, zurichTime } from '../../src/core/trip';
 import { isSupplement, NOTICE_TYPES, type Warning } from '../../src/core/warnings';
 import { translate, type Lang } from '../../src/i18n';
-import { buildRoute, routeLinkOf, ToolError, type RouteInput } from './route';
-import { BusyError, type Timetable } from './worker';
+import {
+  buildRoute,
+  resolveStop,
+  resolveWhen,
+  routeLinkOf,
+  ToolError,
+  type RouteInput,
+} from './route';
+import { estimate, HORIZON_MIN, spiderWeb } from '../../src/core/spider';
+import { nearbyChoices } from '../../src/core/nearby';
+import { BusyError, UnavailableError, type Timetable } from './worker';
 
 export interface ToolDeps {
   index: StopSearch;
@@ -73,7 +82,15 @@ const local = (iso?: string) => (iso ? zurichLocal(Date.parse(iso)) : undefined)
 const minutes = (from: string, to: string) =>
   Math.round((Date.parse(to) - Date.parse(from)) / 60_000);
 
-function rideOf(s: Section, ga: GaData) {
+/** Whose a station is: yours (listed), a scenic line's (its must-pass stations) or the plan's. */
+type Source = 'yours' | 'line' | 'plan';
+const sourcesOf = (tour: Tour) =>
+  new Map<string, Source>(
+    tour.waypoints.map((w) => [stopKey(w.stopRef), w.ring ? 'line' : 'yours'] as const),
+  );
+
+function rideOf(s: Section, ga: GaData, sources: Map<string, Source> = new Map()) {
+  const source = (ref: string) => sources.get(stopKey(ref)) ?? 'plan';
   return {
     type: 'ride' as const,
     line: s.line ?? s.category,
@@ -86,6 +103,7 @@ function rideOf(s: Section, ga: GaData) {
     from: {
       name: s.from.name,
       ref: stopKey(s.from.stopRef),
+      source: source(s.from.stopRef),
       dep: local(s.from.dep),
       ...(s.from.depEst ? { expectedDep: local(s.from.depEst) } : {}),
       platform: s.from.platform,
@@ -94,6 +112,7 @@ function rideOf(s: Section, ga: GaData) {
     to: {
       name: s.to.name,
       ref: stopKey(s.to.stopRef),
+      source: source(s.to.stopRef),
       arr: local(s.to.arr),
       ...(s.to.arrEst ? { expectedArr: local(s.to.arrEst) } : {}),
       platform: s.to.platform,
@@ -240,13 +259,14 @@ export function createTools(deps: ToolDeps) {
     lang: Lang,
     recommended: boolean,
   ) => {
+    const sources = sourcesOf(tour);
     const steps = chain.connections.flatMap((c, i): Step[] => {
       const own = c.sections.flatMap((s): Step[] =>
         s.mode === 'walk'
           ? s.walkMin && s.walkMin >= 1
             ? [{ type: 'walk' as const, minutes: s.walkMin, from: s.from.name, to: s.to.name }]
             : []
-          : [rideOf(s, ga)],
+          : [rideOf(s, ga, sources)],
       );
       const stay = i < chain.connections.length - 1 ? legs[i]?.to.dwellMin : 0;
       return stay ? [...own, { type: 'stay' as const, at: legs[i]!.to.name, minutes: stay }] : own;
@@ -292,7 +312,35 @@ export function createTools(deps: ToolDeps) {
   };
 
   return {
-    findStops({ query, limit, lang }: { query: string; limit?: number; lang?: Lang }) {
+    findStops({
+      query,
+      limit,
+      lang,
+      near,
+    }: {
+      query?: string;
+      limit?: number;
+      lang?: Lang;
+      near?: { lat: number; lon: number; km?: number; buses?: boolean };
+    }) {
+      // Around a point, as the app's map offers them: stations from further, bus and tram stops
+      // close by (with `buses`), how far by `km` (the width looked at).
+      if (near) {
+        const all = nearbyChoices(index, near, near.km ?? 20, Math.min(limit ?? 5, 20));
+        return {
+          stops: all
+            .filter((s) => near.buses || (s.kind !== 'bus' && s.kind !== 'tram'))
+            .map((s) => ({
+              ref: s.ref,
+              name: s.name,
+              kind: s.kind,
+              km: Math.round(s.km * 10) / 10,
+              lat: s.lat,
+              lon: s.lon,
+            })),
+        };
+      }
+      if (!query) throw new ToolError('give query (a name) or near (a point)');
       // Places people go to (Swissminiatur, the Rhine Falls), from the app's own list: their
       // nearest stops, each with an estimate of the walk.
       const places = searchAttractions(attractionData as AttractionData, query, lang ?? 'en', (r) =>
@@ -494,6 +542,70 @@ export function createTools(deps: ToolDeps) {
           fresh.map((c) => optionOf(job.tour, r.legs!, c, lang, c === r.recommended)),
         ),
         relaxed: relaxedOf(r),
+      };
+    },
+
+    /**
+     * Where the trains from a stop go without a change (the app's map planner): every place
+     * within three hours, its earliest arrival and the train; places named in `estimateFor`
+     * that no direct train reaches get an estimate (by the nearest place reached and a change).
+     */
+    async reachableFrom({
+      stop,
+      date,
+      time,
+      estimateFor,
+    }: {
+      stop: { name?: string; ref?: string };
+      date?: string;
+      time?: string;
+      estimateFor?: string[];
+    }) {
+      if (!timetable.departures) throw new UnavailableError();
+      const from = resolveStop(stop, index);
+      const when = resolveWhen({ date, departAt: time }, now());
+      const hm = 'departAt' in when.anchor ? when.anchor.departAt : '08:00';
+      const at = new Date(zurichTime(when.date, hm)).toISOString();
+      const d = await timetable.departures({
+        stop: { ref: stopKey(from.ref), name: from.name },
+        time: `${when.date}T${hm}`,
+        results: 60,
+      });
+      const web = spiderWeb(d, { from: from.ref, at, place: (k) => index.byRef(k) });
+      const origin = index.byRef(stopKey(from.ref)) ?? d.places.get(stopKey(from.ref));
+      const estimates = (estimateFor ?? []).slice(0, 10).flatMap((name): object[] => {
+        const s = index.search(name, 1)[0];
+        if (!s) return [{ name, unknown: true }];
+        const direct = web.reached.find((r) => r.key === stopKey(s.ref));
+        if (direct)
+          return [{ name: s.name, ref: stopKey(s.ref), direct: true, arrival: local(direct.arr) }];
+        if (!origin) return [];
+        const e = estimate(web, at, origin, s);
+        return [
+          {
+            name: s.name,
+            ref: stopKey(s.ref),
+            aboutMinutes: e.minutes,
+            ...(e.via ? { changeAt: e.via.name } : {}),
+          },
+        ];
+      });
+      return {
+        from: { name: from.name, ref: stopKey(from.ref) },
+        leaving: `${when.date}T${hm}`,
+        horizonMin: HORIZON_MIN,
+        reached: web.reached.slice(0, 80).map((r) => ({
+          name: r.name,
+          ref: r.key,
+          arrival: local(r.arr),
+          minutes: minutes(at, r.arr),
+          train: [r.category, r.line].filter(Boolean).join(' ') || undefined,
+          leaves: local(r.dep),
+          ...(r.destination ? { towards: r.destination } : {}),
+          mode: r.mode,
+        })),
+        ...(estimates.length ? { estimates } : {}),
+        note: 'Places reached without a change from the first train after the time asked. An estimate is about: plan_trip gives the exact connection.',
       };
     },
 

@@ -18,6 +18,8 @@ import {
 import { decodeTripLink } from '../src/core/export/tripLink';
 import { parseRoute } from '../src/core/export/routeLink';
 import { parseJourney } from '../src/core/ojp/journey';
+import { parseDepartures } from '../src/core/ojp/departures';
+import { gunzipSync } from 'node:zlib';
 import { stopKey } from '../src/core/stops';
 import { isPlanned, type PlannedTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from './acceptance/ojp';
@@ -37,6 +39,11 @@ const deps = (over: Partial<ToolDeps> = {}): ToolDeps => ({
     trips: ojpFor('T5').fetchTrips,
     journey: async () =>
       parseJourney(readFileSync('tests/fixtures/ojp/tripinfo/running.xml', 'utf8')),
+    // Interlaken Ost from 09:00 on the fixtures' day (recorded 6 Nov 2026).
+    departures: async () =>
+      parseDepartures(
+        gunzipSync(readFileSync('tests/fixtures/ojp/departures/interlaken-ost.xml.gz')).toString(),
+      ),
   },
   templates,
   ga,
@@ -661,7 +668,7 @@ describe('over HTTP, with the real MCP client', () => {
   };
   const text = (r: unknown) => (r as { content: { text: string }[] }).content[0]!.text;
 
-  it('lists the five tools and plans, and logs nothing about the route or the secret', async () => {
+  it('lists the six tools and plans, and logs nothing about the route or the secret', async () => {
     const { base, lines } = await start();
     const client = await connect(base);
     const names = (await client.listTools()).tools.map((t) => t.name);
@@ -670,6 +677,7 @@ describe('over HTTP, with the real MCP client', () => {
       'list_scenic_lines',
       'more_options',
       'plan_trip',
+      'reachable_from',
       'train_status',
     ]);
     const r = await client.callTool({ name: 'plan_trip', arguments: T5 });
@@ -774,7 +782,7 @@ describe('over HTTP, with the real MCP client', () => {
       }),
     );
     servers.push({ close: () => void client.close() });
-    expect((await client.listTools()).tools.map((t) => t.name)).toHaveLength(5);
+    expect((await client.listTools()).tools.map((t) => t.name)).toHaveLength(6);
     expect((await post(`/mcp/${SECRET}`, 'x'.repeat(257 * 1024))).status).toBe(413);
     expect((await post(`/mcp/${SECRET}`, 'not json')).status).toBe(400);
   });
@@ -1048,5 +1056,49 @@ describe('plan_trip: reservations and cover by ticket (round 3)', () => {
       ).options[0]!.warnings.map((w) => w.type);
     expect(await types('GA')).toContain('not-ga');
     for (const t of ['none', 'Halbtax'] as const) expect(await types(t)).not.toContain('not-ga');
+  });
+});
+
+describe('the map planner’s tools (0.28.0)', () => {
+  const tools = createTools(deps());
+
+  it('reachable_from: where the trains from a stop go without a change, and an estimate', async () => {
+    const r = (await tools.reachableFrom({
+      stop: { name: 'Interlaken Ost' },
+      date: FIXTURE_DATE,
+      time: '09:00',
+      estimateFor: ['Grindelwald', 'Zermatt', 'Xqzzz'],
+    })) as {
+      reached: { name: string; arrival: string; train?: string }[];
+      estimates: Record<string, unknown>[];
+    };
+    const names = r.reached.map((x) => x.name);
+    for (const n of ['Grindelwald', 'Lauterbrunnen', 'Meiringen', 'Luzern'])
+      expect(names).toContain(n);
+    expect(r.reached.find((x) => x.name === 'Luzern')!.train).toContain('LIX');
+    expect(r.estimates[0]).toMatchObject({ name: 'Grindelwald', direct: true });
+    expect(r.estimates[1]).toMatchObject({ name: 'Zermatt' });
+    expect(r.estimates[1]!.aboutMinutes).toBeGreaterThan(60);
+    expect(r.estimates[2]).toMatchObject({ unknown: true });
+  });
+
+  it('find_stops near a point: the station first, bus stops close by only when asked', () => {
+    const at = { lat: 46.6243, lon: 8.0336, km: 5 };
+    const trains = tools.findStops({ near: at });
+    expect(trains.stops[0]!.name).toBe('Grindelwald');
+    expect(trains.stops.every((s) => s.kind !== 'bus')).toBe(true);
+    const all = tools.findStops({ near: { ...at, buses: true } });
+    expect(all.stops.some((s) => s.kind === 'bus')).toBe(true);
+    expect(() => tools.findStops({})).toThrow('give query');
+  });
+
+  it('plan_trip says whose each station is: yours, the plan’s', async () => {
+    const r = (await tools.planTrip(T5)) as {
+      options: { legs: { type: string; from?: { source: string }; to?: { source: string } }[] }[];
+    };
+    const rides = r.options[0]!.legs.filter((l) => l.type === 'ride');
+    expect(rides[0]!.from!.source).toBe('yours');
+    expect(rides.at(-1)!.to!.source).toBe('yours');
+    if (rides.length > 1) expect(rides[0]!.to!.source).toBe('plan');
   });
 });

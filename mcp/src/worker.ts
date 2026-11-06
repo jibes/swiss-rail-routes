@@ -3,7 +3,8 @@
 import type { Connection } from '../../src/core/model';
 import { parseJourney, UnknownJourneyError, type JourneyStatus } from '../../src/core/ojp/journey';
 import { parseTrips } from '../../src/core/ojp/parse';
-import type { JourneyQuery, TripQuery } from '../../src/core/ojp/request';
+import { parseDepartures, type Departures } from '../../src/core/ojp/departures';
+import type { DeparturesQuery, JourneyQuery, TripQuery } from '../../src/core/ojp/request';
 import { dayOf, zurichTime } from '../../src/core/trip';
 
 /** Said to the caller: it can try again, so it is not the service being down. */
@@ -97,6 +98,8 @@ export interface WorkerOptions {
 export interface Timetable {
   trips: (q: TripQuery) => Promise<Connection[]>;
   journey: (q: JourneyQuery) => Promise<JourneyStatus>;
+  /** A stop's trains with their onward stops (reachable_from). */
+  departures?: (q: DeparturesQuery) => Promise<Departures>;
 }
 
 export function createWorker(o: WorkerOptions): Timetable {
@@ -174,6 +177,14 @@ export function createWorker(o: WorkerOptions): Timetable {
         .finally(() => asking.delete(key));
       asking.set(key, p);
       return p;
+    },
+    departures: async (q) => {
+      const res = await post('/departures', q);
+      try {
+        return parseDepartures(await res.text());
+      } catch {
+        throw new UnavailableError();
+      }
     },
     journey: async (q) => {
       const res = await post('/journey', q);

@@ -1,6 +1,6 @@
 # Viadukt MCP server
 
-Lets an AI assistant plan and follow Swiss rail day trips with the app's own planner, scenic-line data and GA rules. Read-only: it never touches trips or sync, and stores nothing beyond an in-memory cache and its API keys' hashes. Five tools: `find_stops`, `list_scenic_lines`, `plan_trip`, `more_options`, `train_status`.
+Lets an AI assistant plan and follow Swiss rail day trips with the app's own planner, scenic-line data and GA rules. Read-only: it never touches trips or sync, and stores nothing beyond an in-memory cache and its API keys' hashes. Six tools: `find_stops` (by name, or `near` a point), `list_scenic_lines`, `plan_trip` (each station's `source`: yours, line or plan), `more_options`, `reachable_from` (where the trains from a stop go without a change, with estimates further out), `train_status`.
 
 It runs on a VPS, not as a Cloudflare Worker: a plan needs real CPU time and many subrequests. Timetables come through the OJP Worker (`workers/ojp/`), which holds the only API key, so no secret of that kind is here.
 

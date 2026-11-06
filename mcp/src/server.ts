@@ -159,8 +159,33 @@ function build(tools: Tools, log: (line: object) => void) {
       description:
         "Finds Swiss stations and stops by name (also by a city's name in another language: Genf, Ginevra; one typo per word is forgiven), and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route). Stations abroad only where a scenic line ends (Tirano, Domodossola, Chamonix-Mont-Blanc, Vallorcine), not others (Milano Centrale).",
       inputSchema: strictOf({
-        query: z.string().min(1).max(80).describe('Text, e.g. "Bern", "Kleine Sch", "Rheinfall".'),
-        limit: z.number().int().min(1).max(50).optional().describe('Default 8.'),
+        query: z
+          .string()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('Text, e.g. "Bern", "Kleine Sch", "Rheinfall". Or give near instead.'),
+        near: strictOf({
+          lat: z.number().min(45).max(48.5),
+          lon: z.number().min(5.5).max(11),
+          km: z
+            .number()
+            .min(1)
+            .max(200)
+            .optional()
+            .describe(
+              'The width of the area looked at, default 20: stations within a tenth of it, bus stops within a third of that.',
+            ),
+          buses: z
+            .boolean()
+            .optional()
+            .describe('Bus and tram stops too, close by. Default false.'),
+        })
+          .optional()
+          .describe(
+            'Stops around a point instead of by name, nearest first: stations, then bus stops.',
+          ),
+        limit: z.number().int().min(1).max(50).optional().describe('Default 8 (5 with near).'),
         lang: z.enum(['en', 'de', 'fr', 'it']).optional().describe('Language of place names.'),
       }),
       annotations: { ...readOnly, openWorldHint: false },
@@ -188,7 +213,7 @@ function build(tools: Tools, log: (line: object) => void) {
     'plan_trip',
     {
       description:
-        'Plans a Swiss rail day trip as one checked timetable: stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options in departure order, the recommended one marked (with options: 1, the recommended one unless pick is "earliest"), and links that open them in the Viadukt app; the top-level link and notReached are the recommended option\'s. A scenic line that cannot be ridden at that time is said as a line-missed error warning (or, with strict, status "line_not_ridden", no options and the reason). Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
+        'Plans a Swiss rail day trip as one checked timetable (each ride\'s from/to has a source: yours, listed; line, a scenic line\'s station; plan, where the plan changes or stops; list a plan station as a stop to keep it fixed): stays, scenic lines, GA and day-pass cover, reservation-only trains, disruptions and tight changes. Returns up to 3 options in departure order, the recommended one marked (with options: 1, the recommended one unless pick is "earliest"), and links that open them in the Viadukt app; the top-level link and notReached are the recommended option\'s. A scenic line that cannot be ridden at that time is said as a line-missed error warning (or, with strict, status "line_not_ridden", no options and the reason). Out and back: list the stations, e.g. St. Moritz → Alp Grüm (stay) → Pontresina; a line can be ridden part way by naming its stations instead of the line. If it answers status "still_planning", call it again with exactly the same arguments.',
       inputSchema: strictOf({
         date,
         departAt: z
@@ -264,6 +289,28 @@ function build(tools: Tools, log: (line: object) => void) {
     },
     (a, extra) =>
       withBeat(extra as never, () => answer('more_options', () => tools.moreOptions(a))),
+  );
+  server.registerTool(
+    'reachable_from',
+    {
+      description:
+        'Where the trains from one stop go without a change: every place reached within 3 hours of the time asked, each with its earliest arrival and the train (line, departure, towards). For "where can I get to directly from Interlaken at 10:00?". Places named in estimateFor that no direct train reaches get an estimate in minutes and where to change (about, not a timetable; plan_trip gives the exact connection).',
+      inputSchema: strictOf({
+        stop: strictOf({ name: z.string().max(80).optional(), ref: z.string().max(80).optional() }),
+        date,
+        time: z
+          .string()
+          .optional()
+          .describe('HH:MM, Zurich. Default: the next 5 minutes today, else 08:00.'),
+        estimateFor: z
+          .array(z.string().max(80))
+          .max(10)
+          .optional()
+          .describe('Places to estimate, e.g. ["Zermatt", "Lugano"].'),
+      }),
+      annotations: readOnly,
+    },
+    (a) => answer('reachable_from', () => tools.reachableFrom(a)),
   );
   server.registerTool(
     'train_status',
