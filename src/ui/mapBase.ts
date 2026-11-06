@@ -1,0 +1,61 @@
+// What every map in the app shares (MapView, MapPicker): MapLibre's worker, the style, the plain
+// ground without the tile host, and the map as seen kept in the page where no service worker does.
+import * as maplibregl from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+import { fromProtocol, MAP_PROTOCOL } from '../core/mapCache';
+import { mapFetch } from '../io/mapCache';
+
+maplibregl.setWorkerUrl(workerUrl);
+
+export const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+/** Without the tile host (offline, blocked): the route on a plain ground, still readable; the
+    ground follows the theme (`--map-ground`), as a light one glares on a dark screen. */
+export function plain(): maplibregl.StyleSpecification {
+  const ground =
+    getComputedStyle(document.documentElement).getPropertyValue('--map-ground').trim() || '#ecebe6';
+  return {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'ground', type: 'background', paint: { 'background-color': ground } }],
+  };
+}
+
+/**
+ * Where no service worker keeps the map as seen (the Android shell has none; a web page before
+ * its worker controls it), the page keeps it: the tile host's addresses go through the app's own
+ * protocol, answered by `mapFetch` (src/io/mapCache.ts).
+ */
+export const inPage = () => !navigator.serviceWorker?.controller;
+
+let registered = false;
+export function registerMapProtocol() {
+  if (registered) return;
+  registered = true;
+  maplibregl.addProtocol(MAP_PROTOCOL, async (p, abort) => {
+    const url = fromProtocol(p.url);
+    const res = await mapFetch(url, abort.signal);
+    if (!res.ok) throw new maplibregl.AJAXError(res.status, res.statusText, url, await res.blob());
+    const data =
+      p.type === 'json'
+        ? await res.json()
+        : p.type === 'string'
+          ? await res.text()
+          : await res.arrayBuffer();
+    return {
+      data,
+      cacheControl: res.headers.get('Cache-Control'),
+      expires: res.headers.get('Expires'),
+    };
+  });
+}
+
+/** The map's style, fetched first: if it cannot be had, the plain one (and say so). */
+export async function styleOf(): Promise<maplibregl.StyleSpecification | null> {
+  try {
+    const signal = AbortSignal.timeout(8000);
+    const res = inPage() ? await mapFetch(MAP_STYLE, signal) : await fetch(MAP_STYLE, { signal });
+    return res.ok ? ((await res.json()) as maplibregl.StyleSpecification) : null;
+  } catch {
+    return null;
+  }
+}

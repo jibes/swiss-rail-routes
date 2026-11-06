@@ -9,7 +9,8 @@ import { handle } from '../workers/ojp/src/handler';
 import { syncHandle, type SyncRecord } from '../workers/ojp/src/sync';
 
 const DIR = 'tests/fixtures/ojp';
-const tours = readdirSync(DIR).filter((d) => /^T\d/.test(d));
+// Trip answers by tour, and the map planner's departures (tests/fixtures/ojp/departures).
+const tours = [...readdirSync(DIR).filter((d) => /^T\d/.test(d)), 'departures'];
 
 export function recordedAnswer(body: string): string | null {
   const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
@@ -48,7 +49,12 @@ export async function answerWorker(page: Page, problems: string[] = []) {
     const req = route.request();
     const body = req.postData() ?? undefined;
     const recorded = body ? recordedAnswer(body) : null;
-    if (body && !recorded && /\/trip$/.test(new URL(req.url()).pathname) && !lenient.has(page))
+    if (
+      body &&
+      !recorded &&
+      /\/(trip|departures)$/.test(new URL(req.url()).pathname) &&
+      !lenient.has(page)
+    )
       problems.push(`no recorded answer for ${body}`);
     const res = await handle(
       new Request(req.url(), {

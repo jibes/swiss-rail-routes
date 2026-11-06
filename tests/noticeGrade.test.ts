@@ -15,7 +15,8 @@ const DIR = 'tests/fixtures/ojp';
 /** Every situation in the recordings, by its headline, with the grade the parser gave it. */
 function recorded() {
   const out = new Map<string, string>();
-  for (const tour of readdirSync(DIR)) {
+  // Trip answers only: the map planner's departures are another delivery.
+  for (const tour of readdirSync(DIR).filter((d) => d !== 'departures')) {
     let files: string[];
     try {
       files = readdirSync(`${DIR}/${tour}`).filter((f) => f.endsWith('.xml.gz'));

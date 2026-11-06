@@ -34,6 +34,7 @@ export function AddSheet({
   first,
   onPick,
   onClose,
+  onMap,
 }: {
   title: string;
   after?: Pick<Waypoint, 'stopRef' | 'name'>;
@@ -42,6 +43,8 @@ export function AddSheet({
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
   onPick: (p: Picked) => void;
   onClose: () => void;
+  /** Pick on the map instead: the trains from `after` (the map planner). */
+  onMap?: () => void;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -192,6 +195,17 @@ export function AddSheet({
           }}
         />
         <div className="results">
+          {after && onMap && !f && (
+            <button type="button" className="result" onClick={onMap}>
+              <span className="r-icon" aria-hidden="true">
+                <Icon name="map" />
+              </span>
+              <span className="r-name">{t('mapPickOpen')}</span>
+              <span className="r-sub">
+                {t('mapPickFrom', { stop: after.name, time: '' }).trim()}
+              </span>
+            </button>
+          )}
           {back && (
             <button
               type="button"

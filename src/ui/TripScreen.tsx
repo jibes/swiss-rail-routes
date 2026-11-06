@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
   dropLine,
@@ -10,6 +10,7 @@ import {
   reverseRoute,
   setEntryLeaveBy,
   setEntryStay,
+  stationEntry,
 } from '../core/line';
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
@@ -42,6 +43,9 @@ import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
 import { findSubstitute } from '../io/substitute';
+import { leaveTime } from '../core/spider';
+
+const MapPicker = lazy(() => import('./MapPicker'));
 
 const addDays = (date: string, n: number) => {
   const d = new Date(`${date}T12:00:00Z`);
@@ -147,6 +151,9 @@ export function TripScreen({ id }: { id: string }) {
   }, [windowsGone]);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
+  // The map planner: it adds after this entry, one after the other.
+  const [mapPick, setMapPick] = useState<{ after: number } | null>(null);
+  const closeMap = useCallback(() => setMapPick(null), []);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeMenu = useCallback(() => setMenu(false), []);
   useLayer(open !== null, closePanel);
@@ -529,7 +536,30 @@ export function TripScreen({ id }: { id: string }) {
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
           onPick={pick}
           onClose={closeSheet}
+          onMap={
+            sheet.after >= 0
+              ? () => {
+                  log('mapPick.open', { trip: id, after: sheet.after });
+                  setMapPick({ after: sheet.after });
+                  setSheet(null);
+                }
+              : undefined
+          }
         />
+      )}
+      {mapPick && entries[mapPick.after] && (
+        <Suspense fallback={null}>
+          <MapPicker
+            start={entries[mapPick.after]!.w}
+            at={leaveTime(route, trip.chain?.connections, entries[mapPick.after]!.w.stopRef)}
+            onAdd={(stop) => {
+              const at = mapPick.after;
+              edit((r) => insertEntries(r, at, [stationEntry(stop)]));
+              setMapPick({ after: at + 1 });
+            }}
+            onClose={closeMap}
+          />
+        </Suspense>
       )}
     </main>
   );

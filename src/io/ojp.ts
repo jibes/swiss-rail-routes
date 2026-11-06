@@ -118,3 +118,38 @@ export async function fetchJourney(
   log('ojp.journey', { journey: q, status: out });
   return out;
 }
+
+/** A stop's trains from a time, with every stop each still calls at (the map planner). */
+export async function fetchDepartures(
+  q: import('../core/ojp/request').DeparturesQuery,
+  signal?: AbortSignal,
+): Promise<import('../core/ojp/departures').Departures> {
+  const url = import.meta.env.VITE_OJP_URL;
+  if (!url) throw new PlanningUnavailable();
+  const t0 = performance.now();
+  const [res, { parseDepartures }] = await Promise.all([
+    fetch(`${url.replace(/[/]$/, '')}/departures`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(q),
+      signal: withTimeout(signal),
+    }),
+    import('../core/ojp/departures'),
+  ]);
+  const what = { stop: q.stop.name, time: q.time };
+  if (!res.ok) {
+    const detail = `${res.status} ${(await res.text()).slice(0, 80)}`;
+    log('ojp.departures.fail', { ...what, detail });
+    throw new WorkerError(detail);
+  }
+  const text = await res.text();
+  const out = parseDepartures(text);
+  log('ojp.departures', {
+    ...what,
+    ms: Math.round(performance.now() - t0),
+    bytes: text.length,
+    rides: out.rides.length,
+    cache: res.headers.get('X-Cache') ?? undefined,
+  });
+  return out;
+}
