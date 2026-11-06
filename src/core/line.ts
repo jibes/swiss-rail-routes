@@ -268,6 +268,35 @@ export function dropLine<T extends Pick<Tour, 'waypoints'>>(tour: T, k: number):
   return fromEntries(tour, e);
 }
 
+/**
+ * The route the other way round: the stations in reverse order (a round trip, starting and
+ * ending at one station, runs its loop the other way from the same start), each line on its
+ * new end with its stations reversed, stays with their stations. A stay's window (leave by,
+ * arrive after) does not fit the new order and goes; `windowsDropped` says whether one did.
+ * Reversing twice gives the route back.
+ */
+export function reverseRoute<T extends Pick<Tour, 'waypoints'>>(
+  tour: T,
+): { tour: T; windowsDropped: boolean } {
+  const e = entriesOf(tour);
+  let windowsDropped = false;
+  const out: Entry[] = e
+    .map((x, k) => {
+      const { leaveBy, arriveAfter, line: _l, ...w } = x.w;
+      if (leaveBy || arriveAfter) windowsDropped = true;
+      // The line that led here from the entry before now leads from here to it: it is
+      // recorded on that entry, reversed.
+      const next = e[k + 1];
+      const into = next?.w.line;
+      return {
+        w: { ...w, ...(into ? { line: into } : {}) },
+        rings: into ? [...next.rings].reverse() : [],
+      };
+    })
+    .reverse();
+  return { tour: fromEntries(tour, out), windowsDropped };
+}
+
 /** The template ids whose lines a move of entry `from` to `to` would switch off. */
 export function linesLostByMove(tour: Pick<Tour, 'waypoints'>, from: number, to: number): string[] {
   const before = entriesOf(tour);

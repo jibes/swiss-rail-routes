@@ -225,6 +225,8 @@ export const it = {
   close: 'Chiudi',
   dragToMove: 'Trascina per spostare {stop}',
   duplicate: 'Duplica',
+  reverseDirection: 'Inverti la direzione',
+  windowsDropped: 'Fasce orarie delle soste rimosse.',
   forgetTrip: 'Dimentica {name}',
   more: 'Altro',
   noTripsYet:

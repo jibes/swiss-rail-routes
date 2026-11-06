@@ -217,6 +217,8 @@ export const en = {
   close: 'Close',
   dragToMove: 'Drag to move {stop}',
   duplicate: 'Duplicate',
+  reverseDirection: 'Reverse direction',
+  windowsDropped: 'Stay time windows removed.',
   forgetTrip: 'Forget {name}',
   more: 'More',
   noTripsYet: 'New trip starts from a station, a scenic line or one of your past trips.',

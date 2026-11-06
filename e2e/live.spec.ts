@@ -30,6 +30,11 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
+  // Under way the route is not turned round: Replan from here changes the rest.
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('button', { name: 'Duplicate' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reverse direction' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(page.locator('.trip-line .ride.here .mids li').first()).toBeVisible();
   await expect(page.locator('.here-mid')).toHaveCount(1);
   await expect(page.locator('.here-mid')).toHaveText('You are here');

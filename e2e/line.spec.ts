@@ -272,3 +272,52 @@ test('a place found by its name adds its stop', async ({ page }) => {
   await place.click();
   await expect(page.locator('.trip-line .station', { hasText: 'Melide' })).toBeVisible();
 });
+
+// ⋯ → Reverse direction: a round trip runs its loop the other way from the same start, the
+// scenic line with it; a stay keeps its station, its time to leave by goes and is said. These
+// routes are about editing: the reversed one is planned, but nothing is recorded for it.
+test('reverse direction: the loop the other way, the line with it, a window said gone', async ({
+  page,
+}) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await pick(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await page.getByRole('button', { name: /^Back to Zürich HB/ }).click();
+  const line = page.getByRole('list', { name: 'The trip' });
+  const entries = line.locator('.station.entry');
+  await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
+  // A stay at Luzern, to leave by 17:30.
+  await entries.nth(1).getByRole('button').first().click();
+  await page
+    .getByRole('group', { name: 'At this station' })
+    .getByRole('button', { name: 'Stay', exact: true })
+    .click();
+  const field = page.getByLabel('Leave Luzern by');
+  await field.fill('17:30');
+  await field.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(entries.nth(1)).toContainText('by 17:30');
+  const ringsOut = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
+  expect(ringsOut.length).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Reverse direction' }).click();
+  await expect(entries).toHaveText([/^Zürich HB/, /^Interlaken Ost/, /^Luzern/, /^Zürich HB/]);
+  // The Brünig line now runs Interlaken Ost → Luzern: its stations between, in that order.
+  const ringsBack = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
+  expect(ringsBack).toEqual([...ringsOut].reverse());
+  await expect(entries.nth(2)).toContainText('Stay 30 min');
+  await expect(entries.nth(2)).not.toContainText('by 17:30');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Stay time windows removed' }),
+  ).toBeVisible();
+
+  // Twice is the trip it was (without the window).
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Reverse direction' }).click();
+  await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
+  await expect(entries.nth(1)).toContainText('Stay 30 min');
+});

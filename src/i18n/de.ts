@@ -226,6 +226,8 @@ export const de = {
   close: 'Schliessen',
   dragToMove: '{stop} verschieben (ziehen)',
   duplicate: 'Duplizieren',
+  reverseDirection: 'Richtung umkehren',
+  windowsDropped: 'Zeitfenster der Aufenthalte entfernt.',
   forgetTrip: '{name} vergessen',
   more: 'Mehr',
   noTripsYet:

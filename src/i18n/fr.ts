@@ -226,6 +226,8 @@ export const fr = {
   close: 'Fermer',
   dragToMove: 'Glisser pour déplacer {stop}',
   duplicate: 'Dupliquer',
+  reverseDirection: 'Inverser le sens',
+  windowsDropped: 'Plages horaires des arrêts retirées.',
   forgetTrip: 'Oublier {name}',
   more: 'Plus',
   noTripsYet:

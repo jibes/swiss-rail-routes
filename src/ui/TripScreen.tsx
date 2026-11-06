@@ -7,8 +7,9 @@ import {
   moveEntry,
   removeEntry,
   replaceEntry,
-  setEntryStay,
+  reverseRoute,
   setEntryLeaveBy,
+  setEntryStay,
 } from '../core/line';
 import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
@@ -137,6 +138,13 @@ export function TripScreen({ id }: { id: string }) {
     return saidOf(r, trip.route.date < dayOf(Date.now()));
   });
   const [renaming, setRenaming] = useState(false);
+  // Said after Reverse direction dropped a stay's time window.
+  const [windowsGone, setWindowsGone] = useState(false);
+  useEffect(() => {
+    if (!windowsGone) return;
+    const t = setTimeout(() => setWindowsGone(false), 4000);
+    return () => clearTimeout(t);
+  }, [windowsGone]);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
   const closePanel = useCallback(() => setOpen(null), []);
@@ -339,6 +347,26 @@ export function TripScreen({ id }: { id: string }) {
                 {t('print')}
               </button>
             )}
+            {/* Before it leaves only: under way, Replan from here changes the rest. */}
+            {!liveTrip && status !== 'past' && entries.length >= 2 && (
+              <button
+                type="button"
+                onClick={() => {
+                  let dropped = false;
+                  edit((r) => {
+                    const x = reverseRoute(r);
+                    dropped = x.windowsDropped;
+                    return x.tour;
+                  });
+                  log('trip.reverse', { trip: id, windowsDropped: dropped });
+                  setWindowsGone(dropped);
+                  setMenu(false);
+                }}
+              >
+                <Icon name="reverse" size={18} />
+                {t('reverseDirection')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -374,6 +402,10 @@ export function TripScreen({ id }: { id: string }) {
           </div>
         </div>
       )}
+
+      <div className="toast" role="status" hidden={!windowsGone}>
+        <span>{windowsGone ? t('windowsDropped') : ''}</span>
+      </div>
 
       {!liveTrip && !(status === 'past' && isPlanned(trip)) && when}
 
