@@ -6,6 +6,9 @@ import { syncHandle, type SyncRecord } from './sync';
 interface Env {
   OJP_API_KEY: string;
   OJP_URL: string;
+  /** OJP Fare's key (a Worker secret) and address. */
+  OJP_FARE_API_KEY?: string;
+  OJP_FARE_URL: string;
   ALLOWED_ORIGINS: string;
   LIMIT: RateLimit;
   WRITES: RateLimit;
@@ -49,6 +52,8 @@ export default {
     return handle(req, {
       apiKey: env.OJP_API_KEY ?? '',
       upstream: env.OJP_URL,
+      fareKey: env.OJP_FARE_API_KEY,
+      fareUpstream: env.OJP_FARE_URL,
       allowedOrigins: env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
       fetch: (...a) => fetch(...a),
       cache: caches.default,
