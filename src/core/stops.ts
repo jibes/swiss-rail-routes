@@ -20,7 +20,18 @@ export type StopMode = (typeof MODES)[number];
  * A stop abroad that DIDOK does not list (Chamonix, Vallorcine, Domodossola) has its UIC number
  * instead (`UIC_MIN` and up: SLOID numbers stay far below), and OJP knows it by that number.
  */
-export type StopRow = [name: string, sloid: number, lat: number, lon: number, modes: number];
+export type StopRow = [
+  name: string,
+  sloid: number,
+  lat: number,
+  lon: number,
+  modes: number,
+  /** Metres above the sea, whole (DIDOK's `height`), only from `HEIGHT_MIN` up (0.40.0). */
+  height?: number,
+];
+
+/** Heights are kept, and said, from here up: where it is a fact worth knowing (mountains). */
+export const HEIGHT_MIN = 1000;
 
 export interface StopIndexFile {
   v: 1;
@@ -35,6 +46,8 @@ export interface Stop {
   lat: number;
   lon: number;
   modes: StopMode[];
+  /** Metres above the sea, from `HEIGHT_MIN` up; absent below or unknown. */
+  height?: number;
 }
 
 export const modeMask = (modes: readonly string[]) =>
@@ -46,12 +59,13 @@ export const modeMask = (modes: readonly string[]) =>
 /** Row numbers from here are UIC numbers of stops abroad, not SLOIDs (those end near 1.5 M). */
 export const UIC_MIN = 8_000_000;
 
-export const toStop = ([name, sloid, lat, lon, mask]: StopRow): Stop => ({
+export const toStop = ([name, sloid, lat, lon, mask, height]: StopRow): Stop => ({
   ref: sloid >= UIC_MIN ? String(sloid) : `ch:1:sloid:${sloid}`,
   name,
   lat,
   lon,
   modes: MODES.filter((_, i) => mask & (1 << i)),
+  ...(height ? { height } : {}),
 });
 
 /**

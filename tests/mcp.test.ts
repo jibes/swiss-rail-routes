@@ -244,7 +244,8 @@ describe('tools, on recorded answers', () => {
   it('find_stops and list_scenic_lines', async () => {
     const tools = createTools(deps());
     const stops = (await tools.findStops({ query: 'Kleine Sch' })).stops;
-    expect(stops[0]).toMatchObject({ name: 'Kleine Scheidegg', kind: 'train' });
+    // Its height (0.40.0): a mountain station's, from DIDOK.
+    expect(stops[0]).toMatchObject({ name: 'Kleine Scheidegg', kind: 'train', heightM: 2061 });
     expect(stops[0]!.ref).toMatch(/^ch:1:sloid:\d+$/);
     expect((await tools.findStops({ query: 'Bern', limit: 2 })).stops).toHaveLength(2);
     // Reported 5 Nov 2026: "Swissminiatur" found only its pier, not Melide's station.

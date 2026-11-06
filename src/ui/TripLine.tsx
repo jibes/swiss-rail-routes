@@ -22,6 +22,7 @@ import { StationPanel, type LineActions } from './StationPanel';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
+import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
 
@@ -70,6 +71,7 @@ export function TripLine({
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
+  const index = useStopIndex();
   const entries = entriesOf(route);
   const n = entries.length;
   const box = useRef<HTMLOListElement>(null);
@@ -152,6 +154,11 @@ export function TripLine({
   const onRideRows = new Set([...onRide.values()].flat().map((v) => v.row));
 
   /** A station's name: opens the panel (yours), says why not (the timetable's), or just is. */
+  // A mountain station's height after its name (0.40.0), muted: from HEIGHT_MIN up.
+  const alt = (r: StationRow) => {
+    const h = index?.byRef(r.key)?.height;
+    return h ? <span className="alt">{t('heightM', { n: h })}</span> : null;
+  };
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
@@ -160,7 +167,10 @@ export function TripLine({
       return (
         // Nothing to edit: a station you entered is just its name.
         <div className="m">
-          <span className="n">{r.name}</span>
+          <span className="n">
+            {r.name}
+            {alt(r)}
+          </span>
           {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
         </div>
       );
@@ -172,7 +182,10 @@ export function TripLine({
           aria-expanded={hint === `${r.key}@${i}`}
           onClick={() => setHint(hint === `${r.key}@${i}` ? null : `${r.key}@${i}`)}
         >
-          <span className="n">{r.name}</span>
+          <span className="n">
+            {r.name}
+            {alt(r)}
+          </span>
           {label && <span className="chip quiet">{label}</span>}
         </button>
       );
@@ -185,6 +198,7 @@ export function TripLine({
       >
         <span className="n">
           {r.name}
+          {alt(r)}
           {pinnedAt(k) && (
             <>
               <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">

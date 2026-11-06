@@ -6,6 +6,7 @@ import {
   modeMask,
   stopKey,
   toStop,
+  HEIGHT_MIN,
   withinOne,
   type StopIndexFile,
 } from '../src/core/stops';
@@ -221,5 +222,19 @@ describe('stations by their names in other languages', () => {
       expect(real.search(q)[0]?.name, q).toBe(name);
     // Without the list, as before.
     expect(createStopSearch(file).search('Ginevra')[0]?.name).not.toBe('Genève');
+  });
+});
+
+describe('heights (0.40.0)', () => {
+  const file = JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile;
+  const byName = (n: string) => file.rows.find((r) => r[0] === n);
+  it('a mountain station keeps its height, whole metres; a station in the valley none', () => {
+    expect(toStop(byName('Ospizio Bernina')!).height).toBe(2253);
+    expect(toStop(byName('Jungfraujoch')!).height).toBe(3454);
+    expect(toStop(byName('Zürich HB')!).height).toBeUndefined();
+    // Every height kept is from HEIGHT_MIN up, and below 4000 m (the highest: Klein Matterhorn, 3818 m).
+    const hs = file.rows.flatMap((r) => (r[5] === undefined ? [] : [r[5]]));
+    expect(hs.length).toBeGreaterThan(4000);
+    expect(hs.every((h) => Number.isInteger(h) && h >= HEIGHT_MIN && h < 4000)).toBe(true);
   });
 });

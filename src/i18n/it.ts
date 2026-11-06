@@ -251,6 +251,7 @@ export const it = {
   keepMapDone: 'Mappa tenuta offline ({n} parti).',
   keepMapPartly: 'Mappa tenuta in parte: {n} di {total} (il resto senza connessione).',
   keepMapFailed: 'Non è stato possibile tenere la mappa: nessuna connessione al servizio mappe.',
+  heightM: '{n} m s.l.m.',
   occFew: 'Pochi posti a sedere',
   occStanding: 'Solo posti in piedi',
   wxSunny: 'Soleggiato',

@@ -2,7 +2,13 @@
 // Run: npm run data:stops   (cloud sessions: prefix NODE_USE_ENV_PROXY=1)
 // Keeps every stop in CH and LI, abroad only rail, cable and boat stops (Tirano, lake piers).
 import { writeFile } from 'node:fs/promises';
-import { MODES, modeMask, type StopIndexFile, type StopRow } from '../src/core/stops.ts';
+import {
+  HEIGHT_MIN,
+  MODES,
+  modeMask,
+  type StopIndexFile,
+  type StopRow,
+} from '../src/core/stops.ts';
 
 const DATASET = 'https://data.opentransportdata.swiss/en/dataset/service-point-v2';
 const OUT = 'public/data/stops.v1.json';
@@ -63,6 +69,7 @@ const C = {
   lat: col('wgs84North'),
   lon: col('wgs84East'),
   validFrom: col('validFrom'),
+  height: col('height'),
 };
 
 const rows: StopRow[] = [];
@@ -81,6 +88,8 @@ for (const r of it) {
     Math.round(Number(r[C.lat]) * 1e5) / 1e5,
     Math.round(Number(r[C.lon]) * 1e5) / 1e5,
     modeMask(modes),
+    // A height only from HEIGHT_MIN up: the only ones said, and the file stays small.
+    ...(Number(r[C.height]) >= HEIGHT_MIN ? [Math.round(Number(r[C.height]))] : []),
   ]);
   if (r[C.validFrom]! > newest && r[C.validFrom]! <= new Date().toISOString().slice(0, 10))
     newest = r[C.validFrom]!;

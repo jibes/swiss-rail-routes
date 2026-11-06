@@ -351,6 +351,7 @@ export function createTools(deps: ToolDeps) {
               km: Math.round(s.km * 10) / 10,
               lat: s.lat,
               lon: s.lon,
+              ...(s.height ? { heightM: s.height } : {}),
             })),
         };
       }
@@ -384,6 +385,8 @@ export function createTools(deps: ToolDeps) {
           kind: kindOf(s),
           lat: s.lat,
           lon: s.lon,
+          // Metres above the sea, for stations from 1000 m up (DIDOK).
+          ...(s.height ? { heightM: s.height } : {}),
         })),
         ...(places.length ? { places } : {}),
       };
