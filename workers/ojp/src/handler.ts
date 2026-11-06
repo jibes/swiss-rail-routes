@@ -248,8 +248,14 @@ async function fare(
   const trip = pickTrip(await trips.text(), q.journeys);
   if (!trip) return reply(404, 'trip not found');
   const up = await ask(d.fareUpstream, d.fareKey, fareRequestXml(trip, q, d.now(), REQUESTOR));
-  if (!up?.ok)
-    return reply(up?.status === 429 ? 503 : 502, `fare upstream ${up?.status ?? 'none'}`);
+  if (!up?.ok) {
+    // The service's own words (its gateway says why it refused), never our request or key.
+    const why = up ? (await up.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200) : '';
+    return reply(
+      up?.status === 429 ? 503 : 502,
+      `fare upstream ${up?.status ?? 'none'}${why ? `: ${why}` : ''}`,
+    );
+  }
   const text = await up.text();
   if (!/<(?:\w+:)?ErrorCondition>/.test(text))
     d.defer(
