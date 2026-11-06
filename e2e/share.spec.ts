@@ -9,7 +9,7 @@ import { acceptanceTours } from '../tests/acceptance/tours';
 import { addWaypoint, newTour } from '../tests/helpers/edit';
 import { conn, DATE, ga, index, ref, ride, templates } from '../tests/helpers/timetable';
 import type { Page } from '@playwright/test';
-import { BEFORE, expect, guard, planShared, test } from './fixtures';
+import { allowUnrecorded, BEFORE, expect, guard, planShared, test } from './fixtures';
 
 /** The last timetable answer `page` got, to answer the rides of the same trip with. */
 function recordAnswers(page: Page) {
@@ -44,6 +44,9 @@ test('a shared trip opens as planned, without replanning, and saves to Trips', a
 });
 
 test('route links: a template by name opens as a new trip', async ({ page }) => {
+  // The new trip plans at once; whether that ask leaves before the test ends is a race
+  // (CI, 6 Nov 2026), and planning is not what this test is about: nothing is recorded for it.
+  allowUnrecorded(page);
   await page.clock.install({ time: BEFORE });
   await page.goto('./#/r/@bernina');
   await expect(page.getByText('Someone shared this route with you.')).toBeVisible();
