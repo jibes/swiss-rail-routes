@@ -272,6 +272,8 @@ export const de = {
   mapPickAboutVia: 'Etwa {h}, umsteigen in {via} (geschätzt; der Plan sagt es genau).',
   mapPickAbout: 'Etwa {h} (geschätzt; der Plan sagt es genau).',
   mapPickAdd: 'Hinzufügen',
+  mapPickSwissOnly:
+    'Die Züge auf der Karte gibt es nur ab Schweizer Bahnhöfen. Ab {stop} den nächsten Halt mit Namen hinzufügen.',
   mapPickDone: 'Fertig',
   mapAddStops: 'Halte auf der Karte hinzufügen',
   noTripsYet:

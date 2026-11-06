@@ -262,6 +262,8 @@ export const en = {
   mapPickAboutVia: 'About {h}, changing at {via} (an estimate; the plan says exactly).',
   mapPickAbout: 'About {h} (an estimate; the plan says exactly).',
   mapPickAdd: 'Add',
+  mapPickSwissOnly:
+    'The trains on the map go from Swiss stations only. From {stop}, add the next stop by name.',
   mapPickDone: 'Done',
   mapAddStops: 'Add stops on the map',
   noTripsYet: 'New trip starts from a station, a scenic line or one of your past trips.',

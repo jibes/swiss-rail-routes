@@ -18,7 +18,17 @@ export interface EuPlanQuery {
   time: string;
   arriveBy: boolean;
   results: number;
+  /** Stations to pass (0.33.2), Transitous' own ids, at most two (its limit). */
+  vias?: string[];
 }
+
+/**
+ * Transitous' feed for Switzerland: a Swiss station's id there is `<feed>_ch:1:sloid:<n>`. The
+ * name carries the timetable year; when it changes, a via is not found and the leg is asked
+ * again without it (the plan then says the via is missed), until this follows.
+ */
+export const CH_FEED = 'ch-opentransportdataswiss26';
+const VIA = /^[\w:.-]{1,160}$/;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
@@ -50,9 +60,17 @@ export function parseEuPlanQuery(v: unknown): EuPlanQuery | string {
   const results = v.results ?? 3;
   if (!Number.isInteger(results) || (results as number) < 1 || (results as number) > 5)
     return 'results';
+  const vias = v.vias ?? [];
+  if (
+    !Array.isArray(vias) ||
+    vias.length > 2 ||
+    vias.some((x) => typeof x !== 'string' || !VIA.test(x))
+  )
+    return 'vias';
   return {
     from,
     to,
+    ...(vias.length ? { vias: vias as string[] } : {}),
     time: new Date(Date.parse(v.time)).toISOString(),
     arriveBy: v.arriveBy === true,
     results: results as number,
@@ -70,6 +88,7 @@ export function euPlanUrl(base: string, q: EuPlanQuery): string {
     transitModes: 'RAIL',
     detailedTransfers: 'false',
   });
+  if (q.vias?.length) p.set('via', q.vias.join(','));
   return `${base.replace(/[/]$/, '')}/api/v5/plan?${p}`;
 }
 

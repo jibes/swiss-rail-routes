@@ -271,6 +271,8 @@ export const fr = {
   mapPickAboutVia: 'Environ {h}, changement à {via} (une estimation ; le plan le dit exactement).',
   mapPickAbout: 'Environ {h} (une estimation ; le plan le dit exactement).',
   mapPickAdd: 'Ajouter',
+  mapPickSwissOnly:
+    'Les trains sur la carte ne partent que de gares suisses. Depuis {stop}, ajoutez l’arrêt suivant par son nom.',
   mapPickDone: 'Terminé',
   mapAddStops: 'Ajouter des arrêts sur la carte',
   noTripsYet:

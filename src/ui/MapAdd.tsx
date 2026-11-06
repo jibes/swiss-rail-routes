@@ -160,7 +160,11 @@ export function MapAdd({
   useLayer(true, done);
 
   const fromKey = `${stopKey(add.from.stopRef)}@${add.at}`;
+  // From a station abroad there is no web: its departures and their stops would be dozens of
+  // requests to a community-run service (Transitous). Said, nothing asked.
+  const abroad = add.from.stopRef.startsWith('eu:');
   useEffect(() => {
+    if (abroad) return;
     const abort = new AbortController();
     log('mapPick.from', { stop: add.from.name, at: add.at });
     fetchDepartures(
@@ -178,7 +182,7 @@ export function MapAdd({
       },
     );
     return () => abort.abort();
-  }, [fromKey, add.from, add.at, attempt]);
+  }, [fromKey, add.from, add.at, attempt, abroad]);
 
   const d = answer?.key === fromKey ? answer.d : null;
   const place = (k: string) => {
@@ -315,7 +319,12 @@ export function MapAdd({
         </button>
       </div>
       <div className="map-add-notes">
-        {!d && !failed && <RailLoader label={t('mapPickLoading')} />}
+        {abroad && (
+          <p role="status" className="notice">
+            {t('mapPickSwissOnly', { stop: add.from.name })}
+          </p>
+        )}
+        {!abroad && !d && !failed && <RailLoader label={t('mapPickLoading')} />}
         {failed && (
           <p role="status" className="notice">
             {t('mapPickFailed')}{' '}

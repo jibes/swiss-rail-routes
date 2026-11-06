@@ -22,6 +22,14 @@ export function euPos(ref: string): LatLon | undefined {
 
 export const isEu = (ref: string) => ref.startsWith('eu:');
 
+/** A station as Transitous names it, for a via: abroad its own id, a Swiss one by its SLOID. */
+export function transitousId(ref: string, chFeed: string): string | undefined {
+  const eu = /^eu:-?[\d.]+,-?[\d.]+:(.+)$/.exec(ref);
+  if (eu) return eu[1];
+  const sloid = /^ch:1:sloid:(\d+)/.exec(ref);
+  return sloid ? `${chFeed}_ch:1:sloid:${Number(sloid[1])}` : undefined;
+}
+
 const isStop = (p: unknown) => isObj(p) && typeof p.stopId === 'string';
 
 /** Google's encoded polyline, at MOTIS' precision (6 by default) → [lon, lat]. */

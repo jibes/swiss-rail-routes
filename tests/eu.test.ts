@@ -1,8 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { decodePolyline, euConnections, euPos, euRef, placeName } from '../src/core/eu/plan';
-import { euStations, parseEuPlanQuery } from '../src/core/eu/request';
+import {
+  decodePolyline,
+  euConnections,
+  euPos,
+  euRef,
+  placeName,
+  transitousId,
+} from '../src/core/eu/plan';
+import { CH_FEED, euPlanUrl, euStations, parseEuPlanQuery } from '../src/core/eu/request';
 import { index } from './helpers/timetable';
 
 // Recorded from Transitous, 6 Nov 2026: rail only, Saturday 7 Nov from 08:00 Swiss time.
@@ -102,5 +109,32 @@ describe('hub cities abroad (src/data/hubs.json)', () => {
       expect(h.lon).toBeLessThan(40);
     }
     expect(new Set(hubs.map((h) => h.name)).size).toBe(hubs.length);
+  });
+});
+
+describe('vias abroad (0.33.2)', () => {
+  it('named as Transitous names them: abroad its own id, a Swiss station by its SLOID', () => {
+    expect(transitousId(euRef(47.55, 9.7, 'at-Railway_de:09776:1592'), CH_FEED)).toBe(
+      'at-Railway_de:09776:1592',
+    );
+    expect(transitousId('ch:1:sloid:5000:1:2', CH_FEED)).toBe(`${CH_FEED}_ch:1:sloid:5000`);
+    expect(transitousId('8301003', CH_FEED)).toBeUndefined();
+  });
+
+  it('two at most, asked as Transitous takes them', () => {
+    const base = {
+      from: { lat: 47.4, lon: 8.5 },
+      to: { lat: 45.5, lon: 9.2 },
+      time: '2026-11-09T08:00:00Z',
+    };
+    expect(parseEuPlanQuery({ ...base, vias: ['a', 'b', 'c'] })).toBe('vias');
+    expect(parseEuPlanQuery({ ...base, vias: ['<x>'] })).toBe('vias');
+    const q = parseEuPlanQuery({ ...base, vias: [`${CH_FEED}_ch:1:sloid:5000`] });
+    expect(typeof q).toBe('object');
+    const url = new URL(euPlanUrl('https://api.transitous.org', q as never));
+    expect(url.searchParams.get('via')).toBe(`${CH_FEED}_ch:1:sloid:5000`);
+    expect(
+      new URL(euPlanUrl('https://t', parseEuPlanQuery(base) as never)).searchParams.has('via'),
+    ).toBe(false);
   });
 });

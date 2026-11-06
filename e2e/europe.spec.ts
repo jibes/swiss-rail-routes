@@ -23,5 +23,8 @@ test('a station abroad: searched on the tap, planned there, the GA said to end a
   await expect(page.getByText(/not covered by GA or day pass/).first()).toBeVisible({
     timeout: 15_000,
   });
-  await page.screenshot({ path: 'test-results/europe.png', fullPage: true });
+  // Adding on the map from there: the trains on the map are Swiss stations' only; nothing asked.
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  await page.getByRole('button', { name: 'Add stops on the map' }).click();
+  await expect(page.getByText(/^The trains on the map go from Swiss stations only/)).toBeVisible();
 });
