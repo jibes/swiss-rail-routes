@@ -455,7 +455,19 @@ async function planFrom(
     const { from, to } = rules.leg;
     // Must-pass let go: asked without the vias, as OJP enforces the first one itself.
     const vias = relaxed.has('mustPass') ? [] : rules.leg.vias;
-    const direct = await query(from, to, vias, at);
+    // A leg with many vias can be too much for OJP in one go (504 after 25 s, log of 6 Nov 2026:
+    // Zürich > St. Moritz, Gstaad, Montreux > Erstfeld): asked at its vias instead, as when no
+    // answer passes them all. A request stopped by the person (an edit) stops the plan.
+    let direct: Connection[];
+    try {
+      direct = await query(from, to, vias, at);
+    } catch (e) {
+      if (vias.length < 2 || (e instanceof Error && e.name === 'AbortError')) throw e;
+      trace('plan.split', { leg: `${from.name} > ${to.name}`, vias: vias.length, e });
+      const parts = await stitched(from, vias, to, at, query, minTransfer);
+      if (!parts.length) throw e;
+      return parts;
+    }
     if (vias.length < 2 || direct.some((c) => passesVias(c, vias))) return direct;
     const parts = await stitched(from, vias, to, at, query, minTransfer);
     trace('plan.stitched', {

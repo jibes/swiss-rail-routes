@@ -11,6 +11,19 @@ import {
 } from '../src/core/log';
 
 describe('debug log', () => {
+  it('says what a thing that is not data is, by its name (a click event, log of 6 Nov 2026)', () => {
+    class SyntheticBaseEvent {
+      _reactName = 'onClick';
+      target = { deep: { fiber: 'x'.repeat(5000) } };
+    }
+    expect(scrub({ trip: 't', args: [new SyntheticBaseEvent(), 4] })).toEqual({
+      trip: 't',
+      args: ['(SyntheticBaseEvent)', 4],
+    });
+    expect(scrub({ at: new Date(0) })).toEqual({ at: '1970-01-01T00:00:00.000Z' });
+    expect(scrub(Object.assign(Object.create(null), { a: 1 }))).toEqual({ a: 1 });
+  });
+
   it('writes one line per event: time, name, data', () => {
     const line = logLine(Date.UTC(2026, 10, 2, 9, 1, 2, 345), 'plan.done', { ms: 812 });
     expect(line).toBe('2026-11-02T09:01:02.345Z plan.done {"ms":812}\n');

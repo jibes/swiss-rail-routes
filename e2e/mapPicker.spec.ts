@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
 import { encodeTour } from '../tests/helpers/share';
@@ -63,4 +64,27 @@ test('a tap anywhere: the stops near it, stations further, bus stops close, by t
   // Its train if one goes there direct, else about how long.
   await expect(map.getByRole('heading', { name })).toBeVisible();
   await expect(map.getByText(/^(Direct: at |About )/)).toBeVisible();
+});
+
+// Log of 6 Nov 2026: the same web was set on the map seven times while the map stood still.
+test('the web is drawn once for the station it starts from', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await page.goto('./#/settings');
+  await page.getByRole('switch', { name: 'Keep a debug log' }).check();
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Map once' }));
+  await page.goto(page.url() + '/map');
+  await page.getByRole('button', { name: 'Add stops on the map' }).click();
+  await expect(page.getByText(/Blue: the trains from Kleine Scheidegg/)).toBeVisible({
+    timeout: 15_000,
+  });
+  // The map moving, the pointer over it: nothing new to draw.
+  await page.mouse.move(200, 400);
+  await page.mouse.move(220, 420);
+  await page.waitForTimeout(800);
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.goto('./#/settings');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save file' }).click();
+  const text = await readFile((await (await download).path())!, 'utf8');
+  expect(text.split('\n').filter((l) => l.includes(' mapPick.web '))).toHaveLength(1);
 });

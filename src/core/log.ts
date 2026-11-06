@@ -24,6 +24,12 @@ export function scrub(v: unknown, depth = 0, seen = new WeakSet<object>()): unkn
   if (typeof v !== 'object' || v === null) return v;
   if (v instanceof Error)
     return { error: v.name, message: v.message, stack: v.stack?.slice(0, 800) };
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? '(date)' : v.toISOString();
+  // Not data (a click's event, a DOM node: 4 KB of React's insides a line, log of 6 Nov 2026):
+  // said by what it is.
+  const proto = Object.getPrototypeOf(v) as object | null;
+  if (!Array.isArray(v) && proto !== Object.prototype && proto !== null)
+    return `(${(v as { constructor?: { name?: string } }).constructor?.name || 'object'})`;
   if (seen.has(v) || depth > 5) return '…';
   seen.add(v);
   if (Array.isArray(v)) {

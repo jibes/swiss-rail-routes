@@ -209,6 +209,10 @@ export function MapAdd({
   // What is drawn follows the web; the view takes it in once per station it starts from.
   const webJson = web ? JSON.stringify(webData(web, atIso)) : '';
   const fitted = useRef('');
+  // Set once per web: the station it starts from is a new object each render (log of 6 Nov
+  // 2026: the same web set seven times), so it goes in by where it lies.
+  const originLon = originAt?.lon;
+  const originLat = originAt?.lat;
   useEffect(() => {
     if (!webJson) return;
     const data = JSON.parse(webJson) as ReturnType<typeof webData>;
@@ -218,9 +222,9 @@ export function MapAdd({
     if (fitted.current === fromKey) return;
     fitted.current = fromKey;
     const pts = data.stops.features.map((f) => f.geometry.coordinates as [number, number]);
-    if (originAt) pts.push([originAt.lon, originAt.lat]);
+    if (originLon !== undefined && originLat !== undefined) pts.push([originLon, originLat]);
     fit(pts);
-  }, [map, webJson, fromKey, originAt, fit]);
+  }, [map, webJson, fromKey, originLon, originLat, fit]);
 
   /** A stop picked: its train when one goes there direct, else about how long. */
   const choose = (s: { ref: string; name: string; lat: number; lon: number }) => {

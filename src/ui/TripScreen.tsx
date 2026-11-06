@@ -69,6 +69,7 @@ function logged<A extends object>(trip: string, act: A): A {
     Object.entries(act).map(([name, f]) => [
       name,
       (...args: unknown[]) => {
+        // What it was called with, not the click that called it (`scrub` says an event's name).
         log(`line.${name}`, { trip, args });
         (f as (...a: unknown[]) => void)(...args);
       },
