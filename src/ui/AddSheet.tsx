@@ -16,7 +16,7 @@ import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
 import { dayOf } from '../core/trip';
 import { useLayer } from './layers';
-import { euRef } from '../core/eu/plan';
+import { euRef, placeName } from '../core/eu/plan';
 import type { EuStop } from '../core/eu/request';
 import { fetchEuStops } from '../io/ojp';
 
@@ -62,7 +62,12 @@ export function AddSheet({
     const text = q.trim();
     setAbroad({ q: text, found: 'asking' });
     fetchEuStops(text).then(
-      (found) => setAbroad((a) => (a?.q === text ? { q: text, found } : a)),
+      (found) =>
+        setAbroad((a) =>
+          a?.q === text
+            ? { q: text, found: found.map((x) => ({ ...x, name: placeName(x.name, x) })) }
+            : a,
+        ),
       () => setAbroad((a) => (a?.q === text ? { q: text, found: 'failed' } : a)),
     );
   };

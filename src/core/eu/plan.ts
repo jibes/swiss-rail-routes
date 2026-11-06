@@ -4,6 +4,7 @@
 // names its own way (Trenitalia's "ZUERICH HB") is the app's own, when `local` finds it. Pure.
 import type { Connection, LatLon, Mode, PlatformCall, Section, StopCall } from '../model';
 import { kmBetween } from '../stops';
+import hubs from '../../data/hubs.json';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -49,6 +50,23 @@ export function decodePolyline(s: string, precision = 6): [number, number][] {
   return out;
 }
 
+/** A station's name that says only what it is, not where ("Hauptbahnhof": the German feed's own). */
+const BARE =
+  /^(hauptbahnhof|hbf|bahnhof|bf|bahnhof\/zob|zob|busbahnhof|gare|gare sncf|stazione|stazione centrale|centrale|station|centraal)$/i;
+/** How far from a hub city's main station a bare name is still that city's (Paris has many). */
+export const HUB_KM = 4;
+
+/** A bare name with the city it lies in ("Stuttgart Hauptbahnhof"); any other name as it is. */
+export function placeName(name: string, at: LatLon): string {
+  if (!BARE.test(name.trim())) return name;
+  let best: { name: string; km: number } | undefined;
+  for (const h of hubs as { name: string; lat: number; lon: number }[]) {
+    const km = kmBetween(at, h);
+    if (km <= HUB_KM && (!best || km < best.km)) best = { name: h.name, km };
+  }
+  return best ? `${best.name} ${name}` : name;
+}
+
 const MODES: Record<string, Mode> = {
   BUS: 'bus',
   COACH: 'bus',
@@ -66,6 +84,30 @@ export type Local = (p: {
   id?: string;
 }) => { stopRef: string; name: string } | undefined;
 
+/**
+ * A train's type and number from its full name ("ICE 565", "EC 99", "TGV 9218"): the short name
+ * may be the line's number alone ("60" for an ICE), or the type alone ("IC").
+ */
+function kindOf(l: Record<string, unknown>): { category?: string; number?: string; line?: string } {
+  const full = str(l.displayName) ?? str(l.tripShortName) ?? str(l.routeShortName);
+  const m = full ? /^([A-Za-zÀ-ž]+)\s*(\d[\w-]*)?$/.exec(full.trim()) : null;
+  if (m) return { category: m[1], ...(m[2] ? { number: m[2] } : {}), line: full };
+  return { line: full };
+}
+
+/** Where the train goes, named as its stops are (a bare "Hauptbahnhof" by its last stop). */
+function headsign(l: Record<string, unknown>): string {
+  const h = str(l.headsign)!;
+  // Its last stop where the answer gives it; else where this ride ends, when named the same.
+  const ends = [l.tripTo, isObj(l.to) && l.to.name === h ? l.to : undefined];
+  for (const e of ends) {
+    if (!isObj(e) || num(e.lat) === undefined || num(e.lon) === undefined) continue;
+    const named = placeName(h, { lat: num(e.lat)!, lon: num(e.lon)! });
+    if (named !== h) return named;
+  }
+  return h;
+}
+
 export function euConnections(
   answer: unknown,
   legIndex: number,
@@ -76,8 +118,8 @@ export function euConnections(
     if (!isObj(p)) return undefined;
     const lat = num(p.lat);
     const lon = num(p.lon);
-    const name = str(p.name) ?? '';
     if (lat === undefined || lon === undefined) return undefined;
+    const name = placeName(str(p.name) ?? '', { lat, lon });
     return (
       local({ name, lat, lon, id: str(p.parentId) ?? str(p.stopId) }) ?? {
         stopRef: euRef(lat, lon, str(p.parentId) ?? str(p.stopId) ?? name),
@@ -133,8 +175,7 @@ export function euConnections(
       return [
         {
           mode: MODES[String(l.mode)] ?? 'rail',
-          category: str(l.routeShortName)?.replace(/\s*\d.*$/, '') || undefined,
-          line: str(l.displayName) ?? str(l.routeShortName),
+          ...kindOf(l),
           operator: str(l.agencyName),
           from: { ...from, ...(fromTrack ? { platform: fromTrack } : {}) },
           to: { ...to, ...(toTrack ? { platform: toTrack } : {}) },
@@ -143,7 +184,7 @@ export function euConnections(
             .filter((s): s is StopCall => !!s),
           ...(geometry && geometry.length > 1 ? { geometry } : {}),
           ...(str(l.tripId) ? { journey: `eu:${str(l.tripId)}` } : {}),
-          ...(str(l.headsign) ? { destination: str(l.headsign) } : {}),
+          ...(str(l.headsign) ? { destination: headsign(l) } : {}),
         },
       ];
     });

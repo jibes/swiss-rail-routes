@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { decodePolyline, euConnections, euPos, euRef } from '../src/core/eu/plan';
+import { decodePolyline, euConnections, euPos, euRef, placeName } from '../src/core/eu/plan';
 import { euStations, parseEuPlanQuery } from '../src/core/eu/request';
 import { index } from './helpers/timetable';
 
@@ -31,6 +31,22 @@ describe('Europe through Transitous', () => {
     expect(ec.intermediate.length).toBeGreaterThan(3);
     expect(ec.geometry!.length).toBeGreaterThan(10);
     expect(Date.parse(cs[0]!.dep)).toBeLessThan(Date.parse(cs[0]!.arr));
+  });
+
+  it('a train’s type and number from its full name: ICE 565, its short name the line’s 60', () => {
+    const rides = euConnections(answer('stuttgart'), 0, local)[0]!.sections.filter(
+      (s) => s.mode !== 'walk',
+    );
+    expect(rides.map((s) => [s.category, s.number])).toEqual([
+      ['IC', '380'],
+      ['ICE', '565'],
+    ]);
+    // A bare "Hauptbahnhof" (the German feed's name) is named after the city it lies in.
+    expect(rides[0]!.to.name).toBe('Stuttgart Hauptbahnhof');
+    expect(rides[1]!.from.name).toBe('Stuttgart Hauptbahnhof');
+    expect(rides[0]!.destination).toBe('Stuttgart Hauptbahnhof');
+    expect(placeName('Hauptbahnhof', { lat: 46, lon: 2 })).toBe('Hauptbahnhof');
+    expect(placeName('Ulm Hauptbahnhof', { lat: 48.4, lon: 9.98 })).toBe('Ulm Hauptbahnhof');
   });
 
   it('Innsbruck, Lyon, Munich: trains only, each connection with its changes', () => {
@@ -67,5 +83,24 @@ describe('Europe through Transitous', () => {
       }),
     ).toMatchObject({ results: 3 });
     expect(euStations([{ id: 'a', name: 'A', lat: 1, lon: 2, modes: ['BUS'] }])).toEqual([]);
+  });
+});
+
+describe('hub cities abroad (src/data/hubs.json)', () => {
+  it('each a name and a place abroad, in Europe, once', async () => {
+    const hubs = (await import('../src/data/hubs.json')).default as {
+      name: string;
+      lat: number;
+      lon: number;
+    }[];
+    expect(hubs.length).toBeGreaterThan(100);
+    for (const h of hubs) {
+      expect(h.name, JSON.stringify(h)).toMatch(/\S/);
+      expect(h.lat).toBeGreaterThan(34);
+      expect(h.lat).toBeLessThan(72);
+      expect(h.lon).toBeGreaterThan(-11);
+      expect(h.lon).toBeLessThan(40);
+    }
+    expect(new Set(hubs.map((h) => h.name)).size).toBe(hubs.length);
   });
 });
