@@ -1,12 +1,12 @@
-# Logo: V13
+# Logo: V14
 
 ![Logo on every surface](comparison.png)
 
-A train front seen head-on: its windscreen is the window seat with the Alps in it, two headlights below, two rails leading towards you. Chosen 2 Nov 2026 (V13), replacing C1 (a ring with two dots).
+A viaduct seen from the side: a deck across the whole tile, three round arches and a half arch at each side, so the bridge runs on out of the icon; its piers stand in a valley, longest in the middle. Chosen 6 Nov 2026 (V14, draft G1), replacing V13 (a train front with the Alps in its window).
 
-- **Geometry** (100-unit box): body 52 × 68 with 15 corners; windscreen 38 × 31 with 6 corners; three peaks standing on the windscreen's bottom edge; headlights radius 5; rails 6 wide with round ends.
-- **Colour:** flat red tile (`#D40000`), white mark (`#FFFFFF`). Windscreen and headlights are holes in the body (even-odd), so the tile shows through.
-- **One colour** (status bar, notifications, Android 13 themed icon): the same shapes in one colour, the holes left open, the mountains solid inside the windscreen.
-- **Placement:** the rounded icon and favicon draw the design as is (the favicon with 7.5-wide rails, so they hold at 16 px); maskable and adaptive icons keep the whole mark inside the 66 dp safe circle around its optical centre (50, 52); the 24 dp notification icon fills its height with a 1 dp margin.
+- **Geometry** (108-unit tile): deck y 30–39; arches every 27 units centred on x 0, 27, 54, 81, 108, each 17.8 wide with a round top on y 39; piers down to y = 72 + 18 · sin(π x / 108).
+- **Colour:** flat red tile (`#D40000`), white mark (`#FFFFFF`). The arches are the tile showing through.
+- **One colour** (status bar, notifications, Android 13 themed icon): the same shape in one colour.
+- **Placement:** every surface draws the same 108-unit design; the rounded icon and favicon clip it to their corners; the adaptive icon's mask shows its middle, still three arches; the 24 dp notification icon is its full width in 22 dp.
 
-One source, `scripts/logo-sets.py`: without arguments it writes `v13/` here; `--apply` writes `public/icons/{icon,maskable}.svg` and the Android launcher (red background, foreground), themed and notification vectors; then `npm run icons` for the PNGs. Sheet: `CHROMIUM_PATH=… node scripts/logo-sheet.mjs`.
+One source, `scripts/logo-sets.py`: without arguments it writes `v14/` here; `--apply` writes `public/icons/{icon,maskable}.svg` and the Android launcher (red background, foreground), themed and notification vectors; then `npm run icons` for the PNGs. `src/ui/Logo.tsx` is the same path inline. Sheet: `CHROMIUM_PATH=… node scripts/logo-sheet.mjs`.

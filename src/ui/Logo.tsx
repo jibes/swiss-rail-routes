@@ -1,17 +1,18 @@
-/** The app's mark, V13 (scripts/logo-sets.py draws the icons; this is the same shape inline). */
+/** The app's mark, V14 (scripts/logo-sets.py draws the icons; this is the same shape inline). */
 export function Logo({ size = 28 }: { size?: number }) {
   return (
-    <svg className="logo" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
-      <rect width="100" height="100" rx="24" fill="#d40000" />
-      <g transform="translate(50 52) scale(0.78) translate(-50 -52)">
-        <path
-          fill="#fff"
-          fillRule="evenodd"
-          d="M39 10h22a15 15 0 0 1 15 15v38a15 15 0 0 1-15 15H39a15 15 0 0 1-15-15V25a15 15 0 0 1 15-15zM37 19a6 6 0 0 0-6 6v19a6 6 0 0 0 6 6h26a6 6 0 0 0 6-6V25a6 6 0 0 0-6-6zM35 59a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM65 59a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"
-        />
-        <path fill="#fff" d="M33 50 44 35l6 7 7-10 10 18z" />
-        <path d="M36 82 26 94M64 82l10 12" stroke="#fff" strokeWidth="6" strokeLinecap="round" />
-      </g>
+    <svg className="logo" width={size} height={size} viewBox="0 0 108 108" aria-hidden="true">
+      <defs>
+        <clipPath id="logo-tile">
+          <rect width="108" height="108" rx="24" />
+        </clipPath>
+      </defs>
+      <rect width="108" height="108" rx="24" fill="#d40000" />
+      <path
+        fill="#fff"
+        clipPath="url(#logo-tile)"
+        d="M0,30 H108 V39 A8.91,8.91 0 0 0 99.09,47.91 V76.61 L97.56,77.38 L96.03,78.14 L94.5,78.89 L92.97,79.62 L91.44,80.34 L89.91,81.04 V47.91 A8.91,8.91 0 0 0 72.09,47.91 V87.56 L70.56,87.95 L69.03,88.31 L67.5,88.63 L65.97,88.92 L64.44,89.18 L62.91,89.4 V47.91 A8.91,8.91 0 0 0 45.09,47.91 V89.4 L43.56,89.18 L42.03,88.92 L40.5,88.63 L38.97,88.31 L37.44,87.95 L35.91,87.56 V47.91 A8.91,8.91 0 0 0 18.09,47.91 V81.04 L16.56,80.34 L15.03,79.62 L13.5,78.89 L11.97,78.14 L10.44,77.38 L8.91,76.61 V47.91 A8.91,8.91 0 0 0 0,39 Z"
+      />
     </svg>
   );
 }

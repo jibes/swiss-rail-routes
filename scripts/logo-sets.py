@@ -1,17 +1,18 @@
-# The logo, V13, and every file made from it. A train front seen head-on, in white on a flat
-# red tile; drawn in a 100-unit box (the design), placed into 108-unit tiles by `k`, `dx`, `dy`:
+# The logo, V14, and every file made from it. A viaduct seen from the side, in white on a flat
+# red tile; drawn in the 108-unit tile itself, running out past both of its sides:
 #
-#   body          the train front          rect (24, 10) 52 × 68, corners 15
-#   windscreen    the window seat          rect (31, 19) 38 × 31, corners 6, a hole in the body
-#   mountains     the Alps in that window  M33 50 L44 35 L50 42 L57 32 L67 50 Z, white in the hole
-#   headlights    two                      (35, 64) and (65, 64), radius 5, holes in the body
-#   rails         two                      36,82 → 26,94 and 64,82 → 74,94, line 6, round caps
+#   deck       y 30 to 39, the tile's whole width
+#   arches     centred every 27 units on x 0, 27, 54, 81, 108: three whole ones and a half
+#              at each side, so an arch, never a pier, meets the edge; 17.8 wide (2 × 8.91),
+#              round tops on y 39
+#   valley     the piers stand on y = 72 + 18 · sin(π x / 108): 72 at the sides, 90 in the middle
 #
-# Colour: flat red #D40000 tile, white #FFFFFF mark. The windscreen and headlights are holes
-# (even-odd), so the tile shows through them, and the one-colour versions (status bar, Android
-# themed icon, notification) are the very same shapes in one colour.
+# Colour: flat red #D40000 tile, white #FFFFFF mark. The arches are the tile showing through, so
+# the one-colour versions (status bar, Android themed icon, notification) are the same shape.
+# Adaptive icons: the system's mask shows the middle of the 108 tile (about a radius of 36),
+# still three arches: the bridge runs on out of the icon there too.
 #
-#   python3 scripts/logo-sets.py           docs/design/logos/v13/
+#   python3 scripts/logo-sets.py           docs/design/logos/v14/
 #   python3 scripts/logo-sets.py --apply   public/icons/{icon,maskable}.svg and the Android
 #                                          launcher, themed, background and notification vectors
 #   then: npm run icons                    the PNGs
@@ -22,128 +23,120 @@ import sys
 RED = '#D40000'
 WHITE = '#FFFFFF'
 ROOT = os.path.join(os.path.dirname(__file__), '..')
-DOCS = os.path.join(ROOT, 'docs', 'design', 'logos', 'v13')
+DOCS = os.path.join(ROOT, 'docs', 'design', 'logos', 'v14')
 RES = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res', 'drawable')
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {v} {v}">{body}</svg>\n'
 
-BODY = (24, 10, 52, 68, 15)
-WINDSCREEN = (31, 19, 38, 31, 6)
-LIGHTS = ((35, 64, 5), (65, 64, 5))
-MOUNTAINS = 'M33,50 L44,35 L50,42 L57,32 L67,50 Z'
-RAILS = 'M36,82 L26,94 M64,82 L74,94'
-RAIL = 6
-# Optical centre: the body carries the weight, the thin rails below it less.
-CENTRE = (50, 52)
-# Adaptive icons: everything within the 66 dp safe circle (radius 33 of 108).
-SAFE_R = 33
+SIZE = 108
+DECK_TOP, DECK = 30, 9
+PERIOD, OFFSET, OPEN = 27, 54, 0.66
+EDGE, DEPTH = 72, 18
+R_ARCH = PERIOD * OPEN / 2
+SPRING = DECK_TOP + DECK + R_ARCH  # where an arch's round top meets its straight sides
 
 
-def rounded(x, y, w, h, r):
-    return (f'M{x + r},{y} H{x + w - r} A{r},{r} 0 0 1 {x + w},{y + r} V{y + h - r} '
-            f'A{r},{r} 0 0 1 {x + w - r},{y + h} H{x + r} A{r},{r} 0 0 1 {x},{y + h - r} '
-            f'V{y + r} A{r},{r} 0 0 1 {x + r},{y} Z')
+def ground(x):
+    return EDGE + DEPTH * math.sin(math.pi * min(max(x / SIZE, 0), 1))
 
 
-def circle(cx, cy, r):
-    return f'M{cx - r},{cy} A{r},{r} 0 1 0 {cx + r},{cy} A{r},{r} 0 1 0 {cx - r},{cy} Z'
+def f(v):
+    return f'{v:.2f}'.rstrip('0').rstrip('.')
 
 
-# The body with its holes, filled even-odd.
-FRONT = ' '.join([rounded(*BODY), rounded(*WINDSCREEN)] + [circle(*c) for c in LIGHTS])
+def viaduct():
+    """The white shape as one path, clockwise from the deck's top left: along the deck, then
+    from the right side leftwards under it, pier by pier, the arches as holes cut from below."""
+    centres = [OFFSET + k * PERIOD for k in range(-4, 5)]
+    centres = [c for c in centres if -R_ARCH < c < SIZE + R_ARCH]
+    d = [f'M0,{DECK_TOP} H{SIZE}']
+    # The arch at the right side: from its top at the edge down its left half.
+    right = max(centres)
+    d.append(f'V{f(DECK_TOP + DECK)} A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(right - R_ARCH)},{f(SPRING)}')
+    for c in sorted(centres, reverse=True)[1:]:
+        # the pier between this arch and the one to its right, from b leftwards to a
+        a, b = c + R_ARCH, min(x for x in centres if x > c) - R_ARCH
+        # down the pier's right side, along the valley, up its left side
+        d.append(f'V{f(ground(b))}')
+        steps = 6
+        for i in range(1, steps + 1):
+            x = b + (a - b) * i / steps
+            d.append(f'L{f(x)},{f(ground(x))}')
+        d.append(f'V{f(SPRING)}')
+        if c - R_ARCH <= 0:  # the arch at the left side: up its right half to its top at the edge
+            d.append(f'A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 0,{f(DECK_TOP + DECK)}')
+        else:
+            d.append(f'A{f(R_ARCH)},{f(R_ARCH)} 0 0 0 {f(c - R_ARCH)},{f(SPRING)}')
+    d.append('Z')
+    return ' '.join(d)
 
 
-def reach():
-    """The farthest the mark gets from CENTRE: a rail's round end or a top corner's curve."""
-    cx, cy = CENTRE
-    far = 0.0
-    for x, y in ((26, 94), (74, 94)):
-        far = max(far, math.hypot(x - cx, y - cy) + RAIL / 2)
-    x, y, w, h, r = BODY
-    for ox, oy in ((x + r, y + r), (x + w - r, y + r), (x + r, y + h - r), (x + w - r, y + h - r)):
-        far = max(far, math.hypot(ox - cx, oy - cy) + r)
-    return far
+PATH = viaduct()
+TILE = f'<rect width="{SIZE}" height="{SIZE}" fill="{RED}"/>'
+ROUNDED = f'<rect width="{SIZE}" height="{SIZE}" rx="24" fill="{RED}"/>'
 
 
-def place(k, size=108):
-    """Scale k and the offset that puts CENTRE in the middle of a `size` box."""
-    return k, size / 2 - CENTRE[0] * k, size / 2 - CENTRE[1] * k
+def mark(colour, clip=None):
+    if clip:
+        return (f'<defs><clipPath id="t">{clip}</clipPath></defs>'
+                f'<path d="{PATH}" fill="{colour}" clip-path="url(#t)"/>')
+    return f'<path d="{PATH}" fill="{colour}"/>'
 
 
-SAFE = place(SAFE_R / reach())
-# Rounded tile and favicon: the design as drawn, 100 units on 108.
-FULL = (1.08, 0.0, 0.0)
-
-
-def mark(colour, at, rail=RAIL):
-    k, dx, dy = at
-    return (f'<g transform="translate({dx:.2f} {dy:.2f}) scale({k:.4f})">'
-            f'<path d="{FRONT}" fill="{colour}" fill-rule="evenodd"/>'
-            f'<path d="{MOUNTAINS}" fill="{colour}"/>'
-            f'<path d="{RAILS}" fill="none" stroke="{colour}" stroke-width="{rail}" stroke-linecap="round"/>'
-            '</g>')
-
-
-TILE = f'<rect width="108" height="108" fill="{RED}"/>'
-ROUNDED = f'<rect width="108" height="108" rx="24" fill="{RED}"/>'
+ROUND_CLIP = f'<rect width="{SIZE}" height="{SIZE}" rx="24"/>'
 
 
 def docs():
     os.makedirs(DOCS, exist_ok=True)
     files = {
-        'icon': TILE + mark(WHITE, FULL),
-        'maskable': TILE + mark(WHITE, SAFE),
-        'adaptive-foreground': mark(WHITE, SAFE),
+        'icon': TILE + mark(WHITE),
+        'maskable': TILE + mark(WHITE),
+        'adaptive-foreground': mark(WHITE),
         'adaptive-background': TILE,
-        'monochrome': mark('#000', SAFE),
-        # Small sizes: no safe zone in a tab, and heavier rails so they hold at 16 px.
-        'favicon': ROUNDED + mark(WHITE, FULL, rail=7.5),
+        'monochrome': mark('#000'),
+        'favicon': ROUNDED + mark(WHITE, ROUND_CLIP),
     }
     for name, body in files.items():
-        with open(os.path.join(DOCS, f'{name}.svg'), 'w') as f:
-            f.write(SVG.format(v=108, body=body))
+        with open(os.path.join(DOCS, f'{name}.svg'), 'w') as fh:
+            fh.write(SVG.format(v=SIZE, body=body))
 
 
 # ── Android vector drawables ───────────────────────────────────────────────────────────────
 
-def vector(body, size=108):
+def vector(body, size=SIZE, viewport=SIZE):
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
-            '<!-- Logo V13, generated by scripts/logo-sets.py; do not edit by hand. -->\n'
+            '<!-- Logo V14, generated by scripts/logo-sets.py; do not edit by hand. -->\n'
             '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
             f'    android:width="{size}dp" android:height="{size}dp" '
-            f'android:viewportWidth="{size}" android:viewportHeight="{size}">\n{body}</vector>\n')
+            f'android:viewportWidth="{viewport}" android:viewportHeight="{viewport}">\n{body}</vector>\n')
 
 
-def android_mark(colour, at, rail=RAIL):
+def android_mark(colour, at=(1, 0, 0)):
     k, dx, dy = at
     return (f'    <group android:translateX="{dx:.2f}" android:translateY="{dy:.2f}" '
             f'android:scaleX="{k:.4f}" android:scaleY="{k:.4f}">\n'
-            f'        <path android:pathData="{FRONT}" android:fillColor="{colour}" '
-            'android:fillType="evenOdd"/>\n'
-            f'        <path android:pathData="{MOUNTAINS}" android:fillColor="{colour}"/>\n'
-            f'        <path android:pathData="{RAILS}" android:strokeColor="{colour}" '
-            f'android:strokeWidth="{rail}" android:strokeLineCap="round" '
-            'android:fillColor="#00000000"/>\n'
+            f'        <path android:pathData="{PATH}" android:fillColor="{colour}"/>\n'
             '    </group>\n')
 
 
 def apply():
     icons = os.path.join(ROOT, 'public', 'icons')
-    with open(os.path.join(icons, 'icon.svg'), 'w') as f:
-        f.write(SVG.format(v=108, body=ROUNDED + mark(WHITE, FULL, rail=7.5)))
-    with open(os.path.join(icons, 'maskable.svg'), 'w') as f:
-        f.write(SVG.format(v=108, body=TILE + mark(WHITE, SAFE)))
-    with open(os.path.join(RES, 'ic_launcher_foreground.xml'), 'w') as f:
-        f.write(vector(android_mark(WHITE, SAFE)))
-    with open(os.path.join(RES, 'ic_launcher_monochrome.xml'), 'w') as f:
-        f.write(vector(android_mark(WHITE, SAFE)))
-    with open(os.path.join(RES, 'ic_launcher_background.xml'), 'w') as f:
-        f.write(vector(f'    <path android:pathData="M0,0 H108 V108 H0 Z" android:fillColor="{RED}"/>\n'))
-    # Status bar, 24 dp: the mark fills the icon's height (1 dp margin), centred on its box.
-    top, bottom = BODY[1], 94 + RAIL / 2
-    k = 22 / (bottom - top)
-    at = (k, 12 - 50 * k, 12 - (top + bottom) / 2 * k)
-    with open(os.path.join(RES, 'ic_stat_rail.xml'), 'w') as f:
-        f.write(vector(android_mark(WHITE, at), size=24))
+    with open(os.path.join(icons, 'icon.svg'), 'w') as fh:
+        fh.write(SVG.format(v=SIZE, body=ROUNDED + mark(WHITE, ROUND_CLIP)))
+    with open(os.path.join(icons, 'maskable.svg'), 'w') as fh:
+        fh.write(SVG.format(v=SIZE, body=TILE + mark(WHITE)))
+    # The foreground and themed icon run past the 108 box; the launcher clips them.
+    with open(os.path.join(RES, 'ic_launcher_foreground.xml'), 'w') as fh:
+        fh.write(vector(android_mark(WHITE)))
+    with open(os.path.join(RES, 'ic_launcher_monochrome.xml'), 'w') as fh:
+        fh.write(vector(android_mark(WHITE)))
+    with open(os.path.join(RES, 'ic_launcher_background.xml'), 'w') as fh:
+        fh.write(vector(f'    <path android:pathData="M0,0 H108 V108 H0 Z" android:fillColor="{RED}"/>\n'))
+    # Status bar, 24 dp: the viaduct's full width in 22 dp, centred on its box.
+    top, bottom = DECK_TOP, EDGE + DEPTH
+    k = 22 / SIZE
+    at = (k, 1, 12 - (top + bottom) / 2 * k)
+    with open(os.path.join(RES, 'ic_stat_rail.xml'), 'w') as fh:
+        fh.write(vector(android_mark(WHITE, at), size=24, viewport=24))
 
 
 if __name__ == '__main__':
