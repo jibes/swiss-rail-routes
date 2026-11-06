@@ -805,3 +805,45 @@
 .trip-line .ride.with-mids .mids li:has(.plan-panel)::before {
   top: calc(0.5lh - 5px);
 }
+
+/* Being planned (0.36.0): a wave runs down the rail, over what is about to be replaced; the
+   times wait as shimmering bars. One band over the whole line, at the rail (50 + 15 px). */
+.trip-line.planning::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 62px;
+  width: 6px;
+  pointer-events: none;
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--bg) 85%, transparent),
+      transparent
+    )
+    no-repeat;
+  background-size: 100% 180px;
+  animation: rail-wave 1.6s ease-in-out infinite;
+}
+
+@keyframes rail-wave {
+  from {
+    background-position: 0 -180px;
+  }
+  to {
+    background-position: 0 calc(100% + 180px);
+  }
+}
+
+/* Without motion: no band, the rail dimmed while it is planned. */
+@media (prefers-reduced-motion: reduce) {
+  .trip-line.planning::after {
+    display: none;
+  }
+
+  .trip-line.planning .rail {
+    opacity: 0.5;
+  }
+}

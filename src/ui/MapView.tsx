@@ -61,6 +61,36 @@ function arrowImage(r: number): ImageData {
   return g.getImageData(0, 0, c.width, c.height);
 }
 
+/** How long the wave runs at most, while a trip is being planned. */
+const WAVE_MS = 30_000;
+/**
+ * The wave along the line (`line-progress` 0 → 1): a light band centred at `p`. Stops must rise
+ * strictly, so the band is clipped inside (0, 1).
+ */
+function waveGradient(p: number, dark: boolean): maplibregl.ExpressionSpecification {
+  const light = dark ? 'rgba(27,29,33,0.75)' : 'rgba(255,255,255,0.8)';
+  const none = dark ? 'rgba(27,29,33,0)' : 'rgba(255,255,255,0)';
+  const w = 0.12;
+  const a = Math.min(0.997, Math.max(0.001, p - w));
+  const b = Math.min(0.998, Math.max(a + 0.0005, p));
+  const c = Math.min(0.999, Math.max(b + 0.0005, p + w));
+  return [
+    'interpolate',
+    ['linear'],
+    ['line-progress'],
+    0,
+    none,
+    a,
+    none,
+    b,
+    light,
+    c,
+    none,
+    1,
+    none,
+  ];
+}
+
 const focusPoint = (p: [number, number] | null) => ({
   type: 'FeatureCollection' as const,
   features: p
@@ -160,7 +190,8 @@ export default function MapView({ id }: { id: string }) {
       map.on('load', () => {
         if (!map) return;
         const empty = focusPoint(null);
-        map.addSource('lines', { type: 'geojson', data: empty });
+        // Line metrics: the wave runs along the line by its progress while the trip is planned.
+        map.addSource('lines', { type: 'geojson', data: empty, lineMetrics: true });
         map.addSource('stops', { type: 'geojson', data: empty });
         map.addSource('highlights', { type: 'geojson', data: empty });
         map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
@@ -312,6 +343,41 @@ export default function MapView({ id }: { id: string }) {
       for (const m of names) m.remove();
     };
   }, [map, json, id, lang]);
+
+  // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
+  // the timetable comes (at most WAVE_MS, so offline it does not run on for good).
+  const replanning = !!trip && !isPlanned(trip) && status === 'upcoming';
+  useEffect(() => {
+    // Without motion, nothing: the trip line says it is being planned.
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!map || !replanning || still || !map.getSource('lines')) return;
+    map.addLayer(
+      {
+        id: 'lines-wave',
+        type: 'line',
+        source: 'lines',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-width': 6, 'line-gradient': waveGradient(0, dark) },
+      },
+      'arrows',
+    );
+    let frame = 0;
+    const t0 = performance.now();
+    const step = (t: number) => {
+      if (t - t0 > WAVE_MS) return;
+      map.setPaintProperty(
+        'lines-wave',
+        'line-gradient',
+        waveGradient(((t - t0) % 1800) / 1500, dark),
+      );
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (map.getLayer('lines-wave')) map.removeLayer('lines-wave');
+    };
+  }, [map, replanning, dark]);
 
   // Adding on the map: the web from a station of this trip, under its red.
   const adding = useMapAdd((s) => s.add?.trip === id);
