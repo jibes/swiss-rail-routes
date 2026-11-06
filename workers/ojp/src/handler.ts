@@ -4,7 +4,9 @@
 // Standard Fetch API only, so tests run it in Node with fakes.
 import {
   cacheKeyOf,
+  departuresRequestXml,
   journeyRequestXml,
+  parseDeparturesQuery,
   parseJourneyQuery,
   parseStopQuery,
   parseTripQuery,
@@ -19,6 +21,8 @@ const KINDS = {
   stops: { parse: parseStopQuery, xml: stopRequestXml, cache: 600 },
   // Live calls of one vehicle: real time, so only briefly cached.
   journey: { parse: parseJourneyQuery, xml: journeyRequestXml, cache: 30 },
+  // A stop's trains and where each goes (the map planner): as a trip's answers.
+  departures: { parse: parseDeparturesQuery, xml: departuresRequestXml, cache: 600 },
 } as const;
 type Kind = keyof typeof KINDS;
 

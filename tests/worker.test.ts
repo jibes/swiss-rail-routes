@@ -184,6 +184,37 @@ describe('OJP worker', () => {
     expect((await call('/journey', { body })).headers.get('X-Cache')).toBe('hit');
     expect((await call('/journey', { body: '{"journey":"x"}' })).status).toBe(400);
   });
+
+  it('answers a stop’s departures with every stop each train still calls at', async () => {
+    const { call, upstream } = setup();
+    const body = JSON.stringify({
+      stop: { ref: 'ch:1:sloid:7000', name: 'Bern' },
+      time: '2026-11-07T09:00',
+      results: 40,
+    });
+    expect((await call('/departures', { body })).status).toBe(200);
+    const xml = String(upstream.mock.calls[0]![1]!.body);
+    expect(xml).toContain('<OJPStopEventRequest>');
+    expect(xml).toContain('<IncludeOnwardCalls>true</IncludeOnwardCalls>');
+    expect(xml).toContain('<StopEventType>departure</StopEventType>');
+    const bad = (v: unknown) => call('/departures', { body: JSON.stringify(v) });
+    expect((await bad({ stop: { ref: 'x', name: 'Bern' }, time: '2026-11-07T09:00' })).status).toBe(
+      400,
+    );
+    expect(
+      (await bad({ stop: { ref: 'ch:1:sloid:7000', name: 'Bern' }, time: 'x', results: 40 }))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await bad({
+          stop: { ref: 'ch:1:sloid:7000', name: 'Bern' },
+          time: '2026-11-07T09:00',
+          results: 500,
+        })
+      ).status,
+    ).toBe(400);
+  });
 });
 
 describe('sync mailbox', () => {

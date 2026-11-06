@@ -32,7 +32,15 @@ export interface JourneyQuery {
   day: string;
 }
 
-export const LIMITS = { vias: 20, notVias: 20, results: 10, text: 80 } as const;
+/** The trains leaving a stop from a time, with every stop each still calls at (map planner). */
+export interface DeparturesQuery {
+  stop: StopRef;
+  /** Local Swiss time, `YYYY-MM-DDTHH:MM`. */
+  time: string;
+  results: number;
+}
+
+export const LIMITS = { vias: 20, notVias: 20, results: 10, text: 80, departures: 60 } as const;
 
 const REF = /^(ch:1:sloid:\d{1,7}(:\d+){0,2}|\d{7})$/;
 const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -87,6 +95,22 @@ export function parseStopQuery(v: unknown): StopQuery | string {
   if (!Number.isInteger(results) || (results as number) < 1 || (results as number) > LIMITS.results)
     return 'results';
   return { text, results: results as number };
+}
+
+export function parseDeparturesQuery(v: unknown): DeparturesQuery | string {
+  if (!isObj(v)) return 'body';
+  const stop = stopRef(v.stop);
+  if (!stop) return 'stop';
+  if (typeof v.time !== 'string' || !TIME.test(v.time) || Number.isNaN(Date.parse(v.time)))
+    return 'time';
+  const results = v.results ?? 40;
+  if (
+    !Number.isInteger(results) ||
+    (results as number) < 1 ||
+    (results as number) > LIMITS.departures
+  )
+    return 'results';
+  return { stop, time: v.time, results: results as number };
 }
 
 const JOURNEY = /^ch:1:sjyid:[\w:.-]{1,80}$/;
@@ -183,8 +207,22 @@ export function journeyRequestXml(q: JourneyQuery, now: Date, requestor: string)
   return envelope(body, now, requestor);
 }
 
+export function departuresRequestXml(q: DeparturesQuery, now: Date, requestor: string): string {
+  const body =
+    '<OJPStopEventRequest>%TS%' +
+    `<Location>${placeRef(q.stop)}<DepArrTime>${zurichDateTime(q.time)}</DepArrTime></Location>` +
+    '<Params>' +
+    `<NumberOfResults>${q.results}</NumberOfResults>` +
+    '<StopEventType>departure</StopEventType>' +
+    '<IncludePreviousCalls>false</IncludePreviousCalls>' +
+    '<IncludeOnwardCalls>true</IncludeOnwardCalls>' +
+    '<UseRealtimeData>explanatory</UseRealtimeData>' +
+    '</Params></OJPStopEventRequest>';
+  return envelope(body, now, requestor);
+}
+
 /** Stable cache key: the validated query, fields in a fixed order. */
 export const cacheKeyOf = (
-  kind: 'trip' | 'stops' | 'journey',
-  q: TripQuery | StopQuery | JourneyQuery,
+  kind: 'trip' | 'stops' | 'journey' | 'departures',
+  q: TripQuery | StopQuery | JourneyQuery | DeparturesQuery,
 ) => `${kind}:${JSON.stringify(q)}`;
