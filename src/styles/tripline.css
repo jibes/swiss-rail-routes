@@ -946,3 +946,12 @@
   grid-column: 3;
   margin: 2px 0 6px 8px;
 }
+
+/* How full the train is expected to be, for your class (0.39.0): only when seats are few. */
+.trip-line .occ {
+  color: var(--amber);
+}
+.trip-line .occ-3 {
+  color: var(--red);
+  font-weight: 600;
+}

@@ -55,7 +55,7 @@ export function TripLine({
 }: {
   /** Replan from here: the first station is where you are; only "Add after" it. */
   fixedFirst?: boolean;
-  route: Pick<Tour, 'waypoints'>;
+  route: Pick<Tour, 'waypoints'> & Partial<Pick<Tour, 'travelClass'>>;
   rows: LineRow[];
   warnings: Warning[];
   planning: boolean;
@@ -422,6 +422,15 @@ export function TripLine({
                     {seat && (
                       <span className="seat">{t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}</span>
                     )}
+                    {(() => {
+                      // How full, for your class: said only when seats are few (0.39.0).
+                      const o = s.occupancy?.[route.travelClass === 1 ? 0 : 1];
+                      return o && o > 1 ? (
+                        <span className={`occ occ-${o}`}>
+                          {t(o === 3 ? 'occStanding' : 'occFew')}
+                        </span>
+                      ) : null;
+                    })()}
                     {mids.length > vias.length && (
                       <button
                         type="button"

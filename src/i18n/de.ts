@@ -253,6 +253,8 @@ export const de = {
   keepMapDone: 'Karte offline behalten ({n} Teile).',
   keepMapPartly: 'Karte teilweise behalten: {n} von {total} Teilen (der Rest ohne Verbindung).',
   keepMapFailed: 'Die Karte konnte nicht behalten werden: keine Verbindung zum Kartendienst.',
+  occFew: 'Wenige Sitzplätze frei',
+  occStanding: 'Nur Stehplätze',
   wxSunny: 'Sonnig',
   wxSomeSun: 'Teils sonnig',
   wxCloudy: 'Bewölkt',

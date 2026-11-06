@@ -150,7 +150,16 @@ export interface Section {
    * leaves to where it arrives (stop keys, in order), passed by road though it calls at none
    * between (the Albula's express bus Thusis–Preda). Set by the planner. */
   byRoad?: string[];
+  /**
+   * How full the train is expected to be while you are on it (0.39.0), the fullest from where you
+   * board to the last stop before you get off: 1 seats free, 2 few seats, 3 standing room only;
+   * `[first class, second class]`. From OJP's `ExpectedDepartureOccupancy` (SBB and SOB trains
+   * in the recorded answers; none for the RhB or the Bernese Oberland's).
+   */
+  occupancy?: [Occupancy | undefined, Occupancy | undefined];
 }
+
+export type Occupancy = 1 | 2 | 3;
 
 export interface Connection {
   legIndex: number;

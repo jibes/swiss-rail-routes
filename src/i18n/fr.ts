@@ -252,6 +252,8 @@ export const fr = {
   keepMapDone: 'Carte gardée hors ligne ({n} parties).',
   keepMapPartly: 'Carte gardée en partie : {n} sur {total} (le reste sans connexion).',
   keepMapFailed: 'La carte n’a pas pu être gardée : pas de connexion au service de cartes.',
+  occFew: 'Peu de places assises',
+  occStanding: 'Places debout uniquement',
   wxSunny: 'Ensoleillé',
   wxSomeSun: 'Partiellement ensoleillé',
   wxCloudy: 'Nuageux',

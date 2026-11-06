@@ -243,6 +243,8 @@ export const en = {
   keepMapDone: 'Map kept for offline ({n} parts).',
   keepMapPartly: 'Map kept in part: {n} of {total} parts (no connection for the rest).',
   keepMapFailed: 'The map could not be kept: no connection to the map service.',
+  occFew: 'Few seats free',
+  occStanding: 'Standing room only',
   wxSunny: 'Sunny',
   wxSomeSun: 'Some sun',
   wxCloudy: 'Cloudy',

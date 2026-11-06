@@ -124,8 +124,19 @@ function rideOf(s: Section, ga: GaData, sources: Map<string, Source> = new Map()
     // of any ticket; no amounts (round 3, M1: GA holders still pay these).
     ...(s.reservationRequired || isSupplement(s, ga) ? { reservationRequired: true } : {}),
     ...(s.supplement ? { supplement: true } : {}),
+    // How full it is expected to be while you are on it (SBB and SOB trains; none said, unknown).
+    ...(s.occupancy
+      ? {
+          occupancy: {
+            ...(s.occupancy[0] ? { first: OCC[s.occupancy[0]] } : {}),
+            ...(s.occupancy[1] ? { second: OCC[s.occupancy[1]] } : {}),
+          },
+        }
+      : {}),
   };
 }
+
+const OCC = { 1: 'low', 2: 'medium', 3: 'high' } as const;
 
 function warningOf(w: Warning, chain: PlannedChain, lang: Lang, templates: RouteTemplate[]) {
   const s =

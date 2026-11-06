@@ -4,7 +4,7 @@
 //   carry attribute A__PR;
 // - times are UTC (`…Z`); stop point refs embed the stop's SLOID.
 import { XMLParser } from 'fast-xml-parser';
-import type { Connection, Mode, NoticeInfo, PlatformCall, Section } from '../model';
+import type { Connection, Mode, NoticeInfo, Occupancy, PlatformCall, Section } from '../model';
 import { gradeNotice } from '../noticeGrade';
 
 const ARRAYS = new Set([
@@ -98,6 +98,31 @@ function platforms(planned?: string, expected?: string) {
   };
 }
 
+/** SIRI's occupancy levels in three steps: seats free, few seats, standing room or worse. */
+const LEVEL: Record<string, Occupancy> = {
+  empty: 1,
+  manySeatsAvailable: 1,
+  fewSeatsAvailable: 2,
+  standingRoomOnly: 3,
+  crushedStandingRoomOnly: 3,
+  full: 3,
+  notAcceptingPassengers: 3,
+};
+
+/** The fullest each class is expected to be leaving the calls you are on board from. */
+function occupancyOf(calls: X[]): Section['occupancy'] {
+  const out: [Occupancy | undefined, Occupancy | undefined] = [undefined, undefined];
+  for (const c of calls)
+    for (const o of arr(c?.ExpectedDepartureOccupancy)) {
+      const level = LEVEL[str(o?.OccupancyLevel)?.trim() ?? ''];
+      // Trimmed: OJP writes `secondClass ` with a space (recorded, Nov 2026).
+      const cls = str(o?.FareClass)?.trim();
+      const i = cls === 'firstClass' ? 0 : cls === 'secondClass' ? 1 : undefined;
+      if (level && i !== undefined && (out[i] ?? 0) < level) out[i] = level;
+    }
+  return out[0] || out[1] ? out : undefined;
+}
+
 function geometry(track: X): [number, number][] | undefined {
   const pts = arr(track?.TrackSection).flatMap((s) =>
     arr(obj(s?.LinkProjection)?.Position).map(
@@ -171,6 +196,8 @@ function timedSection(
   const codes = arr(service?.Attribute).map((a) => str(a?.Code));
   const day = str(service?.OperatingDayRef);
   const journey = str(service?.JourneyRef);
+  const served = arr(leg?.LegIntermediate).filter((v) => str(v?.NotServicedStop) !== 'true');
+  const occupancy = occupancyOf([obj(leg?.LegBoard), ...served]);
   return {
     mode: modeOf(service),
     category: text(cat?.ShortName),
@@ -179,9 +206,7 @@ function timedSection(
     number: str(service?.TrainNumber),
     from: call(obj(leg?.LegBoard), 'board'),
     to: call(obj(leg?.LegAlight), 'alight'),
-    intermediate: arr(leg?.LegIntermediate)
-      .filter((v) => str(v?.NotServicedStop) !== 'true')
-      .map((v) => call(v, 'mid')),
+    intermediate: served.map((v) => call(v, 'mid')),
     geometry: geometry(obj(leg?.LegTrack)),
     reservationRequired: codes.includes(RESERVATION_ONLY) || undefined,
     situationIds: situationIds.length ? situationIds : undefined,
@@ -193,6 +218,7 @@ function timedSection(
       : undefined,
     journey: day && journey ? `${day}:${journey}` : undefined,
     destination: text(service?.DestinationText),
+    ...(occupancy ? { occupancy } : {}),
   };
 }
 

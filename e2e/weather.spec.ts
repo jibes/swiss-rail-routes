@@ -60,4 +60,17 @@ test('a trip more than a week ahead: no stripe, the day the weather comes from',
   const line = page.getByRole('list', { name: 'The trip' });
   await expect(line.locator('.wx-far')).toHaveText(/^Weather from /, { timeout: 15_000 });
   await expect(line.locator('.wx-cell')).toHaveCount(0);
+  // The tap card on the map: one line each (reported: all on one line, 0.38.0). The card is the
+  // map's popup round the line's words; its layout checked on one built as MapLibre builds it.
+  const display = await page.evaluate(() => {
+    const pop = document.createElement('div');
+    pop.className = 'maplibregl-popup wx-pop';
+    pop.innerHTML =
+      '<div class="maplibregl-popup-content"><div role="status"><b>A</b><span>B</span></div></div>';
+    document.body.append(pop);
+    const shown = getComputedStyle(pop.querySelector('[role=status]')!).display;
+    pop.remove();
+    return shown;
+  });
+  expect(display).toBe('grid');
 });

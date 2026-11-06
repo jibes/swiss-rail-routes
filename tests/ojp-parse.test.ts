@@ -102,6 +102,32 @@ describe('parseTrips on recorded OJP answers', () => {
     const after = rides(parseTrips(notServed)[0]!)[0]![0];
     expect(after.intermediate.map((x) => x.name)).not.toContain(skipped.name);
   });
+
+  it('how full a train is expected to be: the fullest you ride it, per class (0.39.0)', () => {
+    const xml = gunzipSync(readFileSync('tests/fixtures/ojp/T1/b865ad45f13a.xml.gz')).toString();
+    const all = parseTrips(xml).flatMap((c) => rides(c).map(([s]) => s));
+    // SBB's trains say it for both classes (second written \`secondClass \`, with a space); the
+    // RhB's say nothing.
+    const ic = all.filter((s) => s.line === 'IC3' && s.occupancy);
+    expect(ic.length).toBeGreaterThan(0);
+    for (const s of ic) expect(s.occupancy).toEqual([1, 1]);
+    expect(all.find((s) => s.line === 'IR35')?.occupancy).toEqual([1, 2]);
+    expect(all.filter((s) => s.line === 'RE13').every((s) => !s.occupancy)).toBe(true);
+    // Standing room only in second class: said for second, first as it was.
+    const crowded = parseTrips(
+      xml.replaceAll(
+        /(secondClass\s*<\/siri:FareClass><siri:OccupancyLevel>)\w+/g,
+        '$1standingRoomOnly',
+      ),
+    )
+      .flatMap((c) => rides(c).map(([s]) => s))
+      .filter((s) => s.line === 'IC3' && s.occupancy);
+    expect(crowded.length).toBe(ic.length);
+    for (const [i, s] of crowded.entries()) {
+      expect(s.occupancy?.[1]).toBe(3);
+      expect(s.occupancy?.[0]).toBe(ic[i]!.occupancy?.[0]);
+    }
+  });
 });
 
 // Reported on the MCP, 5 Nov 2026: a disruption came as its headline only. A situation's
