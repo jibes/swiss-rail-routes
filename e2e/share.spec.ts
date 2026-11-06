@@ -216,9 +216,13 @@ test('pull down from the top reloads the trip; from further down it does not', a
   await expect(said, 'a short pull does nothing').toHaveCount(0);
   expect(asked).toBe(0);
 
+  // Edge to edge on Android: what it says sits below the status bar (as the variable the
+  // styles read before env(), which Playwright cannot set).
+  await page.evaluate(() => document.documentElement.style.setProperty('--inset-top', '40px'));
   await pull(200, 400);
   await expect(page.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
   expect(asked).toBeGreaterThan(0);
+  expect((await page.locator('.pull-said').boundingBox())!.y).toBeGreaterThanOrEqual(40 + 12 - 0.5);
   expect(
     await page.evaluate(() => document.documentElement.classList.contains('pull-reload')),
   ).toBe(true);

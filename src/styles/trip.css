@@ -613,14 +613,15 @@
   outline-offset: 2px;
 }
 
-/* Pull down to reload (PullReload.tsx). */
+/* Pull down to reload (PullReload.tsx). Below Android's status bar and camera, as the app
+   draws edge to edge (the mark and "Up to date" sat behind them, reported 6 Nov 2026). */
 html.pull-reload {
   overscroll-behavior-y: contain;
 }
 
 .pull-mark {
   position: fixed;
-  top: 12px;
+  top: calc(12px + var(--inset-top, env(safe-area-inset-top)));
   left: 0;
   right: 0;
   z-index: 5;
@@ -633,7 +634,7 @@ html.pull-reload {
 
 .pull-said {
   position: fixed;
-  top: 12px;
+  top: calc(12px + var(--inset-top, env(safe-area-inset-top)));
   left: 50%;
   z-index: 5;
   max-width: calc(100% - 32px);
