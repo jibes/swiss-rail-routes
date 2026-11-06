@@ -260,3 +260,11 @@ export function fromMetNo(answers: unknown[], q: WeatherQuery): unknown[] {
     };
   });
 }
+
+/** The stripe's colour for a sky: gold in sun, grey under cloud, dark at night. */
+export function skyColour(s: Sky | undefined): string {
+  if (!s) return 'transparent';
+  if (!s.day) return '#3a4660';
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * Math.min(1, Math.max(0, s.cloud)));
+  return `rgb(${mix(0xf2, 0xb9)}, ${mix(0xb7, 0xbc)}, ${mix(0x05, 0xc1)})`;
+}

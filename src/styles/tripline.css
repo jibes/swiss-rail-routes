@@ -847,3 +847,102 @@
     opacity: 0.5;
   }
 }
+
+/* Weather along the line (0.37.0, WeatherCell.tsx): a stripe at the right, its own column. */
+.trip-line.wx > li {
+  padding-right: 28px;
+}
+
+.wx-cell {
+  position: absolute;
+  z-index: 1;
+  right: 6px;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.trip-line.wx > li:nth-child(1 of .station, .ride) .wx-cell {
+  border-radius: 8px 8px 0 0;
+}
+
+.trip-line.wx > li:nth-last-child(1 of .station, .ride) .wx-cell {
+  border-radius: 0 0 8px 8px;
+}
+
+.trip-line.live > li.passed .wx-cell {
+  opacity: 0.4;
+}
+
+/* The chance of rain or snow: as wide as it is likely, its top at the name's. */
+.wx-bar {
+  position: absolute;
+  right: 0;
+  top: 9px;
+  height: 18px;
+  border-radius: 2px 0 0 2px;
+  background: rgb(40 105 215 / 0.9);
+}
+
+.wx-bar.night {
+  background: #bcd6ff;
+  box-shadow: inset 0 0 0 1.5px #fff;
+}
+
+/* A stop inside a ride: its bar on the stripe, beside its name (the li's right is 22 px short). */
+.wx-mid {
+  position: absolute;
+  z-index: 2;
+  right: -22px;
+  top: 3px;
+  width: 16px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.wx-mid .wx-bar {
+  top: 0;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.wx-tip {
+  position: absolute;
+  z-index: 6;
+  right: 22px;
+  top: 0;
+  width: 200px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+.wx-tip span {
+  opacity: 0.8;
+}
+
+.trip-line > li.wx-far {
+  display: block;
+  margin: 0 0 8px 80px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .wx-note {
+  grid-column: 3;
+  margin: 2px 0 6px 8px;
+}

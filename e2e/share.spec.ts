@@ -36,7 +36,10 @@ test('a shared trip opens as planned, without replanning, and saves to Trips', a
   const hash = await encodeTrip(newTrip('theirs', tour, r.legs!, r.recommended!, new Date(0)));
 
   let asked = 0;
-  page.on('request', (q) => q.url().startsWith('https://ojp.invalid/') && asked++);
+  page.on(
+    'request',
+    (q) => q.url().startsWith('https://ojp.invalid/') && !q.url().endsWith('/weather') && asked++,
+  );
   await page.clock.install({ time: BEFORE });
   await page.goto(`./${hash}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shared T5');

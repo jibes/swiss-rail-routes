@@ -43,6 +43,38 @@ export function recordedEu(body: string): string | null {
   return gunzipSync(readFileSync(f)).toString('utf8');
 }
 
+/**
+ * A forecast for the weather's question, made up and the same every time (no recording per
+ * trip): sunny mornings clouding over, the third of every three places wet from 12:00 UTC.
+ */
+function madeUpWeather(url: string): Response {
+  const q = new URL(url).searchParams;
+  const lats = q.get('latitude')!.split(',');
+  const days: string[] = [];
+  for (
+    let d = Date.parse(`${q.get('start_date')}T00:00:00Z`);
+    d <= Date.parse(`${q.get('end_date')}T00:00:00Z`);
+    d += 86_400_000
+  )
+    days.push(new Date(d).toISOString().slice(0, 10));
+  const time = days.flatMap((d) =>
+    Array.from({ length: 24 }, (_, h) => `${d}T${String(h).padStart(2, '0')}:00`),
+  );
+  const hour = (t: string) => Number(t.slice(11, 13));
+  const one = (i: number) => ({
+    hourly: {
+      time,
+      cloud_cover: time.map((t) => Math.min(100, Math.max(0, (hour(t) - 7) * 12))),
+      precipitation_probability: time.map((t) =>
+        i % 3 === 2 && hour(t) >= 12 && hour(t) < 16 ? 70 : 5,
+      ),
+      is_day: time.map((t) => (hour(t) >= 6 && hour(t) < 16 ? 1 : 0)),
+    },
+  });
+  const body = lats.length === 1 ? one(0) : lats.map((_, i) => one(i));
+  return new Response(JSON.stringify(body), { status: 200 });
+}
+
 /** The sync mailbox, shared by every page of a run (ids are random per key). */
 const boxes = new Map<string, SyncRecord>();
 
@@ -93,12 +125,14 @@ export async function answerWorker(page: Page, problems: string[] = []) {
         fareKey: 'e2e',
         fareUpstream: 'https://fare.example/',
         transitous: 'https://transitous.example',
+        weatherUpstream: 'https://weather.example',
         allowedOrigins: [
           new URL(page.url() || 'http://localhost:4173').origin,
           'http://localhost:4173',
         ],
         // OJP: the recorded answer to this very query, else a failure the app must show.
         fetch: (async (url: string) => {
+          if (String(url).startsWith('https://weather.example/')) return madeUpWeather(String(url));
           const answer = String(url).startsWith('https://fare.example/') ? fare?.fare : recorded;
           return answer
             ? new Response(answer, { status: 200 })

@@ -22,6 +22,8 @@ import { StationPanel, type LineActions } from './StationPanel';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
+import { useWeather } from './useWeather';
+import { WeatherCell } from './WeatherCell';
 
 export type { LineActions } from './StationPanel';
 
@@ -326,13 +328,33 @@ export function TripLine({
     );
   };
 
+  // Weather along the line (0.37.0): a cell a row at the right, once the times are known.
+  const weather = useWeather(rows, !planning && !travelled);
+  const wx = weather && 'rows' in weather ? weather : null;
+  // A row without weather of its own (a walk, a stop not placed) takes its neighbour's sky, so
+  // the stripe runs on unbroken; its rain stays its own (none).
+  const skyAt = (i: number) => (wx ? (wx.rows[i] ?? wx.rows[i - 1] ?? wx.rows[i + 1]) : undefined);
+  const cell = (i: number, where: string, when?: string) =>
+    wx && (
+      <WeatherCell
+        w={wx.rows[i] ?? (skyAt(i) && { ...skyAt(i)!, rain: 0 })}
+        next={skyAt(i + 1)}
+        where={where}
+        when={when}
+        source={wx.source}
+        at={wx.at}
+      />
+    );
   return (
     <ol
-      className={`trip-line ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
+      className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
       ref={box}
       aria-label={travelled ? t('theWayHere') : t('theLine')}
     >
       {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
+      {weather && 'far' in weather && (
+        <li className="wx-far">{t('wxFrom', { date: dayMonth(weather.far, lang) })}</li>
+      )}
       {rows.map((r, i) => {
         if (r.type === 'ride') {
           const first = !rows.slice(0, i).some((x) => x.type === 'ride' && x.leg === r.leg);
@@ -417,6 +439,20 @@ export function TripLine({
                     live={live}
                     riding={riding}
                     all={shown}
+                    wx={
+                      wx
+                        ? (call) => (
+                            <WeatherCell
+                              mid
+                              w={wx.rows[i]?.mids?.[call]}
+                              where={s.intermediate[call]!.name}
+                              when={s.intermediate[call]!.dep ?? s.intermediate[call]!.arr}
+                              source={wx.source}
+                              at={wx.at}
+                            />
+                          )
+                        : undefined
+                    }
                     via={(call, when, passed) => {
                       const v = vias.find((x) => x.call === call);
                       return v ? viaRow(rows[v.row] as StationRow, v.row, when, passed) : null;
@@ -484,6 +520,7 @@ export function TripLine({
                   );
                 })}
               </div>
+              {cell(i, s.mode === 'walk' ? s.to.name : `${s.from.name} – ${s.to.name}`, s.from.dep)}
             </li>
           );
         }
@@ -531,6 +568,11 @@ export function TripLine({
               <span className="dot" />
             </span>
             {nameOf(r, i)}
+            {!!r.stay && wx && (wx.rows[i]?.rain ?? 0) >= 0.5 && (
+              <p className="warn info wx-note">
+                {t('wxRainStay', { n: Math.round(wx.rows[i]!.rain * 100) })}
+              </p>
+            )}
             {!planning && !r.missed && <ChangePlatform rows={rows} i={i} live={live} />}
             {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
             {whyLocked(r, i)}
@@ -547,6 +589,7 @@ export function TripLine({
               />
             )}
             {editing(r)}
+            {cell(i, r.name, r.arr ?? r.dep)}
           </li>
         );
       })}

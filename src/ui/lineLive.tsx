@@ -119,12 +119,15 @@ export function Mids({
   all,
   via,
   pin,
+  wx,
 }: {
   r: RideRow;
   live: LiveCtx | undefined;
   riding: boolean;
   all: boolean;
   via: (call: number, when: ReactNode, passed: boolean) => ReactNode;
+  /** Its weather beside each stop (a bar, 0.37.0). */
+  wx?: (call: number) => ReactNode;
   /** Editable: a stop's name opens what can be done with it (made yours). */
   pin?: {
     open: (call: number) => boolean;
@@ -166,6 +169,7 @@ export function Mids({
             ) : (
               <span>{m.name}</span>
             )}
+            {wx?.(k)}
             {pin?.open(k) && pin.menu(k)}
           </li>
         );
