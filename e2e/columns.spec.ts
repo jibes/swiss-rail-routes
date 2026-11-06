@@ -23,9 +23,17 @@ test.describe('three columns', () => {
     await expect(map.getByRole('region', { name: 'Map' })).toBeVisible();
     // No way back from a map beside its trip.
     await expect(map.getByRole('button', { name: 'Back', exact: true })).toBeHidden();
-    // Side by side, not on top of each other.
+    // Side by side, not on top of each other; with a trip open the list folds to its edge, so
+    // the map has the room, and slides in over the trip while the pointer is on it.
     const [l, m, r] = await Promise.all([list, main, map].map((c) => c.boundingBox()));
+    expect(l!.width).toBeLessThanOrEqual(21);
     expect(l!.x + l!.width).toBeLessThanOrEqual(m!.x + 1);
+    const card = list.locator('a.card').first();
+    await expect(card).not.toBeInViewport();
+    await list.hover({ position: { x: 10, y: 400 } });
+    await expect(card).toBeInViewport();
+    await page.mouse.move(900, 400);
+    await expect(card).not.toBeInViewport();
     expect(m!.x + m!.width).toBeLessThanOrEqual(r!.x + 1);
     expect(r!.width).toBeGreaterThan(400);
     // The add sheet opens over the trip's column, not over the list or the map.
@@ -51,9 +59,11 @@ test.describe('three columns', () => {
     await main.locator('li.station[data-stop]').first().hover();
     // The trip open is marked in the list; the arrow keys go through it.
     await expect(list.locator('a.card[aria-current="page"]')).toHaveCount(1);
+    // By keyboard too: a card focused slides it in.
     await list.locator('a.card').first().focus();
     await page.keyboard.press('ArrowDown');
     await expect(list.locator('a.card').first()).toBeFocused();
+    await expect(card).toBeInViewport();
     await page.screenshot({ path: 'test-results/columns-3.png' });
   });
 });

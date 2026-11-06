@@ -269,6 +269,55 @@ describe('fares (0.30.0)', () => {
   });
 });
 
+describe('Europe through Transitous (0.31.0)', () => {
+  const eu = (answer: unknown) => {
+    const s = setup({ transitous: 'https://tr.example' });
+    s.upstream.mockImplementation(async () => new Response(JSON.stringify(answer)));
+    return s;
+  };
+
+  it('stations abroad: only railway stations, at most eight, from Transitous by the Worker', async () => {
+    const { call, upstream } = eu([
+      {
+        id: 'it:1',
+        name: 'Milano Centrale',
+        lat: 45.48,
+        lon: 9.2,
+        country: 'IT',
+        modes: ['LONG_DISTANCE'],
+      },
+      { id: 'it:2', name: 'Centrale FS', lat: 45.48, lon: 9.2, modes: ['SUBWAY', 'BUS'] },
+    ]);
+    const res = await call('/eu/stops', { body: JSON.stringify({ text: 'Milano' }) });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { id: 'it:1', name: 'Milano Centrale', lat: 45.48, lon: 9.2, country: 'IT' },
+    ]);
+    const [url, init] = upstream.mock.calls[0]!;
+    expect(String(url)).toBe('https://tr.example/api/v1/geocode?text=Milano&type=STOP');
+    expect((init!.headers as Record<string, string>)['User-Agent']).toContain('Viadukt');
+  });
+
+  it('a trip abroad: trains only, a few, from points; nonsense refused', async () => {
+    const { call, upstream } = eu({ itineraries: [] });
+    const q = {
+      from: { lat: 47.378, lon: 8.54 },
+      to: { lat: 45.486, lon: 9.204 },
+      time: '2026-11-07T07:00:00Z',
+      results: 3,
+    };
+    expect((await call('/eu/plan', { body: JSON.stringify(q) })).status).toBe(200);
+    const url = new URL(String(upstream.mock.calls[0]![0]));
+    expect(url.pathname).toBe('/api/v5/plan');
+    expect(url.searchParams.get('transitModes')).toBe('RAIL');
+    expect(url.searchParams.get('fromPlace')).toBe('47.378,8.54');
+    const bad = (v: unknown) => call('/eu/plan', { body: JSON.stringify(v) });
+    expect((await bad({ ...q, results: 50 })).status).toBe(400);
+    expect((await bad({ ...q, to: { lat: 0, lon: 0 } })).status).toBe(400);
+    expect((await setup().call('/eu/plan', { body: JSON.stringify(q) })).status).toBe(503);
+  });
+});
+
 describe('sync mailbox', () => {
   const ID = 'a'.repeat(43);
   const sync = (method: string, body?: unknown, id = ID) => {

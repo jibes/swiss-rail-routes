@@ -120,10 +120,14 @@ function Columns({ hash, n }: { hash: string; n: 2 | 3 }) {
     return () => document.documentElement.classList.remove('columns');
   }, []);
   return (
-    <div className={`cols cols-${n}`}>
+    <div className={`cols cols-${n}${n === 3 && id ? ' trip-open' : ''}`}>
       {n === 3 && (
         <div
           className="col col-list"
+          // A card or New trip clicked: the list folds away under the pointer, and slides in
+          // again only once the pointer has left and come back.
+          onClick={(e) => (e.currentTarget.dataset.rest = '')}
+          onPointerLeave={(e) => delete e.currentTarget.dataset.rest}
           // Up and down the trips with the arrow keys; Enter opens one.
           onKeyDown={(e) => {
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -135,9 +139,13 @@ function Columns({ hash, n }: { hash: string; n: 2 | 3 }) {
             next.focus();
           }}
         >
-          <div className="col-scroll">
-            <Home />
+          {/* With a trip open the list folds to its edge and slides in on hover or focus. */}
+          <div className="col-slide">
+            <div className="col-scroll">
+              <Home />
+            </div>
           </div>
+          <span className="col-handle" aria-hidden="true" />
         </div>
       )}
       <div

@@ -19,6 +19,13 @@ import {
   parseFareQuery,
   pickTrip,
 } from '../../../src/core/ojp/fareRequest';
+import {
+  euPlanUrl,
+  euStations,
+  euStopsUrl,
+  parseEuPlanQuery,
+  parseEuStopQuery,
+} from '../../../src/core/eu/request';
 import { SYNC_ID } from './sync';
 
 /** Request kinds: how to validate, how to build the OJP XML, how long to cache. */
@@ -37,6 +44,8 @@ export interface Deps {
   /** OJP Fare's own key (one per API) and address; without a key /fare answers 503. */
   fareKey?: string;
   fareUpstream?: string;
+  /** Transitous (Europe, 0.31.0): asked by the Worker alone, trains only. */
+  transitous?: string;
   upstream: string;
   allowedOrigins: string[];
   fetch: typeof fetch;
@@ -120,6 +129,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (!d.apiKey) return reply(503, 'not configured: OJP_API_KEY');
 
   if (path === '/fare') return fare(req, d, reply, h);
+  if (path === '/eu/stops' || path === '/eu/plan') return europe(path, req, d, reply, h);
 
   const kind = path.slice(1) as Kind;
   if (!Object.hasOwn(KINDS, kind)) return reply(404, 'path');
@@ -257,4 +267,57 @@ async function fare(
     status: 200,
     headers: { ...h, 'Content-Type': 'application/xml', 'X-Cache': 'miss' },
   });
+}
+
+/** How Transitous is asked to know who asks (its fair-use rules ask clients to say so). */
+const UA = 'Viadukt (https://github.com/jibes/swiss-rail-routes)';
+
+/**
+ * POST /eu/stops and /eu/plan (0.31.0): stations abroad and trips there, from Transitous, as
+ * typed JSON in and JSON out; cached 10 minutes, counted as OJP's are.
+ */
+async function europe(
+  path: string,
+  req: Request,
+  d: Deps,
+  reply: (status: number, body: string, extra?: Record<string, string>) => Response,
+  h: Record<string, string>,
+): Promise<Response> {
+  if (!d.transitous) return reply(503, 'not configured: TRANSITOUS_URL');
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return reply(400, 'json');
+  }
+  const stops = path === '/eu/stops';
+  const q = stops ? parseEuStopQuery(body) : parseEuPlanQuery(body);
+  if (typeof q === 'string') return reply(400, q);
+  const url = stops ? euStopsUrl(d.transitous, q as never) : euPlanUrl(d.transitous, q as never);
+  const cacheReq = new Request(`https://cache.invalid/${await sha256(url)}`);
+  const json = { ...h, 'Content-Type': 'application/json' };
+  const hit = await d.cache.match(cacheReq);
+  if (hit) return new Response(hit.body, { status: 200, headers: { ...json, 'X-Cache': 'hit' } });
+  if (!(await d.limit(req.headers.get('CF-Connecting-IP') ?? 'unknown')))
+    return reply(429, 'rate', { 'Retry-After': '60' });
+  let up: Response;
+  try {
+    up = await d.fetch(url, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch {
+    return reply(502, 'upstream');
+  }
+  if (!up.ok) return reply(up.status === 429 ? 503 : 502, `upstream ${up.status}`);
+  const text = stops ? JSON.stringify(euStations(await up.json())) : await up.text();
+  d.defer(
+    d.cache.put(
+      cacheReq,
+      new Response(text, {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
+      }),
+    ),
+  );
+  return new Response(text, { status: 200, headers: { ...json, 'X-Cache': 'miss' } });
 }
