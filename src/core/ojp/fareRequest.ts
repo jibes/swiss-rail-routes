@@ -124,7 +124,10 @@ export function fareRequestXml(trip: string, q: FareQuery, now: Date, requestor:
     `<OJPFareRequest>%TS%<TripFareRequest>${trip}</TripFareRequest>` +
     '<Params><FareAuthorityFilter>ch:1:NOVA</FareAuthorityFilter>' +
     `<FareClass>${q.travelClass === 1 ? 'firstClass' : 'secondClass'}</FareClass>` +
-    `<Traveller><Age>30</Age><PassengerCategory>Adult</PassengerCategory>${card}</Traveller>` +
+    // Without a card, no traveller at all: OJP2NOVA answers a traveller without one with a 500.
+    (q.halfFare
+      ? `<Traveller><Age>30</Age><PassengerCategory>Adult</PassengerCategory>${card}</Traveller>`
+      : '') +
     '</Params></OJPFareRequest>';
   return envelope(body, now, requestor);
 }

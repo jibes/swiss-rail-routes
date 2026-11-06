@@ -257,7 +257,8 @@ async function fare(
     );
   }
   const text = await up.text();
-  if (!/<(?:\w+:)?ErrorCondition>/.test(text))
+  // Kept only with a price in it: an empty delivery or an error is asked again next time.
+  if (/<(?:\w+:)?FareProduct>/.test(text) && !/<(?:\w+:)?ErrorCondition>/.test(text))
     d.defer(
       d.cache.put(
         cacheReq,
