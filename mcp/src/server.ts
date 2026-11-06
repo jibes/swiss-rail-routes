@@ -1,12 +1,12 @@
 // Stateless Streamable HTTP: a new server and transport for each request, so nothing about one
-// request is left for the next. The secret is the access control (a bearer token): compared in constant time,
-// and never logged, nor is any path. Logs hold tool names, outcomes and timings only.
-import { createHash, timingSafeEqual } from 'node:crypto';
+// request is left for the next. An API key is the access control (a bearer token, `keys.ts`): its id
+// is logged, never the key, nor any path. Logs hold key ids, tool names, outcomes and timings only.
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import { LANGS } from '../../src/i18n';
+import type { KeyCheck } from './keys';
 import { MAX_STOPS, ToolError } from './route';
 import type { Tools } from './tools';
 import { BusyError, UnavailableError } from './worker';
@@ -281,8 +281,6 @@ function build(tools: Tools, log: (line: object) => void) {
   return server;
 }
 
-const digest = (s: string) => createHash('sha256').update(s).digest();
-
 async function readBody(req: IncomingMessage): Promise<Buffer | null> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -295,13 +293,11 @@ async function readBody(req: IncomingMessage): Promise<Buffer | null> {
 }
 
 export function createHttpServer(o: {
-  secret: string;
+  keys: KeyCheck;
   tools: Tools;
   log?: (line: object) => void;
 }): Server {
   const log = o.log ?? ((line: object) => console.log(JSON.stringify(line)));
-  const want = digest(o.secret);
-  const isSecret = (given: string) => timingSafeEqual(digest(given), want);
 
   return createServer((req, res) => {
     const end = (status: number, headers: Record<string, string> = {}) => {
@@ -315,18 +311,26 @@ export function createHttpServer(o: {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         return void res.end('ok');
       }
-      // The secret as a bearer token on /mcp. In the path (/mcp/<secret>) still works, but
-      // proxies and clients log paths: deprecated.
+      // The key as a bearer token on /mcp. In the path (/mcp/<key>) still works, but proxies
+      // and clients log paths: deprecated. Which form each key uses is logged, so the path form
+      // can go once no key uses it.
+      let key: string | null;
+      let via: 'header' | 'path';
       if (path === '/mcp' || path === '/mcp/') {
         const auth = req.headers.authorization ?? '';
         const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-        if (!token || !isSecret(token)) return end(401, { 'WWW-Authenticate': 'Bearer' });
+        key = token ? o.keys(token) : null;
+        via = 'header';
+        if (!key) return end(401, { 'WWW-Authenticate': 'Bearer' });
       } else {
         const given = path.startsWith('/mcp/') ? decodeSafe(path.slice(5)) : null;
-        if (given === null || !isSecret(given)) return end(404);
+        key = given === null ? null : o.keys(given);
+        via = 'path';
+        if (!key) return end(404);
       }
       // Stateless: no session to resume or end. MCP clients expect this answer to a GET.
       if (req.method !== 'POST') return end(405, { Allow: 'POST' });
+      log({ key, via });
       const body = await readBody(req);
       if (!body) return end(413);
       let parsed: unknown;

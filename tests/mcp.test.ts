@@ -5,6 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildRoute, routeLinkOf, resolveWhen } from '../mcp/src/route';
+import { checkWith } from '../mcp/src/keys';
 import { createHttpServer } from '../mcp/src/server';
 import { createTools, type ToolDeps } from '../mcp/src/tools';
 import {
@@ -643,7 +644,7 @@ describe('over HTTP, with the real MCP client', () => {
   const start = async (over: Partial<ToolDeps> = {}) => {
     const lines: string[] = [];
     const server = createHttpServer({
-      secret: SECRET,
+      keys: checkWith([], SECRET),
       tools: createTools(deps(over)),
       log: (l) => lines.push(JSON.stringify(l)),
     });
@@ -675,6 +676,7 @@ describe('over HTTP, with the real MCP client', () => {
     expect(JSON.parse(text(r)).options.length).toBeGreaterThan(0);
     const logged = lines.join('\n');
     expect(logged).toContain('plan_trip');
+    expect(logged).toContain('{"key":"legacy","via":"path"}');
     for (const secret of [SECRET, 'Interlaken', 'Scheidegg', FIXTURE_DATE])
       expect(logged).not.toContain(secret);
   });
