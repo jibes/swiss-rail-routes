@@ -143,8 +143,19 @@ export interface StopSearch {
  * Ranks: whole name, name start, start of a later word; every query word must start a word of
  * the name. Ties: rail, cable and boat stops before bus-only ones, then shorter names.
  */
-export function createStopSearch(file: StopIndexFile): StopSearch {
+export function createStopSearch(
+  file: StopIndexFile,
+  /** Station name → its names in the other languages ("Genève" → "Genf", "Ginevra"). */
+  exonyms: Record<string, string[]> = {},
+): StopSearch {
   const folded = file.rows.map((r) => fold(r[0]));
+  // Another language's name, typed whole, finds the station first (round 3, 6 Nov 2026:
+  // "Ginevra" found a bus stop in Lugano, "Genf" nothing in particular).
+  const alias = new Map<string, number>();
+  for (const [name, others] of Object.entries(exonyms)) {
+    const i = folded.indexOf(fold(name));
+    if (i >= 0) for (const o of others) alias.set(fold(o), i);
+  }
   const words = folded.map((f) => f.split(' '));
   const byRef = new Map(file.rows.map((r) => [toStop(r).ref, r]));
 
@@ -171,10 +182,12 @@ export function createStopSearch(file: StopIndexFile): StopSearch {
       if (q.length < 2) return [];
       const qWords = q.split(' ');
       const hits: [number, number][] = [];
+      const named = alias.get(q);
+      if (named !== undefined) hits.push([named, -1]);
       for (let i = 0; i < file.rows.length; i++) {
         const f = folded[i]!;
         const ws = words[i]!;
-        if (!qWords.every((qw) => ws.some((w) => w.startsWith(qw)))) continue;
+        if (i === named || !qWords.every((qw) => ws.some((w) => w.startsWith(qw)))) continue;
         const rank = f === q ? 0 : f.startsWith(q) ? 1 : 2;
         const rail = file.rows[i]![4] & RAIL_MASK ? 0 : 1;
         hits.push([i, rank * 1000 + rail * 500 + Math.min(f.length, 499)]);
@@ -211,7 +224,9 @@ export function createStopSearch(file: StopIndexFile): StopSearch {
 export function stopKey(ref: string): string {
   const sloid = /^ch:1:sloid:(\d+)/.exec(ref);
   if (sloid) return `ch:1:sloid:${Number(sloid[1])}`;
-  const didok = /^(\d{7})$/.exec(ref);
+  // A UIC number may carry OJP's generated platform part (`8301003_gen:missingSLOID_pf:31`,
+  // Domodossola: reported not reached, round 3).
+  const didok = /^(\d{7})(?:_|$)/.exec(ref);
   if (didok) {
     const n = didok[1]!;
     // A stop abroad keeps its UIC number, as OJP knows it by that (Chamonix, `8774678`).

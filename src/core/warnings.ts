@@ -351,21 +351,39 @@ const REPLACES_KM = 1.5;
  * Thusis–Preda that calls nowhere between).
  */
 export function lineStretch(s: Section, ctx: Pick<WarningContext, 'templates' | 'stop'>) {
-  if (s.category !== 'EV') return undefined;
+  if (!isReplacementBus(s)) return undefined;
   // By the stop, not its quay ("ch:1:sloid:80179:0:667", Thusis, Bahnhof's bus stand).
   const a = ctx.stop(stopKey(s.from.stopRef));
   const b = ctx.stop(stopKey(s.to.stopRef));
   if (!a || !b) return undefined;
   for (const t of ctx.templates) {
-    const at = (p: LatLon) =>
-      t.chain.findIndex((c) => {
-        const q = ctx.stop(c.ref);
-        return !!q && km(p, q) <= REPLACES_KM;
-      });
-    const i = at(a);
-    const j = at(b);
-    if (i < 0 || j < 0 || i === j) continue;
-    const run = t.chain.slice(Math.min(i, j), Math.max(i, j) + 1).map((c) => stopKey(c.ref));
+    const course = t.chain.map((c) => ctx.stop(c.ref));
+    if (course.some((q) => !q)) continue;
+    const pts = course as LatLon[];
+    // Where along the line's course (through its stations) a point lies, as station index plus
+    // the share of the next stretch: by any of its stations, or beside the course between two
+    // (round 3, 6 Nov 2026: the Mont-Blanc Express's bus Martigny–Les Marécottes, whose end is
+    // no station the line must pass).
+    const along = (p: LatLon): number | undefined => {
+      let best: { km: number; at: number } | undefined;
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const d = toSegment(p, pts[k]!, pts[k + 1]!);
+        if (d.km <= REPLACES_KM && (!best || d.km < best.km)) best = { km: d.km, at: k + d.t };
+      }
+      return best?.at;
+    };
+    const i = along(a);
+    const j = along(b);
+    if (i === undefined || j === undefined || Math.abs(i - j) < 0.05) continue;
+    const lo = Math.min(i, j);
+    const hi = Math.max(i, j);
+    // The line's stations the bus passes by road: those between its ends, and an end's own.
+    const near = (k: number) => Math.abs(k - lo) < 0.05 || Math.abs(k - hi) < 0.05;
+    const run = t.chain
+      .map((c, k) => ({ key: stopKey(c.ref), k }))
+      .filter(({ k }) => (k > lo && k < hi) || near(k))
+      .map(({ key }) => key);
+    if (!run.length) continue;
     return { template: t, stations: i < j ? run : run.reverse() };
   }
   return undefined;
@@ -427,9 +445,33 @@ const hhmm = (t: number) =>
  * own replacement bus only a warning (the way round is the plan), and an error for plans saved
  * before notices were graded.
  */
+/** Warnings that carry the operator's own message, opened on a tap. */
+export const NOTICE_TYPES: ReadonlySet<Warning['type']> = new Set([
+  'disruption',
+  'disruption-away',
+  'notice',
+  'reservation-advised',
+]);
+
+/** Words of a reservation advice, in the four languages ("Reservierung … empfohlen"). */
+const RESERVE = /reserv|prenota/i;
+
+/** Whether the notice (or, not known which, any of the ride's) advises a reservation. */
+function isReservationAdvice(s: Section, n: number | undefined): boolean {
+  const texts = n === undefined ? (s.notices ?? []) : [s.notices?.[n] ?? ''];
+  return texts.some((t) => RESERVE.test(t));
+}
+
+/**
+ * A replacement bus: category `EV`, or a bus whose line is named so (`EV2`, category `B`: the
+ * Mont-Blanc Express's Martigny–Les Marécottes, round 3, 6 Nov 2026).
+ */
+export const isReplacementBus = (s: Pick<Section, 'category' | 'line' | 'mode'>) =>
+  s.category === 'EV' || (s.mode === 'bus' && /^EV\s?\d/.test(s.line ?? ''));
+
 function gradeHere(s: Section, n: number | undefined): Warning['severity'] {
   const g = (n === undefined ? undefined : s.noticeInfo?.[n]?.grade) ?? 'error';
-  return g === 'error' && s.category === 'EV' ? 'warn' : g;
+  return g === 'error' && isReplacementBus(s) ? 'warn' : g;
 }
 
 export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
@@ -439,35 +481,53 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
     if (s.mode === 'walk') return;
     const where = { from: s.from.name, to: s.to.name };
     const here = s.situationIds?.length ? stretchHere(s, ctx) : undefined;
-    if (here !== undefined)
+    if (here !== undefined) {
+      const severity = here ? gradeHere(s, here.n) : 'info';
+      // A notice its words grade as information is no disruption (round 3, 6 Nov 2026: the
+      // Centovalli's reservation advice was said "Disruption Locarno FART–Domodossola").
+      const advice = here && severity === 'info' && isReservationAdvice(s, here.n);
+      const info = severity === 'info';
       w.push(
-        here
+        advice
           ? {
-              // Named by the stretch the notice gives, else by the ride (reported 5 Nov 2026:
-              // "ab Erstfeld" was said as the whole Zürich HB–Bellinzona).
               ...base,
               sectionIndex: i,
-              type: 'disruption',
-              severity: gradeHere(s, here.n),
-              ...(here.from && here.to
-                ? { key: 'wDisruption', params: { from: here.from, to: here.to } }
-                : here.from
-                  ? { key: 'wDisruptionFrom', params: { at: here.from } }
-                  : here.to
-                    ? { key: 'wDisruptionUntil', params: { at: here.to } }
-                    : { key: 'wDisruption', params: where }),
-            }
-          : {
-              // The train's own notice, about a stretch of its route you do not ride (its
-              // Lausanne–Genève works on your Bern–Zürich): said, not counted against the plan.
-              ...base,
-              sectionIndex: i,
-              type: 'disruption-away',
+              type: 'reservation-advised',
               severity: 'info',
-              key: 'wDisruptionAway',
+              key: 'wReservationAdvised',
               params: where,
-            },
+            }
+          : here
+            ? {
+                // Named by the stretch the notice gives, else by the ride (reported 5 Nov 2026:
+                // "ab Erstfeld" was said as the whole Zürich HB–Bellinzona).
+                ...base,
+                sectionIndex: i,
+                type: info ? 'notice' : 'disruption',
+                severity,
+                ...(here.from && here.to
+                  ? {
+                      key: info ? 'wNotice' : 'wDisruption',
+                      params: { from: here.from, to: here.to },
+                    }
+                  : here.from
+                    ? { key: info ? 'wNoticeFrom' : 'wDisruptionFrom', params: { at: here.from } }
+                    : here.to
+                      ? { key: info ? 'wNoticeUntil' : 'wDisruptionUntil', params: { at: here.to } }
+                      : { key: info ? 'wNotice' : 'wDisruption', params: where }),
+              }
+            : {
+                // The train's own notice, about a stretch of its route you do not ride (its
+                // Lausanne–Genève works on your Bern–Zürich): said, not counted against the plan.
+                ...base,
+                sectionIndex: i,
+                type: 'disruption-away',
+                severity: 'info',
+                key: 'wDisruptionAway',
+                params: where,
+              },
       );
+    }
     const replaced = lineReplaced(s, ctx);
     if (replaced)
       w.push({
@@ -487,10 +547,12 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
         key: 'wReservation',
         params: where,
       });
-    // Shown to everyone, whatever ticket (0.5.1): a fact about the stretch, in neutral blue;
-    // those without a GA or day pass can pass over it. (A day pass is valid where the GA is.)
+    // For a GA or a day pass (valid where the GA is), the app's ticket since 0.5.1: a fact about
+    // the stretch, in neutral blue. Without one (Halbtax, none: only the MCP asks so) there is no
+    // cover to speak of (round 3, 6 Nov 2026: `ticket: none` was told "not covered by GA").
     // Named by the stretch itself: a ride Les Marécottes → Vallorcine is covered up to the border.
-    const ga = gaStretchOf(s, ctx.ga);
+    const pass = ctx.ticket === 'GA' || ctx.ticket === 'Tageskarte';
+    const ga = pass ? gaStretchOf(s, ctx.ga) : undefined;
     if (ga)
       w.push({
         ...base,
@@ -503,7 +565,7 @@ export function warningsFor(c: Connection, ctx: WarningContext): Warning[] {
     // Unknown is never covered (retest round 3: the Eiger Express and the Jungfraubahn from
     // Eigergletscher said nothing): the fare data names the summit lines SBB sells, so a cable
     // car or cog railway it does not name may well not be the GA's. Said, not counted.
-    else if (gaUnknown(s, ctx.ga))
+    else if (pass && gaUnknown(s, ctx.ga))
       w.push({
         ...base,
         sectionIndex: i,

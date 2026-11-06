@@ -2,6 +2,7 @@
 import { placeByName } from '../src/core/stops';
 import { describe, expect, it } from 'vitest';
 import { calls, visited } from '../src/core/planner/connection';
+import { plannedRows } from '../src/core/rows';
 import { plan, type PlannedChain, type PlanResult } from '../src/core/planner/plan';
 import { addWaypoint, insertTemplate, newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
@@ -163,6 +164,10 @@ suite('acceptance tours', { timeout }, () => {
       expect(seq).toContain(ref('Göschenen'));
       expect(seq).toContain(ref('Airolo'));
     }
+    // Asked from 08:00: the 08:05, not the 10:05 for a shorter ride (round 3, R3-3: waiting
+    // after the time asked for costs as travel does).
+    if (onFixtureDate)
+      expect(Date.parse(r.recommended!.dep)).toBe(Date.parse(zurichDateTime(`${DATE}T08:05`)));
   });
 
   // A station struck through (Bern, which the e2e line marks as missed): the stations to try in
@@ -305,6 +310,28 @@ suite('acceptance tours', { timeout }, () => {
       const chain = r.recommended!;
       const at = new Set(chain.connections.flatMap((c) => [...visited(c)]));
       for (const m of t.mustPass) expect(at, `${line}: ${m}`).toContain(m);
+      // Every station of the line is reached, its end included: Domodossola's arrival comes as
+      // `8301003_gen:missingSLOID_pf:31` and was said not reached (round 3, R3-4).
+      expect(
+        plannedRows(route, chain.connections).filter((x) => x.type === 'station' && x.missed),
+      ).toEqual([]);
+      // From 09:00 the 09:29, not the 13:29 a minute shorter (round 3, R3-2).
+      if (line === 'nyon-la-cure' && onFixtureDate)
+        expect(Date.parse(chain.dep)).toBe(Date.parse(zurichDateTime(`${DATE}T09:29`)));
+      // The Centovalli's reservation advice is said as such, not as a disruption (round 3, R3-5).
+      if (line === 'centovalli' && onFixtureDate) {
+        const types = chain.warnings.map((w) => w.type);
+        expect(types).toContain('reservation-advised');
+        expect(types).not.toContain('disruption');
+      }
+      // The bus Martigny–Les Marécottes stands in for the line's first stretch, and the notice
+      // "irregular service Martigny–Vallorcine" is on the train inside it (round 3, R3-6).
+      if (line === 'mont-blanc-express' && onFixtureDate) {
+        const types = chain.warnings.map((w) => w.type);
+        expect(types).toContain('replacement-bus');
+        expect(types).toContain('disruption');
+        expect(types).not.toContain('disruption-away');
+      }
       // Past the border the GA ends: said for Vallorcine–Chamonix.
       if (line === 'mont-blanc-express')
         expect(

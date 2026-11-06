@@ -155,3 +155,37 @@ describe('editing the time to leave by', () => {
     expect(setEntryStay(set, 1, 45).waypoints[1]!.leaveBy).toBe('17:30');
   });
 });
+
+// Round 3, 6 Nov 2026 (R3-2/R3-3): waiting after the time asked for cost nothing, so a ride a
+// minute shorter four hours later was recommended. Now the time from the asked one counts.
+describe('waiting counts as travel', () => {
+  const zl = (dep: string, arr: string) =>
+    conn(
+      ride('IR 70', [
+        ['Zürich HB', dep],
+        ['Luzern', arr],
+      ]),
+    );
+  const route = (anchor: Tour['anchor']): Tour => ({
+    ...newTour('w', DATE, st('Zürich HB')),
+    waypoints: [
+      { ...newTour('w', DATE, st('Zürich HB')).waypoints[0]! },
+      { stopRef: ref('Luzern'), name: 'Luzern', kind: 'end', dwellMin: 0 },
+    ],
+    anchor,
+  });
+
+  it('depart at 09:00: the 09:05, not the 13:05 a minute shorter', async () => {
+    const early = zl('09:05', '09:56');
+    const late = zl('13:05', '13:55');
+    const r = await plan(route({ departAt: '09:00' }), deps([early, late]).deps);
+    expect(r.recommended!.dep).toBe(early.dep);
+  });
+
+  it('arrive by 18:00: the one arriving 17:56, not the 17:25 a minute shorter', async () => {
+    const early = zl('16:35', '17:25');
+    const late = zl('17:05', '17:56');
+    const r = await plan(route({ arriveBy: '18:00' }), deps([early, late]).deps);
+    expect(r.recommended!.dep).toBe(late.dep);
+  });
+});

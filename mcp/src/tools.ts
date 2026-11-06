@@ -1,7 +1,7 @@
 // The five tools: the app's planner and data, answered as JSON. Read-only: nothing about a
 // request outlives the in-memory cache of its answer.
 import { searchAttractions, type AttractionData } from '../../src/core/attractions';
-import { localParams, type GaData, type RouteTemplate } from '../../src/core/data';
+import { localParams, templateName, type GaData, type RouteTemplate } from '../../src/core/data';
 import attractionData from '../../src/data/attractions.json';
 import { encodeTripLink } from '../../src/core/export/tripLink';
 import type { Reservations } from '../../src/core/planner/plan';
@@ -19,7 +19,7 @@ import {
   type StopSearch,
 } from '../../src/core/stops';
 import { newTrip, zurichTime } from '../../src/core/trip';
-import type { Warning } from '../../src/core/warnings';
+import { isSupplement, NOTICE_TYPES, type Warning } from '../../src/core/warnings';
 import { translate, type Lang } from '../../src/i18n';
 import { buildRoute, routeLinkOf, ToolError, type RouteInput } from './route';
 import { BusyError, type Timetable } from './worker';
@@ -73,7 +73,7 @@ const local = (iso?: string) => (iso ? zurichLocal(Date.parse(iso)) : undefined)
 const minutes = (from: string, to: string) =>
   Math.round((Date.parse(to) - Date.parse(from)) / 60_000);
 
-function rideOf(s: Section) {
+function rideOf(s: Section, ga: GaData) {
   return {
     type: 'ride' as const,
     line: s.line ?? s.category,
@@ -100,7 +100,10 @@ function rideOf(s: Section) {
       ...(s.to.platformEst ? { platformExpected: s.to.platformEst } : {}),
     },
     stops: s.intermediate.map((c) => ({ name: c.name, arr: local(c.arr), dep: local(c.dep) })),
-    ...(s.reservationRequired ? { reservationRequired: true } : {}),
+    // A reservation-only train (A__PR, or by name: the Bernina Express), and a supplement on top
+    // of any ticket; no amounts (round 3, M1: GA holders still pay these).
+    ...(s.reservationRequired || isSupplement(s, ga) ? { reservationRequired: true } : {}),
+    ...(s.supplement ? { supplement: true } : {}),
   };
 }
 
@@ -118,7 +121,7 @@ function warningOf(w: Warning, chain: PlannedChain, lang: Lang, templates: Route
     severity: w.severity,
     text: note ?? translate(lang, w.key, localParams(w.params, lang, templates)),
     ...(s ? { on: `${s.line ?? s.category ?? ''} ${s.from.name}–${s.to.name}`.trim() } : {}),
-    ...((w.type === 'disruption' || w.type === 'disruption-away') && s?.notices?.length
+    ...(NOTICE_TYPES.has(w.type) && s?.notices?.length
       ? { operatorText: s.notices, ...noticeMore(s) }
       : {}),
   };
@@ -243,7 +246,7 @@ export function createTools(deps: ToolDeps) {
           ? s.walkMin && s.walkMin >= 1
             ? [{ type: 'walk' as const, minutes: s.walkMin, from: s.from.name, to: s.to.name }]
             : []
-          : [rideOf(s)],
+          : [rideOf(s, ga)],
       );
       const stay = i < chain.connections.length - 1 ? legs[i]?.to.dwellMin : 0;
       return stay ? [...own, { type: 'stay' as const, at: legs[i]!.to.name, minutes: stay }] : own;
@@ -315,19 +318,29 @@ export function createTools(deps: ToolDeps) {
       const q = query ? fold(query) : '';
       const reservationOnly = (t: RouteTemplate) =>
         ga.supplementTrains.names.some((n) => fold(n).includes(fold(t.name.split(/[ -]/)[0]!)));
+      // By its name in any language, a named train on it ("Glacier Express", round 3: nothing
+      // found) or a station.
+      const product = (t: RouteTemplate) => (t.products ?? []).find((p) => fold(p).includes(q));
       const hit = (t: RouteTemplate) =>
         !q ||
-        fold(t.name).includes(q) ||
+        [t.name, ...Object.values(t.names ?? {})].some((n) => fold(n).includes(q)) ||
+        !!product(t) ||
         t.id.includes(q) ||
         t.chain.some((s) => fold(s.name).includes(q));
+      const found = templates.filter(hit);
+      // A named train asked for: the lines of ours on its route (it may run on more).
+      const named = q ? [...new Set(found.map(product).filter((p): p is string => !!p))] : [];
       return {
-        lines: templates.filter(hit).map((t) => ({
+        lines: found.map((t) => ({
           id: t.id,
-          name: t.name,
+          name: templateName(t, lang ?? 'en'),
           from: t.chain[0]!.name,
           to: t.chain.at(-1)!.name,
           mustPass: t.chain.filter((s) => t.mustPass.includes(s.ref)).map((s) => s.name),
+          allowedModes: t.modes,
+          /** Deprecated (0.21.6): `allowedModes`, which says what it is. */
           modes: t.modes,
+          ...(t.products?.length ? { products: t.products } : {}),
           ...(t.season
             ? { season: { months: t.season.months, note: t.season.note[lang ?? 'en'] } }
             : {}),
@@ -342,6 +355,21 @@ export function createTools(deps: ToolDeps) {
           /** Deprecated (0.18.1): `reservationOnlyTrains`, which says what it means. */
           reservation: reservationOnly(t),
         })),
+        ...(named.length
+          ? {
+              products: named.map((p) => {
+                const lines = found.filter((t) => product(t) === p);
+                return {
+                  name: p,
+                  lines: lines.map((t) => t.id),
+                  note: translate(lang ?? 'en', 'productLines', {
+                    product: p,
+                    lines: lines.map((t) => templateName(t, lang ?? 'en')).join(', '),
+                  }),
+                };
+              }),
+            }
+          : {}),
       };
     },
 
@@ -449,6 +477,17 @@ export function createTools(deps: ToolDeps) {
           direction === 'earlier' ? Date.parse(c.dep) < edge : Date.parse(c.dep) > edge,
         )
         .sort((a, b) => Date.parse(a.dep) - Date.parse(b.dep));
+      // Nothing earlier: say why (round 3, 6 Nov 2026: an empty list from 00:30 said nothing).
+      if (!fresh.length && direction === 'earlier')
+        return {
+          status: 'none_earlier',
+          date: job.tour.date,
+          options: [],
+          message:
+            edge <= t
+              ? 'All earlier trains on that day have left.'
+              : 'No earlier connection on that day.',
+        };
       return {
         date: job.tour.date,
         options: await Promise.all(
@@ -460,8 +499,26 @@ export function createTools(deps: ToolDeps) {
 
     async trainStatus({ journey, date }: { journey: string; date?: string }) {
       const dated = journeyQueryOf(journey);
+      const id = dated?.journey ?? journey;
+      // A train run by an operator outside Switzerland (the TER Vallorcine–Chamonix,
+      // `…:ojp:91P52:_x0020_:R:j26:95`): plans carry it, live status the Swiss service has not
+      // (round 3, 6 Nov 2026: refused as "bad journey").
+      if (!id.startsWith('ch:') && /^[\w:.-]{1,120}$/.test(id))
+        return {
+          status: 'not_available',
+          journey: id,
+          ...(dated ? { date: dated.day } : date ? { date } : {}),
+          message: 'No live status for this train (operator outside Switzerland).',
+        };
       const q = parseJourneyQuery(dated ?? { journey, day: date });
-      if (typeof q === 'string') throw new ToolError(`bad ${q === 'day' ? 'date' : 'journey'}`);
+      if (typeof q === 'string')
+        throw new ToolError(
+          q === 'day'
+            ? date
+              ? `not a date (YYYY-MM-DD): ${date}`
+              : 'This journey id needs its date: use the id as plan_trip returns it (it starts with the date), or give date.'
+            : `not a journey id: use the journey of a ride from plan_trip`,
+        );
       let s;
       try {
         s = await timetable.journey(q);

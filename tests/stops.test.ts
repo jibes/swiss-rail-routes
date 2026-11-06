@@ -10,6 +10,7 @@ import {
   type StopIndexFile,
 } from '../src/core/stops';
 import { index } from './helpers/timetable';
+import { EXONYMS } from '../src/data';
 
 const small: StopIndexFile = {
   v: 1,
@@ -148,6 +149,9 @@ describe('stops abroad', () => {
       expect(real.byRef(stopKey(uic))?.name).toBe(name);
     }
     expect(stopKey('8503000')).toBe('ch:1:sloid:3000');
+    // With OJP's generated platform part, as Domodossola's arrival comes (round 3, R3-4).
+    expect(stopKey('8301003_gen:missingSLOID_pf:31')).toBe('8301003');
+    expect(stopKey('ch:1:sloid:2208_gen:missingSLOID_pf:1')).toBe('ch:1:sloid:2208');
   });
 });
 
@@ -181,5 +185,41 @@ describe('a typo in the stop search', () => {
     expect(withinOne('lausane', 'lausann')).toBe(true);
     expect(withinOne('grindelwlad', 'grindelwald')).toBe(true);
     expect(withinOne('lausne', 'lausanne')).toBe(false);
+  });
+});
+
+// Round 3 (R3-13): "Ginevra" found a bus stop in Lugano. A station's name in another language,
+// typed whole, finds the station first; each name in the list is a station in the index.
+describe('stations by their names in other languages', () => {
+  const file = JSON.parse(readFileSync('public/data/stops.v1.json', 'utf8')) as StopIndexFile;
+  const real = createStopSearch(file, EXONYMS);
+
+  it('every station named is in the index, and no other name is listed twice', () => {
+    const names = new Set(file.rows.map((r) => r[0]));
+    const seen = new Set<string>();
+    for (const [station, others] of Object.entries(EXONYMS)) {
+      expect(names.has(station), station).toBe(true);
+      for (const o of others) {
+        expect(seen.has(fold(o)), o).toBe(false);
+        seen.add(fold(o));
+      }
+    }
+  });
+
+  it('finds the station first', () => {
+    for (const [q, name] of [
+      ['Ginevra', 'Genève'],
+      ['Genf', 'Genève'],
+      ['Geneva', 'Genève'],
+      ['Coira', 'Chur'],
+      ['Zurigo', 'Zürich HB'],
+      ['Lucerna', 'Luzern'],
+      ['Berna', 'Bern'],
+      ['Basilea', 'Basel SBB'],
+      ['Bâle', 'Basel SBB'],
+    ] as const)
+      expect(real.search(q)[0]?.name, q).toBe(name);
+    // Without the list, as before.
+    expect(createStopSearch(file).search('Ginevra')[0]?.name).not.toBe('Genève');
   });
 });

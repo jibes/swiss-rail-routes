@@ -207,6 +207,14 @@ test('search: a line typed by its name comes first, a station named so stays fir
   await expect(first).toContainText('St. Moritz → Tirano');
   await search.fill('Bern');
   await expect(first).toHaveText('Bern');
+  // A named train finds the lines on its route (round 3: "Glacier Express" found nothing);
+  // a station's name in another language finds the station ("Ginevra").
+  await search.fill('Glacier Express');
+  await expect(page.locator('.add-sheet .result .r-line')).toHaveCount(2);
+  await expect(page.locator('.add-sheet .results')).toContainText('Oberalp');
+  await expect(page.locator('.add-sheet .results')).toContainText('Albula');
+  await search.fill('Ginevra');
+  await expect(first).toHaveText('Genève');
   // A bus stop is said to be one.
   await search.fill('Bernina Suot, Bahnhof');
   await expect(

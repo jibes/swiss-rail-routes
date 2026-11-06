@@ -243,7 +243,7 @@ function scoreOf(c: Connection, w: Warning[], wt: Weights): number {
     // A notice weighs by its grade (0.21.2): a timetable shift is no closure.
     wt.disruption *
       w
-        .filter((x) => x.type === 'disruption')
+        .filter((x) => x.type === 'disruption' || x.type === 'notice')
         .reduce((n, x) => n + (x.severity === 'error' ? 1 : x.severity === 'warn' ? 0.5 : 0.1), 0) +
     wt.tightTransfer * count('tight-transfer') +
     wt.lineMissed * count('line-missed') +
@@ -588,11 +588,13 @@ async function planFrom(
     beams = [...keep];
   }
 
+  // Waiting after the time asked for costs as travel does (round 3, 6 Nov 2026: Nyon–La Cure
+  // from 09:00 recommended the 13:29 for being a minute shorter than the 09:29).
   const done = sameDayFirst(
     beams.map((b): PlannedChain => ({
       connections: b.conns,
       warnings: b.warnings,
-      score: total(b),
+      score: total(b) + Math.max(0, firstDep(b) - start) / MIN,
       dep: b.conns[0]!.dep,
       arr: b.conns.at(-1)!.arr,
     })),
@@ -673,8 +675,14 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
     }
     deps.trace?.('plan.arriveBy', { attempt, inTime: inTime.length });
     if (inTime.length) {
-      const inDay = inTime.filter((c) => ms(c.dep) >= dayStart);
-      return { ...result(last), ...pickOptions(inDay.length ? inDay : inTime, true) };
+      // Arrive by: arriving earlier than asked is waiting too, not the wait before leaving.
+      const from = start;
+      const byScore = inTime.map((c) => ({
+        ...c,
+        score: c.score - Math.max(0, ms(c.dep) - from) / MIN + (by - ms(c.arr)) / MIN,
+      }));
+      const inDay = byScore.filter((c) => ms(c.dep) >= dayStart);
+      return { ...result(last), ...pickOptions(inDay.length ? inDay : byScore, true) };
     }
     const earliest = Math.min(...last.chains.map((c) => ms(c.arr)));
     const earlier =

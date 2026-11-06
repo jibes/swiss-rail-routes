@@ -1,4 +1,5 @@
-import type { RouteTemplate } from '../core/data';
+import { templateName, type RouteTemplate } from '../core/data';
+import type { Lang } from '../i18n';
 import { lineReversed } from '../core/lineDirection';
 import type { LatLon } from '../core/model';
 import { TEMPLATES } from '../data';
@@ -23,4 +24,7 @@ export function directionFrom(
 }
 
 /** A scenic line's name by its id (a route that is just that line is called by it). */
-export const lineName = (id: string) => TEMPLATES.find((x) => x.id === id)?.name;
+export const lineName = (id: string, lang: Lang = 'en') => {
+  const t = TEMPLATES.find((x) => x.id === id);
+  return t && templateName(t, lang);
+};

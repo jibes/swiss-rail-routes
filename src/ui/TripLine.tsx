@@ -5,11 +5,11 @@ import {
   type PointerEvent as RPointerEvent,
   type ReactNode,
 } from 'react';
-import { localParams, type RouteTemplate } from '../core/data';
+import { localParams, templateName, type RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
 import { towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
-import type { Warning } from '../core/warnings';
+import { NOTICE_TYPES, type Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
 import { badge, dayMonth } from './format';
 import { duration, minutesBetween } from './format';
@@ -107,7 +107,7 @@ export function TripLine({
 
   const lineName = (id?: string) => {
     const tp: RouteTemplate | undefined = TEMPLATES.find((x) => x.id === id);
-    return tp?.name ?? '';
+    return tp ? templateName(tp, lang) : '';
   };
   const warnsFor = (leg: number, section: number, first: boolean) =>
     warnings.filter(
@@ -380,10 +380,7 @@ export function TripLine({
                         t(w.key, w.params))
                       : t(w.key, localParams(w.params, lang, TEMPLATES));
                   // A disruption opens the operator's own message on a tap.
-                  const detail =
-                    (w.type === 'disruption' || w.type === 'disruption-away') && s.notices?.length
-                      ? s.notices
-                      : null;
+                  const detail = NOTICE_TYPES.has(w.type) && s.notices?.length ? s.notices : null;
                   const wid = `${id}-${j}`;
                   return detail ? (
                     <span key={j} className="warn-wrap">

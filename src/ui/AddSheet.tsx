@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { searchAttractions, type AttractionData } from '../core/attractions';
-import type { RouteTemplate } from '../core/data';
+import { templateName, type RouteTemplate } from '../core/data';
 import attractionData from '../data/attractions.json';
 import { entriesOf, lineEntries, stationEntry, type Entry } from '../core/line';
 import type { Tour, Waypoint } from '../core/model';
@@ -106,11 +106,17 @@ export function AddSheet({
     index && f.length >= 3
       ? searchAttractions(attractionData as AttractionData, q, lang, (r) => stop(r))
       : [];
-  const lines = TEMPLATES.filter((tp) => has([tp.name, ...tp.chain.map((c) => c.name)]));
+  // By its name in any language, a named train on it ("Glacier Express", round 3) or a station.
+  const named = (tp: (typeof TEMPLATES)[number]) => [tp.name, ...Object.values(tp.names ?? {})];
+  const own = (tp: (typeof TEMPLATES)[number]) => [...named(tp), ...(tp.products ?? [])];
+  // Lines named so first ("Bernina": the Bernina, then the Albula the Bernina Express rides).
+  const lines = TEMPLATES.filter((tp) => has([...own(tp), ...tp.chain.map((c) => c.name)])).sort(
+    (a, b) => Number(has(named(b))) - Number(has(named(a))),
+  );
   // Typed a line's own name ("Bernina"): the line comes first, before stations named after it.
   // A station named just that ("Bern") stays first.
   const linesFirst =
-    !!f && lines.some((tp) => has([tp.name])) && !stations.some((x) => fold(x.name) === f);
+    !!f && lines.some((tp) => has(own(tp))) && !stations.some((x) => fold(x.name) === f);
   const back = !f && first && after && after.stopRef !== first.stopRef ? first : undefined;
   const today = dayOf(useNow());
   const titleOf = (x: Tour) => x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`;
@@ -134,7 +140,7 @@ export function AddSheet({
             onClick={() => onPick({ kind: 'line', template: tp, reversed })}
           >
             <span className="r-icon r-line" aria-hidden="true" />
-            <span className="r-name">{tp.name}</span>
+            <span className="r-name">{templateName(tp, lang)}</span>
             <span className="r-sub">
               {a.name} → {b.name}
             </span>

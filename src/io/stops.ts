@@ -1,5 +1,6 @@
 // Loads the bundled stop index once (precached by the service worker).
 import { createStopSearch, type StopIndexFile, type StopSearch } from '../core/stops';
+import { EXONYMS } from '../data';
 import { log } from './log';
 
 let pending: Promise<StopSearch> | undefined;
@@ -13,7 +14,7 @@ export function stopSearch(): Promise<StopSearch> {
     })
     .then((f) => {
       log('stops.load', { stops: f.rows.length, ms: Math.round(performance.now() - t0) });
-      return createStopSearch(f);
+      return createStopSearch(f, EXONYMS);
     })
     .catch((e: unknown) => {
       log('stops.fail', { e });

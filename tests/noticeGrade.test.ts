@@ -71,7 +71,9 @@ describe('the warning says what the notice weighs', () => {
     noticeInfo: [grade ? { grade } : {}],
   });
   const disruption = (s: Section) =>
-    warningsFor(conn(s), ctx).find((w) => w.type === 'disruption')?.severity;
+    warningsFor(conn(s), ctx).find((w) => w.type === 'disruption' || w.type === 'notice')?.severity;
+  const typeOf = (s: Section) =>
+    warningsFor(conn(s), ctx).find((w) => w.legIndex === 0 && w.sectionIndex === 0)?.type;
 
   it('information is info, a closure an error, a plan saved before grading still an error', () => {
     const r = ride('IR 26', [
@@ -84,6 +86,23 @@ describe('the warning says what the notice weighs', () => {
     );
     expect(disruption(noticed(r, 'Information zu IR 26 und IR 46', 'error'))).toBe('error');
     expect(disruption(noticed(r, 'Information zu IR 26 und IR 46'))).toBe('error');
+  });
+
+  it('information is a notice, reservation advice its own; neither says disruption (round 3)', () => {
+    const r = ride('IR 26', [
+      ['Arth-Goldau', '09:00'],
+      ['Erstfeld', '09:40'],
+      ['Bellinzona', '10:50'],
+    ]);
+    const info = warningsFor(
+      conn(noticed(r, 'Information zu IR 26 und IR 46 ab Erstfeld', 'info')),
+      ctx,
+    )[0]!;
+    expect(info).toMatchObject({ type: 'notice', key: 'wNoticeFrom', severity: 'info' });
+    expect(typeOf(noticed(r, 'Die Linien IR 26 Reservierung dringend empfohlen.', 'info'))).toBe(
+      'reservation-advised',
+    );
+    expect(typeOf(noticed(r, 'Der Bahnverkehr ist unterbrochen.', 'error'))).toBe('disruption');
   });
 
   it('a closure ridden by its own replacement bus is a warning: the way round is the plan', () => {

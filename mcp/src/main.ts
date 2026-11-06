@@ -1,7 +1,7 @@
 // The Viadukt MCP server. Env: MCP_SECRET, MCP_PORT, OJP_WORKER_URL (see mcp/README.md).
 import { readFileSync } from 'node:fs';
 import { createStopSearch, type StopIndexFile } from '../../src/core/stops';
-import { GA, TEMPLATES } from '../../src/data';
+import { EXONYMS, GA, TEMPLATES } from '../../src/data';
 import { createHttpServer } from './server';
 import { createTools } from './tools';
 import { createWorker } from './worker';
@@ -17,7 +17,7 @@ const stops = JSON.parse(
 const server = createHttpServer({
   secret,
   tools: createTools({
-    index: createStopSearch(stops),
+    index: createStopSearch(stops, EXONYMS),
     timetable: createWorker({ url }),
     templates: TEMPLATES,
     ga: GA,

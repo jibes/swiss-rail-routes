@@ -157,7 +157,7 @@ function build(tools: Tools, log: (line: object) => void) {
     'find_stops',
     {
       description:
-        'Finds Swiss stations and stops by name, and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route).',
+        "Finds Swiss stations and stops by name (also by a city's name in another language: Genf, Ginevra; one typo per word is forgiven), and well-known places people go to by train (Swissminiatur, Rhine Falls, Chillon Castle…) as `places`: each with its nearest stops and an estimated walk in minutes (straight-line distance, not a route). Stations abroad only where a scenic line ends (Tirano, Domodossola, Chamonix-Mont-Blanc, Vallorcine), not others (Milano Centrale).",
       inputSchema: strictOf({
         query: z.string().min(1).max(80).describe('Text, e.g. "Bern", "Kleine Sch", "Rheinfall".'),
         limit: z.number().int().min(1).max(50).optional().describe('Default 8.'),
@@ -171,9 +171,13 @@ function build(tools: Tools, log: (line: object) => void) {
     'list_scenic_lines',
     {
       description:
-        'The curated scenic lines (Bernina, Albula, Lake Lucerne…): their ids, ends, the stations they must pass, modes and seasons.',
+        'The curated scenic lines (Bernina, Albula, Lake Lucerne…): their ids, ends, the stations they must pass, allowedModes (modes a plan may use on the line, replacement buses included), seasons, and the named trains that run on them (products). A query also finds a line by a named train ("Glacier Express"), with `products` saying which of the lines are on its route.',
       inputSchema: strictOf({
-        query: z.string().max(80).optional().describe('Filters by line or station name.'),
+        query: z
+          .string()
+          .max(80)
+          .optional()
+          .describe('Filters by line, named train (Glacier Express) or station name.'),
         lang,
       }),
       annotations: { ...readOnly, openWorldHint: false },
@@ -223,10 +227,10 @@ function build(tools: Tools, log: (line: object) => void) {
             'Scenic lines by daylight: preferred (default; an option riding a line after sunset is said, line-after-dark, and ranked behind) or required (such options left out; status "after_dark" with the reason when none is left).',
           ),
         returnWay: z
-          .enum(['as_listed', 'fastest'])
+          .enum(['as_listed', 'fastest', 'same_way'])
           .optional()
           .describe(
-            'With roundTrip: the way back after the last stay as listed (default), or the fastest way home (scenic out, fast back).',
+            'With roundTrip: as_listed (default) rides back only by the stations and lines you list, and with nothing listed for the way back the fastest; fastest goes straight home after the last stay (scenic out, fast back); same_way rides the way out reversed, its lines included, without its stays.',
           ),
         reservations,
         lang,
@@ -244,7 +248,10 @@ function build(tools: Tools, log: (line: object) => void) {
         date,
         stops,
         roundTrip,
-        returnWay: z.enum(['as_listed', 'fastest']).optional().describe('As in plan_trip.'),
+        returnWay: z
+          .enum(['as_listed', 'fastest', 'same_way'])
+          .optional()
+          .describe('As in plan_trip.'),
         ticket,
         direction: z.enum(['earlier', 'later']),
         from: z

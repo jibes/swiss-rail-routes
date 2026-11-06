@@ -19,6 +19,10 @@ export const de = {
   noticeUntil: '(bis {date})',
   wDisruptionFrom: 'Störung ab {at}',
   wDisruptionUntil: 'Störung bis {at}',
+  wNotice: 'Hinweis {from}–{to}',
+  wNoticeFrom: 'Hinweis ab {at}',
+  wNoticeUntil: 'Hinweis bis {at}',
+  wReservationAdvised: 'Reservierung für diesen Zug empfohlen',
   wReservation: 'Reservation oder Zuschlag nötig {from}–{to}',
   wGaHalf: '{from}–{to}: nicht im GA/in der Tageskarte (50 % Rabatt damit)',
   wGaReduced: '{from}–{to}: nicht im GA/in der Tageskarte (ermässigt damit)',
@@ -27,6 +31,8 @@ export const de = {
   wTightTransfer: 'Knapper Umstieg in {at}: {min} Min.',
   wTimedChange: 'Abgestimmter Anschluss in {at}: {min} Min., der Zug wartet',
   wReplacementBus: 'Ersatzbus {from}–{to}: die Strecke der {line} auf der Strasse',
+  productLines:
+    '{product} fährt auf diesen Linien von Viadukt: {lines}. Seine Strecke kann darüber hinausgehen.',
   reservationOnlyNote:
     'Hier fahren auch reguläre Züge; nur einige Panoramazüge sind reservationspflichtig.',
   wAfterSunset: '{name} nach Sonnenuntergang ({time})',

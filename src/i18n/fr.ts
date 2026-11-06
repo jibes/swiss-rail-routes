@@ -19,6 +19,10 @@ export const fr = {
   noticeUntil: '(jusqu’au {date})',
   wDisruptionFrom: 'Perturbation dès {at}',
   wDisruptionUntil: 'Perturbation jusqu’à {at}',
+  wNotice: 'Avis {from}–{to}',
+  wNoticeFrom: 'Avis dès {at}',
+  wNoticeUntil: 'Avis jusqu’à {at}',
+  wReservationAdvised: 'Réservation recommandée pour ce train',
   wReservation: 'Réservation ou supplément requis {from}–{to}',
   wGaHalf: '{from}–{to} : non couvert par l’AG ou la carte journalière (50 % de réduction avec)',
   wGaReduced: '{from}–{to} : non couvert par l’AG ou la carte journalière (tarif réduit avec)',
@@ -28,6 +32,8 @@ export const fr = {
   wTightTransfer: 'Correspondance serrée à {at} : {min} min',
   wTimedChange: 'Correspondance assurée à {at} : {min} min, le train attend',
   wReplacementBus: 'Bus de remplacement {from}–{to} : le tronçon {line} se fait par la route',
+  productLines:
+    '{product} circule sur ces lignes de Viadukt : {lines}. Son parcours peut aller au-delà.',
   reservationOnlyNote:
     'Des trains réguliers circulent aussi ; seuls certains trains panoramiques exigent une réservation.',
   wAfterSunset: '{name} après le coucher du soleil ({time})',

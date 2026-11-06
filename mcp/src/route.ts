@@ -28,8 +28,12 @@ export interface RouteInput {
   arriveBy?: string;
   stops: StopInput[];
   roundTrip?: boolean;
-  /** A round trip's way back after its last stay: as listed (default), or the fastest home. */
-  returnWay?: 'fastest' | 'as_listed';
+  /**
+   * A round trip's way back: only what is listed, with nothing listed the fastest (`as_listed`,
+   * default); the fastest home after the last stay (`fastest`); or the way out reversed, its
+   * lines included (`same_way`).
+   */
+  returnWay?: 'fastest' | 'as_listed' | 'same_way';
   ticket?: TicketType;
 }
 
@@ -84,8 +88,30 @@ export function buildRoute(
   deps: { index: StopSearch; templates: RouteTemplate[]; now: number },
 ): Tour {
   const { index, templates, now } = deps;
-  const items = input.stops;
-  if (items.length > MAX_STOPS) throw new ToolError(`at most ${MAX_STOPS} stops`);
+  const listed = input.stops;
+  if (listed.length > MAX_STOPS) throw new ToolError(`at most ${MAX_STOPS} stops`);
+  // The way out reversed, lines included, without its stays (round 3, R3-16: as_listed came
+  // back the fastest way, as it lists nothing for the way back).
+  const sameWay = input.returnWay === 'same_way';
+  if (sameWay && !input.roundTrip) throw new ToolError('returnWay needs roundTrip');
+  // A stay where the trip starts or ends has nothing to wait for (round 3, 6 Nov 2026: it was
+  // left out without a word). With roundTrip the last listed station is a turn, not the end.
+  const end = listed.at(-1);
+  if ((listed[0]?.stay ?? 0) > 0 || (!input.roundTrip && (end?.stay ?? 0) > 0 && listed.length > 1))
+    throw new ToolError(
+      'A stay at the start or the end has no effect: put it on a station in between.',
+    );
+  const back = sameWay
+    ? (end?.line ? listed : listed.slice(0, -1))
+        .slice()
+        .reverse()
+        .map((x): StopInput => ({
+          ...(x.ref ? { ref: x.ref } : {}),
+          ...(x.name ? { name: x.name } : {}),
+          ...(x.line ? { line: x.line } : {}),
+        }))
+    : [];
+  const items = [...listed, ...back];
   const stations = items.map((s) => (s.line ? undefined : resolveStop(s, index)));
   const entries: Entry[] = [];
   items.forEach((s, i) => {
@@ -138,7 +164,7 @@ export function buildRoute(
     };
     entries.push({ ...entry, w });
   });
-  if (input.roundTrip && entries.length) entries.push(stationEntry(entries[0]!.w));
+  if (input.roundTrip && !sameWay && entries.length) entries.push(stationEntry(entries[0]!.w));
   if (input.returnWay === 'fastest') {
     if (!input.roundTrip) throw new ToolError('returnWay needs roundTrip');
     // After the last stay, straight home: its stations and lines left out, so the planner

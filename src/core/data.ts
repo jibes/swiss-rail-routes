@@ -21,6 +21,13 @@ export interface TemplateHighlight {
 export interface RouteTemplate {
   id: string;
   name: string;
+  /** Its name in each language, where it is a description, not a name of its own (round 3). */
+  names?: Partial<Record<Lang, string>>;
+  /**
+   * Named trains that run on the line, as people ask for them ("Glacier Express"): each line
+   * that is part of one says so, the product may need more lines than ours.
+   */
+  products?: string[];
   /** Stops in travel order; usable reversed. */
   chain: TemplateStop[];
   /** Served stops a connection must call at (checked against intermediate stops). */
@@ -75,3 +82,7 @@ export function localParams<P extends Record<string, string | number>>(
   const h = templates.flatMap((t) => t.highlights).find((x) => x.id === id);
   return h ? { ...params, name: highlightName(h, lang) } : params;
 }
+
+/** A line's name in a language: its own there, else the one it has. */
+export const templateName = (t: Pick<RouteTemplate, 'name' | 'names'>, lang: Lang = 'en') =>
+  t.names?.[lang] ?? t.name;

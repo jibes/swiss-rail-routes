@@ -75,7 +75,8 @@
           "sunlight": true
         }
       ],
-      "seat": "R"
+      "seat": "R",
+      "products": ["Bernina Express", "Glacier Express"]
     },
     {
       "id": "bernina",
@@ -174,7 +175,8 @@
           "lon": 10.121,
           "sunlight": true
         }
-      ]
+      ],
+      "products": ["Bernina Express"]
     },
     {
       "id": "vereina",
@@ -343,7 +345,8 @@
           "lon": 8.138,
           "sunlight": true
         }
-      ]
+      ],
+      "products": ["Luzern-Interlaken Express"]
     },
     {
       "id": "gotthard-bergstrecke",
@@ -401,7 +404,14 @@
           "lon": 8.599,
           "sunlight": true
         }
-      ]
+      ],
+      "names": {
+        "en": "Gotthard mountain line",
+        "de": "Gotthard-Bergstrecke",
+        "fr": "Ligne de faîte du Gothard",
+        "it": "Linea di valico del Gottardo"
+      },
+      "products": ["Gotthard Panorama Express"]
     },
     {
       "id": "loetschberg-bergstrecke",
@@ -457,7 +467,13 @@
           "lon": 7.838,
           "sunlight": true
         }
-      ]
+      ],
+      "names": {
+        "en": "Lötschberg mountain line",
+        "de": "Lötschberg-Bergstrecke",
+        "fr": "Ligne de faîte du Lötschberg",
+        "it": "Linea di valico del Lötschberg"
+      }
     },
     {
       "id": "oberalp",
@@ -508,7 +524,8 @@
           "fr": "Circule toute l'année ; en hiver, le tronçon du col peut fermer à bref délai (risque d'avalanche) : vérifier avant le départ.",
           "it": "Circola tutto l'anno; in inverno la tratta del passo può chiudere con breve preavviso (pericolo di valanghe): verificare prima del viaggio."
         }
-      }
+      },
+      "products": ["Glacier Express"]
     },
     {
       "id": "rigi-arth",
@@ -590,7 +607,14 @@
           "fr": "Horaire d’hiver : peu de bateaux.",
           "it": "Orario invernale: poche corse."
         }
-      }
+      },
+      "names": {
+        "en": "Lake Lucerne boat",
+        "de": "Vierwaldstättersee (Schiff)",
+        "fr": "Lac des Quatre-Cantons (bateau)",
+        "it": "Lago dei Quattro Cantoni (battello)"
+      },
+      "products": ["Gotthard Panorama Express"]
     },
     {
       "id": "bergbahn-muerren",
@@ -827,7 +851,8 @@
       ],
       "mustPass": ["ch:1:sloid:1377", "ch:1:sloid:4070", "ch:1:sloid:1394", "ch:1:sloid:7272"],
       "modes": ["rail", "bus"],
-      "highlights": []
+      "highlights": [],
+      "products": ["GoldenPass Express", "GoldenPass Belle Epoque", "GoldenPass"]
     },
     {
       "id": "train-des-vignes",

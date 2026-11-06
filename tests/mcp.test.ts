@@ -20,7 +20,7 @@ import { parseJourney } from '../src/core/ojp/journey';
 import { stopKey } from '../src/core/stops';
 import { isPlanned, type PlannedTrip } from '../src/core/trip';
 import { FIXTURE_DATE, ojpFor } from './acceptance/ojp';
-import { conn, ga, index, ride, templates } from './helpers/timetable';
+import { conn, DATE, ga, index, ride, templates, timetable } from './helpers/timetable';
 
 const NOW = Date.parse('2026-11-02T08:00:00Z');
 const URL_ = 'https://viadukt.example/';
@@ -61,7 +61,7 @@ describe('routes from a request', () => {
     expect(() =>
       route({
         date: FIXTURE_DATE,
-        stops: [{ name: 'Chur' }, { line: 'albula' }, { name: 'St. Moritz', stay: 60 }],
+        stops: [{ name: 'Chur' }, { line: 'albula' }, { name: 'St. Moritz' }],
       }),
     ).not.toThrow();
   });
@@ -142,14 +142,14 @@ describe('routes from a request', () => {
     ]);
   });
 
-  it('stay 0 or none rides through; a stay at the very start or end means nothing', () => {
+  it('stay 0 or none rides through; a stay at the very start or end is refused (round 3)', () => {
     const t = route({
       date: FIXTURE_DATE,
       stops: [
-        { name: 'Bern', stay: 30 },
+        { name: 'Bern' },
         { name: 'Thun', stay: 0 },
         { name: 'Spiez', stay: 45 },
-        { name: 'Brig', stay: 10 },
+        { name: 'Brig' },
       ],
     });
     expect(t.waypoints.map((w) => [w.kind, w.dwellMin])).toEqual([
@@ -158,6 +158,22 @@ describe('routes from a request', () => {
       ['stop', 45],
       ['end', 0],
     ]);
+    // Round 3 (R3-15): left out without a word before.
+    for (const stops of [
+      [{ name: 'Bern', stay: 60 }, { name: 'Luzern' }],
+      [{ name: 'Bern' }, { name: 'Luzern', stay: 30 }],
+    ])
+      expect(() => route({ date: FIXTURE_DATE, stops })).toThrow(
+        'A stay at the start or the end has no effect',
+      );
+    // A round trip's last listed station is its turn: a stay there is a stay.
+    expect(
+      route({
+        date: FIXTURE_DATE,
+        stops: [{ name: 'Bern' }, { name: 'Luzern', stay: 30 }],
+        roundTrip: true,
+      }).waypoints.map((w) => w.dwellMin),
+    ).toEqual([0, 30, 0]);
   });
 
   it('refuses what cannot be planned, before anything is asked of OJP', () => {
@@ -242,6 +258,20 @@ describe('tools, on recorded answers', () => {
     expect(b.mustPass).toEqual(['Pontresina', 'Ospizio Bernina', 'Alp Grüm']);
     expect(tools.listScenicLines({ query: 'Tirano' }).lines.map((l) => l.id)).toContain('bernina');
     expect(all.find((l) => l.id === 'lake-lucerne')!.modes).toContain('boat');
+    // Round 3 (R3-14): modes said as what they are, the lake's name translated, named trains found.
+    expect(all.find((l) => l.id === 'lake-lucerne')!.allowedModes).toEqual(['boat']);
+    expect(
+      tools.listScenicLines({ lang: 'it' }).lines.find((l) => l.id === 'lake-lucerne')!.name,
+    ).toBe('Lago dei Quattro Cantoni (battello)');
+    const glacier = tools.listScenicLines({ query: 'Glacier Express' });
+    expect(glacier.lines.map((l) => l.id).sort()).toEqual(['albula', 'oberalp']);
+    expect(glacier.products).toEqual([
+      expect.objectContaining({ name: 'Glacier Express', lines: ['albula', 'oberalp'] }),
+    ]);
+    expect(glacier.products![0]!.note).toMatch(/may run on more/);
+    expect(tools.listScenicLines({ query: 'GoldenPass' }).lines.map((l) => l.id)).toContain(
+      'goldenpass-mob',
+    );
   });
 
   it('plan_trip: the app’s plan, GA warning, walks and rides, links that open it', async () => {
@@ -382,6 +412,10 @@ describe('tools, on recorded answers', () => {
     await expect(tools.moreOptions({ ...base, direction: 'later', from: 'soon' })).rejects.toThrow(
       'not a time',
     );
+    // Earlier than the first train of the day: said why, not an empty list (round 3, R3-11).
+    const none = await tools.moreOptions({ ...base, direction: 'earlier', from: '00:30' });
+    expect(none).toMatchObject({ status: 'none_earlier', options: [] });
+    expect((none as { message: string }).message).toMatch(/earlier/);
   });
 
   it('train_status: stops with planned and expected times, delays, and when it was asked', async () => {
@@ -394,12 +428,32 @@ describe('tools, on recorded answers', () => {
     expect(stops[0]).toHaveProperty('plannedDep');
     expect(stops.some((s) => s.passed)).toBe(true);
     expect(r.fetchedAt).toBe('2026-11-02T09:00');
+    // Round 3 (R3-8): an id without its date says how to give it.
     await expect(tools.trainStatus({ journey: 'ch:1:sjyid:100001:726-001' })).rejects.toThrow(
-      'bad date',
+      'This journey id needs its date',
     );
     await expect(tools.trainStatus({ journey: '<x/>', date: '2026-11-07' })).rejects.toThrow(
-      'bad journey',
+      'not a journey id',
     );
+  });
+
+  // Round 3 (R3-7): a foreign train from a plan (the TER Vallorcine–Chamonix) was "bad journey".
+  it('train_status: a train outside Switzerland from a plan is said to have no live status', async () => {
+    let asked = 0;
+    const tools = createTools(
+      deps({
+        timetable: {
+          ...deps().timetable,
+          journey: async () => {
+            asked++;
+            throw new Error('not asked');
+          },
+        },
+      }),
+    );
+    const r = await tools.trainStatus({ journey: '2026-11-07:ojp:91P52:_x0020_:R:j26:95' });
+    expect(r).toMatchObject({ status: 'not_available', date: '2026-11-07' });
+    expect(asked).toBe(0);
   });
 
   // Retest round 3, 6 Nov 2026: an unknown journey id was said as the service being down.
@@ -917,5 +971,79 @@ describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2
         returnWay: 'fastest',
       }),
     ).toThrow(/stay/);
+  });
+
+  // Round 3 (R3-16, M3): as_listed came back the fastest way; same_way rides the way out back.
+  it('returnWay same_way: the way out reversed, its line included, without its stays', () => {
+    const stops = [
+      { name: 'Zürich HB' },
+      { line: 'gotthard-bergstrecke' },
+      { name: 'Lugano', stay: 60 },
+    ];
+    const t = route({ date: FIXTURE_DATE, stops, roundTrip: true, returnWay: 'same_way' });
+    const names = t.waypoints.map((w) => w.name);
+    expect(names[0]).toBe('Zürich HB');
+    expect(names.at(-1)).toBe('Zürich HB');
+    const turn = names.indexOf('Lugano');
+    // Göschenen and Airolo out, and back again in the other order.
+    expect(names.slice(0, turn)).toEqual(expect.arrayContaining(['Göschenen', 'Airolo']));
+    const back = names.slice(turn + 1);
+    expect(back.indexOf('Airolo')).toBeGreaterThanOrEqual(0);
+    expect(back.indexOf('Airolo')).toBeLessThan(back.indexOf('Göschenen'));
+    // Only the stay at Lugano.
+    expect(t.waypoints.filter((w) => w.kind === 'stop').map((w) => w.name)).toEqual(['Lugano']);
+    expect(() => route({ date: FIXTURE_DATE, stops, returnWay: 'same_way' })).toThrow(/roundTrip/);
+  });
+});
+
+// Round 3 (M1, R3-9): a reservation-only train says so on its ride; without a pass, no cover notes.
+describe('plan_trip: reservations and cover by ticket (round 3)', () => {
+  const bex = conn(
+    ride(
+      'PE 951',
+      [
+        ['St. Moritz', '09:00'],
+        ['Tirano', '11:30'],
+      ],
+      { product: 'BERNINA EXPRESS' },
+    ),
+  );
+  const tools = (list = [bex]) =>
+    createTools(deps({ timetable: { ...deps().timetable, trips: timetable(list).fetchTrips } }));
+  const ask = (ticket?: 'GA' | 'none' | 'Halbtax') =>
+    tools().planTrip({
+      date: DATE,
+      departAt: '08:30',
+      stops: [{ name: 'St. Moritz' }, { name: 'Tirano' }],
+      reservations: 'include',
+      ...(ticket ? { ticket } : {}),
+    }) as Promise<{
+      options: { legs: { reservationRequired?: boolean }[]; warnings: { type: string }[] }[];
+    }>;
+
+  it('marks the reservation-only ride', async () => {
+    const r = await ask();
+    expect(r.options[0]!.legs[0]!.reservationRequired).toBe(true);
+  });
+
+  it('says GA cover with a GA, nothing with none or Halbtax', async () => {
+    // Past the border the GA ends: Le Châtelard-Frontière → Vallorcine.
+    const across = conn(
+      ride('R 85', [
+        ['Le Châtelard-Frontière', '09:59'],
+        ['Vallorcine', '10:05'],
+      ]),
+    );
+    const types = async (ticket?: 'GA' | 'none' | 'Halbtax') =>
+      (
+        (await tools([across]).planTrip({
+          date: DATE,
+          departAt: '09:30',
+          stops: [{ name: 'Le Châtelard-Frontière' }, { name: 'Vallorcine' }],
+          ...(ticket ? { ticket } : {}),
+        })) as { options: { warnings: { type: string }[] }[] }
+      ).options[0]!.warnings.map((w) => w.type);
+    expect(await types('GA')).toContain('not-ga');
+    for (const t of ['none', 'Halbtax'] as const) expect(await types(t)).not.toContain('not-ga');
   });
 });

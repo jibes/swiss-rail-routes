@@ -506,13 +506,15 @@ describe('warnings', () => {
     const keys = r.recommended!.warnings.map((w) => w.key);
     expect(keys).toContain('wGaHalf');
     expect(keys).toContain('wTightTransfer');
-    // The GA note is for everyone (0.5.1), whatever ticket the trip carries, and neutral.
+    // The GA note is for a GA or a day pass (the app's ticket), neutral; without either there
+    // is no cover to speak of (round 3, R3-9: `ticket: none` was told "not covered by GA").
     const notes = async (ticket: Parameters<typeof plan>[0]['ticket']) =>
       (await plan({ ...t, ticket }, deps([c]).deps)).recommended!.warnings.filter(
         (w) => w.key === 'wGaHalf',
       );
-    for (const ticket of ['GA', 'Tageskarte', 'Halbtax', 'none'] as const)
+    for (const ticket of ['GA', 'Tageskarte'] as const)
       expect((await notes(ticket)).map((w) => w.severity)).toEqual(['info']);
+    for (const ticket of ['Halbtax', 'none'] as const) expect(await notes(ticket)).toEqual([]);
   });
 
   it('warns when a highlight is passed after sunset, and scores it', async () => {

@@ -51,6 +51,13 @@ describe('templates.json', () => {
         }
       });
 
+      it('a name given per language is given in every one, products are named once', () => {
+        if (t.names) for (const l of LANGS) expect(t.names[l]?.length, l).toBeGreaterThan(0);
+        const p = t.products ?? [];
+        expect(new Set(p).size).toBe(p.length);
+        for (const x of p) expect(x.trim().length).toBeGreaterThan(2);
+      });
+
       it('season notes exist in every language', () => {
         if (!t.season) return;
         for (const m of t.season.months) expect(m >= 1 && m <= 12).toBe(true);

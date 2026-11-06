@@ -1,0 +1,27 @@
+{
+  "note": "Names of the main Swiss stations in the other national languages and English, each to the station's own name in the stop index. Found by an exact name only (round 3, 6 Nov 2026: \"Ginevra\" found a bus stop in Lugano).",
+  "stations": {
+    "Genève": ["Genf", "Ginevra", "Geneva"],
+    "Basel SBB": ["Bâle", "Basilea", "Basle", "Basel"],
+    "Luzern": ["Lucerne", "Lucerna"],
+    "Bern": ["Berne", "Berna"],
+    "Zürich HB": ["Zurigo", "Zurich"],
+    "Chur": ["Coire", "Coira"],
+    "Fribourg/Freiburg": ["Friburgo", "Fribourg", "Freiburg"],
+    "Neuchâtel": ["Neuenburg"],
+    "Biel/Bienne": ["Bienna", "Biel", "Bienne"],
+    "Solothurn": ["Soleure", "Soletta"],
+    "Sion": ["Sitten"],
+    "St. Gallen": ["Saint-Gall", "San Gallo", "Sankt Gallen"],
+    "Schaffhausen": ["Schaffhouse", "Sciaffusa"],
+    "Bellinzona": ["Bellenz"],
+    "Thun": ["Thoune"],
+    "Brig": ["Brigue", "Briga"],
+    "Visp": ["Viège"],
+    "Martigny": ["Martinach"],
+    "Delémont": ["Delsberg"],
+    "Lausanne": ["Losanna"],
+    "Zug": ["Zoug", "Zugo"],
+    "St. Moritz": ["Saint-Moritz", "Sankt Moritz", "San Murezzan"]
+  }
+}

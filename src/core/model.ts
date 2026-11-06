@@ -54,6 +54,10 @@ export interface Leg {
 
 export type WarningType =
   | 'disruption'
+  /** A notice its words grade as information ("Information zu …"): said, hardly counted. */
+  | 'notice'
+  /** The operator advises a reservation on this train: said, not counted. */
+  | 'reservation-advised'
   /** A notice of the train about a stretch you do not ride: said, not counted. */
   | 'disruption-away'
   | 'after-sunset'
