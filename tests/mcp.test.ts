@@ -305,8 +305,9 @@ describe('tools, on recorded answers', () => {
     const rides = (back as PlannedTrip).chain.connections
       .flatMap((c) => c.sections)
       .filter((s) => s.mode !== 'walk');
-    expect(rides.map((s) => s.journey)).toEqual(
-      best.legs.flatMap((l) => (l.type === 'ride' ? [l.journey] : [])),
+    // Its trains by where and when they leave: the journeys come back when it opens (0.22.6).
+    expect(rides.map((s) => stopKey(s.from.stopRef))).toEqual(
+      best.legs.flatMap((l) => (l.type === 'ride' ? [l.from.ref] : [])),
     );
     expect(r.routeLink).toContain('#/r/interlaken-ost.');
   });

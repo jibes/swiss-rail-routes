@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeTripLink, encodeTripLink, encodeTripLinkV1 } from '../src/core/export/tripLink';
 import { encodeTrip } from '../src/core/export/tripShare';
@@ -18,6 +19,26 @@ import { ga, index, templates } from './helpers/timetable';
 
 const nameOf = (ref: string) => index.byRef(stopKey(ref))?.name;
 const stop = (r: string) => index.byRef(r);
+const ridesOf = (t: PlannedTrip) =>
+  t.chain.connections.flatMap((c) => c.sections).filter((s) => s.mode !== 'walk');
+/** What a compact link keeps of the rides' journeys (0.22.6): only where the next or the last
+ * ride is the same train; the rest come back when it opens. */
+const keptJourney = (t: PlannedTrip) => {
+  const r = ridesOf(t);
+  return new Map(
+    r.map((s, i) => [
+      s,
+      s.journey && (r[i - 1]?.journey === s.journey || r[i + 1]?.journey === s.journey)
+        ? s.journey
+        : undefined,
+    ]),
+  );
+};
+/** A ride's line as a link carries it: its number where it has no line and its journey went. */
+const lineAsSent = (t: PlannedTrip) => {
+  const kept = keptJourney(t);
+  return (s: Section) => s.line ?? (kept.get(s) ? undefined : s.number);
+};
 
 describe('a trip as its trains', async () => {
   const tour = acceptanceTours(FIXTURE_DATE).T3!;
@@ -98,20 +119,24 @@ describe('a trip as its trains', async () => {
     expect(back.chain.arr).toBe(trip.chain.arr);
     // Stations, not platforms: the platforms (and a number the journey id does not hold) come
     // back when it is asked again, below.
-    const pick = (s: Section) => [
-      s.journey,
+    const kept = keptJourney(trip);
+    const line = lineAsSent(trip);
+    const pick = (s: Section, sent = true) => [
+      sent ? kept.get(s) : s.journey,
       s.mode,
-      s.line,
+      sent ? line(s) : s.line,
       s.category,
       stopKey(s.from.stopRef),
       s.from.dep,
       stopKey(s.to.stopRef),
       s.to.arr,
     ];
-    expect(rides(back).map(pick)).toEqual(rides(trip).map(pick));
+    expect(rides(back).map((s) => pick(s, false))).toEqual(rides(trip).map((s) => pick(s)));
     expect(rides(back).every((s) => !s.from.platform && !s.to.platform)).toBe(true);
     const numbers = (t: PlannedTrip) =>
-      rides(t).map((s) => (s.number === journeyNumber(s.journey) ? s.number : undefined));
+      rides(t).map((s) =>
+        kept.get(s) && s.number === journeyNumber(s.journey) ? s.number : undefined,
+      );
     expect(rides(back).map((s) => s.number)).toEqual(numbers(trip));
     // Walks stay: they are how the rides connect.
     expect(back.chain.connections.flatMap((c) => c.sections).map((s) => s.mode)).toEqual(
@@ -130,7 +155,9 @@ describe('a trip as its trains', async () => {
     ride.from.stopRef = 'ch:1:sloid:999999_gen:ch:1:sloid:999999:0:94927_pf:2A';
     ride.from.name = 'Unknown Halt';
     ride.to.stopRef = 'de:08111:6115';
+    // Kept where the next ride is the same train.
     ride.journey = '2026-11-08:other:journey:1';
+    rides(t)[1]!.journey = ride.journey;
     t.route.waypoints[1]!.stopRef = '8509000';
     const back = await opened(t);
     const r = rides(back)[0]!;
@@ -138,6 +165,7 @@ describe('a trip as its trains', async () => {
     expect(r.from.name).toBe('Unknown Halt');
     expect(r.to.stopRef).toBe('de:08111:6115');
     expect(r.journey).toBe('2026-11-08:other:journey:1');
+    expect(rides(back)[1]!.journey).toBe('2026-11-08:other:journey:1');
     expect(back.route.waypoints[1]!.stopRef).toBe('8509000');
   });
 
@@ -181,7 +209,8 @@ describe('a trip as its trains', async () => {
     const w = r2.chain.warnings.find((x) => x.type === 'train-gone')!;
     expect(w.params.at).toBe(lost.from.name);
     expect(w.severity).toBe('error');
-    expect(r2.chain.connections[w.legIndex]!.sections[w.sectionIndex!]!.journey).toBe(lost.journey);
+    const shown = r2.chain.connections[w.legIndex]!.sections[w.sectionIndex!]!;
+    expect([shown.from.name, shown.from.dep]).toEqual([lost.from.name, lost.from.dep]);
   });
 
   it('a day gone by: a train missing says nothing about it', async () => {
@@ -256,7 +285,7 @@ describe('a trip as its trains', async () => {
     expect(r2.gone).toBe(1);
     const kept = r2.chain.connections
       .flatMap((c) => c.sections)
-      .find((s) => s.journey === mine.journey)!;
+      .find((s) => s.from.dep === mine.from.dep && s.mode !== 'walk')!;
     expect(stopKey(kept.to.stopRef)).toBe(stopKey(mine.to.stopRef));
   });
 
@@ -286,48 +315,53 @@ describe('the compact link (0.21.0)', async () => {
         newTrip('mine', { ...tours[id]!, name: id }, r.legs!, r.recommended, new Date(0)),
       ]);
   }
-  const shape = (t: PlannedTrip) => ({
-    name: t.name,
-    date: t.route.date,
-    anchor: t.route.anchor,
-    ticket: t.route.ticket,
-    travelClass: t.route.travelClass,
-    waypoints: t.route.waypoints.map((w) => [
-      w.stopRef,
-      w.name,
-      w.kind,
-      w.dwellMin,
-      w.templateId,
-      w.line,
-      !!w.ring,
-      w.leaveBy,
-      w.arriveAfter,
-    ]),
-    connections: t.chain.connections.map((c) => [
-      c.dep,
-      c.arr,
-      c.sections.map((s) => [
-        s.mode,
-        s.journey,
-        s.walkMin,
-        stopKey(s.from.stopRef),
-        s.from.dep,
-        stopKey(s.to.stopRef),
-        s.to.arr,
-        s.category,
-        s.line,
-        !!s.reservationRequired,
-        !!s.supplement,
+  /** A trip as a link holds it: `sent` for the sender's, as the link carries it. */
+  const shape = (t: PlannedTrip, sent = false) => {
+    const kept = keptJourney(t);
+    const line = lineAsSent(t);
+    return {
+      name: t.name,
+      date: t.route.date,
+      anchor: t.route.anchor,
+      ticket: t.route.ticket,
+      travelClass: t.route.travelClass,
+      waypoints: t.route.waypoints.map((w) => [
+        w.stopRef,
+        w.name,
+        w.kind,
+        w.dwellMin,
+        w.templateId,
+        w.line,
+        !!w.ring,
+        w.leaveBy,
+        w.arriveAfter,
       ]),
-    ]),
-  });
+      connections: t.chain.connections.map((c) => [
+        c.dep,
+        c.arr,
+        c.sections.map((s) => [
+          s.mode,
+          sent ? kept.get(s) : s.journey,
+          s.walkMin,
+          stopKey(s.from.stopRef),
+          s.from.dep,
+          stopKey(s.to.stopRef),
+          s.to.arr,
+          s.category,
+          sent && s.mode !== 'walk' ? line(s) : s.line,
+          !!s.reservationRequired,
+          !!s.supplement,
+        ]),
+      ]),
+    };
+  };
 
   it('every recorded tour comes back as it was sent, trains, walks and times', async () => {
     expect(planned.length).toBe(6);
     for (const [, t] of planned) {
       const back = await decodeTripLink(await encodeTripLink(t, nameOf), 'theirs', nameOf);
       expect(back && isPlanned(back)).toBe(true);
-      expect(shape(back as PlannedTrip)).toEqual(shape(t));
+      expect(shape(back as PlannedTrip)).toEqual(shape(t, true));
     }
   });
 
@@ -339,9 +373,10 @@ describe('the compact link (0.21.0)', async () => {
       expect(now.length, id).toBeLessThan(before.length * 0.6);
       expect(now.endsWith('z'), id).toBe(true);
     }
-    // Fourteen rides (T1, the Albula by bus): 939 characters before.
+    // Fourteen rides (T1, the Albula by bus): 939 characters as JSON, 423 with every journey
+    // (0.21), 337 with only those two rides share (0.22.6).
     const t1 = planned.find(([id]) => id === 'T1')![1];
-    expect((await encodeTripLink(t1, nameOf)).length).toBeLessThan(450);
+    expect((await encodeTripLink(t1, nameOf)).length).toBeLessThan(350);
   });
 
   it('links sent before still open, also when a messenger dropped the - or _ they ended in', async () => {
@@ -358,6 +393,27 @@ describe('the compact link (0.21.0)', async () => {
     }
     // T4 and T5 end in `_`: the links that "broke in a messenger".
     expect(cut).toBeGreaterThan(0);
+  });
+
+  it('a compact link of 0.21 still opens with every train it held', async () => {
+    const v1 = readFileSync(new URL('./fixtures/links/v1-T3.txt', import.meta.url), 'utf8');
+    const back = (await decodeTripLink(v1, 'theirs', nameOf)) as PlannedTrip;
+    expect(back && isPlanned(back)).toBe(true);
+    const r = ridesOf(back);
+    expect(r.length).toBeGreaterThan(10);
+    expect(r.every((s) => s.journey)).toBe(true);
+    expect(back.name).toBe('Voralpen + Brünig');
+  });
+
+  it('a train that runs on stays one train before the link is asked again', async () => {
+    for (const [id, t] of planned) {
+      const back = (await decodeTripLink(
+        await encodeTripLink(t, nameOf),
+        'x',
+        nameOf,
+      )) as PlannedTrip;
+      expect(changesOf(back.chain.connections), id).toBe(changesOf(t.chain.connections));
+    }
   });
 
   it('a link cut short or changed opens as damaged, never as another trip', async () => {

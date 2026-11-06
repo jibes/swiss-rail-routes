@@ -56,7 +56,7 @@ export function chainWarnings(
 
 export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promise<Refreshed> {
   const asked = trip.chain.connections.flatMap((c, ci) =>
-    c.sections.flatMap((s, si) => (s.mode !== 'walk' && s.journey ? [{ s, ci, si }] : [])),
+    c.sections.flatMap((s, si) => (s.mode !== 'walk' ? [{ s, ci, si }] : [])),
   );
   const fresh = new Map<string, Section>();
   const missing: typeof asked = [];
@@ -82,15 +82,25 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
       return void failed++;
     }
     // The same train, boarded and left where it was: an answer may also hold it to another
-    // stop (ride it part of the way, then change), which is not this ride.
-    const same = answer
+    // stop (ride it part of the way, then change), which is not this ride. Without its journey
+    // (a compact link leaves most out, 0.22.6): the ride leaving there at that minute for there,
+    // of the same line where one is known.
+    const here = answer
       .flatMap((c) => c.sections)
-      .find(
+      .filter(
         (a) =>
-          a.journey === journey &&
+          a.mode !== 'walk' &&
           stopKey(a.from.stopRef) === stopKey(from.stopRef) &&
           stopKey(a.to.stopRef) === stopKey(to.stopRef),
       );
+    const same = journey
+      ? here.find((a) => a.journey === journey)
+      : here.find(
+          (a) =>
+            !!a.from.dep &&
+            Date.parse(a.from.dep) === Date.parse(from.dep!) &&
+            (!x.s.line || !a.line || a.line === x.s.line || a.number === x.s.line),
+        );
     if (same) fresh.set(`${x.ci}:${x.si}`, same);
     else missing.push(x);
   };

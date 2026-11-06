@@ -25,7 +25,10 @@ const MODES: (Mode | 'walk')[] = ['rail', 'cog', 'cableCar', 'boat', 'bus', 'wal
 const TICKETS: TicketType[] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
 /** Days are counted from here: small numbers for the years the app is used in. */
 const EPOCH = Date.parse('2020-01-01T00:00:00Z');
-const HEADER = 0x20;
+/** v1 (0.21.0) holds every ride's journey; v2 (0.22.6) only those two rides share, as the rest
+ * come back when the link opens (refresh.ts finds a ride by its stations and time). */
+const HEADER_V1 = 0x20;
+const HEADER = 0x30;
 const DEFLATED = 1;
 
 const hm = (s: string) => {
@@ -121,6 +124,18 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
   };
   /** Where the last section ended: the next one starting there says so with a bit, not a stop. */
   let last = -1;
+  // A journey only where the next ride is the same train (it runs on: no change), written once,
+  // the next ride saying "the same as before". The others come back when the link opens.
+  const allRides = chain.connections.flatMap((c) => c.sections).filter((x) => x.mode !== 'walk');
+  const runsOnNext = new Set<Section>();
+  const runsOnPrev = new Set<Section>();
+  allRides.forEach((x, i) => {
+    const n = allRides[i + 1];
+    if (x.journey && n && n.journey === x.journey) {
+      runsOnNext.add(x);
+      runsOnPrev.add(n);
+    }
+  });
   // A connection's times where its rides do not give them: a walk at its start or end.
   const firstRide = (c: (typeof chain.connections)[number]) => c.sections[0]?.mode !== 'walk';
   const lastRide = (c: (typeof chain.connections)[number]) => c.sections.at(-1)?.mode !== 'walk';
@@ -134,18 +149,22 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
       const ride = s.mode !== 'walk';
       const from = stop(stopKey(s.from.stopRef), s.from.name);
       const to = stop(stopKey(s.to.stopRef), s.to.name);
-      const extras = (s.reservationRequired ? 1 : 0) | (s.supplement ? 2 : 0);
+      const copy = runsOnPrev.has(s);
+      const write = !copy && runsOnNext.has(s);
+      const extras = (s.reservationRequired ? 1 : 0) | (s.supplement ? 2 : 0) | (copy ? 4 : 0);
       body.uv(
         Math.max(0, MODES.indexOf(s.mode)) |
-          // A ride's journey; a walk's: it stays at the station (between two of its platforms).
-          ((ride ? !!s.journey : to === from) ? 8 : 0) |
+          // A ride's journey written; a walk's: it stays at the station (between two platforms).
+          ((ride ? write : to === from) ? 8 : 0) |
           (from === last ? 16 : 0) |
-          (ride && !!s.number && s.number === journeyNumber(s.journey) ? 32 : 0) |
+          (ride && (write || copy) && !!s.number && s.number === journeyNumber(s.journey)
+            ? 32
+            : 0) |
           (extras ? 64 : 0),
       );
       if (extras) body.uv(extras);
       if (!ride) body.uv(Math.max(0, Math.round(s.walkMin ?? 0)));
-      else if (s.journey) writeJourney(body, s.journey, route.date, opRef);
+      else if (write) writeJourney(body, s.journey!, route.date, opRef);
       if (from !== last) body.uv(from);
       if (ride) step(s.from.dep);
       if (ride || to !== from) body.uv(to);
@@ -154,7 +173,9 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
         // Category and line as one entry; the line alone where the category is its letters
         // ("IR38" is an IR).
         const cat = s.category ?? '';
-        const line = s.line ?? '';
+        // A train without a line goes by its number: its journey, which held it, is left out.
+        const kept = write || copy;
+        const line = s.line ?? (!kept && s.number ? s.number : '');
         strRef(
           !cat && !line
             ? undefined
@@ -222,20 +243,21 @@ export async function decodePacked(
   } catch {
     return undefined;
   }
-  if (bytes.length < 4 || (bytes[0]! & 0xf0) !== HEADER) return undefined;
+  const version = bytes[0]! & 0xf0;
+  if (bytes.length < 4 || (version !== HEADER && version !== HEADER_V1)) return undefined;
   const crc = (bytes[bytes.length - 2]! << 8) | bytes[bytes.length - 1]!;
   if (crc16(bytes.subarray(0, -2)) !== crc) return undefined;
   try {
     const payload = bytes.slice(1, -2);
     const raw =
       bytes[0]! & DEFLATED ? await pipe(payload, new DecompressionStream('deflate-raw')) : payload;
-    return read(new Reader(raw), id, nameOf);
+    return read(new Reader(raw), id, nameOf, version === HEADER ? 2 : 1);
   } catch {
     return null;
   }
 }
 
-function read(r: Reader, id: string, nameOf: NameOf): Trip | null {
+function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
   const flags = r.uv();
   const name = r.str();
   const routeName = flags & 1 ? r.str() : name;
@@ -303,6 +325,8 @@ function read(r: Reader, id: string, nameOf: NameOf): Trip | null {
   const duration = () => (cursor += r.uv());
   const at = (s: { stopRef: string; name: string }) => ({ stopRef: s.stopRef, name: s.name });
   let last: { stopRef: string; name: string } | undefined;
+  /** The last ride's journey: v2's "the same train as before". */
+  let prevJourney: string | undefined;
 
   const connections = Array.from({ length: r.uv() }, (_, legIndex) => {
     const shape = r.uv();
@@ -314,7 +338,15 @@ function read(r: Reader, id: string, nameOf: NameOf): Trip | null {
       const extras = head & 64 ? r.uv() : 0;
       const walk = mode === 'walk';
       const walkMin = walk ? r.uv() : undefined;
-      const journey = !walk && head & 8 ? readJourney(r, date, opOf) : undefined;
+      const journey = walk
+        ? undefined
+        : head & 8
+          ? readJourney(r, date, opOf)
+          : v === 2 && extras & 4
+            ? prevJourney
+            : undefined;
+      if (v === 2 && extras & 4 && !journey) throw new Error('journey');
+      if (!walk) prevJourney = journey;
       const fromStop = head & 16 ? last : stopOf();
       if (!fromStop) throw new Error('from');
       if (walk) {
