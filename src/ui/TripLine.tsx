@@ -8,7 +8,7 @@ import {
 import { localParams, templateName, type RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
 import type { Tour } from '../core/model';
-import { towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
+import { pinAfter, towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import { NOTICE_TYPES, type Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
 import { badge, dayMonth } from './format';
@@ -38,6 +38,8 @@ export interface LineActions {
   later: () => void;
   /** The nearest station that works in place of entry `k` (a tap on a station missed). */
   find?: FindSubstitute;
+  /** A station the plan chose made yours, after entry `k`: a via; with a stay; or adding on. */
+  pin?: (k: number, stop: { stopRef: string; name: string }, then?: 'stay' | 'add') => void;
 }
 
 /** A stay goes up and down in quarter hours; any length can be typed (to 10 h). */
@@ -198,14 +200,38 @@ export function TripLine({
     );
   };
 
-  const whyLocked = (r: StationRow, i: number) =>
-    hint === `${r.key}@${i}` && (
-      <span className="why" role="status">
-        {r.ring && lineName(r.line)
-          ? t('partOfLine', { line: lineName(r.line) })
-          : t('timetableStop')}
+  /** Pin, stay here, add on from here: a station the plan chose, made yours after entry `k`. */
+  const pinMenu = (k: number, stop: { stopRef: string; name: string }) =>
+    act?.pin && (
+      <span className="pin-menu">
+        <button type="button" className="pill" onClick={() => act.pin!(k, stop)}>
+          <Icon name="pin" size={16} />
+          {t('pinVia')}
+        </button>
+        <button type="button" className="pill" onClick={() => act.pin!(k, stop, 'stay')}>
+          {t('pinStay')}
+        </button>
+        <button type="button" className="pill" onClick={() => act.pin!(k, stop, 'add')}>
+          <Icon name="plus" size={16} />
+          {t('pinAdd')}
+        </button>
       </span>
     );
+
+  const whyLocked = (r: StationRow, i: number) => {
+    if (hint !== `${r.key}@${i}`) return null;
+    const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
+    return (
+      <>
+        <span className="why" role="status">
+          {r.ring && lineName(r.line)
+            ? t('partOfLine', { line: lineName(r.line) })
+            : t(k !== undefined ? 'timetableStopPin' : 'timetableStop')}
+        </span>
+        {k !== undefined && pinMenu(k, { stopRef: r.key, name: r.name })}
+      </>
+    );
+  };
 
   /** The open station's grip and panel. */
   const editing = (r: StationRow) => {
@@ -372,6 +398,21 @@ export function TripLine({
                       const v = vias.find((x) => x.call === call);
                       return v ? viaRow(rows[v.row] as StationRow, v.row, when, passed) : null;
                     }}
+                    // A stop the train calls at: yours with a tap, as a station the plan chose.
+                    pin={(() => {
+                      const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
+                      if (k === undefined) return undefined;
+                      return {
+                        open: (call: number) => hint === `${id}:${call}`,
+                        toggle: (call: number) =>
+                          setHint(hint === `${id}:${call}` ? null : `${id}:${call}`),
+                        menu: (call: number) =>
+                          pinMenu(k, {
+                            stopRef: mids[call]!.stopRef,
+                            name: mids[call]!.name,
+                          }),
+                      };
+                    })()}
                   />
                 )}
                 {ws.map((w, j) => {
@@ -626,16 +667,28 @@ function Panel({
           <Icon name="down" size={18} />
         </button>
         <span className="sp" />
-        {n > 1 && (
-          <button
-            type="button"
-            className="sq danger"
-            aria-label={t('removeStation', { stop: name })}
-            onClick={() => act.remove(k)}
-          >
-            <Icon name="trash" size={18} />
-          </button>
-        )}
+        {n > 1 &&
+          // A via between your first and last station is pinned: unpinning leaves the way to
+          // the plan again. Any other station of yours is taken out.
+          (stay === null && k > 0 && k < n - 1 ? (
+            <button
+              type="button"
+              className="sq pinned"
+              aria-label={t('unpin', { stop: name })}
+              onClick={() => act.remove(k)}
+            >
+              <Icon name="pin" size={18} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="sq danger"
+              aria-label={t('removeStation', { stop: name })}
+              onClick={() => act.remove(k)}
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          ))}
       </div>
     </div>
   );

@@ -720,3 +720,23 @@ describe('a finished trip waits in search', () => {
     expect(retire([draft], [], Date.parse('2026-11-08T08:00:00Z')).tours).toHaveLength(1);
   });
 });
+
+describe('a station the plan chose, made yours (pinAfter)', async () => {
+  const { pinAfter } = await import('../src/core/rows');
+  const st = (name: string, entry?: number, ring?: boolean) =>
+    ({ type: 'station', name, key: name, role: 'change', entry, ring }) as const;
+  const ride = { type: 'ride' } as never;
+  const entries = [{ w: {} }, { w: {} }, { w: { line: 'bernina' } }];
+
+  it('after the last of yours before it; never before your first, after your last, in a line', () => {
+    const rows = [st('A', 0), ride, st('X'), ride, st('B', 1), ride, st('Y'), ride, st('C', 2)];
+    expect(pinAfter(rows as never, 2, entries)).toBe(0);
+    // Between B and C runs a scenic line: its way is the line's.
+    expect(pinAfter(rows as never, 6, entries)).toBeUndefined();
+    expect(pinAfter(rows as never, 0, entries)).toBeUndefined();
+    // A ride's own stops: after the entry before the ride.
+    expect(pinAfter(rows as never, 1, entries)).toBe(0);
+    expect(pinAfter([st('Z'), ...rows] as never, 0, entries)).toBeUndefined();
+    expect(pinAfter([st('R', undefined, true)] as never, 0, entries)).toBeUndefined();
+  });
+});

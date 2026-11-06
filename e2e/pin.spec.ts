@@ -1,0 +1,46 @@
+import { FIXTURE_DATE } from '../tests/acceptance/ojp';
+import { acceptanceTours } from '../tests/acceptance/tours';
+import { encodeTour } from '../tests/helpers/share';
+import { allowUnrecorded, BEFORE, expect, planShared, test } from './fixtures';
+
+// A station the plan chose (where you change) made yours: pinned as a via, the way kept; its
+// panel unpins it, and Undo pins it back.
+test('pin the plan’s change as a via; unpin it; undo', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Pin' }));
+  // Each edit plans again: the new answers are not recorded, and need not be.
+  allowUnrecorded(page);
+  const line = page.getByRole('list', { name: 'The trip' });
+  const yours = () => line.locator('li.station.entry');
+  await expect(yours()).toHaveCount(2);
+  // The plan's own station: muted; a tap says why, and offers to pin it.
+  const change = line.locator('li.station.auto').first();
+  const name = (await change.locator('.n').first().textContent())!;
+  await change.locator('button.m.locked').click();
+  await expect(change.getByText(/The plan goes this way\. Pin it/)).toBeVisible();
+  await change.getByRole('button', { name: 'Pin' }).click();
+  await expect(yours()).toHaveCount(3);
+  await expect(yours().nth(1)).toContainText(name);
+  // Its panel is open: the pin unpins it.
+  await page.getByRole('button', { name: `Unpin ${name}` }).click();
+  await expect(yours()).toHaveCount(2);
+  await expect(page.getByRole('status').filter({ hasText: `${name} unpinned.` })).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(yours()).toHaveCount(3);
+  await expect(yours().nth(1)).toContainText(name);
+});
+
+test('a stop the train calls at: stay there with a tap', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Stay' }));
+  allowUnrecorded(page);
+  const line = page.getByRole('list', { name: 'The trip' });
+  await line.locator('.mids-toggle').first().click();
+  const mid = line.locator('.mids .mid-name').first();
+  const name = (await mid.textContent())!;
+  await mid.click();
+  await line.getByRole('button', { name: 'Stay here' }).click();
+  const added = line.locator('li.station.entry').filter({ hasText: name });
+  await expect(added).toHaveCount(1);
+  await expect(added).toContainText('30 min');
+});

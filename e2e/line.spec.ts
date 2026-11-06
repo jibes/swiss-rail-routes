@@ -55,7 +55,8 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   await page.getByRole('button', { name: 'Move Interlaken Ost up' }).click();
   await expect(entries).toHaveText([/^Zürich HB/, /^Interlaken Ost/, /^Luzern/, /^Zürich HB/]);
   await expect(line.locator('.station.ring')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Remove Interlaken Ost' }).click();
+  // A via between your first and last station is pinned: its panel unpins it.
+  await page.getByRole('button', { name: 'Unpin Interlaken Ost' }).click();
   await expect(entries).toHaveCount(3);
 
   // Another station in the field keeps the stay.

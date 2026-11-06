@@ -730,3 +730,36 @@
   font-size: 13px;
   color: var(--ink-2);
 }
+
+/* A station the plan chose, made yours (TripLine pinMenu): pin, stay, add on. */
+.pin-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+.pin-menu .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A stop inside a ride: its name opens the same. */
+.mid-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mids li:has(.pin-menu) {
+  flex-wrap: wrap;
+}
+
+.sq.pinned {
+  color: var(--rail);
+}

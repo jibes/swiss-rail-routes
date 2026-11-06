@@ -118,12 +118,19 @@ export function Mids({
   riding,
   all,
   via,
+  pin,
 }: {
   r: RideRow;
   live: LiveCtx | undefined;
   riding: boolean;
   all: boolean;
   via: (call: number, when: ReactNode, passed: boolean) => ReactNode;
+  /** Editable: a stop's name opens what can be done with it (made yours). */
+  pin?: {
+    open: (call: number) => boolean;
+    toggle: (call: number) => void;
+    menu: (call: number) => ReactNode;
+  };
 }) {
   const t = useT();
   const lr = rideOf(live, r);
@@ -147,7 +154,19 @@ export function Mids({
         const item = own ?? (
           <li key={k} className={passed ? 'passed' : ''}>
             {time}
-            <span>{m.name}</span>
+            {pin ? (
+              <button
+                type="button"
+                className="mid-name"
+                aria-expanded={pin.open(k)}
+                onClick={() => pin.toggle(k)}
+              >
+                {m.name}
+              </button>
+            ) : (
+              <span>{m.name}</span>
+            )}
+            {pin?.open(k) && pin.menu(k)}
           </li>
         );
         // Between stops[j] and stops[j+1]: the marker goes just before stop j (mids[k = j]).

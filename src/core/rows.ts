@@ -282,3 +282,25 @@ export function towards(s: Pick<Section, 'mode' | 'destination' | 'to'>): string
   if (s.mode === 'walk' || !d) return undefined;
   return plainName(d) === plainName(s.to.name) ? undefined : d;
 }
+
+/**
+ * A station the plan chose (a change, a stop the train calls at) made yours: the entry it goes
+ * after, the last of yours before it on the line; undefined where it cannot be pinned: before
+ * your first station, after your last, or inside a scenic line's stretch, whose way the line sets.
+ */
+export function pinAfter(
+  rows: LineRow[],
+  i: number,
+  entries: readonly { w: { line?: string } }[],
+): number | undefined {
+  // A station the plan chose, or a ride (the stops it calls at between).
+  const r = rows[i];
+  if (!r || (r.type === 'station' && (r.entry !== undefined || r.ring))) return undefined;
+  let k: number | undefined;
+  for (let j = i - 1; j >= 0 && k === undefined; j--) {
+    const x = rows[j];
+    if (x?.type === 'station' && x.entry !== undefined) k = x.entry;
+  }
+  if (k === undefined || k >= entries.length - 1) return undefined;
+  return entries[k + 1]?.w.line ? undefined : k;
+}

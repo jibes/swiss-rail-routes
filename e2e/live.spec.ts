@@ -251,6 +251,7 @@ test('a delay in a stop list stays on the time’s line, via rows included', asy
       time.append(late);
       const t = time.getBoundingClientRect();
       const n = (li.querySelector('.n') ??
+        li.querySelector('.mid-name') ??
         li.querySelector('span:not(.late)'))!.getBoundingClientRect();
       return [
         {

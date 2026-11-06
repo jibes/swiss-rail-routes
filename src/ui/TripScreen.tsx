@@ -160,6 +160,16 @@ export function TripScreen({ id }: { id: string }) {
   // Beside the trip (desktop columns) it takes the map's column, not the trip's.
   const [mapPick, setMapPick] = useState<{ after: number; into: Element | null } | null>(null);
   const closeMap = useCallback(() => setMapPick(null), []);
+  // A via just unpinned, for a few seconds: Undo pins it back where it was.
+  const [unpinned, setUnpinned] = useState<{
+    k: number;
+    stop: { stopRef: string; name: string };
+  } | null>(null);
+  useEffect(() => {
+    if (!unpinned) return;
+    const timer = setTimeout(() => setUnpinned(null), 6000);
+    return () => clearTimeout(timer);
+  }, [unpinned]);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeMenu = useCallback(() => setMenu(false), []);
   useLayer(open !== null, closePanel);
@@ -515,8 +525,21 @@ export function TripScreen({ id }: { id: string }) {
                   setOpen(to);
                 },
                 remove: (k) => {
+                  const e = entries[k];
+                  // A via unpinned: the way goes back to the plan, and Undo puts it back.
+                  if (e && e.w.kind === 'via' && k > 0 && k < entries.length - 1)
+                    setUnpinned({ k, stop: { stopRef: e.w.stopRef, name: e.w.name } });
                   edit((r) => removeEntry(r, k));
                   setOpen(null);
+                },
+                pin: (k, stop, then) => {
+                  log('line.pin', { trip: id, after: k, then });
+                  edit((r) => {
+                    const x = insertEntries(r, k, [stationEntry(stop)]);
+                    return then === 'stay' ? setEntryStay(x, k + 1, 30) : x;
+                  });
+                  if (then === 'add') setSheet({ after: k + 1 });
+                  else setOpen(k + 1);
                 },
                 dropLine: (k) => edit((r) => dropLine(r, k)),
                 addAfter: (k) => setSheet({ after: k }),
@@ -552,6 +575,22 @@ export function TripScreen({ id }: { id: string }) {
               : undefined
           }
         />
+      )}
+      {unpinned && (
+        <p className="toast unpinned" role="status">
+          <span>{t('unpinned', { stop: unpinned.stop.name })}</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              const { k, stop } = unpinned;
+              edit((r) => insertEntries(r, k - 1, [stationEntry(stop)]));
+              setUnpinned(null);
+            }}
+          >
+            {t('undo')}
+          </button>
+        </p>
       )}
       {mapPick &&
         entries[mapPick.after] &&

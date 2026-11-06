@@ -233,6 +233,13 @@ export const de = {
   colsPick: 'Wähle eine Reise aus der Liste oder beginne eine neue.',
   mapPickList: 'Erreichte Orte ({n})',
   mapPickNear: 'In der Nähe',
+  pinVia: 'Anheften',
+  pinStay: 'Hier bleiben',
+  pinAdd: 'Halt ab hier hinzufügen',
+  timetableStopPin:
+    'Der Plan führt hier durch. Hefte den Halt an, damit er bleibt, wie auch immer geplant wird.',
+  unpin: '{stop} lösen',
+  unpinned: '{stop} gelöst.',
   mapPickOpen: 'Auf der Karte wählen',
   mapPickTitle: 'Auf der Karte wählen',
   mapPickFrom: 'Ab {stop} um {time}',
