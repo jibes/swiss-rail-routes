@@ -66,13 +66,11 @@ test('a station missed: a suggestion dismissed leaves the route as it was', asyn
   await expect(line.locator('.station', { hasText: 'Bern Weissenbühl' })).toHaveCount(0);
 });
 
-// Replan from here has the same note on its own line: Use edits the rest, not the saved trip.
+// Changing the rest under way has the same note: Use edits the rest, not the saved trip.
 // Chur → Alvaneu → St. Moritz on 7 Nov 2026, the Albula closed Thusis–Preda (replacement buses do
 // not serve Alvaneu): planned again from Landquart, Alvaneu is missed for real. Answers:
 // tests/fixtures/ojp/T8R (recorded by the acceptance test of that name).
-test('replan from here: a station missed, the nearest that works used in the rest', async ({
-  page,
-}) => {
+test('under way: a station missed, the nearest that works used in the rest', async ({ page }) => {
   const st = (name: string) => ({ stopRef: ref(name), name });
   const tour = {
     ...addWaypoint(addWaypoint(newTour('s', DATE, st('Chur')), st('Alvaneu')), st('St. Moritz')),
@@ -92,8 +90,8 @@ test('replan from here: a station missed, the nearest that works used in the res
   );
   await page.getByRole('button', { name: 'Save trip' }).click();
   await expect(page).toHaveURL(/#\/trip\//);
-  await page.getByRole('link', { name: 'Replan from here' }).click();
   const line = page.getByRole('list', { name: 'The trip', exact: true });
+  await line.locator('.station', { hasText: 'St. Moritz' }).locator('button.m').click();
   await expect(line.locator('.station.missed')).toHaveText(/Alvaneu/, { timeout: 30_000 });
   const note = line.locator('.missed-note');
   await note.getByRole('button', { name: 'Find one that works' }).click();

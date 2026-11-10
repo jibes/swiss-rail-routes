@@ -10,7 +10,7 @@ test('Kleine Scheidegg says its height; Interlaken Ost none', async ({ page }) =
   const line = page.getByRole('list', { name: 'The trip', exact: true });
   await expect(
     line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('.alt'),
-  ).toHaveText('2061 m', { timeout: 15_000 });
+  ).toHaveText(' 2061 m', { timeout: 15_000 });
   await expect(line.locator('.station', { hasText: 'Interlaken Ost' }).locator('.alt')).toHaveCount(
     0,
   );

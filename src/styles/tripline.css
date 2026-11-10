@@ -964,7 +964,7 @@
 
 /* A mountain station's height after its name (0.40.0): muted, never in the way. */
 .trip-line .n .alt {
-  margin-left: 6px;
+  margin-left: 2px;
   font-size: 12px;
   font-weight: 400;
   color: var(--ink-2);

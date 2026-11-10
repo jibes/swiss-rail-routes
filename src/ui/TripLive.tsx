@@ -8,7 +8,6 @@ import { plannedRows } from '../core/rows';
 import { badge } from './format';
 import { TripLine } from './TripLine';
 import { hhmm } from './format';
-import { Icon } from './icons';
 import type { useLive } from './useLive';
 
 /** The next step in one sentence: what, when, where. */
@@ -77,16 +76,19 @@ function NextStep({
 }
 
 /** The trip under way (SPEC §3a): progress, the next step, connections at risk, the timetable
- * live with where you are; Change the rest replans from here (the travelled part fixed). */
+ * live with where you are; what lies ahead is changed on the line itself (`edit`, 0.46.0). */
 export function TripLive({
   trip,
   live,
   options,
+  edit,
 }: {
   trip: PlannedTrip;
   live: ReturnType<typeof useLive>;
   /** Not left yet: the options strip, to take another connection. */
   options?: ReactNode;
+  /** Begins editing the rest: at a station ahead (its key), or to add one (null). */
+  edit: (key: string | null) => void;
 }) {
   const t = useT();
   const update = useTrips((s) => s.update);
@@ -141,29 +143,20 @@ export function TripLive({
         </>
       )}
       {options}
-      <div className="live-actions">
-        {/* Arrived: there is nothing left to replan from here. */}
-        {state?.phase !== 'done' && (
-          <a
-            className={`${state?.risks.length ? 'primary' : 'secondary'} wide`}
-            href={`#/trip/${trip.id}/edit`}
-          >
-            <Icon name="route" />
-            {t('replanHere')}
-          </a>
-        )}
-        {trip.previous && (
+      {trip.previous && (
+        <div className="live-actions">
           <button type="button" className="text-button" onClick={() => update(trip.id, undo)}>
             {t('undoChange')}
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <TripLine
         route={trip.route}
         rows={plannedRows(trip.route, trip.chain.connections)}
         warnings={trip.chain.warnings}
         planning={false}
         live={state ? { state, now: live.now } : undefined}
+        edit={state ? edit : undefined}
       />
     </>
   );

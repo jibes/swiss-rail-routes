@@ -24,6 +24,7 @@ import { weatherMap } from '../core/weatherMap';
 import { addWeatherLayers, setWeather } from './mapWeather';
 import { weatherWords } from './WeatherCell';
 import { useWeather } from './useWeather';
+import { restDraft, useRestDrafts } from './restDraft';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { usePrefs, useT } from '../store';
@@ -159,7 +160,8 @@ export default function MapView({ id }: { id: string }) {
         trip.chain ? expectedArrival(trip.chain.connections, liveStatus) : undefined,
       )
     : 'upcoming';
-  const { state } = useLive(trip && status === 'live' && isPlanned(trip) ? trip : undefined);
+  const live = useLive(trip && status === 'live' && isPlanned(trip) ? trip : undefined);
+  const state = live.state;
   const index = useStopIndex();
   const estimate = useMemo(
     () => (state && index ? estimatedPosition(state, (k) => index.byRef(stopKey(k))) : null),
@@ -506,19 +508,32 @@ export default function MapView({ id }: { id: string }) {
     },
     [map],
   );
-  /** From the trip's last station, when the plan leaves it (or arrives and stays). */
+  /**
+   * From the trip's last station, when the plan leaves it (or arrives and stays). Under way
+   * (0.46.0), from the rest's: what is added goes into the rest being changed, begun here if
+   * the trip screen has not begun it, and Update on the trip saves it.
+   */
   const addFromEnd = () => {
-    if (!tour) return;
-    const entries = entriesOf(tour);
+    if (!tour || !trip) return;
+    let rest = useRestDrafts.getState().drafts[id];
+    if (status === 'live' && !rest && state && isPlanned(trip)) {
+      rest = restDraft(trip, state, live.now) ?? undefined;
+      if (rest) useRestDrafts.getState().set(id, rest);
+    }
+    const under = status === 'live' ? rest : undefined;
+    if (status === 'live' && !under) return;
+    const route = under?.route ?? tour;
+    const entries = entriesOf(route);
     const after = entries.length - 1;
     const w = entries[after]?.w;
     if (!w) return;
-    log('mapPick.open', { trip: id, after, from: 'map' });
+    log('mapPick.open', { trip: id, after, from: 'map', rest: !!under });
     startAdd({
       trip: id,
       after,
       from: { stopRef: w.stopRef, name: w.name },
-      at: leaveTime(tour, tripChain, w.stopRef),
+      at: leaveTime(route, under ? undefined : tripChain, w.stopRef),
+      ...(under ? { rest: true } : {}),
     });
   };
 
@@ -570,7 +585,7 @@ export default function MapView({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="map-tools">
-          {!adding && status === 'upcoming' && map && (
+          {!adding && (status === 'upcoming' || (status === 'live' && state)) && map && (
             <button
               type="button"
               className="icon"

@@ -6,6 +6,7 @@
 import type * as maplibregl from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { insertEntries, stationEntry } from '../core/line';
+import type { Tour } from '../core/model';
 import { nearbyChoices, type NearChoice } from '../core/nearby';
 import type { Departures } from '../core/ojp/departures';
 import { zurichLocal } from '../core/planner/plan';
@@ -15,6 +16,7 @@ import { log } from '../io/log';
 import { fetchDepartures } from '../io/ojp';
 import { useT } from '../store';
 import { useTrips } from '../trips';
+import { useRestDrafts } from './restDraft';
 import { hhmm } from './format';
 import { Icon } from './icons';
 import { useLayer } from './layers';
@@ -302,9 +304,10 @@ export function MapAdd({
 
   const put = (c: Chosen) => {
     log('mapPick.add', { stop: c.stop.name, direct: !!c.direct });
-    useTrips
-      .getState()
-      .editRoute(add.trip, (r) => insertEntries(r, add.after, [stationEntry(c.stop)]));
+    const put = (r: Tour) => insertEntries(r, add.after, [stationEntry(c.stop)]);
+    // Under way, into the rest being changed (Update on the trip saves it); before, the trip.
+    if (add.rest) useRestDrafts.getState().edit(add.trip, put);
+    else useTrips.getState().editRoute(add.trip, put);
     setAdded((n) => n + 1);
     setChosen(null);
     // On from the stop added: the next goes after it.

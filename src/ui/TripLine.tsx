@@ -53,6 +53,7 @@ export function TripLine({
   fixedFirst = false,
   live,
   travelled = false,
+  edit,
 }: {
   /** Replan from here: the first station is where you are; only "Add after" it. */
   fixedFirst?: boolean;
@@ -68,6 +69,11 @@ export function TripLine({
   live?: LiveCtx;
   /** Replan: the way here, grey, above the line of the rest. */
   travelled?: boolean;
+  /**
+   * Under way (0.46.0): what lies ahead can be changed. A station ahead, or "Add a station",
+   * begins editing the rest (its key, or null to add); behind you nothing is.
+   */
+  edit?: (key: string | null) => void;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -157,12 +163,25 @@ export function TripLine({
   // A mountain station's height after its name (0.40.0), muted: from HEIGHT_MIN up.
   const alt = (r: StationRow) => {
     const h = index?.byRef(r.key)?.height;
-    return h ? <span className="alt">{t('heightM', { n: h })}</span> : null;
+    // A space before it, so a screen reader says "Kleine Scheidegg 2061 m", not run together.
+    return h ? <span className="alt">{` ${t('heightM', { n: h })}`}</span> : null;
   };
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
     const label = stayLabel(t, r, r.entry !== undefined ? entries[r.entry]?.w.leaveBy : undefined);
+    // Under way, a station ahead: a tap begins editing the rest there.
+    const L = edit ? stationLive(rows, i, live) : undefined;
+    if (k === undefined && edit && L && !L.passed && !L.here)
+      return (
+        <button type="button" className="m" onClick={() => edit(r.key)}>
+          <span className="n">
+            {r.name}
+            {alt(r)}
+          </span>
+          {label && <span className="chip quiet">{label}</span>}
+        </button>
+      );
     if (!act && r.entry !== undefined)
       return (
         // Nothing to edit: a station you entered is just its name.
@@ -622,9 +641,9 @@ export function TripLine({
           </li>
         );
       })}
-      {act && (
+      {(act || (edit && live?.state.phase !== 'done')) && (
         <li className="addrow">
-          <button type="button" onClick={act.add}>
+          <button type="button" onClick={act ? act.add : () => edit?.(null)}>
             <span className="t" />
             <span className="rail">
               <span className="plus" aria-hidden="true">

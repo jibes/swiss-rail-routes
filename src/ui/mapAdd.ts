@@ -14,6 +14,8 @@ export interface MapAdd {
   /** Where the web starts and when you leave it, local `YYYY-MM-DDTHH:MM`. */
   from: Pick<Waypoint, 'stopRef' | 'name'>;
   at: string;
+  /** Under way (0.46.0): stops go into the rest being changed, not the trip itself. */
+  rest?: boolean;
 }
 
 export const useMapAdd = create<{

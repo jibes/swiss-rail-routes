@@ -5,14 +5,13 @@ import { Home } from './ui/Home';
 import { SharedTour } from './ui/SharedTour';
 import { SharedTrip } from './ui/SharedTrip';
 import { TripScreen } from './ui/TripScreen';
-import { EditTrip } from './ui/EditTrip';
 import { Settings } from './ui/Settings';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { watchBack } from './io/back';
 import { log } from './io/log';
 import { watchAutoPlan } from './io/autoplan';
 import { useSync, watchSync } from './io/sync';
-import { liveTrip, tripStatus } from './core/trip';
+import { liveTrip } from './core/trip';
 import { retire } from './core/retire';
 import { expectedArrival } from './core/live';
 import { useLiveStatus } from './ui/useLive';
@@ -30,21 +29,6 @@ import { useFocusStop } from './ui/focusStop';
 const OPENED = 'srr.opened.v1';
 
 const MapView = lazy(() => import('./ui/MapView'));
-
-/** `#/trip/<id>/edit`: Replan from here while the trip is under way, else the trip itself. */
-function EditOrTrip({ id }: { id: string }) {
-  const now = useNow();
-  const status = useLiveStatus((s) => s.status);
-  const live = useTrips((s) => {
-    const t = s.trips.find((x) => x.id === id);
-    return (
-      !!t &&
-      tripStatus(t, now, t.chain ? expectedArrival(t.chain.connections, status) : undefined) ===
-        'live'
-    );
-  });
-  return live ? <EditTrip id={id} /> : <TripScreen key={id} id={id} />;
-}
 
 /**
  * A trip whose day is over leaves the list and waits in search (your trips), checked as the clock
@@ -92,7 +76,8 @@ function Route({ hash: full }: { hash: string }) {
   // `now` and `replan` are older addresses of the same screens.
   const tr = /^\/trip\/([\w-]+)(\/(map|now|edit|replan))?$/.exec(hash);
   // Changing the rest is for a trip under way; before, the trip screen edits it in place.
-  if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <EditOrTrip id={tr[1]!} />;
+  // Older addresses of Replan from here: the trip, whose line edits what lies ahead (0.46.0).
+  if (tr?.[3] === 'edit' || tr?.[3] === 'replan') return <TripScreen key={tr[1]} id={tr[1]!} />;
   if (tr?.[3] === 'map')
     return (
       <Suspense fallback={null}>

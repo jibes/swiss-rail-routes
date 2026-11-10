@@ -30,7 +30,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
-  // Under way the route is not turned round: Replan from here changes the rest.
+  // Under way the route is not turned round: the line changes what lies ahead.
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Duplicate' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reverse direction' })).toHaveCount(0);
@@ -73,14 +73,19 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Under way');
 });
 
-test('replan from here: a spontaneous stop, update the trip, undo', async ({ page }) => {
+test('under way, what lies ahead is changed on the line itself: a stop, update, undo', async ({
+  page,
+}) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
   // 09:15, on the R62 (a trip is never planned from a time gone).
   await page.clock.runFor('25:00');
-
-  await page.getByRole('link', { name: 'Replan from here' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('From Zweilütschinen');
+  const line = page.getByRole('list', { name: 'The trip', exact: true });
+  // One screen (0.46.0): no separate Replan from here. Behind you nothing opens; a station
+  // ahead begins changing the rest, on the same screen.
+  await expect(page.getByRole('link', { name: 'Replan from here' })).toHaveCount(0);
+  await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
+  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   // The rest from here is planned at once, without a failure first.
   await expect(page.getByRole('button', { name: 'Update trip' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -88,8 +93,13 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page.getByRole('button', { name: 'Update trip' })).toBeDisabled();
   await expect(page.locator('.trip-line.past .ride')).toHaveCount(1);
   await expect(page.locator('.trip-line.past .station')).toHaveText([/Interlaken Ost/]);
-  // The same line as the trip screen; where you are is fixed: only "Add after".
-  const line = page.getByRole('list', { name: 'The trip', exact: true });
+  // Discard: back as it was.
+  await page.getByRole('button', { name: 'Discard' }).click();
+  await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
+  await expect(page.locator('.trip-line.past')).toHaveCount(0);
+
+  // Again, by adding: where you are is fixed, only "Add after".
+  await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
   await line.locator('.station.entry').first().getByRole('button').first().click();
   await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add after' }).click();
@@ -103,8 +113,8 @@ test('replan from here: a spontaneous stop, update the trip, undo', async ({ pag
   await expect(page.getByRole('button', { name: 'Update trip' })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Update trip' }).click({ timeout: 30_000 });
 
-  // Back on Now: the new plan (via Wengen), undo available.
-  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
+  // The trip under way again: the new plan (via Wengen), undo available.
+  await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
   await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo last change' }).click();
   // No Wengen station any more (the GA note still names its stretch, Wengen–Kleine Scheidegg).

@@ -138,11 +138,8 @@ export const fr = {
   liveOffline: 'Pas de données en direct : horaires',
   liveTimetable: 'Horaires',
   youAreHere: 'Tu es ici',
-  replanFrom: 'Depuis {stop}',
-  replanHint:
-    'Modifie la suite de ton voyage : ajoute un arrêt, change un séjour. La planification suit.',
+  discardChanges: 'Annuler',
   updateTrip: 'Mettre à jour le voyage',
-  replanHere: 'Replanifier d’ici',
   sharedTrip: 'Quelqu’un a partagé ce voyage avec toi, tel que planifié.',
   saveToTrips: 'Enregistrer le voyage',
   shareTrip: 'Partager le voyage',

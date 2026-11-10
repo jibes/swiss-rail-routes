@@ -1,3 +1,8 @@
+// The rest of a trip under way, edited in place on the trip screen (0.46.0; before, its own
+// screen, "Replan from here"). The way here grey above, then the rest from where you are (fixed),
+// planned as you edit, with the same notices and options strip as before it leaves; Update makes
+// a new version (undo keeps one), Discard drops the draft. The draft lives in `restDraft`, so the
+// map planner adds to the same one.
 import { useCallback, useEffect, useState } from 'react';
 import {
   dropLine,
@@ -9,12 +14,12 @@ import {
   setEntryStay,
   setEntryLeaveBy,
 } from '../core/line';
-import { expectedArrival } from '../core/live';
+import type { LiveState } from '../core/live';
 import type { Tour } from '../core/model';
-import type { PlanResult, PlannedChain } from '../core/planner/plan';
-import { mergeReplan, remainingRoute, replanPoint, travelledRoute } from '../core/replan';
+import type { PlanResult } from '../core/planner/plan';
+import { mergeReplan, replanPoint, travelledRoute } from '../core/replan';
 import { plannedRows, routeRows } from '../core/rows';
-import { isPlanned, revise, tripStatus, type PlannedTrip } from '../core/trip';
+import { isPlanned, revise, type PlannedTrip } from '../core/trip';
 import { log } from '../io/log';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
 import { findSubstitute } from '../io/substitute';
@@ -23,18 +28,17 @@ import { useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { shiftHm, zurichHm } from './format';
-import { Icon } from './icons';
 import { useLayer } from './layers';
-import { NotFound } from './NotFound';
+import { useMapAdd } from './mapAdd';
+import { go } from './useHash';
+import { leaveTime } from '../core/spider';
 import { OptionsBar } from './OptionsBar';
 import { PlanNotices, type PlanState } from './PlanNotices';
+import { restDraft, useRestDrafts } from './restDraft';
 import { TripLine } from './TripLine';
-import { go } from './useHash';
-import { useLive, useLiveStatus } from './useLive';
-import { useNow } from './useNow';
 import { useStopIndex } from './useStopIndex';
 
-/** Edits come in bursts (a stay, then another): plan once they settle, as on the trip screen. */
+/** Edits come in bursts (a stay, then another): plan once they settle, as before it leaves. */
 const QUIET_MS = 400;
 
 interface Planned {
@@ -44,54 +48,40 @@ interface Planned {
   detail: string;
 }
 
-/**
- * Replan from here, while a trip is under way (before it, the trip screen edits it in place).
- * The same line, notices and options strip as the trip screen, planned as you edit; the
- * station you are at is fixed. Updating makes a new version (undo keeps one).
- */
-export function EditTrip({ id }: { id: string }) {
+export function RestEditor({
+  trip,
+  state,
+  now,
+}: {
+  trip: PlannedTrip;
+  state: LiveState;
+  now: number;
+}) {
   const t = useT();
-  const trip = useTrips((s) => {
-    const x = s.trips.find((y) => y.id === id);
-    return x && isPlanned(x) ? x : undefined;
-  });
+  const id = trip.id;
+  const d = useRestDrafts((s) => s.drafts[id]);
+  const drafts = useRestDrafts.getState;
   const update = useTrips((s) => s.update);
-  const nowOpen = useNow();
-  const liveStatus = useLiveStatus((s) => s.status);
-  const live =
-    !!trip &&
-    tripStatus(trip, nowOpen, expectedArrival(trip.chain.connections, liveStatus)) === 'live';
-  const { state, now } = useLive(live ? trip : undefined);
-  const start = (x: PlannedTrip | undefined) => {
-    const p = x && state ? replanPoint(x, state, now) : null;
-    const draft = x && p ? remainingRoute(x, p) : null;
-    return { point: p, draft, version: x?.version, initial: draft ? JSON.stringify(draft) : '' };
-  };
-  // The live state and time it was opened with: the cut is made again at saving, with stop
-  // positions, so the travelled train keeps its track up to the stop.
-  const [opened, setOpened] = useState(() => ({ state, now, version: trip?.version }));
-  const [{ point, draft, initial }, setBase] = useState(() => start(trip));
-  const setDraft = (f: (d: Tour) => Tour) =>
-    setBase((b) => (b.draft ? { ...b, draft: f(b.draft) } : b));
   const index = useStopIndex();
   const [planned, setPlanned] = useState<Planned | null>(null);
   /** The last plan that came, for any version of the rest: shown dimmed while the next comes. */
   const [last, setLast] = useState<PlanResult | null>(null);
   const [changed, setChanged] = useState(false);
-  const [picked, setPicked] = useState<PlannedChain | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
-  const [sheet, setSheet] = useState<{ after: number } | null>(null);
+  const [open, setOpen] = useState<number | null>(() => d?.focus?.open ?? null);
+  const [sheet, setSheet] = useState<{ after: number } | null>(() =>
+    d?.focus?.add ? { after: entriesOf(d.route).length - 1 } : null,
+  );
   const [attempt, setAttempt] = useState(0);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeSheet = useCallback(() => setSheet(null), []);
-  // Escape and Android's Back close what is open first, as on the trip screen.
   useLayer(open !== null, closePanel);
   useLayer(sheet !== null, closeSheet);
+  const draft = d?.route;
   const json = draft ? JSON.stringify(draft) : '';
 
-  // Plans the rest whenever it changes, as the trip screen does (the same shared request).
+  // Plans the rest whenever it changes (the same shared request as before it leaves).
   useEffect(() => {
-    if (!draft || !trip) return;
+    if (!draft) return;
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       setPlanned({ json, state: 'planning', result: null, detail: '' });
@@ -125,12 +115,12 @@ export function EditTrip({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [json, attempt]);
 
-  if (!trip || !point || !draft) return <NotFound />;
-
+  if (!d || !draft) return null;
+  const { point } = d;
   const mine = planned?.json === json ? planned : null;
   const result = mine?.result ?? null;
   const planState: PlanState = mine ? mine.state : 'planning';
-  const chain = picked ?? result?.recommended ?? null;
+  const chain = d.picked ?? result?.recommended ?? null;
   const planning = planState === 'planning';
   // While the next plan comes the last one stays on the line, dimmed: nothing jumps.
   const shown = chain ?? (planning ? (last?.recommended ?? null) : null);
@@ -148,18 +138,15 @@ export function EditTrip({ id }: { id: string }) {
     ),
   );
   // Nothing to update until the rest differs, or another connection was chosen.
-  const dirty = json !== initial || picked !== null;
-  const edit = (f: (x: Tour) => Tour) => {
-    setDraft(f);
-    setPicked(null);
-  };
+  const dirty = json !== d.initial || d.picked !== null;
+  const edit = (f: (x: Tour) => Tour) => drafts().edit(id, f);
   const anchor = 'departAt' in draft.anchor ? draft.anchor.departAt : draft.anchor.arriveBy;
 
   const save = () => {
     if (!chain || !result) return;
     // Changed meanwhile (another device, another tab, undo): its legs and trains are not the
     // ones this plan was cut from.
-    if (useTrips.getState().trips.find((x) => x.id === id)?.version !== opened.version)
+    if (useTrips.getState().trips.find((x) => x.id === id)?.version !== d.opened.version)
       return setChanged(true);
     log('replan.save', { trip: id, dep: chain.dep, arr: chain.arr });
     update(id, (x) =>
@@ -169,27 +156,29 @@ export function EditTrip({ id }: { id: string }) {
             x,
             mergeReplan(
               x,
-              (opened.state &&
-                replanPoint(x, opened.state, opened.now, (key) => {
-                  const st = index?.byRef(key);
-                  return st ? [st.lon, st.lat] : undefined;
-                })) ||
-                point,
+              replanPoint(x, d.opened.state, d.opened.now, (key) => {
+                const st = index?.byRef(key);
+                return st ? [st.lon, st.lat] : undefined;
+              }) || point,
               result.legs ?? [],
               chain,
             ),
             new Date(),
           ),
     );
-    go(`/trip/${id}`);
+    drafts().discard(id);
+  };
+
+  const discard = () => {
+    log('replan.discard', { trip: id });
+    drafts().discard(id);
   };
 
   /** From where the trip is now, as it is now (changed elsewhere, or the train moved on). */
   const again = () => {
-    const fresh = start(trip);
-    setBase(fresh);
-    setOpened({ state, now, version: trip.version });
-    setPicked(null);
+    const fresh = restDraft(trip, state, now);
+    if (fresh) drafts().set(id, fresh);
+    else drafts().discard(id);
     setChanged(false);
     setOpen(null);
   };
@@ -202,20 +191,7 @@ export function EditTrip({ id }: { id: string }) {
   };
 
   return (
-    <main className="page trip-screen replan">
-      <header className="bar">
-        <button
-          type="button"
-          className="icon"
-          aria-label={t('back')}
-          onClick={() => go(`/trip/${id}`)}
-        >
-          <Icon name="back" />
-        </button>
-      </header>
-      <h1 className="page-title">{t('replanFrom', { stop: point.stop.name })}</h1>
-      <p className="muted">{t('replanHint')}</p>
-
+    <>
       {changed ? (
         <div role="alert" className="notice red">
           <span>{t('tripChangedMeanwhile')}</span>
@@ -249,8 +225,8 @@ export function EditTrip({ id }: { id: string }) {
             move={(min) => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, min) } }))}
             // Its time becomes the rest's: planning again after an edit starts there.
             choose={(c) => {
-              setDraft((r) => ({ ...r, anchor: { departAt: zurichHm(Date.parse(c.dep)) } }));
-              setPicked(c);
+              edit((r) => ({ ...r, anchor: { departAt: zurichHm(Date.parse(c.dep)) } }));
+              drafts().pick(id, c);
             }}
           />
         )}
@@ -302,10 +278,18 @@ export function EditTrip({ id }: { id: string }) {
         }}
       />
 
-      {chain && !changed && (
+      {!changed && (
         <div className="dock">
           <div className="dock-inner">
-            <button type="button" className="primary wide" disabled={!dirty} onClick={save}>
+            <button type="button" className="secondary" onClick={discard}>
+              {t('discardChanges')}
+            </button>
+            <button
+              type="button"
+              className="primary wide"
+              disabled={!dirty || !chain}
+              onClick={save}
+            >
               {t('updateTrip')}
             </button>
           </div>
@@ -321,8 +305,22 @@ export function EditTrip({ id }: { id: string }) {
           first={sheet.after === entries.length - 1 ? trip.route.waypoints[0] : undefined}
           onPick={pick}
           onClose={closeSheet}
+          // On the trip's map, into the rest: beside the trip (desktop columns), else its screen.
+          onMap={() => {
+            const w = entries[sheet.after]!.w;
+            log('mapPick.open', { trip: id, after: sheet.after, rest: true });
+            useMapAdd.getState().start({
+              trip: id,
+              after: sheet.after,
+              from: { stopRef: w.stopRef, name: w.name },
+              at: leaveTime(draft, chain?.connections, w.stopRef),
+              rest: true,
+            });
+            setSheet(null);
+            if (!document.querySelector('.col-map .mapview')) go(`/trip/${id}/map`);
+          }}
         />
       )}
-    </main>
+    </>
   );
 }

@@ -48,6 +48,8 @@ import { leaveTime } from '../core/spider';
 import { useMapAdd } from './mapAdd';
 import type { Kept } from './keepMap';
 import { useDark } from './useDark';
+import { RestEditor } from './RestEditor';
+import { restDraft, useRestDrafts } from './restDraft';
 
 /** Into that element (the map's column), else where it stands. */
 
@@ -115,6 +117,19 @@ export function TripScreen({ id }: { id: string }) {
     : 'upcoming';
   const liveTrip = trip && status === 'live' && isPlanned(trip) ? trip : undefined;
   const live = useLive(liveTrip);
+  // Under way, the rest being changed (0.46.0): edited in place, the same draft as the map's.
+  const rest = useRestDrafts((s) => (liveTrip ? s.drafts[liveTrip.id] : undefined));
+  const beginRest = (key: string | null) => {
+    if (!liveTrip || !live.state) return;
+    const d = restDraft(liveTrip, live.state, live.now);
+    if (!d) return;
+    // The station tapped, as the rest names it (by key); or the add sheet after its last.
+    const open = key ? entriesOf(d.route).findIndex((e) => stopKey(e.w.stopRef) === key) : -1;
+    log('replan.begin', { trip: liveTrip.id, at: key ? 'station' : 'add' });
+    useRestDrafts
+      .getState()
+      .set(liveTrip.id, { ...d, focus: key && open > 0 ? { open } : key ? {} : { add: true } });
+  };
   // Under way but not left yet: its options stay (from the saved plan, nothing asked).
   const notLeft = !!liveTrip && now < Date.parse(liveTrip.chain.dep);
   const planner = usePlanner(trip, !liveTrip || notLeft);
@@ -518,12 +533,17 @@ export function TripScreen({ id }: { id: string }) {
       )}
 
       {liveTrip ? (
-        <TripLive
-          trip={liveTrip}
-          live={live}
-          // Not left yet: another connection can still be chosen (an earlier one never ends it).
-          options={notLeft ? optionsBar : null}
-        />
+        rest && live.state ? (
+          <RestEditor trip={liveTrip} state={live.state} now={live.now} />
+        ) : (
+          <TripLive
+            trip={liveTrip}
+            live={live}
+            edit={beginRest}
+            // Not left yet: another connection can still be chosen (an earlier one never ends it).
+            options={notLeft ? optionsBar : null}
+          />
+        )
       ) : status === 'past' && isPlanned(trip) ? (
         // Over, until its day ends: the record, read-only (then it waits in search).
         <>

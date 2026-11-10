@@ -136,11 +136,8 @@ export const de = {
   liveOffline: 'Keine Live-Daten: Fahrplanzeiten',
   liveTimetable: 'Fahrplanzeiten',
   youAreHere: 'Du bist hier',
-  replanFrom: 'Ab {stop}',
-  replanHint:
-    'Ändere den Rest deiner Reise: Halt hinzufügen, Aufenthalt ändern. Geplant wird laufend.',
+  discardChanges: 'Verwerfen',
   updateTrip: 'Reise aktualisieren',
-  replanHere: 'Ab hier neu planen',
   sharedTrip: 'Jemand hat diese Reise mit dir geteilt, so wie sie geplant ist.',
   saveToTrips: 'Reise speichern',
   shareTrip: 'Reise teilen',

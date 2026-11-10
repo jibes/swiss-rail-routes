@@ -40,7 +40,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.clock.runFor('25:00');
     await page.locator('.trip-line .ride.here').waitFor();
     await page.screenshot({ path: `${dir}/${scheme}-4-now.png` });
-    await page.getByRole('link', { name: 'Replan from here' }).click();
+    await page
+      .getByRole('list', { name: 'The trip', exact: true })
+      .locator('.station', { hasText: 'Kleine Scheidegg' })
+      .locator('button.m')
+      .click();
     await page.locator('.trip-line.past').waitFor();
     // Planned at once (the rest from here may have no recorded answer: then its notice).
     await page
@@ -49,7 +53,6 @@ for (const scheme of ['light', 'dark'] as const) {
       .first()
       .waitFor({ timeout: 30_000 });
     await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
-    await page.goBack();
     await page.goto('./#/');
     await page.locator('.livebar').waitFor();
     await page.evaluate(() => document.fonts.ready);

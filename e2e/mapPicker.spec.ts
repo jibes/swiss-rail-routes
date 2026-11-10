@@ -88,3 +88,24 @@ test('the web is drawn once for the station it starts from', async ({ page }) =>
   const text = await readFile((await (await download).path())!, 'utf8');
   expect(text.split('\n').filter((l) => l.includes(' mapPick.web '))).toHaveLength(1);
 });
+
+// One trip view (0.46.0): under way the map adds too, into the rest of the trip being changed;
+// the trip screen then offers Update and Discard, the trip itself untouched until Update.
+test('under way, the map adds into the rest; the trip offers Update or Discard', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Map live' }));
+  // 09:15, on the R62: the web from Kleine Scheidegg then has no recorded answer, nor the rest.
+  await page.clock.runFor('25:00');
+  allowUnrecorded(page);
+  await page.goto(page.url() + '/map');
+  await page.getByRole('button', { name: 'Add stops on the map' }).click();
+  await expect(page.getByText(/Kleine Scheidegg/).first()).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Discard' })).toBeVisible();
+  await expect(page.locator('.trip-line.past')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Discard' }).click();
+  await expect(page.locator('.trip-line.past')).toHaveCount(0);
+});
