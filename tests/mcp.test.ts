@@ -203,16 +203,19 @@ describe('routes from a request', () => {
     );
   });
 
-  it('times: never before now today, sensible dates only', () => {
+  it('times: from now today unless asked, back two weeks at most (0.49.0), sensible dates', () => {
     const when = (x: Parameters<typeof resolveWhen>[0]) => resolveWhen(x, NOW);
     expect(when({})).toEqual({ date: '2026-11-02', anchor: { departAt: '09:05' } });
-    expect(when({ departAt: '06:00' }).anchor).toEqual({ departAt: '09:05' });
+    // A time gone, asked for: a trip already under way.
+    expect(when({ departAt: '06:00' }).anchor).toEqual({ departAt: '06:00' });
+    expect(when({ arriveBy: '08:00' }).anchor).toEqual({ arriveBy: '08:00' });
+    expect(when({ date: '2026-10-25' }).date).toBe('2026-10-25');
+    expect(() => when({ date: '2026-10-01' })).toThrow('further back');
     expect(when({ departAt: '18:00' }).anchor).toEqual({ departAt: '18:00' });
     expect(when({ date: FIXTURE_DATE }).anchor).toEqual({ departAt: '08:00' });
     expect(when({ date: FIXTURE_DATE, departAt: '06:00' }).anchor).toEqual({ departAt: '06:00' });
-    expect(() => when({ arriveBy: '08:00' })).toThrow('has passed');
     expect(() => when({ departAt: '09:00', arriveBy: '10:00' })).toThrow('not both');
-    expect(() => when({ date: '2026-11-01' })).toThrow('has passed');
+    expect(when({ date: '2026-11-01' }).date).toBe('2026-11-01');
     expect(() => when({ date: '2030-01-01' })).toThrow('too far');
     expect(() => when({ date: 'tomorrow' })).toThrow('not a date');
     expect(() => when({ departAt: '25:00' })).toThrow('not a time');

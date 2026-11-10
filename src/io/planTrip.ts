@@ -14,15 +14,25 @@ import { savePlan } from './tours';
 
 export const routeJson = (t: Trip) => JSON.stringify(t.route);
 
-/** Today, a time already gone plans from now: connections that have left are none to take. */
-export function fromNow(route: Trip['route'], now: number): Trip['route'] {
+/**
+ * Today, a time already gone plans from now: connections that have left are none to take. Not
+ * when you set that time after it had gone (`editedAt`, 0.49.0): a trip already under way is put
+ * in from when it left.
+ */
+export function fromNow(route: Trip['route'], now: number, editedAt?: string): Trip['route'] {
   if (route.date !== dayOf(now) || !('departAt' in route.anchor)) return route;
-  const hm = new Intl.DateTimeFormat('de-CH', {
-    timeZone: 'Europe/Zurich',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(now);
-  return route.anchor.departAt < hm ? { ...route, anchor: { departAt: hm } } : route;
+  const fmt = (ms: number) =>
+    new Intl.DateTimeFormat('de-CH', {
+      timeZone: 'Europe/Zurich',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(ms);
+  const hm = fmt(now);
+  if (route.anchor.departAt >= hm) return route;
+  const edited = editedAt ? Date.parse(editedAt) : NaN;
+  if (!Number.isNaN(edited) && dayOf(edited) === route.date && fmt(edited) > route.anchor.departAt)
+    return route;
+  return { ...route, anchor: { departAt: hm } };
 }
 
 /** A plan under way, shared by everyone who asked for it; stopped once all of them gave up. */
@@ -87,15 +97,18 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
   });
   const p = (async () => {
     const index = await stopSearch();
-    const planned = await plan(fromNow(JSON.parse(json) as Trip['route'], Date.now()), {
-      trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
-      fetchTrips: (q) => cachedTrips(q, ctrl.signal),
-      templates: TEMPLATES,
-      ga: GA,
-      stop: (ref) => index.byRef(ref),
-      place: placeByName(index),
-      reservations,
-    });
+    const planned = await plan(
+      fromNow(JSON.parse(json) as Trip['route'], Date.now(), trip.editedAt),
+      {
+        trace: (event, data) => log(event, { trip: trip.id, ...(data as object) }),
+        fetchTrips: (q) => cachedTrips(q, ctrl.signal),
+        templates: TEMPLATES,
+        ga: GA,
+        stop: (ref) => index.byRef(ref),
+        place: placeByName(index),
+        reservations,
+      },
+    );
     const r: PlanResult = { ...planned, reservations };
     log('plan.done', {
       trip: trip.id,

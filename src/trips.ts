@@ -82,7 +82,8 @@ export const useTrips = create<TripsState>()((set, get) => ({
         stops: route.waypoints.map((w) => `${w.name}${w.kind === 'stop' ? ` ${w.dwellMin}′` : ''}`),
         hadTimetable: !!t.chain,
       });
-      return { ...withoutTimetable(t), route };
+      // When you changed it (0.49.0): a trip put in after its time is told by it.
+      return { ...withoutTimetable(t), route, editedAt: new Date().toISOString() };
     });
     set({ trips });
     // A tap, not a keystroke: saved at once.

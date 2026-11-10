@@ -31,6 +31,11 @@ export interface Trip extends TripVersion {
   compact?: true;
   /** No notifications for this trip (0.44.0, ⋯ → Notifications off): synced, on every device. */
   quiet?: true;
+  /**
+   * When you last changed its route yourself (0.49.0; not a plan, reload or the rest changed
+   * under way): a trip entered after its time, already under way or taken, is told by it.
+   */
+  editedAt?: string;
   schema: 1;
 }
 
@@ -101,16 +106,33 @@ export const changesOf = (connections: Pick<Connection, 'sections'>[]): number =
  * not planned yet is upcoming until its day is over.
  */
 export function tripStatus(
-  t: Pick<Trip, 'chain'> & { route?: Pick<Tour, 'date'> },
+  t: Pick<Trip, 'chain' | 'editedAt'> & { route?: Pick<Tour, 'date'> },
   now: number,
   arrival?: number,
 ): TripStatus {
-  if (!t.chain) return t.route && t.route.date < dayOf(now) ? 'past' : 'upcoming';
+  if (!t.chain)
+    return t.route && t.route.date < dayOf(now) && !enteredLate(t, now) ? 'past' : 'upcoming';
   const dep = Date.parse(t.chain.dep);
   const arr = Math.max(Date.parse(t.chain.arr), arrival ?? 0);
   if (now < dep - LIVE_BEFORE_MIN * 60_000) return 'upcoming';
-  if (now > arr + LIVE_AFTER_MIN * 60_000) return 'past';
+  if (now > arr + LIVE_AFTER_MIN * 60_000) return enteredLate(t, now) ? 'upcoming' : 'past';
   return 'live';
+}
+
+/**
+ * Entered after its time (0.49.0): its route changed today, after the trip left (or, before it
+ * is planned, dated before today). Such a trip is being put in, not one that ran: it stays as
+ * before it leaves (in the list, every station editable, planned) until the day you changed it
+ * is over; one still running is under way as any other.
+ */
+export function enteredLate(
+  t: Pick<Trip, 'chain' | 'editedAt'> & { route?: Pick<Tour, 'date'> },
+  now: number,
+): boolean {
+  if (!t.editedAt) return false;
+  const at = Date.parse(t.editedAt);
+  if (dayOf(at) !== dayOf(now)) return false;
+  return t.chain ? at > Date.parse(t.chain.dep) : !!t.route && t.route.date < dayOf(now);
 }
 
 /** The trip without its timetable: the route stays, and is planned again. */

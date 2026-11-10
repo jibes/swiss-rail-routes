@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { BEFORE, expect, pick, planShared, test } from './fixtures';
+import { BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
@@ -379,3 +379,19 @@ async function redPixels(page: Page, at: Locator): Promise<[number, number][]> {
     return [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6].map((q) => red[Math.floor(red.length * q)]!);
   }, png);
 }
+
+// Put in after it left (0.49.0, reported: an already started trip could not be entered): today
+// at 09:30, a trip from 09:00 is planned from 09:00 and is under way at once.
+test('a trip already under way can be put in', async ({ page }) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T08:30:00Z`) }); // 09:30 in Zurich
+  await newTrip(page, 'Interlaken Ost');
+  const time = page.getByLabel('Leave from (time)');
+  await time.fill('09:00');
+  await page.clock.runFor(1000);
+  await expect(time).toHaveValue('09:00');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await pick(page, 'Kleine Scheidegg');
+  // Planned from 09:00, not from now: the 09:04 R62, already running.
+  await expect(page.getByRole('progressbar')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
+});

@@ -46,6 +46,24 @@ describe('trip status', () => {
     expect(tripStatus(t, at('18:16'))).toBe('past');
   });
 
+  it('put in after its time (0.49.0): as before it leaves, for the day it was changed', () => {
+    // Changed at 19:00, after it ran 08:00–18:00: being put in, not one that ran.
+    const late = { ...t, editedAt: '2026-11-07T19:00:00Z' };
+    expect(tripStatus(late, at('19:30'))).toBe('upcoming');
+    // The day after, it ran.
+    expect(tripStatus(late, Date.parse('2026-11-08T08:00:00Z'))).toBe('past');
+    // Changed before it left: it ran, over once over.
+    expect(tripStatus({ ...t, editedAt: '2026-11-07T07:00:00Z' }, at('19:30'))).toBe('past');
+    // Put in while it runs: under way as any other.
+    expect(tripStatus({ ...t, editedAt: '2026-11-07T09:00:00Z' }, at('10:00'))).toBe('live');
+    // Not planned yet, dated a day gone, changed today: being put in.
+    const unplanned = withoutTimetable({ ...t, route: { ...t.route, date: '2026-11-05' } });
+    expect(tripStatus(unplanned, at('10:00'))).toBe('past');
+    expect(tripStatus({ ...unplanned, editedAt: '2026-11-07T09:00:00Z' }, at('10:00'))).toBe(
+      'upcoming',
+    );
+  });
+
   it('sorts current soonest first, past latest first, and finds the live one', () => {
     const list = [
       trip('late', '15:00', '16:00'),

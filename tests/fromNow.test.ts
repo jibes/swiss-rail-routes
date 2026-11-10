@@ -18,4 +18,12 @@ describe('planning from now', () => {
     const by = { ...tour, anchor: { arriveBy: '09:00' } };
     expect(fromNow(by, at('2026-11-07T13:10:00Z'))).toBe(by);
   });
+  it('a time gone that you set after it had gone stays: a trip already under way (0.49.0)', () => {
+    // Set at 13:00 (Zurich 14:00) to 08:00: put in from when it left.
+    expect(fromNow(tour, at('2026-11-07T13:10:00Z'), '2026-11-07T13:00:00Z')).toBe(tour);
+    // Set at 06:30 (Zurich 07:30) for 08:00, planned only later: from now, as before.
+    expect(fromNow(tour, at('2026-11-07T13:10:00Z'), '2026-11-07T06:30:00Z').anchor).toEqual({
+      departAt: '14:10',
+    });
+  });
 });

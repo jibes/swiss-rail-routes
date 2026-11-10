@@ -187,6 +187,12 @@ export async function guard(page: Page) {
     if (!meant) errors.push(`console.error: ${m.text()} ${url}`);
   });
   await answerWorker(page, errors);
+  // The service worker's "new version" prompt can come up mid-test (a fresh context's worker
+  // still settling; CI, 10 Nov 2026: it covered More). No test is about it: dismissed as a
+  // person would, whenever it gets in the way.
+  await page.addLocatorHandler(page.locator('.banner[role="status"]'), async (banner) => {
+    await banner.getByRole('button', { name: 'Dismiss' }).click();
+  });
   return { errors, check: () => expect(errors, 'page errors').toEqual([]) };
 }
 

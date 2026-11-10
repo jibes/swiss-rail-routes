@@ -5,6 +5,7 @@ import { lineReversed } from '../../src/core/lineDirection';
 import type { Anchor, TicketType, Tour, Waypoint } from '../../src/core/model';
 import { fold, stopKey, type Stop, type StopSearch } from '../../src/core/stops';
 import { dayOf } from '../../src/core/trip';
+import { earliestDay, PAST_DAYS } from '../../src/core/when';
 import { zurichLocal } from '../../src/core/planner/plan';
 
 /** A request the caller can correct: said as it is. */
@@ -76,19 +77,21 @@ export function resolveWhen(
   const soon = zurichLocal(now + 5 * 60_000);
   const date = input.date ?? (departAt || arriveBy ? today : soon.slice(0, 10));
   if (!DATE.test(date) || Number.isNaN(asDate(date))) throw new ToolError(`not a date: ${date}`);
-  if (date < today) throw new ToolError(`date ${date} has passed`);
+  // Going back (0.49.0, as the app): up to PAST_DAYS, as far as the timetable answers.
+  if (date < earliestDay(today))
+    throw new ToolError(
+      `date ${date} is further back than the timetable answers (${PAST_DAYS} days)`,
+    );
   if (asDate(date) - asDate(today) > MAX_DAYS_AHEAD * DAY)
     throw new ToolError(`date ${date} is too far ahead`);
-  if (arriveBy) {
-    if (date === today && arriveBy <= zurichLocal(now).slice(11, 16))
-      throw new ToolError(`arriveBy ${arriveBy} has passed today`);
-    return { date, anchor: { arriveBy } };
-  }
+  if (arriveBy) return { date, anchor: { arriveBy } };
   if (date !== today && date !== soon.slice(0, 10))
     return { date, anchor: { departAt: departAt ?? '08:00' } };
-  // On today's date, never before now.
-  const earliest = soon.slice(0, 10) === date ? soon.slice(11, 16) : '00:00';
-  return { date, anchor: { departAt: !departAt || departAt < earliest ? earliest : departAt } };
+  // On today's date from now, unless a time is asked for: one gone is a trip already under way.
+  return {
+    date,
+    anchor: { departAt: departAt ?? (soon.slice(0, 10) === date ? soon.slice(11, 16) : '00:00') },
+  };
 }
 
 export function buildRoute(

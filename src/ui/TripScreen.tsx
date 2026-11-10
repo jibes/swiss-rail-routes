@@ -19,7 +19,7 @@ import { autoName } from '../core/naming';
 import { plannedRows, routeRows, type LineRow } from '../core/rows';
 import { stopKey } from '../core/stops';
 import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
-import { acceptDate, acceptTime, timeOnDate } from '../core/when';
+import { acceptDate, acceptTime, earliestDay, timeOnDate } from '../core/when';
 import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
 import { useTrips } from '../trips';
@@ -226,10 +226,6 @@ export function TripScreen({ id }: { id: string }) {
   const shown = chain ?? (planning ? planner.previous?.recommended : undefined);
   const rows = shown ? plannedRows(route, shown.connections) : routeRows(route);
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
-  /** Today: no time before now (a connection gone is no option, and choosing one would end the
-   * trip at once). */
-  const nowHm = zurichHm(now);
-  const notBefore = (hm: string) => (route.date === today && hm < nowHm ? nowHm : hm);
   const today = dayOf(now);
 
   const pick = (p: Picked) => {
@@ -249,7 +245,7 @@ export function TripScreen({ id }: { id: string }) {
         type="date"
         label={t('date')}
         value={route.date}
-        min={today}
+        min={earliestDay(today)}
         accept={(d) => acceptDate(d, today)}
         commit={(d) => {
           log('when.date', { trip: id, date: d });
@@ -268,13 +264,12 @@ export function TripScreen({ id }: { id: string }) {
           </>
         )}
       </WhenField>
-      {/* The first connection after this time is the trip (today: now at the earliest). */}
+      {/* The first connection after this time is the trip; a time gone is one already under way. */}
       <WhenField
         type="time"
         label={t('departFrom')}
         value={anchor}
-        min={route.date === today ? nowHm : undefined}
-        accept={(hm) => acceptTime(hm, route.date, today, nowHm)}
+        accept={acceptTime}
         commit={(hm) => {
           log('when.time', { trip: id, time: hm });
           edit((r) => ({ ...r, anchor: { departAt: hm } }));
@@ -302,7 +297,7 @@ export function TripScreen({ id }: { id: string }) {
           from={anchor}
           move={(min) => {
             log('options.move', { trip: id, min });
-            edit((r) => ({ ...r, anchor: { departAt: notBefore(shiftHm(anchor, min)) } }));
+            edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, min) } }));
           }}
           choose={(c, legs) =>
             // The trip takes it, and its time becomes the trip's: planning again (after

@@ -25,7 +25,9 @@ test('a time later today can be typed, digit by digit', async ({ page, isMobile 
   await expect(saved(page).last()).toHaveText('from 14:30');
 });
 
-test('a time gone today becomes now once finished, not on the way', async ({ page, isMobile }) => {
+// Going back is not prohibited (0.49.0): a time gone today is a trip already under way, and a
+// day up to two weeks back (as far as the timetable answers) one taken.
+test('a time gone today stays as typed: a trip already under way', async ({ page, isMobile }) => {
   test.skip(isMobile, 'a phone opens its own picker');
   await newTrip(page);
   const time = page.getByLabel('Leave from (time)');
@@ -35,24 +37,26 @@ test('a time gone today becomes now once finished, not on the way', async ({ pag
   await page.clock.runFor(1000);
   await expect(saved(page).last()).toHaveText('from 07:05');
   await page.getByLabel('Date').focus();
-  await expect(time).toHaveValue('09:00');
+  await expect(time).toHaveValue('07:05');
 });
 
-test('picked from the system picker, a time gone becomes now by itself', async ({ page }) => {
+test('picked from the system picker, a time gone stays', async ({ page }) => {
   await newTrip(page);
   const time = page.getByLabel('Leave from (time)');
   await time.fill('07:00');
   await page.clock.runFor(1000);
-  await expect(time).toHaveValue('09:00');
+  await expect(time).toHaveValue('07:00');
 });
 
-test('a day gone is refused, the trip keeps its day', async ({ page }) => {
+test('a day up to two weeks back is taken; one further back is refused', async ({ page }) => {
   await newTrip(page);
   const date = page.getByLabel('Date');
+  await date.fill('2026-10-25');
+  await page.clock.runFor(1000);
+  await expect(saved(page).first()).toHaveText('Sun, Oct 25');
   await date.fill('2026-10-01');
   await date.blur();
-  await expect(date).toHaveValue('2026-11-02');
-  await expect(saved(page).first()).toHaveText('Mon, Nov 2');
+  await expect(date).toHaveValue('2026-10-25');
 });
 
 test('a day in another year says its year', async ({ page }) => {

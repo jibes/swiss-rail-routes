@@ -64,7 +64,12 @@ const reservations = z
   .describe(
     'Reservation-only trains: avoid when a regular train runs (default), include, or never.',
   );
-const date = z.string().optional().describe('YYYY-MM-DD, Zurich. Default today.');
+const date = z
+  .string()
+  .optional()
+  .describe(
+    'YYYY-MM-DD, Zurich. Default today; up to 14 days back (a trip already taken), as far as the timetable answers.',
+  );
 const stops = z
   .array(
     strictOf({
@@ -237,7 +242,7 @@ function build(tools: Tools, log: (line: object) => void) {
           .string()
           .optional()
           .describe(
-            'HH:MM, Zurich. Default: the next 5 minutes today, else 08:00. Not with arriveBy.',
+            'HH:MM, Zurich. Default: the next 5 minutes today, else 08:00; a time gone today is a trip already under way. Not with arriveBy.',
           ),
         arriveBy: z.string().optional().describe('HH:MM, Zurich: back or there by then.'),
         stops,
