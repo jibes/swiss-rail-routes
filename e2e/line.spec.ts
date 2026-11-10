@@ -346,6 +346,13 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
       .filter({ has: page.locator('.n', { hasText: /^Alp Grüm/ }) })
       .locator('.offtrain'),
   ).toHaveCount(1);
+  // Two dots (0.45.1): the arrival's with its time, the departure's at the row's foot with its.
+  const chur = line
+    .locator(':scope > li.station')
+    .filter({ has: page.locator('.n', { hasText: /^Chur/ }) });
+  await expect(chur.locator('.dot')).toHaveCount(2);
+  await expect(chur.locator(':scope > .t').first()).toContainText('09:52');
+  await expect(chur.locator('.t-dep')).toContainText('09:58');
   // Start and end: no train to wait between.
   await expect(line.locator(':scope > li.station').first().locator('.offtrain')).toHaveCount(0);
   await expect(line.locator(':scope > li.station').last().locator('.offtrain')).toHaveCount(0);

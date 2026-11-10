@@ -245,18 +245,47 @@
   font-weight: 600;
 }
 
-/* Off the train at a station (a change, a stay; 0.42.0): from the dot down to the next train the
-   rail is dotted, as a walk is, laid over the solid rail (its own background hides it). */
+/* Off the train at a station (a change, a stay; 0.43.0, two dots since 0.45.1): the arrival's
+   dot, a dotted line while you are off the train, the departure's dot at the foot of the row,
+   then the next train's solid line. Laid over the solid rail (its own background hides it). */
 .trip-line .station .rail .offtrain {
   position: absolute;
   left: 50%;
   top: var(--dot-at);
-  bottom: 0;
+  bottom: var(--dep-at);
   width: 4px;
   margin-left: -2px;
   background:
     radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y,
     var(--bg);
+}
+
+.trip-line .station {
+  --dep-at: 12px;
+}
+
+/* Room for the dotted stretch between the two dots, and the departure time beside the second. */
+.trip-line .station.two-dots {
+  min-height: calc(var(--dot-at) + 52px);
+}
+
+.trip-line .station.two-dots > .t-dep {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--dep-at) - 10px);
+  width: 50px;
+  padding: 0 4px 0 0;
+  box-sizing: border-box;
+}
+
+.trip-line .station .rail .dot.dep-dot {
+  top: auto;
+  bottom: var(--dep-at);
+  margin: 0 0 -7px -7px;
+}
+
+.trip-line .station.pass .rail .dot.dep-dot {
+  margin: 0 0 -4.5px -4.5px;
 }
 
 @media print {

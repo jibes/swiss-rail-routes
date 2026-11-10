@@ -642,12 +642,17 @@ export function TripLine({
           // Where you change or stay: the arrival small above, the departure (what you act on) big.
           const both = (r.role === 'stop' || r.role === 'change') && !!r.arr && !!r.dep;
           const showDep = r.role === 'start' || both || (r.role !== 'end' && !!r.dep);
-          const time = showDep ? (
+          // Off the train here (two dots, 0.45.1): the arrival beside the first, the departure
+          // beside the second at the row's foot.
+          const two = offTrain(i) && !!r.arr && !!r.dep;
+          const time = two ? (
+            <When plan={r.arr} live={L?.arr} />
+          ) : showDep ? (
             <When plan={r.dep} live={L?.dep} />
           ) : (
             <When plan={r.arr} live={L?.arr} />
           );
-          const before = both ? <When plan={r.arr} live={L?.arr} /> : null;
+          const before = both && !two ? <When plan={r.arr} live={L?.arr} /> : null;
           const big = r.role !== 'pass';
           const dragging = drag && k === drag.from;
           return (
@@ -657,6 +662,7 @@ export function TripLine({
               className={[
                 'station',
                 big ? 'off' : 'pass',
+                two ? 'two-dots' : '',
                 r.missed ? 'missed' : '',
                 r.ring ? 'ring' : '',
                 r.entry === undefined ? 'auto' : 'entry',
@@ -678,9 +684,19 @@ export function TripLine({
                   <small className="day-of">{shortDate(newDay.get(i)!, lang)}</small>
                 )}
               </span>
+              {two && !planning && (
+                <span className="t t-dep">
+                  <When plan={r.dep} live={L?.dep} />
+                </span>
+              )}
               <span className="rail">
                 <span className="dot" />
-                {offTrain(i) && <span className="offtrain" aria-hidden="true" />}
+                {two && (
+                  <>
+                    <span className="offtrain" aria-hidden="true" />
+                    <span className="dot dep-dot" aria-hidden="true" />
+                  </>
+                )}
               </span>
               {nameOf(r, i)}
               {!!r.stay && wx && (wx.rows[i]?.rain ?? 0) >= 0.5 && (
