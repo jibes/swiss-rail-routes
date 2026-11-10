@@ -19,6 +19,7 @@ import { TEMPLATES } from './TemplatePicker';
 import { ChangePlatform } from './ChangePlatform';
 import { StationPlatform } from './StationPlatform';
 import { stationPlatforms } from '../core/changePlatform';
+import { dayMarks } from '../core/days';
 import { StationPanel, type LineActions } from './StationPanel';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
@@ -26,7 +27,6 @@ import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
 import { RunSheet } from './RunSheet';
 import { runsOn } from '../core/planner/connection';
-import { dayOf } from '../core/trip';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
@@ -183,24 +183,12 @@ export function TripLine({
     // A space before it, so a screen reader says "Kleine Scheidegg 2061 m", not run together.
     return h ? <span className="alt">{` ${t('heightM', { n: h })}`}</span> : null;
   };
+  // Over several days (0.44.0): the new day by the first time on it (`dayMarks`, 0.50.1).
+  const newDay = dayMarks(rows, route.date, onRideRows);
   /**
    * Off the train here (0.42.0): between arriving and the next train (a change, a stay), the
    * rail is dotted from the dot down, as a walk is; a train running on through stays solid.
    */
-  // Over several days (0.44.0): where the day changes, a station says the new day under its time
-  // (Zurich's day, against the station before; the first only when not the trip's own day).
-  const newDay = new Map<number, string>();
-  {
-    let day = route.date;
-    rows.forEach((r, i) => {
-      if (r.type !== 'station' || onRideRows.has(i)) return;
-      const at = r.dep ?? r.arr;
-      if (!at) return;
-      const d = dayOf(Date.parse(at));
-      if (day && d !== day) newDay.set(i, d);
-      day = d;
-    });
-  }
   const offTrain = (i: number) => {
     // The rows either side as drawn: a station a ride passes is in that ride's list, not a row.
     let b = i - 1;
@@ -227,6 +215,12 @@ export function TripLine({
     if (!ride) return null;
     const side = ride === p.arr ? 'arr' : 'dep';
     return <StationPlatform ride={ride} side={side} live={live} />;
+  };
+  /** The new day by the time it begins at: the arrival's, the departure's, or the row's one time. */
+  const dayBy = (i: number, at: 'arr' | 'dep' | 'one') => {
+    const n = newDay.get(i);
+    const d = at === 'one' ? (n?.dep ?? n?.arr) : n?.[at];
+    return d ? <small className="day-of">{shortDate(d, lang)}</small> : null;
   };
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
@@ -697,12 +691,12 @@ export function TripLine({
               <span className="t">
                 {before && !planning && <i>{before}</i>}
                 {planning ? <span className="shim" /> : time}
-                {!planning && newDay.get(i) && (
-                  <small className="day-of">{shortDate(newDay.get(i)!, lang)}</small>
-                )}
+                {!planning && dayBy(i, two ? 'arr' : 'one')}
               </span>
               {two && !planning && (
                 <span className="t t-dep">
+                  {/* Above the time, which stays by its dot at the row's foot. */}
+                  {dayBy(i, 'dep')}
                   <When plan={r.dep} live={L?.dep} />
                 </span>
               )}
