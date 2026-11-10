@@ -486,55 +486,63 @@ export function TripLine({
                     <span>{t('walkMin', { n: min })}</span>
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        className="badge run-open"
-                        aria-label={t('runOpen', { line: badge(s) })}
-                        onClick={() => setRun(s)}
-                      >
-                        {badge(s)}
-                      </button>
-                      {s.product && <b>{s.product}</b>}
-                      {dest && (
-                        <span className="towards">
-                          <span aria-hidden="true">→ {dest}</span>
-                          <span className="sr-only">{t('towards', { to: dest })}</span>
-                        </span>
-                      )}
-                      {moved ? (
-                        <span className="platform-moved">
-                          <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
-                          <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
-                          <span className="sr-only">
-                            {t('platformChanged', { was: moved.was, p: moved.now })}
-                          </span>
-                        </span>
-                      ) : (
-                        platform && <span>{t('platform', { p: platform })}</span>
-                      )}
-                      {min > 0 && <span>{duration(min)}</span>}
-                      {seat && (
-                        <span className="seat">{t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}</span>
-                      )}
-                      {(() => {
-                        // How full, for your class: said only when seats are few (0.39.0).
-                        const o = s.occupancy?.[route.travelClass === 1 ? 0 : 1];
-                        return o && o > 1 ? (
-                          <span className={`occ occ-${o}`}>
-                            {t(o === 3 ? 'occStanding' : 'occFew')}
-                          </span>
-                        ) : null;
-                      })()}
-                      {mids.length > vias.length && (
+                      {/* Two rows, always split the same way (0.49.1): the train, where it
+                          goes and its platform; then its stops, how long and the notes. */}
+                      <span className="ride-l1">
                         <button
                           type="button"
-                          className="mids-toggle"
-                          aria-expanded={shown}
-                          onClick={() => setMidsOpen((m) => new Map(m).set(id, !shown))}
+                          className="badge run-open"
+                          aria-label={t('runOpen', { line: badge(s) })}
+                          onClick={() => setRun(s)}
                         >
-                          {mids.length === 1 ? t('stop1') : t('stopsBetween', { n: mids.length })}
+                          {badge(s)}
                         </button>
-                      )}
+                        {s.product && <b className="product">{s.product}</b>}
+                        {dest && (
+                          <span className="towards">
+                            <span aria-hidden="true">→ {dest}</span>
+                            <span className="sr-only">{t('towards', { to: dest })}</span>
+                          </span>
+                        )}
+                        {moved ? (
+                          <span className="platform-moved">
+                            <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
+                            <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
+                            <span className="sr-only">
+                              {t('platformChanged', { was: moved.was, p: moved.now })}
+                            </span>
+                          </span>
+                        ) : (
+                          platform && <span className="pl">{t('platform', { p: platform })}</span>
+                        )}
+                      </span>
+                      <span className="ride-l2">
+                        {mids.length > vias.length && (
+                          <button
+                            type="button"
+                            className="mids-toggle"
+                            aria-expanded={shown}
+                            onClick={() => setMidsOpen((m) => new Map(m).set(id, !shown))}
+                          >
+                            {mids.length === 1 ? t('stop1') : t('stopsBetween', { n: mids.length })}
+                          </button>
+                        )}
+                        {min > 0 && <span>{duration(min)}</span>}
+                        {seat && (
+                          <span className="seat">
+                            {t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}
+                          </span>
+                        )}
+                        {(() => {
+                          // How full, for your class: said only when seats are few (0.39.0).
+                          const o = s.occupancy?.[route.travelClass === 1 ? 0 : 1];
+                          return o && o > 1 ? (
+                            <span className={`occ occ-${o}`}>
+                              {t(o === 3 ? 'occStanding' : 'occFew')}
+                            </span>
+                          ) : null;
+                        })()}
+                      </span>
                     </>
                   )}
                   {(shown || vias.length > 0) && (
@@ -687,6 +695,13 @@ export function TripLine({
               {two && !planning && (
                 <span className="t t-dep">
                   <When plan={r.dep} live={L?.dep} />
+                </span>
+              )}
+              {/* The station again beside its departure (0.49.1): where you board the next train,
+                  as the arrival above says where you got off. Read once to screen readers. */}
+              {two && (
+                <span className="n n-dep" aria-hidden="true">
+                  {r.name}
                 </span>
               )}
               <span className="rail">

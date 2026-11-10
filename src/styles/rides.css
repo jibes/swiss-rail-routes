@@ -217,6 +217,48 @@
   grid-row: 1 / span 6;
 }
 
+/* A ride's two rows, split the same way on every ride (0.49.1): the train, where it goes and its
+   platform on one line that never wraps (the destination, then the train's name, shortened
+   first, the platform never); its stops, how long and the notes below, wrapping only there. */
+.trip-line .ride .m .ride-l1,
+.trip-line .ride .m .ride-l2 {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.trip-line .ride .m .ride-l1 {
+  flex-wrap: nowrap;
+}
+
+.trip-line .ride .m .ride-l2 {
+  flex-wrap: wrap;
+}
+
+.trip-line .ride .m .ride-l1 > * {
+  flex-shrink: 0;
+}
+
+.trip-line .ride .m .ride-l1 > .product {
+  flex-shrink: 1;
+  min-width: 2.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-line .ride .m .ride-l1 > .towards {
+  flex-shrink: 100;
+  min-width: 3em;
+  white-space: nowrap;
+}
+
+.trip-line .ride .m .ride-l2:empty {
+  display: none;
+}
+
 /* Where the train goes, as on the boards: shortened, never pushing platform or duration off. */
 .trip-line .ride .m .towards {
   min-width: 0;
@@ -264,9 +306,14 @@
   --dep-at: 12px;
 }
 
-/* Room for the dotted stretch between the two dots, and the departure time beside the second. */
+/* Room for the dotted stretch between the two dots, and the departure's time beside the second. */
 .trip-line .station.two-dots {
   min-height: calc(var(--dot-at) + 52px);
+}
+
+/* The rail reaches the departure's name, the row's last line. */
+.trip-line .station.two-dots .rail {
+  grid-row: 1 / span 7;
 }
 
 .trip-line .station.two-dots > .t-dep {
@@ -278,14 +325,26 @@
   box-sizing: border-box;
 }
 
+/* Centred on the rail whatever its size (a station the plan chose has a smaller dot: the big
+   dot's margins put it 2 px off, 0.49.1). */
 .trip-line .station .rail .dot.dep-dot {
   top: auto;
   bottom: var(--dep-at);
-  margin: 0 0 -7px -7px;
+  margin: 0;
+  transform: translate(-50%, 50%);
 }
 
-.trip-line .station.pass .rail .dot.dep-dot {
-  margin: 0 0 -4.5px -4.5px;
+/* The station's name again beside the departure's dot: the row's last line, in the name's
+   column, its middle where the dot is (--dep-at from the foot). */
+.trip-line .station.two-dots > .n-dep {
+  grid-column: 3 / -1;
+  grid-row: 7;
+  min-width: 0;
+  padding-left: 8px;
+  line-height: calc(var(--dep-at) * 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media print {

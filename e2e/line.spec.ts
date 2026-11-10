@@ -359,6 +359,38 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   await expect(chur.locator('.dot')).toHaveCount(2);
   await expect(chur.locator(':scope > .t').first()).toContainText('09:52');
   await expect(chur.locator('.t-dep')).toContainText('09:58');
+  // The station named beside both (0.49.1), the second at the departure's dot.
+  await expect(chur.locator('.n-dep')).toHaveText('Chur');
+  const mid = async (l: import('@playwright/test').Locator) => {
+    const b = (await l.boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  };
+  const depDot = await mid(chur.locator('.dep-dot'));
+  expect(Math.abs((await mid(chur.locator('.n-dep'))).y - depDot.y)).toBeLessThan(4);
+  // A change at a station the plan chose (smaller dots): the second dot on the rail as the first
+  // (reported: it sat 2 px off, drawn with the big dot's offset).
+  const sagliains = line
+    .locator(':scope > li.station')
+    .filter({ has: page.locator('.n', { hasText: /^Sagliains/ }) });
+  const dots = sagliains.locator('.rail .dot');
+  await expect(dots).toHaveCount(2);
+  const [a, b] = [await mid(dots.nth(0)), await mid(dots.nth(1))];
+  expect(Math.abs(a.x - b.x)).toBeLessThan(0.5);
+  expect((await dots.nth(0).boundingBox())!.width).toBe((await dots.nth(1).boundingBox())!.width);
+  await expect(sagliains.locator('.n-dep')).toHaveText('Sagliains');
+  // A ride's two rows, the same split on every ride (0.49.1): the train, where it goes and its
+  // platform on one line; its stops, duration and notes below, the stops first.
+  const firstRows = line.locator('.ride .ride-l1');
+  const n = await firstRows.count();
+  expect(n).toBeGreaterThan(5);
+  for (let k = 0; k < n; k++) {
+    const h = (await firstRows.nth(k).boundingBox())!.height;
+    expect(h, `ride ${k}: one line`).toBeLessThan(36);
+    await expect(firstRows.nth(k).locator('.mids-toggle')).toHaveCount(0);
+  }
+  await expect(line.locator('.ride .ride-l2').first().locator('> :first-child')).toHaveClass(
+    /mids-toggle/,
+  );
   // Start and end: no train to wait between.
   await expect(line.locator(':scope > li.station').first().locator('.offtrain')).toHaveCount(0);
   await expect(line.locator(':scope > li.station').last().locator('.offtrain')).toHaveCount(0);
