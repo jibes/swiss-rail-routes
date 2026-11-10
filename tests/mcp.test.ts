@@ -960,6 +960,35 @@ describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2
     ).toThrow(/not a time/);
   });
 
+  it('a stay until a later day, kept in the route and its link (0.47.0)', () => {
+    const next = new Date(Date.parse(`${FIXTURE_DATE}T12:00:00Z`) + 86400_000)
+      .toISOString()
+      .slice(0, 10);
+    const t = route({
+      date: FIXTURE_DATE,
+      stops: [
+        { name: 'Zürich HB' },
+        { name: 'Lugano', stayUntil: `${next}T09:15` },
+        { name: 'Bern' },
+      ],
+    });
+    expect(t.waypoints[1]).toMatchObject({
+      kind: 'stop',
+      dwellMin: 30,
+      stayUntil: `${next}T09:15`,
+    });
+    expect(routeLinkOf(t, URL_)).toContain(`.n${next.replace(/-/g, '')}0915`);
+    const stops = (stayUntil: string) => [
+      { name: 'Zürich HB' },
+      { name: 'Lugano', stayUntil },
+      { name: 'Bern' },
+    ];
+    expect(() => route({ date: FIXTURE_DATE, stops: stops('tomorrow') })).toThrow(/not a date/);
+    expect(() => route({ date: FIXTURE_DATE, stops: stops('2020-01-01T09:00') })).toThrow(
+      /before the trip/,
+    );
+  });
+
   it('returnWay fastest: after the last stay, straight home', () => {
     const stops = [
       { name: 'Zürich HB' },

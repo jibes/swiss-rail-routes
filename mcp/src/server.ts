@@ -23,7 +23,8 @@ const MEANT: Record<string, string> = {
   return: 'returnWay',
   returnMode: 'returnWay',
   openUntil: 'leaveBy',
-  stayUntil: 'leaveBy',
+  until: 'stayUntil',
+  stayTill: 'stayUntil',
   closesAt: 'leaveBy',
   openFrom: 'arriveAfter',
   opensAt: 'arriveAfter',
@@ -95,6 +96,12 @@ const stops = z
         .string()
         .optional()
         .describe('HH:MM, Zurich: not there before then (it opens); the stay starts then.'),
+      stayUntil: z
+        .string()
+        .optional()
+        .describe(
+          'YYYY-MM-DDTHH:MM, Zurich: stay until then, also on a later day (a night or more there); the next train leaves no earlier. Makes the stop a stay (30 min when stay is left out).',
+        ),
     }),
   )
   .min(1)

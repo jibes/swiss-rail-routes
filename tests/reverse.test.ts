@@ -7,6 +7,7 @@ import {
   lineEntries,
   linesOf,
   reverseRoute,
+  sameWayBack,
   setEntryLeaveBy,
   setEntryStay,
   stationEntry,
@@ -112,5 +113,43 @@ describe('reverse direction', () => {
     expect(windowsDropped).toBe(true);
     expect(tour.waypoints.some((w) => w.leaveBy || w.arriveAfter)).toBe(false);
     expect(names(tour)).toEqual(['C:start', 'B:stop30', 'A:end']);
+  });
+});
+
+describe('back the same way (0.47.0)', () => {
+  it('retraces the way out from the end, stays ridden through', () => {
+    const t = setEntryStay(stations('A', 'B', 'C', 'D'), 2, 60);
+    const back = insertEntries(t, 3, sameWayBack(t));
+    expect(names(back)).toEqual([
+      'A:start',
+      'B:via',
+      'C:stop60',
+      'D:via',
+      'C:via',
+      'B:via',
+      'A:end',
+    ]);
+  });
+
+  it('a line on the way out is ridden back on it, the other way', () => {
+    let t = stations('Zurich');
+    t = insertEntries(t, 0, [stationEntry(s('Chur'))]);
+    t = insertEntries(t, 1, lineEntries(ALBULA));
+    const back = insertEntries(t, 2, sameWayBack(t));
+    expect(names(back).slice(-7)).toEqual([
+      'StMoritz:via',
+      'Preda°:via',
+      'Bergun°:via',
+      'Filisur°:via',
+      'Thusis°:via',
+      'Chur:via',
+      'Zurich:end',
+    ]);
+    expect(entriesOf(back).map((x) => x.w.line ?? '')).toEqual(['', '', 'albula', 'albula', '']);
+  });
+
+  it('nothing to retrace: two stations, or already back at the start', () => {
+    expect(sameWayBack(stations('A', 'B'))).toEqual([]);
+    expect(sameWayBack(stations('A', 'B', 'A'))).toEqual([]);
   });
 });

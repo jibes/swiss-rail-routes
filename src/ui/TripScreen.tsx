@@ -11,6 +11,7 @@ import {
   setEntryLeaveBy,
   setEntryStayUntil,
   setEntryStay,
+  sameWayBack,
   stationEntry,
 } from '../core/line';
 import type { Tour } from '../core/model';
@@ -645,6 +646,7 @@ export function TripScreen({ id }: { id: string }) {
           after={entries[sheet.after]?.w}
           next={entries[sheet.after + 1]?.w}
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
+          sameWay={sheet.after === entries.length - 1 ? sameWayBack(route) : undefined}
           onPick={pick}
           onClose={closeSheet}
           onMap={

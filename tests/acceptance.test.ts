@@ -277,7 +277,21 @@ suite('acceptance tours', { timeout }, () => {
     const unknown = r
       .recommended!.warnings.filter((w) => w.type === 'ga-unknown')
       .map((w) => `${w.params.from}–${w.params.to}`);
-    expect(unknown).toEqual(['Grindelwald Terminal–Eigergletscher', 'Eigergletscher–Jungfraujoch']);
+    if (!LIVE_URL)
+      expect(unknown).toEqual([
+        'Grindelwald Terminal–Eigergletscher',
+        'Eigergletscher–Jungfraujoch',
+      ]);
+    // Live, the day's way up may differ (the Eiger Express closed in November: the WAB via
+    // Kleine Scheidegg, which the GA data names): every summit ride still says something.
+    const summit = r.recommended!.connections.flatMap((c) =>
+      c.sections.filter((s) => s.mode === 'cog' || s.mode === 'cableCar' || s.category === 'CC'),
+    );
+    const said = r.recommended!.warnings.filter(
+      (w) => w.type === 'ga-unknown' || w.type === 'not-ga',
+    );
+    expect(summit.length).toBeGreaterThan(0);
+    expect(said.length).toBeGreaterThanOrEqual(summit.length);
   });
 
   // Lines added in 0.19.0, each planned end to end on the recorded day: every station the line

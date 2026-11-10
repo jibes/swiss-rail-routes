@@ -397,3 +397,51 @@ test('notifications off for one trip, and on again', async ({ page }) => {
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Notifications off' })).toBeVisible();
 });
+
+// SPEC §3 (0.47.0): back the same way, beside back to the start: the way out reversed, its
+// scenic line ridden back on it, nothing stayed at.
+test('back the same way retraces the way out, its line too', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await pick(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  const same = page.getByRole('button', { name: /^Back the same way/ });
+  await expect(same).toContainText('via Luzern');
+  await same.click();
+  const line = page.getByRole('list', { name: 'The trip' });
+  await expect(line.locator('.station.entry')).toHaveText([
+    /^Zürich HB/,
+    /^Luzern/,
+    /^Interlaken Ost/,
+    /^Luzern/,
+    /^Zürich HB/,
+  ]);
+  // The Brünig both ways: its stations drawn on the way back too.
+  const rings = await line.locator('.station.ring').count();
+  expect(rings % 2).toBe(0);
+  expect(rings).toBeGreaterThan(0);
+});
+
+// SPEC §3 (0.47.0): several typed at once, matched on the device, added in one tap, in order.
+test('a typed list of lines and stations adds them all', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula, Bernina, back');
+  // A bare "back" returns to the start.
+  await expect(page.getByRole('button', { name: /^Add all 3/ })).toContainText(/Zürich HB$/);
+  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina, Xyzzy');
+  await expect(page.getByText('Not found: Xyzzy')).toBeVisible();
+  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina');
+  await page.getByRole('button', { name: /^Add all 2/ }).click();
+  const line = page.getByRole('list', { name: 'The trip' });
+  await expect(line.locator('.station.entry')).toHaveText([
+    /^Zürich HB/,
+    /^Chur/,
+    /^St\. Moritz/,
+    /^Tirano/,
+  ]);
+});

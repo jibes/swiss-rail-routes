@@ -20,6 +20,8 @@ export interface StopInput {
   leaveBy?: string;
   /** Not there before then (`HH:MM`): the place opens. */
   arriveAfter?: string;
+  /** Stay until then (`YYYY-MM-DDTHH:MM`, Zurich), also on a later day. */
+  stayUntil?: string;
 }
 
 export interface RouteInput {
@@ -41,6 +43,7 @@ export const MAX_STOPS = 12;
 const MAX_DAYS_AHEAD = 400;
 const DAY = 86_400_000;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const UNTIL = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function resolveStop(s: StopInput, index: StopSearch): Stop {
@@ -144,7 +147,11 @@ export function buildRoute(
       return;
     }
     const stop = stations[i]!;
-    const stay = s.stay && s.stay > 0 ? Math.round(s.stay) : 0;
+    const until = s.stayUntil;
+    if (until !== undefined && !UNTIL.test(until))
+      throw new ToolError(`not a date and time (YYYY-MM-DDTHH:MM): ${until}`);
+    // Staying until a time is a stay: 30 min (the app's Stay here) when none is given.
+    const stay = s.stay && s.stay > 0 ? Math.round(s.stay) : until ? 30 : 0;
     const prev = entries.at(-1);
     // The same station listed twice in a row (retest round 3: Zürich HB → Zürich HB was said as
     // "needs at least two stations"). After a line ending there it is that end, with its stay.
@@ -166,6 +173,7 @@ export function buildRoute(
       ...(stay ? { ...entry.w, kind: 'stop', dwellMin: stay } : entry.w),
       ...(s.leaveBy ? { leaveBy: s.leaveBy } : {}),
       ...(s.arriveAfter ? { arriveAfter: s.arriveAfter } : {}),
+      ...(until ? { stayUntil: until } : {}),
     };
     entries.push({ ...entry, w });
   });
@@ -180,6 +188,9 @@ export function buildRoute(
   }
   if (entries.length < 2) throw new ToolError('a trip needs at least two stations');
   const { date, anchor } = resolveWhen(input, now);
+  for (const e of entries)
+    if (e.w.stayUntil && e.w.stayUntil.slice(0, 10) < date)
+      throw new ToolError(`stayUntil ${e.w.stayUntil} is before the trip's day, ${date}`);
   return fromEntries(
     {
       id: 'mcp',
@@ -209,6 +220,7 @@ export function routeLinkOf(tour: Tour, publicUrl: string): string {
       ...(w.templateId ? [`@${w.templateId}`] : []),
       ...(w.arriveAfter ? [`f${w.arriveAfter.replace(':', '')}`] : []),
       ...(w.leaveBy ? [`u${w.leaveBy.replace(':', '')}`] : []),
+      ...(w.stayUntil ? [`n${w.stayUntil.replace(/[-T:]/g, '')}`] : []),
     ].join('.');
   });
   const when =

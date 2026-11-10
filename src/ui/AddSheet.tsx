@@ -12,6 +12,7 @@ import { Icon } from './icons';
 import { MiniLine } from './MiniLine';
 import { RailLoader } from './RailLoader';
 import { directionFrom, TEMPLATES } from './TemplatePicker';
+import { resolveTyped, splitTyped } from '../core/typedList';
 import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
 import { dayOf } from '../core/trip';
@@ -23,7 +24,9 @@ import { fetchEuStops } from '../io/ojp';
 export type Picked =
   | { kind: 'station'; stop: Pick<Waypoint, 'stopRef' | 'name'> }
   | { kind: 'line'; template: RouteTemplate; reversed: boolean }
-  | { kind: 'trip'; tour: Tour };
+  | { kind: 'trip'; tour: Tour }
+  | { kind: 'sameWay'; entries: Entry[] }
+  | { kind: 'typed'; entries: Entry[] };
 
 /**
  * The one way to add (SPEC §3a): a sheet that finds stations, scenic lines and your past trips.
@@ -35,6 +38,7 @@ export function AddSheet({
   after,
   next,
   first,
+  sameWay,
   onPick,
   onClose,
   onMap,
@@ -44,6 +48,8 @@ export function AddSheet({
   next?: Pick<Waypoint, 'stopRef' | 'name'>;
   /** The trip's first station: offered as the way back (a round trip) when adding at the end. */
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
+  /** The way back to it the way out came (`sameWayBack`), offered beside it. */
+  sameWay?: Entry[];
   onPick: (p: Picked) => void;
   onClose: () => void;
   /** Pick on the map instead: the trains from `after` (the map planner). */
@@ -140,6 +146,25 @@ export function AddSheet({
   const linesFirst =
     !!f && lines.some((tp) => has(own(tp))) && !stations.some((x) => fold(x.name) === f);
   const back = !f && first && after && after.stopRef !== first.stopRef ? first : undefined;
+  // Several typed at once ("Albula, Bernina, back via Vereina"): one row adds them all.
+  const parts = index ? splitTyped(q) : null;
+  const typed =
+    parts && index
+      ? resolveTyped(
+          parts,
+          {
+            lines: TEMPLATES,
+            names: (tp) => ({ own: named(tp), products: [...(tp.products ?? [])] }),
+            station: (text) => {
+              const s = index.search(text, 1)[0];
+              return s && { stopRef: s.ref, name: s.name };
+            },
+            stop,
+          },
+          after,
+          first,
+        )
+      : null;
   const today = dayOf(useNow());
   const titleOf = (x: Tour) => x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`;
   // Forgotten just now: one tap brings it back.
@@ -225,6 +250,30 @@ export function AddSheet({
               </span>
             </button>
           )}
+          {typed && typed.missing.length === 0 && typed.entries.length > 0 && (
+            <button
+              type="button"
+              className="result typed"
+              onClick={() => onPick({ kind: 'typed', entries: typed.entries })}
+            >
+              <span className="r-icon r-line" aria-hidden="true" />
+              <span className="r-name">{t('addAll', { n: typed.items.length })}</span>
+              <span className="r-sub">
+                {typed.items
+                  .map((x) =>
+                    x.kind === 'line'
+                      ? `${templateName(x.template, lang)} (${x.from} → ${x.to})`
+                      : x.stop.name,
+                  )
+                  .join(' · ')}
+              </span>
+            </button>
+          )}
+          {typed && typed.missing.length > 0 && (
+            <p className="muted typed-missing">
+              {t('typedMissing', { parts: typed.missing.join(', ') })}
+            </p>
+          )}
           {back && (
             <button
               type="button"
@@ -234,6 +283,24 @@ export function AddSheet({
               <span className="r-icon r-dot" aria-hidden="true" />
               <span className="r-name">{t('backTo', { stop: back.name })}</span>
               <span className="r-sub">{t('roundTrip')}</span>
+            </button>
+          )}
+          {back && sameWay && sameWay.length > 1 && (
+            <button
+              type="button"
+              className="result"
+              onClick={() => onPick({ kind: 'sameWay', entries: sameWay })}
+            >
+              <span className="r-icon r-dot" aria-hidden="true" />
+              <span className="r-name">{t('backSameWay')}</span>
+              <span className="r-sub">
+                {t('viaStops', {
+                  stops: sameWay
+                    .slice(0, -1)
+                    .map((x) => x.w.name)
+                    .join(' · '),
+                })}
+              </span>
             </button>
           )}
           {linesFirst && lineList}
@@ -386,5 +453,6 @@ function kindOf(s: Stop) {
 export function entriesFor(p: Picked): Entry[] {
   if (p.kind === 'station') return [stationEntry(p.stop)];
   if (p.kind === 'line') return lineEntries(p.template, p.reversed);
+  if (p.kind === 'sameWay' || p.kind === 'typed') return p.entries;
   return entriesOf(p.tour);
 }

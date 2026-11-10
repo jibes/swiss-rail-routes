@@ -1,3 +1,4 @@
+import type { Locator, Page } from '@playwright/test';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
@@ -323,4 +324,40 @@ test('a tap on a train shows its whole run, your part marked', async ({ page }) 
   await expect(run.locator('li.other').first()).toHaveText(/Bern/);
   await expect(run.locator('li.yours').first()).toHaveText(/Interlaken Ost/);
   await expect(run.locator('li.yours').last()).toHaveText(/Lauterbrunnen/);
+
+  // The same from the map (0.47.0): a tap on a ride's line opens its train's whole run.
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  const map = page.locator('.map');
+  await expect(map.locator('canvas')).toBeVisible();
+  // A pixel of the drawn line (the rail's red), found on a screenshot; the first ride is the R62.
+  let point: [number, number] | null = null;
+  await expect
+    .poll(async () => (point = await redPixel(page, map)), { timeout: 15_000 })
+    .not.toBeNull();
+  const box = (await map.boundingBox())!;
+  await map.click({ position: { x: point![0] * box.width, y: point![1] * box.height } });
+  await expect(page.getByRole('list', { name: 'The train’s stops' }).locator('li')).toHaveCount(5);
 });
+
+/** Where the middle one of a screenshot's red pixels is (the rail's line), as fractions of its
+ * size (the screenshot is at the device's scale), or null before it is drawn. */
+async function redPixel(page: Page, at: Locator): Promise<[number, number] | null> {
+  const png = (await at.screenshot()).toString('base64');
+  return page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    const red: [number, number][] = [];
+    for (let i = 0; i < d.length; i += 4)
+      if (d[i]! > 150 && d[i + 1]! < 80 && d[i + 2]! < 80)
+        red.push([((i / 4) % c.width) / c.width, Math.floor(i / 4 / c.width) / c.height]);
+    return red.length > 50 ? red[Math.floor(red.length / 2)]! : null;
+  }, png);
+}

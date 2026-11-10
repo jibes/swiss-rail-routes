@@ -11,10 +11,11 @@ import { leaveTime } from '../core/spider';
 import { log } from '../io/log';
 import { MapAdd } from './MapAdd';
 import { useMapAdd } from './mapAdd';
+import { RunSheet } from './RunSheet';
 import { useDark } from './useDark';
 import { inPage, plain, registerMapProtocol, styleOf } from './mapBase';
 export { MAP_STYLE } from './mapBase';
-import type { Connection } from '../core/model';
+import type { Connection, Section } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isPlanned, tripStatus } from '../core/trip';
@@ -360,6 +361,7 @@ export default function MapView({ id }: { id: string }) {
         savedChain ??
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
       const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r), lang);
+      drawn.current = chain ?? [];
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       map.getSource<maplibregl.GeoJSONSource>('lines')?.setData(d.lines);
       map.getSource<maplibregl.GeoJSONSource>('stops')?.setData(d.stops);
@@ -513,6 +515,31 @@ export default function MapView({ id }: { id: string }) {
 
   // Adding on the map: the web from a station of this trip, under its red.
   const adding = useMapAdd((s) => s.add?.trip === id);
+  // A ride's line tapped: its train's whole run (0.47.0), the sheet its badge opens on the list.
+  const drawn = useRef<Connection[]>([]);
+  const [run, setRun] = useState<Section | null>(null);
+  useEffect(() => {
+    if (!map || adding) return;
+    const open = (e: maplibregl.MapLayerMouseEvent) => {
+      // The weather's own card wins where its icon lies on the line.
+      if (map.queryRenderedFeatures(e.point, { layers: ['wx-rain', 'wx-sky'] }).length) return;
+      const p = e.features?.[0]?.properties;
+      const s = p?.planned ? drawn.current[Number(p.leg)]?.sections[Number(p.section)] : undefined;
+      if (!s || s.mode === 'walk') return;
+      log('run.map', { journey: s.journey });
+      setRun(s);
+    };
+    const pointer = () => (map.getCanvas().style.cursor = 'pointer');
+    const plain = () => (map.getCanvas().style.cursor = '');
+    map.on('click', 'lines', open);
+    map.on('mouseenter', 'lines', pointer);
+    map.on('mouseleave', 'lines', plain);
+    return () => {
+      map.off('click', 'lines', open);
+      map.off('mouseenter', 'lines', pointer);
+      map.off('mouseleave', 'lines', plain);
+    };
+  }, [map, adding]);
   const startAdd = useMapAdd((s) => s.start);
   const fitWeb = useCallback(
     (pts: [number, number][]) => {
@@ -667,6 +694,7 @@ export default function MapView({ id }: { id: string }) {
         {straight && !failed && <p className="notice map-legend">{t('mapStraight')}</p>}
       </div>
       {map && adding && <MapAdd map={map} dark={dark} font={font} fit={fitWeb} />}
+      {run && <RunSheet s={run} onClose={() => setRun(null)} />}
       <div ref={box} className="map" />
     </main>
   );
