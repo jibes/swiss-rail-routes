@@ -29,6 +29,8 @@ export interface Trip extends TripVersion {
   previous?: TripVersion;
   /** Tracks already simplified (compactTrip): done once, so the trip's hash stays put. */
   compact?: true;
+  /** No notifications for this trip (0.44.0, ⋯ → Notifications off): synced, on every device. */
+  quiet?: true;
   schema: 1;
 }
 

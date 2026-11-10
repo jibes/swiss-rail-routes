@@ -350,3 +350,43 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   await expect(line.locator(':scope > li.station').first().locator('.offtrain')).toHaveCount(0);
   await expect(line.locator(':scope > li.station').last().locator('.offtrain')).toHaveCount(0);
 });
+
+// Over several days (0.44.0): a stay until a date and time, said on the line; kept after reload.
+test('a stay until a date and time: set, said on the line, taken off', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern', 'bern');
+  const entries = page.getByRole('list', { name: 'The trip' }).locator('.station.entry');
+  await entries.nth(1).getByRole('button').first().click();
+  await page
+    .getByRole('group', { name: 'At this station' })
+    .getByRole('button', { name: 'Stay', exact: true })
+    .click();
+  const day = page.getByLabel('Stay at Luzern until (day)');
+  await day.fill('2026-11-09');
+  await day.press('Enter');
+  await expect(page.locator('.panel .stay-until')).toContainText(/Stay until .*9.*08:00/);
+  const time = page.getByLabel('Stay at Luzern until (time)');
+  await time.fill('09:15');
+  await time.press('Enter');
+  await expect(entries.nth(1)).toContainText(/Stay until .*9.*09:15/);
+  await page.reload();
+  await expect(entries.nth(1)).toContainText(/Stay until .*9.*09:15/);
+  await entries.nth(1).getByRole('button').first().click();
+  await page.getByRole('button', { name: 'Stay at Luzern for its length only' }).click();
+  await expect(entries.nth(1)).toContainText('Stay 30 min');
+});
+
+// Notifications per trip (0.44.0): ⋯ turns them off and on again; the trip keeps it (synced).
+test('notifications off for one trip, and on again', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'bern');
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Notifications off' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Notifications on' }).click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('button', { name: 'Notifications off' })).toBeVisible();
+});

@@ -30,6 +30,11 @@ export interface Waypoint {
   leaveBy?: string;
   /** Not there before then (`HH:MM`): the place opens; a stay starts then at the earliest. */
   arriveAfter?: string;
+  /**
+   * A stay that ends at a date and time, `YYYY-MM-DDTHH:MM` in Zurich (0.44.0): the next train
+   * leaves no earlier, on whatever day; for trips over several days (Kiruna until Monday 08:00).
+   */
+  stayUntil?: string;
 }
 
 export interface Tour {

@@ -28,6 +28,8 @@ const P = {
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
   ticket: 'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10',
   pin: 'M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v8',
+  // Notifications (a bell).
+  bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 20a2 2 0 0 0 4 0',
   // Abroad (stations beyond Switzerland).
   globe:
     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z',

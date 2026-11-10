@@ -37,6 +37,13 @@ const hm = (s: string) => {
 };
 const pad = (n: number) => String(n).padStart(2, '0');
 const hhmm = (n: number) => `${pad(Math.floor(n / 60) % 24)}:${pad(n % 60)}`;
+/** A stay's end (`YYYY-MM-DDTHH:MM`) as minutes from the trip's day, and back (0.44.0). */
+const untilMin = (v: string, date: string) =>
+  Math.round(
+    (Date.parse(`${v.slice(0, 10)}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 60_000,
+  ) + hm(v.slice(11, 16));
+const untilOf = (n: number, date: string) =>
+  `${new Date(Date.parse(`${date}T00:00:00Z`) + Math.floor(n / 1440) * 86_400_000).toISOString().slice(0, 10)}T${hhmm(n % 1440)}`;
 
 export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<string> {
   const { route, chain } = t;
@@ -92,7 +99,11 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
           ? 2
           : 3;
     const rare =
-      (w.dwellMin > 0 ? 1 : 0) | (w.line ? 2 : 0) | (w.arriveAfter ? 4 : 0) | (w.leaveBy ? 8 : 0);
+      (w.dwellMin > 0 ? 1 : 0) |
+      (w.line ? 2 : 0) |
+      (w.arriveAfter ? 4 : 0) |
+      (w.leaveBy ? 8 : 0) |
+      (w.stayUntil ? 16 : 0);
     body.uv(
       Math.max(0, KINDS.indexOf(w.kind)) |
         (tplMode << 3) |
@@ -107,6 +118,7 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
     if (w.line) strRef(w.line);
     if (w.arriveAfter) body.uv(hm(w.arriveAfter));
     if (w.leaveBy) body.uv(hm(w.leaveBy));
+    if (w.stayUntil) body.uv(Math.max(0, untilMin(w.stayUntil, route.date)));
     prevTpl = w.templateId;
   }
 
@@ -303,6 +315,7 @@ function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
     const line = rare & 2 ? str() : undefined;
     const arriveAfter = rare & 4 ? hhmm(r.uv()) : undefined;
     const leaveBy = rare & 8 ? hhmm(r.uv()) : undefined;
+    const stayUntil = rare & 16 ? untilOf(r.uv(), date) : undefined;
     const tpl = [undefined, line, prevTpl, own][tplMode];
     prevTpl = tpl;
     return {
@@ -315,6 +328,7 @@ function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
       ...(f & 32 ? { ring: true } : {}),
       ...(arriveAfter ? { arriveAfter } : {}),
       ...(leaveBy ? { leaveBy } : {}),
+      ...(stayUntil ? { stayUntil } : {}),
     };
   });
 

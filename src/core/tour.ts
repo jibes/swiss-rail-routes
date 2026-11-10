@@ -35,6 +35,8 @@ const TICKETS: Tour['ticket'][] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
 const KINDS: Waypoint['kind'][] = ['start', 'via', 'stop', 'turnaround', 'end'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+/** A stay's end, `YYYY-MM-DDTHH:MM` (0.44.0). */
+const UNTIL = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
 
 /**
  * A route from data the app did not make itself (an old `#/t/` link, storage written by an
@@ -64,6 +66,9 @@ export function sanitiseTour(
       ...(w.ring === true && typeof w.templateId === 'string' ? { ring: true } : {}),
       ...(typeof w.line === 'string' ? { line: w.line } : {}),
       ...(typeof w.leaveBy === 'string' && TIME.test(w.leaveBy) ? { leaveBy: w.leaveBy } : {}),
+      ...(typeof w.stayUntil === 'string' && UNTIL.test(w.stayUntil)
+        ? { stayUntil: w.stayUntil }
+        : {}),
       ...(typeof w.arriveAfter === 'string' && TIME.test(w.arriveAfter)
         ? { arriveAfter: w.arriveAfter }
         : {}),

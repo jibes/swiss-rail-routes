@@ -235,7 +235,7 @@ export function setEntryStay<T extends Pick<Tour, 'waypoints'>>(
   const x = e[k];
   if (!x || k === 0 || k === e.length - 1) return tour;
   // Riding through, there is no stay to end by a time.
-  const { leaveBy: _l, arriveAfter: _a, ...through } = x.w;
+  const { leaveBy: _l, arriveAfter: _a, stayUntil: _u, ...through } = x.w;
   e[k] = {
     ...x,
     w:
@@ -275,6 +275,20 @@ export function dropLine<T extends Pick<Tour, 'waypoints'>>(tour: T, k: number):
  * arrive after) does not fit the new order and goes; `windowsDropped` says whether one did.
  * Reversing twice gives the route back.
  */
+/** Entry `k`'s stay to end at a date and time (`YYYY-MM-DDTHH:MM`), or as long as its stay. */
+export function setEntryStayUntil<T extends Pick<Tour, 'waypoints'>>(
+  tour: T,
+  k: number,
+  until: string | null,
+): T {
+  const e = entriesOf(tour);
+  const x = e[k];
+  if (!x || x.w.kind !== 'stop') return tour;
+  const { stayUntil: _u, ...w } = x.w;
+  e[k] = { ...x, w: until ? { ...w, stayUntil: until } : w };
+  return fromEntries(tour, e);
+}
+
 export function reverseRoute<T extends Pick<Tour, 'waypoints'>>(
   tour: T,
 ): { tour: T; windowsDropped: boolean } {
@@ -282,8 +296,8 @@ export function reverseRoute<T extends Pick<Tour, 'waypoints'>>(
   let windowsDropped = false;
   const out: Entry[] = e
     .map((x, k) => {
-      const { leaveBy, arriveAfter, line: _l, ...w } = x.w;
-      if (leaveBy || arriveAfter) windowsDropped = true;
+      const { leaveBy, arriveAfter, stayUntil, line: _l, ...w } = x.w;
+      if (leaveBy || arriveAfter || stayUntil) windowsDropped = true;
       // The line that led here from the entry before now leads from here to it: it is
       // recorded on that entry, reversed.
       const next = e[k + 1];

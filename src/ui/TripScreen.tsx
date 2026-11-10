@@ -9,6 +9,7 @@ import {
   replaceEntry,
   reverseRoute,
   setEntryLeaveBy,
+  setEntryStayUntil,
   setEntryStay,
   stationEntry,
 } from '../core/line';
@@ -451,6 +452,20 @@ export function TripScreen({ id }: { id: string }) {
                 {t('reverseDirection')}
               </button>
             )}
+            {status !== 'past' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const quiet = !trip.quiet;
+                  log('trip.notifications', { trip: id, on: !quiet });
+                  update(id, ({ quiet: _, ...x }) => (quiet ? { ...x, quiet: true } : x));
+                  setMenu(false);
+                }}
+              >
+                <Icon name="bell" size={18} />
+                {t(trip.quiet ? 'notificationsOn' : 'notificationsOff')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -586,6 +601,7 @@ export function TripScreen({ id }: { id: string }) {
                   edit((r) => replaceEntry(r, k, s)),
                 stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
                 leaveBy: (k, hm) => edit((r) => setEntryLeaveBy(r, k, hm)),
+                stayUntil: (k, v) => edit((r) => setEntryStayUntil(r, k, v)),
                 move: (from, to) => {
                   edit((r) => moveEntry(r, from, to));
                   setOpen(to);

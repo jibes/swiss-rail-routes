@@ -2,10 +2,10 @@
 // attraction closes), and a round trip's way back the fastest.
 import { describe, expect, it } from 'vitest';
 import { parseRoute } from '../src/core/export/routeLink';
-import { setEntryLeaveBy, setEntryStay } from '../src/core/line';
+import { setEntryLeaveBy, setEntryStay, setEntryStayUntil } from '../src/core/line';
 import { decodeTripLink, encodeTripLink } from '../src/core/export/tripLink';
 import type { Tour } from '../src/core/model';
-import { plan } from '../src/core/planner/plan';
+import { plan, sameDayFirst } from '../src/core/planner/plan';
 import { stopKey } from '../src/core/stops';
 import { sanitiseTour } from '../src/core/tour';
 import { linesAfterDark } from '../src/core/warnings';
@@ -139,6 +139,51 @@ describe('a stay with a time to leave by, or not before (F3)', () => {
     const trip = newTrip('mine', { ...t, name: 'Luzern' }, r.legs!, r.recommended!, new Date(0));
     const opened = await decodeTripLink(await encodeTripLink(trip, nameOf), 'theirs', nameOf);
     expect(opened?.route.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '10:00' });
+  });
+});
+
+describe('a stay until a date and time, over several days (0.44.0)', () => {
+  it('the next train leaves no earlier, the day after too; never dropped as a late day trip', async () => {
+    const t = visit({ stayUntil: `${DATE}T10:15` });
+    const r = await plan(t, deps(day).deps);
+    expect(r.recommended!.connections[1]!.dep).toBe(day[3]!.dep);
+  });
+
+  it('an option back on a later day is kept: over several days is the plan', () => {
+    const late = {
+      connections: [],
+      warnings: [],
+      score: 0,
+      dep: `${DATE}T07:00:00Z`,
+      arr: '2026-11-09T09:00:00Z',
+    };
+    const same = { ...late, arr: `${DATE}T18:00:00Z` };
+    // A day trip: the one back the same day only.
+    expect(sameDayFirst([late, same], visit({}))).toEqual([same]);
+    expect(sameDayFirst([late, same], visit({ stayUntil: '2026-11-09T08:00' }))).toHaveLength(2);
+  });
+
+  it('kept through storage, route links and trip links; riding through drops it', async () => {
+    const t = visit({ stayUntil: '2026-11-09T08:00' });
+    expect(sanitiseTour(t, DATE)!.waypoints[1]!.stayUntil).toBe('2026-11-09T08:00');
+    expect(
+      sanitiseTour(visit({ stayUntil: '2026-11-09 08:00' }), DATE)!.waypoints[1]!.stayUntil,
+    ).toBeUndefined();
+    const { stops, query } = routeParts(t, true);
+    const ctx = { templates, name: (r: string) => index.byRef(r)?.name, today: DATE };
+    const tokens = stops.split('~');
+    tokens[1] += '.n202611090800';
+    const read = parseRoute(tokens.join('~'), query, ctx)!;
+    expect(read.waypoints[1]!.stayUntil).toBe('2026-11-09T08:00');
+    const nameOf = (r: string) => index.byRef(stopKey(r))?.name;
+    const r = await plan(visit({}), deps(day).deps);
+    const trip = newTrip('mine', { ...t, name: 'Luzern' }, r.legs!, r.recommended!, new Date(0));
+    const opened = await decodeTripLink(await encodeTripLink(trip, nameOf), 'theirs', nameOf);
+    expect(opened?.route.waypoints[1]!.stayUntil).toBe('2026-11-09T08:00');
+    const set = setEntryStayUntil(visit({}), 1, '2026-11-09T08:00');
+    expect(set.waypoints[1]!.stayUntil).toBe('2026-11-09T08:00');
+    expect(setEntryStay(set, 1, null).waypoints[1]).not.toHaveProperty('stayUntil');
+    expect(setEntryStayUntil(set, 1, null).waypoints[1]).not.toHaveProperty('stayUntil');
   });
 });
 

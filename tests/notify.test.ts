@@ -36,6 +36,11 @@ const trip = newTrip(
 const stop = (r: string) => index.byRef(r);
 
 describe('noticesFor', () => {
+  it('none for a trip turned quiet (⋯ → Notifications off)', () => {
+    expect(noticesFor(trip, at('08:00'), templates, stop).length).toBeGreaterThan(0);
+    expect(noticesFor({ ...trip, quiet: true }, at('08:00'), templates, stop)).toEqual([]);
+  });
+
   it('10 min before departure, 5 before the exit, 10 before a highlight with the sunset near', () => {
     const list = noticesFor(trip, at('08:00'), templates, stop);
     const by = (k: string) => list.filter((n) => n.kind === k);

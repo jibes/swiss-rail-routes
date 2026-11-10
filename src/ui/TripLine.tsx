@@ -11,7 +11,7 @@ import type { Tour } from '../core/model';
 import { pinAfter, towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import { NOTICE_TYPES, type Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
-import { badge, dayMonth } from './format';
+import { badge, dayMonth, shortDate } from './format';
 import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
 import { MissedNote } from './MissedNote';
@@ -24,6 +24,7 @@ import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
 import { runsOn } from '../core/planner/connection';
+import { dayOf } from '../core/trip';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
@@ -35,8 +36,18 @@ const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amb
 const isWalk = (r?: LineRow) => r?.type === 'ride' && r.section.mode === 'walk';
 
 /** Only a stay is said: a change shows as a big dot with two times. */
-function stayLabel(t: ReturnType<typeof useT>, r: StationRow, leaveBy?: string) {
+function stayLabel(
+  t: ReturnType<typeof useT>,
+  r: StationRow,
+  leaveBy?: string,
+  until?: { at: string; lang: string },
+) {
   if (r.role !== 'stop' || !r.stay) return '';
+  // Until a date and time (several days): said as such, the length beside it moot.
+  if (until)
+    return t('stayTill', {
+      when: `${shortDate(until.at.slice(0, 10), until.lang)} ${until.at.slice(11, 16)}`,
+    });
   return leaveBy ? t('stayUntil', { min: r.stay, time: leaveBy }) : t('stayFor', { min: r.stay });
 }
 
@@ -59,7 +70,7 @@ export function TripLine({
 }: {
   /** Replan from here: the first station is where you are; only "Add after" it. */
   fixedFirst?: boolean;
-  route: Pick<Tour, 'waypoints'> & Partial<Pick<Tour, 'travelClass'>>;
+  route: Pick<Tour, 'waypoints'> & Partial<Pick<Tour, 'travelClass' | 'date'>>;
   rows: LineRow[];
   warnings: Warning[];
   planning: boolean;
@@ -172,6 +183,20 @@ export function TripLine({
    * Off the train here (0.42.0): between arriving and the next train (a change, a stay), the
    * rail is dotted from the dot down, as a walk is; a train running on through stays solid.
    */
+  // Over several days (0.44.0): where the day changes, a station says the new day under its time
+  // (Zurich's day, against the station before; the first only when not the trip's own day).
+  const newDay = new Map<number, string>();
+  {
+    let day = route.date;
+    rows.forEach((r, i) => {
+      if (r.type !== 'station' || onRideRows.has(i)) return;
+      const at = r.dep ?? r.arr;
+      if (!at) return;
+      const d = dayOf(Date.parse(at));
+      if (day && d !== day) newDay.set(i, d);
+      day = d;
+    });
+  }
   const offTrain = (i: number) => {
     // The rows either side as drawn: a station a ride passes is in that ride's list, not a row.
     let b = i - 1;
@@ -187,7 +212,8 @@ export function TripLine({
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
-    const label = stayLabel(t, r, r.entry !== undefined ? entries[r.entry]?.w.leaveBy : undefined);
+    const w = r.entry !== undefined ? entries[r.entry]?.w : undefined;
+    const label = stayLabel(t, r, w?.leaveBy, w?.stayUntil ? { at: w.stayUntil, lang } : undefined);
     // Under way, a station ahead: a tap begins editing the rest there.
     const L = edit ? stationLive(rows, i, live) : undefined;
     if (k === undefined && edit && L && !L.passed && !L.here)
@@ -332,6 +358,8 @@ export function TripLine({
             name={r.name}
             stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
             leaveBy={entries[k]!.w.leaveBy}
+            stayUntil={entries[k]!.w.stayUntil}
+            day={route.date ?? ''}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
             pinnedHere={pinnedAt(k)}
@@ -631,6 +659,9 @@ export function TripLine({
             <span className="t">
               {before && !planning && <i>{before}</i>}
               {planning ? <span className="shim" /> : time}
+              {!planning && newDay.get(i) && (
+                <small className="day-of">{shortDate(newDay.get(i)!, lang)}</small>
+              )}
             </span>
             <span className="rail">
               <span className="dot" />

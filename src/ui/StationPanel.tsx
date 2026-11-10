@@ -3,6 +3,7 @@
 import { useT } from '../store';
 import { Icon } from './icons';
 import { LeaveBy } from './LeaveBy';
+import { StayUntil } from './StayUntil';
 import type { FindSubstitute } from './MissedNote';
 
 export interface LineActions {
@@ -11,6 +12,8 @@ export interface LineActions {
   stay: (k: number, min: number | null) => void;
   /** A stay's time to leave by (the place closes), or any time. */
   leaveBy?: (k: number, hhmm: string | null) => void;
+  /** A stay until a date and time (several days), or as long as its length (null). */
+  stayUntil?: (k: number, until: string | null) => void;
   move: (from: number, to: number) => void;
   remove: (k: number) => void;
   dropLine: (k: number) => void;
@@ -36,6 +39,8 @@ export function StationPanel({
   name,
   stay,
   leaveBy,
+  stayUntil,
+  day,
   line,
   change,
   act,
@@ -53,6 +58,9 @@ export function StationPanel({
   name: string;
   stay: number | null;
   leaveBy?: string;
+  stayUntil?: string;
+  /** The trip's day: a stay until starts from it. */
+  day: string;
   line: string;
   act: LineActions;
   close: () => void;
@@ -122,6 +130,9 @@ export function StationPanel({
           {!!stay && <StayStepper k={k} name={name} stay={stay} act={act} />}
           {!!stay && act.leaveBy && (
             <LeaveBy name={name} value={leaveBy} set={(hm) => act.leaveBy!(k, hm)} />
+          )}
+          {!!stay && act.stayUntil && (
+            <StayUntil name={name} value={stayUntil} day={day} set={(v) => act.stayUntil!(k, v)} />
           )}
         </>
       )}

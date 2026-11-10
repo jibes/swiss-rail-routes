@@ -54,6 +54,8 @@ export function noticesFor(
   templates: RouteTemplate[],
   stop: (ref: string) => LatLon | undefined,
 ): Notice[] {
+  // Turned quiet (⋯ → Notifications off, 0.44.0): none, on every device.
+  if (trip.quiet) return [];
   const out: Notice[] = [];
   const b = base(trip.id);
   let n = 0;

@@ -6,7 +6,8 @@
 // (`ch:1:sloid:<n>`), or `x` and the percent-encoded ref for anything else; the slug is only
 // for people (names come from the stop index). Modifiers: `<min>` get off for that long,
 // `t<min>` turn there, `@<template>` part of that route template, `f<hhmm>` not there before
-// (it opens) and `u<hhmm>` leave by (it closes; 0.20.0, read past by older versions);
+// (it opens) and `u<hhmm>` leave by (it closes; 0.20.0, read past by older versions),
+// `n<YYYYMMDDHHMM>` stay until then (0.44.0, several days);
 // `a<hhmm>` and `b<hhmm>` (arrive no earlier, leave no later) were written by older links and
 // are read past: nothing ever enforced them. `@<template>` alone (`.r` reversed) inserts a route template.
 // Settings, each optional: d (date, default today), dep or arr (time, default dep=08:00),
@@ -94,6 +95,9 @@ export function parseRoute(
         w.templateId = m.slice(1);
       else if (/^[fu]([01]\d|2[0-3])[0-5]\d$/.test(m))
         w[m[0] === 'f' ? 'arriveAfter' : 'leaveBy'] = `${m.slice(1, 3)}:${m.slice(3)}`;
+      // `n<YYYYMMDDHHMM>`: stay until then (0.44.0, several days).
+      else if (/^n\d{8}([01]\d|2[0-3])[0-5]\d$/.test(m))
+        w.stayUntil = `${m.slice(1, 5)}-${m.slice(5, 7)}-${m.slice(7, 9)}T${m.slice(9, 11)}:${m.slice(11)}`;
     }
     // A stop right after the same stop (a template's end written out again) is one stop.
     const prev = tour.waypoints.at(-1);

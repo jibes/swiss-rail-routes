@@ -292,7 +292,8 @@ const NIGHT_ENDS = '03:00';
  */
 export function sameDayFirst(chains: PlannedChain[], tour: Tour): PlannedChain[] {
   const stays = tour.waypoints.reduce((m, w) => m + w.dwellMin, 0);
-  if (stays >= 12 * 60) return chains;
+  // Over several days by design (a stay until a later day): no day trip to keep to one day.
+  if (stays >= 12 * 60 || tour.waypoints.some((w) => w.stayUntil)) return chains;
   const nextDay = (c: PlannedChain) => {
     const dep = zurichLocal(ms(c.dep)).slice(0, 10);
     const arr = zurichLocal(ms(c.arr));
@@ -572,9 +573,12 @@ async function planFrom(
             warnings: [...b.warnings, ...w],
             penalty: b.penalty + scoreOf(c, w, wt),
             // A place that opens later: the stay starts when it does.
-            ready:
+            // A stay until a date and time: no earlier, on whatever day (multi-day trips).
+            ready: Math.max(
               Math.max(ms(expectedArr(c)), timeOn(tour.date, rules.leg.to.arriveAfter) ?? 0) +
-              dwell * MIN,
+                dwell * MIN,
+              rules.leg.to.stayUntil ? ms(zurichDateTime(rules.leg.to.stayUntil)) : 0,
+            ),
           });
         }
       }
