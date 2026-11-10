@@ -260,6 +260,11 @@ export const de = {
   keepMapPartly: 'Karte teilweise behalten: {n} von {total} Teilen (der Rest ohne Verbindung).',
   keepMapFailed: 'Die Karte konnte nicht behalten werden: keine Verbindung zum Kartendienst.',
   heightM: '{n} m ü. M.',
+  runAsking: 'Ganze Fahrt wird abgefragt…',
+  runUnknown:
+    'Die ganze Fahrt ist nicht bekannt (Züge im Ausland oder solche, die der Fahrplandienst nicht kennt).',
+  runLabel: 'Halte des Zuges',
+  runOpen: 'Ganze Fahrt von {line}',
   occFew: 'Wenige Sitzplätze frei',
   occStanding: 'Nur Stehplätze',
   wxSunny: 'Sonnig',

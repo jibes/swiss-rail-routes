@@ -259,6 +259,11 @@ export const fr = {
   keepMapPartly: 'Carte gardée en partie : {n} sur {total} (le reste sans connexion).',
   keepMapFailed: 'La carte n’a pas pu être gardée : pas de connexion au service de cartes.',
   heightM: '{n} m',
+  runAsking: 'Recherche du parcours complet…',
+  runUnknown:
+    'Le parcours complet est inconnu (trains à l’étranger, ou inconnus du service d’horaires).',
+  runLabel: 'Arrêts du train',
+  runOpen: 'Parcours complet de {line}',
   occFew: 'Peu de places assises',
   occStanding: 'Places debout uniquement',
   wxSunny: 'Ensoleillé',

@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { localParams, templateName, type RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
-import type { Tour } from '../core/model';
+import type { Section, Tour } from '../core/model';
 import { pinAfter, towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import { NOTICE_TYPES, type Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
@@ -23,6 +23,7 @@ import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './line
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
+import { RunSheet } from './RunSheet';
 import { runsOn } from '../core/planner/connection';
 import { dayOf } from '../core/trip';
 import { useStopIndex } from './useStopIndex';
@@ -99,6 +100,8 @@ export function TripLine({
   // Keyed by the station, not its place: an edit moves rows.
   const [hint, setHint] = useState<string | null>(null);
   const [more, setMore] = useState<string | null>(null);
+  // A train's whole run, opened by a tap on its badge (0.45.0).
+  const [run, setRun] = useState<Section | null>(null);
   // A ride's stops between: a tap decides; until then the ride being travelled shows them.
   const [midsOpen, setMidsOpen] = useState<Map<string, boolean>>(new Map());
   const [drag, setDrag] = useState<{
@@ -428,291 +431,305 @@ export function TripLine({
       />
     );
   return (
-    <ol
-      className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
-      ref={box}
-      aria-label={travelled ? t('theWayHere') : t('theLine')}
-    >
-      {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
-      {weather && 'far' in weather && (
-        <li className="wx-far">{t('wxFrom', { date: dayMonth(weather.far, lang) })}</li>
-      )}
-      {rows.map((r, i) => {
-        if (r.type === 'ride') {
-          const first = !rows.slice(0, i).some((x) => x.type === 'ride' && x.leg === r.leg);
-          const s = r.section;
-          const ws = warnsFor(r.leg, r.sectionIndex, first);
-          const min =
-            s.walkMin ?? (s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0);
-          const id = `${r.leg}-${r.sectionIndex}`;
-          const lr = rideOf(live, r);
-          const riding = !!live && live.state.phase === 'riding' && isCurrent(live, r);
-          const arrives = lr?.stops.at(-1)?.arr;
-          const dep = lr?.stops[0]?.dep;
-          const f =
-            riding && dep && arrives
-              ? Math.min(1, Math.max(0, (live.now - dep) / Math.max(1, arrives - dep)))
-              : 0;
-          const mids = s.mode === 'walk' ? [] : s.intermediate;
-          const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
-          const vias = onRide.get(i) ?? [];
-          const { now: platform, moved } = platformAt(s.from, lr?.stops[0]);
-          const seat = seatOn(s, TEMPLATES);
-          const dest = towards(s);
-          return (
-            // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
-            // the focus in it) must stay the same element.
-            <li
-              key={`r${id}`}
-              className={[
-                'ride',
-                s.mode === 'walk' ? 'walk' : '',
-                riding ? 'here' : '',
-                shown || vias.length ? 'with-mids' : '',
-                live && arrives !== undefined && arrives <= live.now ? 'passed' : '',
-              ].join(' ')}
-              style={riding ? ({ '--f': `${(f * 100).toFixed(1)}%` } as CSSProperties) : undefined}
-            >
-              <span className="t" />
-              <span className="rail" />
-              <div className="m">
-                {s.mode === 'walk' ? (
-                  <span>{t('walkMin', { n: min })}</span>
-                ) : (
-                  <>
-                    <span className="badge">{badge(s)}</span>
-                    {s.product && <b>{s.product}</b>}
-                    {dest && (
-                      <span className="towards">
-                        <span aria-hidden="true">→ {dest}</span>
-                        <span className="sr-only">{t('towards', { to: dest })}</span>
-                      </span>
-                    )}
-                    {moved ? (
-                      <span className="platform-moved">
-                        <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
-                        <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
-                        <span className="sr-only">
-                          {t('platformChanged', { was: moved.was, p: moved.now })}
-                        </span>
-                      </span>
-                    ) : (
-                      platform && <span>{t('platform', { p: platform })}</span>
-                    )}
-                    {min > 0 && <span>{duration(min)}</span>}
-                    {seat && (
-                      <span className="seat">{t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}</span>
-                    )}
-                    {(() => {
-                      // How full, for your class: said only when seats are few (0.39.0).
-                      const o = s.occupancy?.[route.travelClass === 1 ? 0 : 1];
-                      return o && o > 1 ? (
-                        <span className={`occ occ-${o}`}>
-                          {t(o === 3 ? 'occStanding' : 'occFew')}
-                        </span>
-                      ) : null;
-                    })()}
-                    {mids.length > vias.length && (
+    <>
+      <ol
+        className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
+        ref={box}
+        aria-label={travelled ? t('theWayHere') : t('theLine')}
+      >
+        {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
+        {weather && 'far' in weather && (
+          <li className="wx-far">{t('wxFrom', { date: dayMonth(weather.far, lang) })}</li>
+        )}
+        {rows.map((r, i) => {
+          if (r.type === 'ride') {
+            const first = !rows.slice(0, i).some((x) => x.type === 'ride' && x.leg === r.leg);
+            const s = r.section;
+            const ws = warnsFor(r.leg, r.sectionIndex, first);
+            const min =
+              s.walkMin ?? (s.from.dep && s.to.arr ? minutesBetween(s.from.dep, s.to.arr) : 0);
+            const id = `${r.leg}-${r.sectionIndex}`;
+            const lr = rideOf(live, r);
+            const riding = !!live && live.state.phase === 'riding' && isCurrent(live, r);
+            const arrives = lr?.stops.at(-1)?.arr;
+            const dep = lr?.stops[0]?.dep;
+            const f =
+              riding && dep && arrives
+                ? Math.min(1, Math.max(0, (live.now - dep) / Math.max(1, arrives - dep)))
+                : 0;
+            const mids = s.mode === 'walk' ? [] : s.intermediate;
+            const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
+            const vias = onRide.get(i) ?? [];
+            const { now: platform, moved } = platformAt(s.from, lr?.stops[0]);
+            const seat = seatOn(s, TEMPLATES);
+            const dest = towards(s);
+            return (
+              // Keyed by what it is, not where: an edit reorders rows, and the open panel (with
+              // the focus in it) must stay the same element.
+              <li
+                key={`r${id}`}
+                className={[
+                  'ride',
+                  s.mode === 'walk' ? 'walk' : '',
+                  riding ? 'here' : '',
+                  shown || vias.length ? 'with-mids' : '',
+                  live && arrives !== undefined && arrives <= live.now ? 'passed' : '',
+                ].join(' ')}
+                style={
+                  riding ? ({ '--f': `${(f * 100).toFixed(1)}%` } as CSSProperties) : undefined
+                }
+              >
+                <span className="t" />
+                <span className="rail" />
+                <div className="m">
+                  {s.mode === 'walk' ? (
+                    <span>{t('walkMin', { n: min })}</span>
+                  ) : (
+                    <>
                       <button
                         type="button"
-                        className="mids-toggle"
-                        aria-expanded={shown}
-                        onClick={() => setMidsOpen((m) => new Map(m).set(id, !shown))}
+                        className="badge run-open"
+                        aria-label={t('runOpen', { line: badge(s) })}
+                        onClick={() => setRun(s)}
                       >
-                        {mids.length === 1 ? t('stop1') : t('stopsBetween', { n: mids.length })}
+                        {badge(s)}
                       </button>
-                    )}
-                  </>
-                )}
-                {(shown || vias.length > 0) && (
-                  <Mids
-                    r={r}
-                    live={live}
-                    riding={riding}
-                    all={shown}
-                    wx={
-                      wx
-                        ? (call) => (
-                            <WeatherCell
-                              mid
-                              w={wx.rows[i]?.mids?.[call]}
-                              where={s.intermediate[call]!.name}
-                              when={s.intermediate[call]!.dep ?? s.intermediate[call]!.arr}
-                              source={wx.source}
-                              at={wx.at}
-                            />
-                          )
-                        : undefined
-                    }
-                    via={(call, when, passed) => {
-                      const v = vias.find((x) => x.call === call);
-                      return v ? viaRow(rows[v.row] as StationRow, v.row, when, passed) : null;
-                    }}
-                    // A stop the train calls at: yours with a tap, as a station the plan chose.
-                    pin={(() => {
-                      const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
-                      if (k === undefined) return undefined;
-                      return {
-                        open: (call: number) => hint === `${id}:${call}`,
-                        toggle: (call: number) =>
-                          setHint(hint === `${id}:${call}` ? null : `${id}:${call}`),
-                        menu: (call: number) =>
-                          planPanel(
-                            k,
-                            { stopRef: mids[call]!.stopRef, name: mids[call]!.name },
-                            t('timetableStopPin'),
-                            () => setHint(null),
-                          ),
-                      };
-                    })()}
-                  />
-                )}
-                {ws.map((w, j) => {
-                  const text =
-                    w.type === 'seasonal'
-                      ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
-                        t(w.key, w.params))
-                      : t(w.key, localParams(w.params, lang, TEMPLATES));
-                  // A disruption opens the operator's own message on a tap.
-                  const detail = NOTICE_TYPES.has(w.type) && s.notices?.length ? s.notices : null;
-                  const wid = `${id}-${j}`;
-                  return detail ? (
-                    <span key={j} className="warn-wrap">
-                      <button
-                        type="button"
-                        className={`warn ${SEVERITY[w.severity]} more`}
-                        aria-expanded={more === wid}
-                        onClick={() => setMore(more === wid ? null : wid)}
-                      >
-                        <span>{text}</span>
-                        <Icon name="chevron" size={14} />
-                      </button>
-                      {more === wid && (
-                        <span className="detail">
-                          {detail.map((d, k) => {
-                            // Until when, and the operator's own remarks (0.19.1).
-                            const info = s.noticeInfo?.[k];
-                            return (
-                              <span key={k}>
-                                {d}
-                                {info?.until &&
-                                  ` ${t('noticeUntil', { date: dayMonth(info.until, lang) })}`}
-                                {info?.detail && <span className="notice-more">{info.detail}</span>}
-                              </span>
-                            );
-                          })}
+                      {s.product && <b>{s.product}</b>}
+                      {dest && (
+                        <span className="towards">
+                          <span aria-hidden="true">→ {dest}</span>
+                          <span className="sr-only">{t('towards', { to: dest })}</span>
                         </span>
                       )}
-                    </span>
-                  ) : (
-                    <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
-                      {text}
-                    </span>
-                  );
-                })}
-              </div>
-              {cell(
-                i,
-                s.mode === 'walk' ? s.to.name : `${s.from.name} – ${s.to.name}`,
-                s.from.dep,
-                s.mode === 'walk' ? undefined : { open: shown },
+                      {moved ? (
+                        <span className="platform-moved">
+                          <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
+                          <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
+                          <span className="sr-only">
+                            {t('platformChanged', { was: moved.was, p: moved.now })}
+                          </span>
+                        </span>
+                      ) : (
+                        platform && <span>{t('platform', { p: platform })}</span>
+                      )}
+                      {min > 0 && <span>{duration(min)}</span>}
+                      {seat && (
+                        <span className="seat">{t(seat === 'R' ? 'nSideRight' : 'nSideLeft')}</span>
+                      )}
+                      {(() => {
+                        // How full, for your class: said only when seats are few (0.39.0).
+                        const o = s.occupancy?.[route.travelClass === 1 ? 0 : 1];
+                        return o && o > 1 ? (
+                          <span className={`occ occ-${o}`}>
+                            {t(o === 3 ? 'occStanding' : 'occFew')}
+                          </span>
+                        ) : null;
+                      })()}
+                      {mids.length > vias.length && (
+                        <button
+                          type="button"
+                          className="mids-toggle"
+                          aria-expanded={shown}
+                          onClick={() => setMidsOpen((m) => new Map(m).set(id, !shown))}
+                        >
+                          {mids.length === 1 ? t('stop1') : t('stopsBetween', { n: mids.length })}
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {(shown || vias.length > 0) && (
+                    <Mids
+                      r={r}
+                      live={live}
+                      riding={riding}
+                      all={shown}
+                      wx={
+                        wx
+                          ? (call) => (
+                              <WeatherCell
+                                mid
+                                w={wx.rows[i]?.mids?.[call]}
+                                where={s.intermediate[call]!.name}
+                                when={s.intermediate[call]!.dep ?? s.intermediate[call]!.arr}
+                                source={wx.source}
+                                at={wx.at}
+                              />
+                            )
+                          : undefined
+                      }
+                      via={(call, when, passed) => {
+                        const v = vias.find((x) => x.call === call);
+                        return v ? viaRow(rows[v.row] as StationRow, v.row, when, passed) : null;
+                      }}
+                      // A stop the train calls at: yours with a tap, as a station the plan chose.
+                      pin={(() => {
+                        const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
+                        if (k === undefined) return undefined;
+                        return {
+                          open: (call: number) => hint === `${id}:${call}`,
+                          toggle: (call: number) =>
+                            setHint(hint === `${id}:${call}` ? null : `${id}:${call}`),
+                          menu: (call: number) =>
+                            planPanel(
+                              k,
+                              { stopRef: mids[call]!.stopRef, name: mids[call]!.name },
+                              t('timetableStopPin'),
+                              () => setHint(null),
+                            ),
+                        };
+                      })()}
+                    />
+                  )}
+                  {ws.map((w, j) => {
+                    const text =
+                      w.type === 'seasonal'
+                        ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
+                          t(w.key, w.params))
+                        : t(w.key, localParams(w.params, lang, TEMPLATES));
+                    // A disruption opens the operator's own message on a tap.
+                    const detail = NOTICE_TYPES.has(w.type) && s.notices?.length ? s.notices : null;
+                    const wid = `${id}-${j}`;
+                    return detail ? (
+                      <span key={j} className="warn-wrap">
+                        <button
+                          type="button"
+                          className={`warn ${SEVERITY[w.severity]} more`}
+                          aria-expanded={more === wid}
+                          onClick={() => setMore(more === wid ? null : wid)}
+                        >
+                          <span>{text}</span>
+                          <Icon name="chevron" size={14} />
+                        </button>
+                        {more === wid && (
+                          <span className="detail">
+                            {detail.map((d, k) => {
+                              // Until when, and the operator's own remarks (0.19.1).
+                              const info = s.noticeInfo?.[k];
+                              return (
+                                <span key={k}>
+                                  {d}
+                                  {info?.until &&
+                                    ` ${t('noticeUntil', { date: dayMonth(info.until, lang) })}`}
+                                  {info?.detail && (
+                                    <span className="notice-more">{info.detail}</span>
+                                  )}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
+                        {text}
+                      </span>
+                    );
+                  })}
+                </div>
+                {cell(
+                  i,
+                  s.mode === 'walk' ? s.to.name : `${s.from.name} – ${s.to.name}`,
+                  s.from.dep,
+                  s.mode === 'walk' ? undefined : { open: shown },
+                )}
+              </li>
+            );
+          }
+          if (onRideRows.has(i)) return null;
+          const k = act ? r.entry : undefined;
+          const isOpen = k !== undefined && open === k;
+          const L = stationLive(rows, i, live);
+          // Where you change or stay: the arrival small above, the departure (what you act on) big.
+          const both = (r.role === 'stop' || r.role === 'change') && !!r.arr && !!r.dep;
+          const showDep = r.role === 'start' || both || (r.role !== 'end' && !!r.dep);
+          const time = showDep ? (
+            <When plan={r.dep} live={L?.dep} />
+          ) : (
+            <When plan={r.arr} live={L?.arr} />
+          );
+          const before = both ? <When plan={r.arr} live={L?.arr} /> : null;
+          const big = r.role !== 'pass';
+          const dragging = drag && k === drag.from;
+          return (
+            <li
+              key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
+              data-stop={r.key}
+              className={[
+                'station',
+                big ? 'off' : 'pass',
+                r.missed ? 'missed' : '',
+                r.ring ? 'ring' : '',
+                r.entry === undefined ? 'auto' : 'entry',
+                isOpen ? 'open' : '',
+                dragging ? 'dragging' : '',
+                L?.passed ? 'passed' : '',
+                L?.here ? 'here' : '',
+                isWalk(rows[i + 1]) ? 'walk-from' : '',
+                isWalk(rows[i - 1]) ? 'walk-to' : '',
+                drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
+              ].join(' ')}
+              style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
+              {...(k !== undefined ? { 'data-entry': k } : {})}
+            >
+              <span className="t">
+                {before && !planning && <i>{before}</i>}
+                {planning ? <span className="shim" /> : time}
+                {!planning && newDay.get(i) && (
+                  <small className="day-of">{shortDate(newDay.get(i)!, lang)}</small>
+                )}
+              </span>
+              <span className="rail">
+                <span className="dot" />
+                {offTrain(i) && <span className="offtrain" aria-hidden="true" />}
+              </span>
+              {nameOf(r, i)}
+              {!!r.stay && wx && (wx.rows[i]?.rain ?? 0) >= 0.5 && (
+                <p className="warn info wx-note">
+                  {t('wxRainStay', { n: Math.round(wx.rows[i]!.rain * 100) })}
+                </p>
               )}
+              {!planning && !r.missed && <ChangePlatform rows={rows} i={i} live={live} />}
+              {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
+              {whyLocked(r, i)}
+              {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
+                <MissedNote
+                  // A new route (an edit, an hour later) drops a suggestion and stops a search.
+                  key={JSON.stringify(route.waypoints)}
+                  rows={rows}
+                  i={i}
+                  warnings={warnings}
+                  later={act?.later}
+                  find={act?.find}
+                  use={act?.replace}
+                />
+              )}
+              {editing(r)}
+              {cell(i, r.name, r.arr ?? r.dep)}
             </li>
           );
-        }
-        if (onRideRows.has(i)) return null;
-        const k = act ? r.entry : undefined;
-        const isOpen = k !== undefined && open === k;
-        const L = stationLive(rows, i, live);
-        // Where you change or stay: the arrival small above, the departure (what you act on) big.
-        const both = (r.role === 'stop' || r.role === 'change') && !!r.arr && !!r.dep;
-        const showDep = r.role === 'start' || both || (r.role !== 'end' && !!r.dep);
-        const time = showDep ? (
-          <When plan={r.dep} live={L?.dep} />
-        ) : (
-          <When plan={r.arr} live={L?.arr} />
-        );
-        const before = both ? <When plan={r.arr} live={L?.arr} /> : null;
-        const big = r.role !== 'pass';
-        const dragging = drag && k === drag.from;
-        return (
+        })}
+        {hereY !== null && (
           <li
-            key={k !== undefined ? `e${k}` : `s${i}-${r.key}`}
-            data-stop={r.key}
-            className={[
-              'station',
-              big ? 'off' : 'pass',
-              r.missed ? 'missed' : '',
-              r.ring ? 'ring' : '',
-              r.entry === undefined ? 'auto' : 'entry',
-              isOpen ? 'open' : '',
-              dragging ? 'dragging' : '',
-              L?.passed ? 'passed' : '',
-              L?.here ? 'here' : '',
-              isWalk(rows[i + 1]) ? 'walk-from' : '',
-              isWalk(rows[i - 1]) ? 'walk-to' : '',
-              drag && r.ring && r.line && drag.lost.includes(r.line) ? 'losing' : '',
-            ].join(' ')}
-            style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
-            {...(k !== undefined ? { 'data-entry': k } : {})}
-          >
-            <span className="t">
-              {before && !planning && <i>{before}</i>}
-              {planning ? <span className="shim" /> : time}
-              {!planning && newDay.get(i) && (
-                <small className="day-of">{shortDate(newDay.get(i)!, lang)}</small>
-              )}
-            </span>
-            <span className="rail">
-              <span className="dot" />
-              {offTrain(i) && <span className="offtrain" aria-hidden="true" />}
-            </span>
-            {nameOf(r, i)}
-            {!!r.stay && wx && (wx.rows[i]?.rain ?? 0) >= 0.5 && (
-              <p className="warn info wx-note">
-                {t('wxRainStay', { n: Math.round(wx.rows[i]!.rain * 100) })}
-              </p>
-            )}
-            {!planning && !r.missed && <ChangePlatform rows={rows} i={i} live={live} />}
-            {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
-            {whyLocked(r, i)}
-            {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
-              <MissedNote
-                // A new route (an edit, an hour later) drops a suggestion and stops a search.
-                key={JSON.stringify(route.waypoints)}
-                rows={rows}
-                i={i}
-                warnings={warnings}
-                later={act?.later}
-                find={act?.find}
-                use={act?.replace}
-              />
-            )}
-            {editing(r)}
-            {cell(i, r.name, r.arr ?? r.dep)}
-          </li>
-        );
-      })}
-      {hereY !== null && (
-        <li
-          className="wx-now"
-          aria-hidden="true"
-          style={{ '--y': `${hereY}px` } as CSSProperties}
-        />
-      )}
-      {(act || (edit && live?.state.phase !== 'done')) && (
-        <li className="addrow">
-          <button type="button" onClick={act ? act.add : () => edit?.(null)}>
-            <span className="t" />
-            <span className="rail">
-              <span className="plus" aria-hidden="true">
-                +
+            className="wx-now"
+            aria-hidden="true"
+            style={{ '--y': `${hereY}px` } as CSSProperties}
+          />
+        )}
+        {(act || (edit && live?.state.phase !== 'done')) && (
+          <li className="addrow">
+            <button type="button" onClick={act ? act.add : () => edit?.(null)}>
+              <span className="t" />
+              <span className="rail">
+                <span className="plus" aria-hidden="true">
+                  +
+                </span>
               </span>
-            </span>
-            <span className="m">{n ? t('addStation') : t('chooseStart')}</span>
-          </button>
-        </li>
-      )}
-    </ol>
+              <span className="m">{n ? t('addStation') : t('chooseStart')}</span>
+            </button>
+          </li>
+        )}
+      </ol>
+      {run && <RunSheet s={run} onClose={() => setRun(null)} />}
+    </>
   );
 }

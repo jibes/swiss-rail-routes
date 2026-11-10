@@ -295,3 +295,32 @@ test('a delay in a stop list stays on the time’s line, via rows included', asy
   expect(rows.some((r) => r.via)).toBe(true);
   expect(rows.filter((r) => !r.oneLine || !r.beside)).toEqual([]);
 });
+
+// A train's whole run (0.45.0): a tap on its badge shows every stop it calls at, the part you
+// ride in full and the rest dimmed; one request on the tap.
+test('a tap on a train shows its whole run, your part marked', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  const call = (ref: string, name: string, dep: string) =>
+    `<OnwardCall><siri:StopPointRef>${ref}</siri:StopPointRef><StopPointName><Text xml:lang="de">${name}</Text></StopPointName>` +
+    `<ServiceDeparture><TimetabledTime>${FIXTURE_DATE}T${dep}:00Z</TimetabledTime></ServiceDeparture></OnwardCall>`;
+  await page.route(/\/journey$/, (route) =>
+    route.fulfill({
+      contentType: 'application/xml',
+      body:
+        '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult>' +
+        call('ch:1:sloid:7000', 'Bern', '07:30') +
+        call('ch:1:sloid:7492', 'Interlaken Ost', '08:04') +
+        call('ch:1:sloid:7388', 'Wilderswil', '08:08') +
+        call('ch:1:sloid:7389', 'Zweilütschinen', '08:13') +
+        call('ch:1:sloid:7384', 'Lauterbrunnen', '08:26') +
+        '</TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
+    }),
+  );
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Run' }));
+  await page.getByRole('button', { name: 'Whole run of R62' }).click();
+  const run = page.getByRole('list', { name: 'The train’s stops' });
+  await expect(run.locator('li')).toHaveCount(5);
+  await expect(run.locator('li.other').first()).toHaveText(/Bern/);
+  await expect(run.locator('li.yours').first()).toHaveText(/Interlaken Ost/);
+  await expect(run.locator('li.yours').last()).toHaveText(/Lauterbrunnen/);
+});

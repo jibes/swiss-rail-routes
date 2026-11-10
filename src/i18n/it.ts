@@ -258,6 +258,11 @@ export const it = {
   keepMapPartly: 'Mappa tenuta in parte: {n} di {total} (il resto senza connessione).',
   keepMapFailed: 'Non è stato possibile tenere la mappa: nessuna connessione al servizio mappe.',
   heightM: '{n} m s.l.m.',
+  runAsking: 'Ricerca del percorso completo…',
+  runUnknown:
+    'Il percorso completo non è noto (treni all’estero, o sconosciuti al servizio orario).',
+  runLabel: 'Fermate del treno',
+  runOpen: 'Percorso completo di {line}',
   occFew: 'Pochi posti a sedere',
   occStanding: 'Solo posti in piedi',
   wxSunny: 'Soleggiato',

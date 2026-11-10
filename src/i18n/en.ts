@@ -251,6 +251,11 @@ export const en = {
   keepMapPartly: 'Map kept in part: {n} of {total} parts (no connection for the rest).',
   keepMapFailed: 'The map could not be kept: no connection to the map service.',
   heightM: '{n} m',
+  runAsking: 'Asking for its whole run…',
+  runUnknown:
+    'Its whole run is not known (trains abroad, or one the timetable service does not know).',
+  runLabel: 'The train’s stops',
+  runOpen: 'Whole run of {line}',
   occFew: 'Few seats free',
   occStanding: 'Standing room only',
   wxSunny: 'Sunny',

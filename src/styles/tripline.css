@@ -994,3 +994,39 @@
   color: var(--ink-2);
   white-space: nowrap;
 }
+
+/* A train's badge opens its whole run (0.45.0): a button that looks like the badge. */
+.trip-line button.badge.run-open {
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* The whole run: the part you ride in full, the rest dimmed. */
+.run-sheet .badge {
+  font-size: 13px;
+  padding: 2px 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+}
+.run {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.run li {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  padding: 5px 0;
+  font-variant-numeric: tabular-nums;
+}
+.run li.yours {
+  font-weight: 600;
+  border-left: 3px solid var(--rail);
+  padding-left: 8px;
+}
+.run li.other {
+  color: var(--ink-3);
+  padding-left: 11px;
+}
