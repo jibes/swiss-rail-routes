@@ -251,6 +251,16 @@ function DebugLog() {
 }
 
 /** Settings: language and sync. `join` is a key from a link (`#/sync/<key>`), to confirm. */
+/** Where the app's data comes from, each with its own page. */
+const SOURCES = [
+  ['sourceOjp', 'https://opentransportdata.swiss'],
+  ['sourceDidok', 'https://opentransportdata.swiss/en/dataset/service-points-full'],
+  ['sourceTransitous', 'https://transitous.org'],
+  ['sourceWeather', 'https://open-meteo.com'],
+  ['sourceMetNo', 'https://api.met.no'],
+  ['sourceMap', 'https://www.openstreetmap.org/copyright'],
+] as const;
+
 export function Settings({ join }: { join?: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -327,6 +337,20 @@ export function Settings({ join }: { join?: string }) {
       </section>
 
       <DebugLog />
+
+      {/* Where the data comes from (0.47.1): the open data licences ask the source be named. */}
+      <section className="setting sources">
+        <h2 className="section-label">{t('sourcesTitle')}</h2>
+        <ul className="sources-list">
+          {SOURCES.map(([key, url]) => (
+            <li key={key}>
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                {t(key)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <p className="muted build">{t('build', { sha: __BUILD__.sha })}</p>
     </main>

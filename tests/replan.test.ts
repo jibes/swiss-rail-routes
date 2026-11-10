@@ -3,7 +3,14 @@ import { newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import type { Leg, Waypoint } from '../src/core/model';
 import { zurichDateTime } from '../src/core/ojp/request';
-import { mergeReplan, remainingRoute, replanPoint, travelledRoute } from '../src/core/replan';
+import {
+  mergeReplan,
+  remainingRoute,
+  replanPoint,
+  travelledRoute,
+  wholeWay,
+} from '../src/core/replan';
+import { sameWayBack } from '../src/core/line';
 import { newTrip } from '../src/core/trip';
 import { DATE, conn, ref, ride } from './helpers/timetable';
 
@@ -128,6 +135,24 @@ describe('travelledRoute', () => {
     expect(
       travelledRoute(trip, replanPoint(trip, liveState(chain, at('07:00')), at('07:00'))!),
     ).toBeNull();
+  });
+});
+
+describe('wholeWay (0.47.1)', () => {
+  it('the way here and the rest, the station you are at once; back the same way retraces both', () => {
+    const p = replanPoint(trip, liveState(chain, at('09:00')), at('09:00'))!;
+    const way = wholeWay(travelledRoute(trip, p), remainingRoute(trip, p));
+    const names = way.waypoints.map((x) => x.name);
+    expect(names.filter((n) => n === 'Luzern')).toHaveLength(1);
+    expect(names[0]).toBe('Zürich HB');
+    const back = sameWayBack(way).map((e) => e.w.name);
+    expect(back.at(-1)).toBe('Zürich HB');
+    expect(back).toContain('Luzern');
+  });
+
+  it('before the trip: the rest alone', () => {
+    const r = { waypoints: trip.route.waypoints };
+    expect(wholeWay(null, r).waypoints.map((x) => x.name)).toEqual(r.waypoints.map((x) => x.name));
   });
 });
 

@@ -43,3 +43,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
     ).toEqual([]);
   });
 }
+
+// The open data licences ask the source be named (SPEC §9, 0.47.1): Settings lists each.
+test('settings names where the data comes from', async ({ page }) => {
+  await page.goto('./#/settings');
+  const sources = page.locator('.settings .sources');
+  await expect(
+    sources.getByRole('link', { name: /opentransportdata\.swiss \(OJP\)/ }),
+  ).toHaveAttribute('href', 'https://opentransportdata.swiss');
+  await expect(sources.getByRole('link')).toHaveCount(6);
+});

@@ -14,11 +14,12 @@ import {
   setEntryStay,
   setEntryLeaveBy,
   setEntryStayUntil,
+  sameWayBack,
 } from '../core/line';
 import type { LiveState } from '../core/live';
 import type { Tour } from '../core/model';
 import type { PlanResult } from '../core/planner/plan';
-import { mergeReplan, replanPoint, travelledRoute } from '../core/replan';
+import { mergeReplan, replanPoint, travelledRoute, wholeWay } from '../core/replan';
 import { plannedRows, routeRows } from '../core/rows';
 import { isPlanned, revise, type PlannedTrip } from '../core/trip';
 import { log } from '../io/log';
@@ -305,6 +306,10 @@ export function RestEditor({
           next={entries[sheet.after + 1]?.w}
           // "Back to the start": the trip's own start, not where you are now.
           first={sheet.after === entries.length - 1 ? trip.route.waypoints[0] : undefined}
+          // The whole way as it now stands, the way here included, retraced from the rest's end.
+          sameWay={
+            sheet.after === entries.length - 1 ? sameWayBack(wholeWay(travelled, draft)) : undefined
+          }
           onPick={pick}
           onClose={closeSheet}
           // On the trip's map, into the rest: beside the trip (desktop columns), else its screen.

@@ -330,19 +330,34 @@ test('a tap on a train shows its whole run, your part marked', async ({ page }) 
   await page.getByRole('button', { name: 'Map', exact: true }).click();
   const map = page.locator('.map');
   await expect(map.locator('canvas')).toBeVisible();
-  // A pixel of the drawn line (the rail's red), found on a screenshot; the first ride is the R62.
-  let point: [number, number] | null = null;
+  // Points on the drawn line (the rail's red), found on a screenshot. Where a weather icon lies on
+  // it the weather's card wins (by design), so a few points along it are tried.
+  let points: [number, number][] = [];
   await expect
-    .poll(async () => (point = await redPixel(page, map)), { timeout: 15_000 })
-    .not.toBeNull();
+    .poll(async () => (points = await redPixels(page, map)).length, { timeout: 15_000 })
+    .toBeGreaterThan(0);
   const box = (await map.boundingBox())!;
-  await map.click({ position: { x: point![0] * box.width, y: point![1] * box.height } });
-  await expect(page.getByRole('list', { name: 'The train’s stops' }).locator('li')).toHaveCount(5);
+  const stops = page.getByRole('list', { name: 'The train’s stops' }).locator('li');
+  for (const [x, y] of points) {
+    await page.locator('.maplibregl-popup').evaluateAll((els) => els.forEach((e) => e.remove()));
+    await map.click({ position: { x: x * box.width, y: y * box.height } });
+    if (
+      await stops
+        .first()
+        .waitFor({ timeout: 1500 })
+        .then(
+          () => true,
+          () => false,
+        )
+    )
+      break;
+  }
+  await expect(stops).toHaveCount(5);
 });
 
-/** Where the middle one of a screenshot's red pixels is (the rail's line), as fractions of its
- * size (the screenshot is at the device's scale), or null before it is drawn. */
-async function redPixel(page: Page, at: Locator): Promise<[number, number] | null> {
+/** Points along a screenshot's red pixels (the rail's line), as fractions of its size (the
+ * screenshot is at the device's scale); none before it is drawn. */
+async function redPixels(page: Page, at: Locator): Promise<[number, number][]> {
   const png = (await at.screenshot()).toString('base64');
   return page.evaluate(async (b64) => {
     const img = new Image();
@@ -358,6 +373,7 @@ async function redPixel(page: Page, at: Locator): Promise<[number, number] | nul
     for (let i = 0; i < d.length; i += 4)
       if (d[i]! > 150 && d[i + 1]! < 80 && d[i + 2]! < 80)
         red.push([((i / 4) % c.width) / c.width, Math.floor(i / 4 / c.width) / c.height]);
-    return red.length > 50 ? red[Math.floor(red.length / 2)]! : null;
+    if (red.length < 50) return [];
+    return [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6].map((q) => red[Math.floor(red.length * q)]!);
   }, png);
 }

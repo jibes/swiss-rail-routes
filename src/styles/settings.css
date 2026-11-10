@@ -245,3 +245,16 @@
   align-items: center;
   gap: 10px;
 }
+
+/* Data sources (0.47.1): a plain list of links, as the licences ask the source be named. */
+.settings .sources-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.settings .sources-list a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
