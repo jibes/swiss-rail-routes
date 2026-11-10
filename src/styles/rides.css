@@ -354,3 +354,22 @@
       #fff;
   }
 }
+
+/* A platform beside a station's name (0.50.0): the station's, quiet, after its height. */
+.trip-line .station .n .pl-at {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.trip-line .station .n .pl-at.moved s {
+  color: var(--ink-3);
+}
+
+.trip-line .station .n .pl-at.moved b {
+  color: var(--red);
+  font-weight: 650;
+}

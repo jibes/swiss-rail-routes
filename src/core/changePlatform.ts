@@ -1,42 +1,32 @@
-// Where you change trains, the platform you arrive on and the one the next train leaves from
-// (0.17.3): "Pl. 7 → 8", or "same platform". Pure: which rows are a change, and what to say.
+// Platforms at the stations (0.17.3 a line under a change, "Pl. 7 → 8"; since 0.50.0 beside the
+// station's names, the arrival's and the departure's) and where the same train runs on under
+// another number. Pure.
 import { runsOn } from './planner/connection';
 import type { LineRow, RideRow } from './rows';
 
 /**
- * The ride you arrive with at row `i` and the one you leave with (none when you walk on to
- * another stop), where you get off one train for another or stay. Nothing at the start, the end,
- * a station a train passes, or where the same train goes on.
+ * The platforms a station row shows beside its names (0.50.0: a platform is the station's, not
+ * the train's): the one you arrive on beside where you get off (the end, a change, a stay, a
+ * station you walk on from) and the one you leave from beside where you board (the start, a
+ * change, a station you walked to). None where the same train runs on, and none on foot.
+ * `skip`: rows drawn inside a ride, passed over to find the rides either side.
  */
-export function changeAt(rows: LineRow[], i: number): { arr: RideRow; dep?: RideRow } | undefined {
-  const r = rows[i];
-  if (r?.type !== 'station' || r.role === 'start' || r.role === 'end') return undefined;
-  const before = rows[i - 1];
-  const after = rows[i + 1];
-  if (before?.type !== 'ride' || before.section.mode === 'walk') return undefined;
-  if (after?.type !== 'ride') return undefined;
-  if (after.section.mode === 'walk') return { arr: before };
-  return runsOn(before.section, after.section) ? undefined : { arr: before, dep: after };
-}
-
-export type ChangePlatforms =
-  | { kind: 'same'; p: string }
-  | { kind: 'both'; arr: string; dep: string }
-  | { kind: 'arr'; arr: string };
-
-/**
- * What the row says: both platforms, "same platform", or only where you arrive when the next
- * train leaves from another stop; nothing when a platform it needs is not known.
- */
-export function changePlatforms(
-  arr?: string,
-  dep?: string,
-  walkOn = false,
-): ChangePlatforms | undefined {
-  if (!arr) return undefined;
-  if (walkOn) return { kind: 'arr', arr };
-  if (!dep) return undefined;
-  return arr === dep ? { kind: 'same', p: arr } : { kind: 'both', arr, dep };
+export function stationPlatforms(
+  rows: LineRow[],
+  i: number,
+  skip: ReadonlySet<number> = new Set(),
+): { arr?: RideRow; dep?: RideRow } {
+  if (rows[i]?.type !== 'station') return {};
+  let b = i - 1;
+  while (b >= 0 && skip.has(b)) b--;
+  let a = i + 1;
+  while (a < rows.length && skip.has(a)) a++;
+  const ride = (x: LineRow | undefined) =>
+    x?.type === 'ride' && x.section.mode !== 'walk' ? x : undefined;
+  const arr = ride(rows[b]);
+  const dep = ride(rows[a]);
+  if (arr && dep && runsOn(arr.section, dep.section)) return {};
+  return { ...(arr ? { arr } : {}), ...(dep ? { dep } : {}) };
 }
 
 /**

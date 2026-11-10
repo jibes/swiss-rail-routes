@@ -3,7 +3,7 @@
 // any recorded answer): two rail rides meeting at the same stop within a minute, from the same
 // platform, are the same train. Neither a change, nor tight, nor a platform line, nor notices.
 import { describe, expect, it } from 'vitest';
-import { changeAt, continuesAs } from '../src/core/changePlatform';
+import { continuesAs, stationPlatforms } from '../src/core/changePlatform';
 import type { Connection, Section } from '../src/core/model';
 import { runsOn, transferGaps } from '../src/core/planner/connection';
 import type { LineRow } from '../src/core/rows';
@@ -65,7 +65,8 @@ describe('the same train running on under another number', () => {
       { type: 'ride', section: c.sections[1]!, leg: 0, sectionIndex: 1 },
       { type: 'station', name: 'Luzern', key: 'Luzern', role: 'end' },
     ];
-    expect(changeAt(rows, 2)).toBeUndefined();
+    // The same train: no platforms there, as no change.
+    expect(stationPlatforms(rows, 2)).toEqual({});
     expect(continuesAs(rows, 2)).toEqual({ line: 'S1', likely: false });
     // A real change stays one.
     const change = conn(s29, s1('10:18', '2'));

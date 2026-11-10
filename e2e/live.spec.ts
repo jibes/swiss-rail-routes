@@ -212,7 +212,8 @@ test('a platform changed on the day shows on the line', async ({ page }) => {
     }),
   );
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
-  const moved = page.locator('.trip-line .ride .platform-moved').first();
+  // Beside the station where you board (0.50.0), no longer on the train's row.
+  const moved = page.locator('.trip-line .station .pl-at.moved').first();
   await expect(moved).toBeVisible();
   await expect(moved.locator('s')).toHaveText('Pl. 2A');
   await expect(moved.locator('b')).toHaveText('Pl. 3');

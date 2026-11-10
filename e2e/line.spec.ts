@@ -360,7 +360,7 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   await expect(chur.locator(':scope > .t').first()).toContainText('09:52');
   await expect(chur.locator('.t-dep')).toContainText('09:58');
   // The station named beside both (0.49.1), the second at the departure's dot.
-  await expect(chur.locator('.n-dep')).toHaveText('Chur');
+  await expect(chur.locator('.n-dep')).toHaveText(/^ChurPl\. \w+$/);
   const mid = async (l: import('@playwright/test').Locator) => {
     const b = (await l.boundingBox())!;
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
@@ -377,7 +377,7 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   const [a, b] = [await mid(dots.nth(0)), await mid(dots.nth(1))];
   expect(Math.abs(a.x - b.x)).toBeLessThan(0.5);
   expect((await dots.nth(0).boundingBox())!.width).toBe((await dots.nth(1).boundingBox())!.width);
-  await expect(sagliains.locator('.n-dep')).toHaveText('Sagliains');
+  await expect(sagliains.locator('.n-dep')).toContainText('Sagliains');
   // A ride's two rows, the same split on every ride (0.49.1): the train, where it goes and its
   // platform on one line; its stops, duration and notes below, the stops first.
   const firstRows = line.locator('.ride .ride-l1');

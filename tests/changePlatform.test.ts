@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { changeAt, changePlatforms } from '../src/core/changePlatform';
+import { stationPlatforms } from '../src/core/changePlatform';
 import { platformAt } from '../src/core/live';
 import type { Section } from '../src/core/model';
 import { parseTrips } from '../src/core/ojp/parse';
@@ -39,7 +39,7 @@ const walk = (): Section => ({
   journey: undefined,
 });
 
-describe('which station is a change', () => {
+describe('the platforms beside a station (0.50.0)', () => {
   const a = ir('j1', 'Zürich HB', 'Zug', '3', '7');
   const b = ir('j2', 'Zug', 'Arth-Goldau', '8', '2');
   const rows: LineRow[] = [
@@ -50,41 +50,40 @@ describe('which station is a change', () => {
     station('Arth-Goldau', 'end'),
   ];
 
-  it('a change between two trains, never the start or the end', () => {
-    expect(changeAt(rows, 0)).toBeUndefined();
-    expect(changeAt(rows, 2)).toEqual({ arr: rows[1], dep: rows[3] });
-    expect(changeAt(rows, 4)).toBeUndefined();
+  it('the start where you board, a change both, the end where you get off', () => {
+    expect(stationPlatforms(rows, 0)).toEqual({ dep: rows[1] });
+    expect(stationPlatforms(rows, 2)).toEqual({ arr: rows[1], dep: rows[3] });
+    expect(stationPlatforms(rows, 4)).toEqual({ arr: rows[3] });
+    expect(stationPlatforms(rows, 1)).toEqual({});
   });
 
-  it('the same train going on is no change; a walk on is one with no departure here', () => {
+  it('none where the same train runs on; on foot, only the train’s side', () => {
     const through = [
       rows[0]!,
       rideRow(a),
       station('Zug', 'stop'),
       rideRow({ ...b, journey: 'j1' }),
     ];
-    expect(changeAt(through, 2)).toBeUndefined();
+    expect(stationPlatforms(through, 2)).toEqual({});
     const onFoot = [rows[0]!, rideRow(a), station('Zug', 'change'), rideRow(walk())];
-    expect(changeAt(onFoot, 2)).toEqual({ arr: onFoot[1] });
-    // Arriving on foot: the platform you arrive on is no train's.
+    expect(stationPlatforms(onFoot, 2)).toEqual({ arr: onFoot[1] });
     const fromWalk = [rows[0]!, rideRow(walk()), station('Zug', 'change'), rideRow(b)];
-    expect(changeAt(fromWalk, 2)).toBeUndefined();
+    expect(stationPlatforms(fromWalk, 2)).toEqual({ dep: fromWalk[3] });
+  });
+
+  it('rows drawn inside a ride are passed over', () => {
+    const inside = [
+      rows[0]!,
+      rideRow(a),
+      station('Baar', 'pass'),
+      station('Zug', 'change'),
+      rideRow(b),
+    ];
+    expect(stationPlatforms(inside, 3, new Set([2]))).toEqual({ arr: inside[1], dep: inside[4] });
   });
 });
 
-describe('what the row says', () => {
-  it('both platforms, the same one, or the arrival alone when you walk on', () => {
-    expect(changePlatforms('7', '8')).toEqual({ kind: 'both', arr: '7', dep: '8' });
-    expect(changePlatforms('7', '7')).toEqual({ kind: 'same', p: '7' });
-    expect(changePlatforms('7', undefined, true)).toEqual({ kind: 'arr', arr: '7' });
-  });
-
-  it('nothing when a platform it needs is not known', () => {
-    expect(changePlatforms(undefined, '8')).toBeUndefined();
-    expect(changePlatforms('7', undefined)).toBeUndefined();
-    expect(changePlatforms(undefined, undefined, true)).toBeUndefined();
-  });
-
+describe('platforms under way', () => {
   it('under way, the arrival platform the train reports wins and shows as moved', () => {
     const to = { ...ir('j1', 'Zürich HB', 'Zug').to, platform: '7' };
     expect(platformAt(to, { platform: '9' })).toEqual({

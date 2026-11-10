@@ -16,8 +16,9 @@ import { duration, minutesBetween } from './format';
 import { Icon } from './icons';
 import { MissedNote } from './MissedNote';
 import { TEMPLATES } from './TemplatePicker';
-import { platformAt } from '../core/live';
 import { ChangePlatform } from './ChangePlatform';
+import { StationPlatform } from './StationPlatform';
+import { stationPlatforms } from '../core/changePlatform';
 import { StationPanel, type LineActions } from './StationPanel';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
@@ -212,6 +213,21 @@ export function TripLine({
       return false;
     return before.section.mode === 'walk' || !runsOn(before.section, after.section);
   };
+  /**
+   * The platform beside a row's name (0.50.0): the arrival's where you get off (a row with two
+   * dots says the departure's beside its second name), else the one you board at.
+   */
+  const platformBy = (i: number, at: 'name' | 'dep') => {
+    // A station drawn inside a ride is passed, not got off at: no platform.
+    if (onRideRows.has(i)) return null;
+    const p = stationPlatforms(rows, i, onRideRows);
+    const r = rows[i] as StationRow;
+    const two = offTrain(i) && !!r.arr && !!r.dep;
+    const ride = at === 'dep' ? p.dep : two ? p.arr : (p.arr ?? p.dep);
+    if (!ride) return null;
+    const side = ride === p.arr ? 'arr' : 'dep';
+    return <StationPlatform ride={ride} side={side} live={live} />;
+  };
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
@@ -225,6 +241,7 @@ export function TripLine({
           <span className="n">
             {r.name}
             {alt(r)}
+            {platformBy(i, 'name')}
           </span>
           {label && <span className="chip quiet">{label}</span>}
         </button>
@@ -236,6 +253,7 @@ export function TripLine({
           <span className="n">
             {r.name}
             {alt(r)}
+            {platformBy(i, 'name')}
           </span>
           {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
         </div>
@@ -251,6 +269,7 @@ export function TripLine({
           <span className="n">
             {r.name}
             {alt(r)}
+            {platformBy(i, 'name')}
           </span>
           {label && <span className="chip quiet">{label}</span>}
         </button>
@@ -265,6 +284,7 @@ export function TripLine({
         <span className="n">
           {r.name}
           {alt(r)}
+          {platformBy(i, 'name')}
           {pinnedAt(k) && (
             <>
               <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">
@@ -460,7 +480,6 @@ export function TripLine({
             const mids = s.mode === 'walk' ? [] : s.intermediate;
             const shown = mids.length > 0 && (midsOpen.get(id) ?? riding);
             const vias = onRide.get(i) ?? [];
-            const { now: platform, moved } = platformAt(s.from, lr?.stops[0]);
             const seat = seatOn(s, TEMPLATES);
             const dest = towards(s);
             return (
@@ -486,8 +505,9 @@ export function TripLine({
                     <span>{t('walkMin', { n: min })}</span>
                   ) : (
                     <>
-                      {/* Two rows, always split the same way (0.49.1): the train, where it
-                          goes and its platform; then its stops, how long and the notes. */}
+                      {/* Two rows, always split the same way (0.49.1): the train and where it
+                          goes (its platform beside the station's name, 0.50.0); then its stops,
+                          how long and the notes. */}
                       <span className="ride-l1">
                         <button
                           type="button"
@@ -503,17 +523,6 @@ export function TripLine({
                             <span aria-hidden="true">→ {dest}</span>
                             <span className="sr-only">{t('towards', { to: dest })}</span>
                           </span>
-                        )}
-                        {moved ? (
-                          <span className="platform-moved">
-                            <s aria-hidden="true">{t('platform', { p: moved.was })}</s>{' '}
-                            <b aria-hidden="true">{t('platform', { p: moved.now })}</b>
-                            <span className="sr-only">
-                              {t('platformChanged', { was: moved.was, p: moved.now })}
-                            </span>
-                          </span>
-                        ) : (
-                          platform && <span className="pl">{t('platform', { p: platform })}</span>
                         )}
                       </span>
                       <span className="ride-l2">
@@ -700,8 +709,9 @@ export function TripLine({
               {/* The station again beside its departure (0.49.1): where you board the next train,
                   as the arrival above says where you got off. Read once to screen readers. */}
               {two && (
-                <span className="n n-dep" aria-hidden="true">
-                  {r.name}
+                <span className="n n-dep">
+                  <span aria-hidden="true">{r.name}</span>
+                  {platformBy(i, 'dep')}
                 </span>
               )}
               <span className="rail">
@@ -719,7 +729,7 @@ export function TripLine({
                   {t('wxRainStay', { n: Math.round(wx.rows[i]!.rain * 100) })}
                 </p>
               )}
-              {!planning && !r.missed && <ChangePlatform rows={rows} i={i} live={live} />}
+              {!planning && !r.missed && <ChangePlatform rows={rows} i={i} />}
               {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
               {whyLocked(r, i)}
               {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (

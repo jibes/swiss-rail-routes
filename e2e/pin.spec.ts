@@ -15,7 +15,11 @@ test('pin the plan’s change as a via; unpin it; undo', async ({ page }) => {
   await expect(yours()).toHaveCount(2);
   // The plan's own station: muted; a tap says why, and offers to pin it.
   const change = line.locator('li.station.auto').first();
-  const name = (await change.locator('.n').first().textContent())!;
+  // The name alone (its platform stands beside it, 0.50.0).
+  const name = await change
+    .locator('.n')
+    .first()
+    .evaluate((n) => n.firstChild!.textContent!.trim());
   await change.locator('button.m.locked').click();
   await expect(change.getByText(/The plan goes this way\. Pin it/)).toBeVisible();
   await change.getByRole('button', { name: 'Pin' }).click();
