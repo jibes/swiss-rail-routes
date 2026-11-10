@@ -19,6 +19,8 @@ import {
 } from '../core/sync';
 import { compactTrip, type Trip } from '../core/trip';
 import { useTours } from '../tours';
+import type { RecentStop } from '../core/recentStops';
+import { useRecentStops } from '../ui/recentStops';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { toursList } from './tours';
@@ -35,6 +37,8 @@ interface Saved {
   /** Server version last read or written; a lower one on the server means the copy was replaced. */
   v: number;
   stamps: { tours: Stamps; trips: Stamps };
+  /** The recent stations as last merged (0.48.1): the shared copy's, when it is unchanged. */
+  recent?: RecentStop[];
   at?: number;
   /** A write was due and has not been confirmed: the next round downloads the copy in full
    * (never "unchanged" from stamps) and so writes again. */
@@ -168,13 +172,22 @@ async function push(id: string, v: number, data: string): Promise<number> {
  * The shared copy as this device last saw it, rebuilt from its stamps (when the Worker said it
  * is unchanged): items as they are here, at the times the stamps hold; deletions as stamped.
  */
-function asShared(stamps: Saved['stamps'], local: { tours: Tour[]; trips: Trip[] }): Doc {
+function asShared(
+  stamps: Saved['stamps'],
+  local: { tours: Tour[]; trips: Trip[] },
+  recent: RecentStop[] | undefined,
+): Doc {
   const side = <X extends { id: string }>(st: Stamps, items: X[]) =>
     Object.entries(st).map(([id, p]) => {
       const value = p.h ? items.find((x) => x.id === id) : undefined;
       return value ? { id, at: p.at, value } : { id, at: p.at };
     });
-  return { v: 1, tours: side(stamps.tours, local.tours), trips: side(stamps.trips, local.trips) };
+  return {
+    v: 1,
+    tours: side(stamps.tours, local.tours),
+    trips: side(stamps.trips, local.trips),
+    ...(recent ? { recent } : {}),
+  };
 }
 
 /** One round: read, merge with what this device has now, apply, then write if needed. */
@@ -202,11 +215,12 @@ async function round(start: Saved): Promise<Saved> {
       tours: [...useTours.getState().tours, ...(toursList.held() as Tour[])],
       // Stored and shared compactly (simplified tracks), once per trip.
       trips: [...useTrips.getState().trips.map(compactTrip), ...(tripsList.held() as Trip[])],
+      recent: useRecentStops.getState().stops,
     };
     const plan = planRound({
       stamps: saved.stamps,
       local,
-      remote: got.same ? asShared(saved.stamps, local) : got.doc,
+      remote: got.same ? asShared(saved.stamps, local, saved.recent) : got.doc,
       now,
       lastSync: saved.at,
     });
@@ -214,6 +228,7 @@ async function round(start: Saved): Promise<Saved> {
       local: { routes: local.tours.length, trips: local.trips.length },
       applyRoutes: plan.apply.tours?.length,
       applyTrips: plan.apply.trips?.length,
+      applyRecent: plan.apply.recent?.length,
       push: !!plan.push,
     });
     const store = useTrips.getState().trips;
@@ -228,10 +243,11 @@ async function round(start: Saved): Promise<Saved> {
       plan.apply.tours && useTours.getState().replaceAll(plan.apply.tours),
       trips && useTrips.getState().replaceAll(trips),
     ]);
+    if (plan.apply.recent) useRecentStops.setState({ stops: plan.apply.recent });
     // What this device now holds is the merge: remember it before writing, so a failed or
     // conflicting write never makes received items look like new local changes. Until the
     // write is confirmed it is `unsent`, so a failed one is tried again.
-    saved = { ...saved, v, stamps: plan.stamps, unsent: !!plan.push };
+    saved = { ...saved, v, stamps: plan.stamps, recent: plan.merged.recent, unsent: !!plan.push };
     await keepFor(start.key, saved);
     if (!plan.push) return { ...saved, at: now };
     try {
@@ -448,6 +464,7 @@ export function watchSync() {
   };
   const a = useTours.subscribe((s, p) => s.tours !== p.tours && later());
   const b = useTrips.subscribe((s, p) => s.trips !== p.trips && later());
+  const c = useRecentStops.subscribe((s, p) => s.stops !== p.stops && later());
   const visible = () => document.visibilityState === 'visible' && void syncNow();
   document.addEventListener('visibilitychange', visible);
   const tick = setInterval(() => {
@@ -456,6 +473,7 @@ export function watchSync() {
   return () => {
     a();
     b();
+    c();
     clearTimeout(timer);
     clearInterval(tick);
     document.removeEventListener('visibilitychange', visible);

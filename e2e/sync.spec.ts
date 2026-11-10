@@ -67,6 +67,13 @@ test('sync: start on one device, join with the key on another, changes go both w
   await expect(laptop.getByRole('link', { name: /Renamed on the phone/ })).toBeVisible();
   await expect(laptop.getByRole('link', { name: /From the laptop/ })).toHaveCount(0);
 
+  // Stations entered on the laptop come first on the phone too (0.48.1), its trip deleted.
+  await page.goto('./');
+  await page.getByRole('link', { name: /Renamed on the phone/ }).click();
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await expect(page.locator('.add-sheet .result.recent')).toContainText(['Arosa']);
+  await page.getByRole('button', { name: 'Close' }).click();
+
   // A new key closes the old copy: the laptop, still on it, says so instead of refilling it.
   await page.goto('./#/settings');
   await page.getByRole('button', { name: 'New key' }).click();

@@ -7,6 +7,7 @@
 // Pure apart from WebCrypto and CompressionStream (both in browsers and Node).
 
 import { fromB64Url, toB64Url } from './b64';
+import { mergeRecent, sameRecent, type RecentStop } from './recentStops';
 
 export interface Stamp {
   /** Hash of the item's JSON; '' once deleted. */
@@ -27,6 +28,11 @@ export interface SyncDoc<R, T> {
   v: 1;
   tours: Entry<R>[];
   trips: Entry<T>[];
+  /**
+   * Stations entered lately (0.48.1), merged by station, the later pick winning: no tombstones,
+   * nothing is deleted. A doc written by an older version has none; it is put back next round.
+   */
+  recent?: RecentStop[];
 }
 
 export const TOMBSTONE_DAYS = 90;
@@ -250,10 +256,11 @@ const sameList = <X extends { id: string }>(a: X[], b: X[]) =>
 export interface Local<R, T> {
   tours: R[];
   trips: T[];
+  recent?: RecentStop[];
 }
 
 export interface RoundPlan<R, T> {
-  merged: { tours: Entry<R>[]; trips: Entry<T>[] };
+  merged: { tours: Entry<R>[]; trips: Entry<T>[]; recent: RecentStop[] };
   /** New lists for this device, where they differ from what it has. */
   apply: Partial<Local<R, T>>;
   /** Whether the shared copy lacks something this device has. */
@@ -293,12 +300,15 @@ export function planRound<R extends { id: string }, T extends { id: string }>(in
   const nextTrips = itemsOf(r.merged, local.trips);
   if (!sameList(nextTours, local.tours)) apply.tours = nextTours;
   if (!sameList(nextTrips, local.trips)) apply.trips = nextTrips;
+  const recent = mergeRecent(local.recent ?? [], remote?.recent ?? []);
+  if (!sameRecent(recent, local.recent ?? [])) apply.recent = recent;
   const push =
     !remote ||
     !sameEntries(t.merged, remote.tours ?? []) ||
-    !sameEntries(r.merged, remote.trips ?? []);
+    !sameEntries(r.merged, remote.trips ?? []) ||
+    !sameRecent(recent, remote.recent ?? []);
   return {
-    merged: { tours: t.merged, trips: r.merged },
+    merged: { tours: t.merged, trips: r.merged, recent },
     apply,
     push,
     stamps: { tours: stampsOf(t.merged), trips: stampsOf(r.merged) },

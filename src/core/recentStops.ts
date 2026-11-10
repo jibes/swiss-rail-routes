@@ -1,27 +1,57 @@
 // Stations you entered lately (0.48.0): offered first when adding, before scenic lines and your
-// trips. Kept on this device (not synced: a convenience, not data), newest first, each once.
-// Pure: the store is `src/ui/recentStops.ts`.
+// trips. Newest first, each once; synced with your trips (0.48.1): devices merge by station, the
+// later pick wins (`mergeRecent`). Pure: the store is `src/ui/recentStops.ts`.
 import type { Waypoint } from './model';
 import { stopKey } from './stops';
 
-export type RecentStop = Pick<Waypoint, 'stopRef' | 'name'>;
+export type RecentStop = Pick<Waypoint, 'stopRef' | 'name'> & {
+  /** When it was picked, ms; kept from before sync (0.48.0) without one, as the oldest. */
+  at?: number;
+};
 
 /** How many are kept; the sheet shows `SHOWN` of them. */
 export const RECENT_MAX = 20;
 export const SHOWN = 6;
 
-/** `stops` put first (the last of them first), each once by its key, at most `RECENT_MAX`. */
-export function remember(list: readonly RecentStop[], stops: readonly RecentStop[]): RecentStop[] {
-  const out: RecentStop[] = [];
-  const seen = new Set<string>();
-  for (const s of [...stops].reverse().concat(list)) {
-    const k = stopKey(s.stopRef);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push({ stopRef: s.stopRef, name: s.name });
-  }
-  return out.slice(0, RECENT_MAX);
+/**
+ * `stops` picked at `now` put first (the last of them first, a millisecond apart), each once by
+ * its key, at most `RECENT_MAX`.
+ */
+export function remember(
+  list: readonly RecentStop[],
+  stops: readonly RecentStop[],
+  now: number,
+): RecentStop[] {
+  const picked = stops.map((s, i) => ({
+    stopRef: s.stopRef,
+    name: s.name,
+    at: now - (stops.length - 1 - i),
+  }));
+  return mergeRecent(picked, list);
 }
+
+/**
+ * Two devices' lists as one: each station once (by its key), at its latest pick; newest first,
+ * at most `RECENT_MAX`. The same on every device, whichever merges (ties by ref).
+ */
+export function mergeRecent(a: readonly RecentStop[], b: readonly RecentStop[]): RecentStop[] {
+  const by = new Map<string, RecentStop>();
+  for (const s of [...a, ...b]) {
+    const k = stopKey(s.stopRef);
+    const o = by.get(k);
+    const at = s.at ?? 0;
+    if (!o || at > (o.at ?? 0) || (at === (o.at ?? 0) && s.stopRef < o.stopRef))
+      by.set(k, { stopRef: s.stopRef, name: s.name, at });
+  }
+  return [...by.values()]
+    .sort((x, y) => (y.at ?? 0) - (x.at ?? 0) || (x.stopRef < y.stopRef ? -1 : 1))
+    .slice(0, RECENT_MAX);
+}
+
+/** Whether two lists hold the same stations at the same times, in the same order. */
+export const sameRecent = (a: readonly RecentStop[], b: readonly RecentStop[]) =>
+  a.length === b.length &&
+  a.every((x, i) => x.stopRef === b[i]!.stopRef && (x.at ?? 0) === (b[i]!.at ?? 0));
 
 /**
  * The stations to offer: those you entered, then the stations of your trips (most recent first,

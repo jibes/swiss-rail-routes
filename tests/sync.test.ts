@@ -125,6 +125,51 @@ describe('hashing', () => {
   });
 });
 
+describe('planRound: recent stations (0.48.1)', () => {
+  type R = { id: string };
+  const st = (n: number, at: number) => ({ stopRef: `ch:1:sloid:${n}`, name: `S${n}`, at });
+  const base = { stamps: { tours: {}, trips: {} }, now: 1000 };
+  const doc = (recent?: ReturnType<typeof st>[]): SyncDoc<R, R> => ({
+    v: 1,
+    tours: [],
+    trips: [],
+    ...(recent ? { recent } : {}),
+  });
+
+  it('both sides as one, by station, the later pick winning; pushed when the shared lacks some', () => {
+    const plan = planRound<R, R>({
+      ...base,
+      local: { tours: [], trips: [], recent: [st(1, 50), st(2, 10)] },
+      remote: doc([st(2, 40), st(3, 30)]),
+    });
+    expect(plan.merged.recent.map((x) => [x.name, x.at])).toEqual([
+      ['S1', 50],
+      ['S2', 40],
+      ['S3', 30],
+    ]);
+    expect(plan.apply.recent).toEqual(plan.merged.recent);
+    expect(plan.push).toBe(true);
+  });
+
+  it('nothing to do when both hold the same; a doc from an older version gets them back', () => {
+    const same = [st(1, 50)];
+    const quiet = planRound<R, R>({
+      ...base,
+      local: { tours: [], trips: [], recent: same },
+      remote: doc(same),
+    });
+    expect(quiet.push).toBe(false);
+    expect(quiet.apply.recent).toBeUndefined();
+    const old = planRound<R, R>({
+      ...base,
+      local: { tours: [], trips: [], recent: same },
+      remote: doc(),
+    });
+    expect(old.push).toBe(true);
+    expect(old.merged.recent).toEqual(same);
+  });
+});
+
 describe('planRound: one sync round', () => {
   type R = { id: string; name: string };
   const none = { tours: {}, trips: {} };
