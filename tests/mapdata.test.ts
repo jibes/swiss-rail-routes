@@ -67,6 +67,24 @@ describe('mapData', () => {
     ]);
   });
 
+  it('marks where the plan changes trains, also at stations not yours (0.42.0)', () => {
+    const a = ride('IR 1', [
+      ['Zürich HB', '08:00'],
+      ['Landquart', '09:00'],
+    ]);
+    const b = ride('RE 2', [
+      ['Landquart', '09:10'],
+      ['St. Moritz', '11:30'],
+    ]);
+    const d = mapData(tour, [conn(a, b)], templates, stop);
+    // Landquart is no station of the route's: marked as the plan's change, once.
+    expect(d.changes.features.map((f) => f.properties.name)).toEqual(['Landquart']);
+    // A train running on through a station is no change.
+    const through = { ...b, journey: 'j', from: { ...b.from, dep: a.to.arr } };
+    const on = mapData(tour, [conn({ ...a, journey: 'j' }, through)], templates, stop);
+    expect(on.changes.features).toEqual([]);
+  });
+
   it('is empty for an empty tour', () => {
     expect(mapData(newTour('x', '2026-11-07'), undefined, templates, stop).bounds).toBeNull();
   });

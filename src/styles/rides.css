@@ -244,3 +244,25 @@
   color: var(--red);
   font-weight: 600;
 }
+
+/* Off the train at a station (a change, a stay; 0.42.0): from the dot down to the next train the
+   rail is dotted, as a walk is, laid over the solid rail (its own background hides it). */
+.trip-line .station .rail .offtrain {
+  position: absolute;
+  left: 50%;
+  top: var(--dot-at);
+  bottom: 0;
+  width: 4px;
+  margin-left: -2px;
+  background:
+    radial-gradient(circle, var(--ink-3) 1.7px, transparent 2.2px) center top / 4px 8px repeat-y,
+    var(--bg);
+}
+
+@media print {
+  .trip-line .station .rail .offtrain {
+    background:
+      radial-gradient(circle, #000 1.7px, transparent 2.2px) center top / 4px 8px repeat-y,
+      #fff;
+  }
+}

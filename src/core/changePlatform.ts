@@ -43,7 +43,10 @@ export function changePlatforms(
  * The line the same train runs on as at row `i`, where it takes another number there (the S29
  * on as the S1): said in place of a change. Nothing where the line stays the same.
  */
-export function continuesAs(rows: LineRow[], i: number): string | undefined {
+export function continuesAs(
+  rows: LineRow[],
+  i: number,
+): { line: string; likely: boolean } | undefined {
   const r = rows[i];
   const before = rows[i - 1];
   const after = rows[i + 1];
@@ -51,5 +54,14 @@ export function continuesAs(rows: LineRow[], i: number): string | undefined {
   if (!runsOn(before.section, after.section)) return undefined;
   const name = (x: RideRow) => x.section.line ?? x.section.number;
   const next = name(after);
-  return next && next !== name(before) ? next : undefined;
+  if (!next || next === name(before)) return undefined;
+  // Renumbered and standing a while (by destination and line, not the same minute): probably.
+  const a = before.section.to.arr;
+  const d = after.section.from.dep;
+  const likely =
+    before.section.journey !== after.section.journey &&
+    !!a &&
+    !!d &&
+    Date.parse(d) - Date.parse(a) > 60_000;
+  return { line: next, likely };
 }

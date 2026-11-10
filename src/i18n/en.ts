@@ -70,6 +70,7 @@ export const en = {
   platform: 'Pl. {p}',
   platformChanged: 'Platform changed: now {p}, was {was}',
   samePl: 'Same platform',
+  continuesAsLikely: 'The train probably continues as {line}',
   continuesAs: 'The train continues as {line}',
   arrPl: 'Arrives',
   changePlSr: 'Arrives on platform {a}, next train from platform {d}',

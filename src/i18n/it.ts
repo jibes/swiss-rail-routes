@@ -74,6 +74,7 @@ export const it = {
   platform: 'Bin. {p}',
   platformChanged: 'Binario cambiato: ora {p}, invece di {was}',
   samePl: 'Stesso binario',
+  continuesAsLikely: 'Il treno prosegue probabilmente come {line}',
   continuesAs: 'Il treno prosegue come {line}',
   arrPl: 'Arrivo',
   changePlSr: 'Arrivo al binario {a}, treno successivo dal binario {d}',

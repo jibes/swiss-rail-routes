@@ -18,7 +18,12 @@ export function ChangePlatform({
 }) {
   const t = useT();
   const on = continuesAs(rows, i);
-  if (on) return <span className="change-pl">{t('continuesAs', { line: on })}</span>;
+  if (on)
+    return (
+      <span className="change-pl">
+        {t(on.likely ? 'continuesAsLikely' : 'continuesAs', { line: on.line })}
+      </span>
+    );
   const at = changeAt(rows, i);
   if (!at) return null;
   const arr = platformAt(at.arr.section.to, rideOf(live, at.arr)?.stops.at(-1));

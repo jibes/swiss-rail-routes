@@ -66,10 +66,50 @@ describe('the same train running on under another number', () => {
       { type: 'station', name: 'Luzern', key: 'Luzern', role: 'end' },
     ];
     expect(changeAt(rows, 2)).toBeUndefined();
-    expect(continuesAs(rows, 2)).toBe('S1');
+    expect(continuesAs(rows, 2)).toEqual({ line: 'S1', likely: false });
     // A real change stays one.
     const change = conn(s29, s1('10:18', '2'));
     expect(changesOf([change])).toBe(1);
     expect(transferGaps(change)).toHaveLength(1);
+  });
+});
+
+// Reported, 0.40.0: L3 to Coppet into Annemasse, RL3 to Coppet out of it 7 min later, the same
+// train renumbered between networks. In the recorded answers too: the RE7 split at Ilanz, the
+// train to Filisur renumbered at Davos Platz.
+describe('a train renumbered on the way (0.42.0)', () => {
+  const l3 = {
+    ...leg('L3', 'eu:a', ['Olten', '15:49'], ['Sursee', '16:58', '3']),
+    destination: 'Coppet',
+  };
+  const rl3 = (dep: string, dest = 'Coppet', line = 'RL3', pl?: string) => ({
+    ...leg(line, 'ch:b', ['Sursee', dep, pl], ['Luzern', '17:28']),
+    destination: dest,
+  });
+
+  it('the same destination and line number, within 10 min, the same track where known', () => {
+    expect(runsOn(l3, rl3('17:05'))).toBe(true);
+    expect(runsOn(l3, rl3('17:05', 'Coppet', 'RL3', '3'))).toBe(true);
+    expect(runsOn(l3, rl3('17:08'))).toBe(true);
+  });
+
+  it('later, elsewhere, another line or another track: a change', () => {
+    expect(runsOn(l3, rl3('17:09'))).toBe(false);
+    expect(runsOn(l3, rl3('17:05', 'Genève'))).toBe(false);
+    expect(runsOn(l3, rl3('17:05', 'Coppet', 'RL4'))).toBe(false);
+    expect(runsOn(l3, rl3('17:05', 'Coppet', 'RL3', '1'))).toBe(false);
+  });
+
+  it('the station says it probably runs on', () => {
+    const c = conn(l3, rl3('17:05'));
+    expect(changesOf([c])).toBe(0);
+    const rows: LineRow[] = [
+      { type: 'station', name: 'Saint-Gervais', key: 'a', role: 'start' },
+      { type: 'ride', section: c.sections[0]!, leg: 0, sectionIndex: 0 },
+      { type: 'station', name: 'Annemasse', key: 'b', role: 'change' },
+      { type: 'ride', section: c.sections[1]!, leg: 0, sectionIndex: 1 },
+      { type: 'station', name: 'Genève', key: 'c', role: 'end' },
+    ];
+    expect(continuesAs(rows, 2)).toEqual({ line: 'RL3', likely: true });
   });
 });

@@ -222,6 +222,7 @@ export default function MapView({ id }: { id: string }) {
         // Line metrics: the wave runs along the line by its progress while the trip is planned.
         map.addSource('lines', { type: 'geojson', data: empty, lineMetrics: true });
         map.addSource('stops', { type: 'geojson', data: empty });
+        map.addSource('changes', { type: 'geojson', data: empty });
         map.addSource('highlights', { type: 'geojson', data: empty });
         map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
         map.addSource('focus', { type: 'geojson', data: empty });
@@ -268,6 +269,18 @@ export default function MapView({ id }: { id: string }) {
             'circle-color': dark ? '#1b1d21' : '#ffffff',
             'circle-stroke-color': ACCENT,
             'circle-stroke-width': 3,
+          },
+        });
+        // Where the plan changes trains (0.42.0): a smaller ring than your own stations.
+        map.addLayer({
+          id: 'changes',
+          type: 'circle',
+          source: 'changes',
+          paint: {
+            'circle-radius': 5,
+            'circle-color': dark ? '#1b1d21' : '#ffffff',
+            'circle-stroke-color': ACCENT,
+            'circle-stroke-width': 2.5,
           },
         });
         map.addLayer({
@@ -350,13 +363,15 @@ export default function MapView({ id }: { id: string }) {
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       map.getSource<maplibregl.GeoJSONSource>('lines')?.setData(d.lines);
       map.getSource<maplibregl.GeoJSONSource>('stops')?.setData(d.stops);
+      map.getSource<maplibregl.GeoJSONSource>('changes')?.setData(d.changes);
       map.getSource<maplibregl.GeoJSONSource>('highlights')?.setData(d.highlights);
       // Named without the style's fonts (HTML markers), so the plain ground has names too:
       // every station you chose (a via picked on the map as one typed), not a line's own.
-      for (const f of d.stops.features) {
+      for (const f of [...d.stops.features, ...d.changes.features]) {
         if (f.properties.ring) continue;
         const el = document.createElement('div');
-        el.className = 'map-name';
+        // A change the plan chose: named too, smaller.
+        el.className = f.properties.change ? 'map-name change' : 'map-name';
         el.textContent = String(f.properties.name ?? '');
         const key = `${String(f.properties.key)}\n${String(f.properties.name)}`;
         nameEls.current.set(key, el);

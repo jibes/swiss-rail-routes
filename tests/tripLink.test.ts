@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { runsOn } from '../src/core/planner/connection';
 import { describe, expect, it } from 'vitest';
 import { decodeTripLink, encodeTripLink, encodeTripLinkV1 } from '../src/core/export/tripLink';
 import { encodeTrip } from '../src/core/export/tripShare';
@@ -412,7 +413,20 @@ describe('the compact link (0.21.0)', async () => {
         'x',
         nameOf,
       )) as PlannedTrip;
-      expect(changesOf(back.chain.connections), id).toBe(changesOf(t.chain.connections));
+      // A train renumbered on the way (0.42.0: by its destination, which a link does not carry)
+      // counts as a change until the link is asked again; one that keeps its journey never.
+      const renumbered = (x: PlannedTrip) =>
+        x.chain.connections.reduce((n, c) => {
+          const r = c.sections.filter((s) => s.mode !== 'walk');
+          return (
+            n +
+            r.filter((s, k) => k > 0 && runsOn(r[k - 1]!, s) && r[k - 1]!.journey !== s.journey)
+              .length
+          );
+        }, 0);
+      expect(changesOf(back.chain.connections), id).toBe(
+        changesOf(t.chain.connections) + renumbered(t),
+      );
     }
   });
 

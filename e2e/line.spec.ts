@@ -1,5 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
-import { allowUnrecorded, BEFORE, expect, newTrip, pick, test } from './fixtures';
+import { FIXTURE_DATE } from '../tests/acceptance/ojp';
+import { acceptanceTours } from '../tests/acceptance/tours';
+import { encodeTour } from '../tests/helpers/share';
+import { allowUnrecorded, BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
 
 test('one line: stations, a scenic line as rings, the panel, a round trip, kept after reload', async ({
   page,
@@ -321,4 +324,29 @@ test('reverse direction: the loop the other way, the line with it, a window said
   await page.getByRole('button', { name: 'Reverse direction' }).click();
   await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
   await expect(entries.nth(1)).toContainText('Stay 30 min');
+});
+
+// Off the train at a station (0.42.0): from the dot down to the next train the rail is dotted, as
+// a walk is: at every change and stay; a station ridden through stays solid.
+test('the rail is dotted wherever you are off the train', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T1!, name: 'Off' }));
+  const line = page.getByRole('list', { name: 'The trip', exact: true });
+  await expect(
+    line
+      .locator(':scope > li.station')
+      .filter({ has: page.locator('.n', { hasText: /^Chur/ }) })
+      .locator('.offtrain'),
+  ).toHaveCount(1, {
+    timeout: 15_000,
+  });
+  await expect(
+    line
+      .locator(':scope > li.station')
+      .filter({ has: page.locator('.n', { hasText: /^Alp Grüm/ }) })
+      .locator('.offtrain'),
+  ).toHaveCount(1);
+  // Start and end: no train to wait between.
+  await expect(line.locator(':scope > li.station').first().locator('.offtrain')).toHaveCount(0);
+  await expect(line.locator(':scope > li.station').last().locator('.offtrain')).toHaveCount(0);
 });

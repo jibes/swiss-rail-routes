@@ -23,6 +23,7 @@ import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './line
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
+import { runsOn } from '../core/planner/connection';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
@@ -166,6 +167,22 @@ export function TripLine({
     const h = index?.byRef(r.key)?.height;
     // A space before it, so a screen reader says "Kleine Scheidegg 2061 m", not run together.
     return h ? <span className="alt">{` ${t('heightM', { n: h })}`}</span> : null;
+  };
+  /**
+   * Off the train here (0.42.0): between arriving and the next train (a change, a stay), the
+   * rail is dotted from the dot down, as a walk is; a train running on through stays solid.
+   */
+  const offTrain = (i: number) => {
+    // The rows either side as drawn: a station a ride passes is in that ride's list, not a row.
+    let b = i - 1;
+    while (b >= 0 && onRideRows.has(b)) b--;
+    let a = i + 1;
+    while (a < rows.length && onRideRows.has(a)) a++;
+    const before = rows[b];
+    const after = rows[a];
+    if (before?.type !== 'ride' || after?.type !== 'ride' || after.section.mode === 'walk')
+      return false;
+    return before.section.mode === 'walk' || !runsOn(before.section, after.section);
   };
   const nameOf = (r: StationRow, i: number) => {
     const k = act ? r.entry : undefined;
@@ -617,6 +634,7 @@ export function TripLine({
             </span>
             <span className="rail">
               <span className="dot" />
+              {offTrain(i) && <span className="offtrain" aria-hidden="true" />}
             </span>
             {nameOf(r, i)}
             {!!r.stay && wx && (wx.rows[i]?.rain ?? 0) >= 0.5 && (

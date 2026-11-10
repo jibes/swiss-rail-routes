@@ -73,6 +73,7 @@ export const de = {
   platform: 'Gl. {p}',
   platformChanged: 'Gleis geändert: jetzt {p}, statt {was}',
   samePl: 'Gleiches Gleis',
+  continuesAsLikely: 'Der Zug fährt wahrscheinlich weiter als {line}',
   continuesAs: 'Der Zug fährt weiter als {line}',
   arrPl: 'Ankunft',
   changePlSr: 'Ankunft auf Gleis {a}, nächster Zug ab Gleis {d}',

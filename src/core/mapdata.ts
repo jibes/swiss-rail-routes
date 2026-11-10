@@ -5,6 +5,7 @@ import type { Lang } from '../i18n';
 import { highlightName, type RouteTemplate } from './data';
 import type { Connection, LatLon, Tour } from './model';
 import { stopKey } from './stops';
+import { runsOn } from './planner/connection';
 
 type Pos = [number, number];
 interface Feature<G> {
@@ -24,6 +25,8 @@ const pos = (p: LatLon): Pos => [p.lon, p.lat];
 
 export interface MapData {
   stops: Collection<Point>;
+  /** Where the plan changes trains and the station is not one of yours (0.42.0). */
+  changes: Collection<Point>;
   lines: Collection<Line>;
   highlights: Collection<Point>;
   /** [west, south, east, north], or null with nothing to show. */
@@ -79,6 +82,29 @@ export function mapData(
     });
   }
 
+  // Where you change trains, also where the plan chose it (not one of your stations): a train
+  // running on (renumbered or not) is no change.
+  const yours = new Set(stops.map((f) => String(f.properties.key)));
+  const changes: Feature<Point>[] = [];
+  for (const c of chain ?? []) {
+    const rides = c.sections.filter((x) => x.mode !== 'walk');
+    rides.slice(1).forEach((b, k) => {
+      const a = rides[k]!;
+      if (runsOn(a, b)) return;
+      for (const at of [a.to, b.from]) {
+        const key = stopKey(at.stopRef);
+        if (yours.has(key) || changes.some((f) => f.properties.key === key)) continue;
+        const p = stop(key) ?? (at.pos ? { lon: at.pos[0], lat: at.pos[1] } : undefined);
+        if (p)
+          changes.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: pos(p) },
+            properties: { name: at.name, key, change: true },
+          });
+      }
+    });
+  }
+
   const ids = linesOf(tour.waypoints);
   const highlights = templates
     .filter((t) => ids.has(t.id))
@@ -103,7 +129,13 @@ export function mapData(
       ]
     : null;
 
-  return { stops: fc(stops), lines: fc(lines), highlights: fc(highlights), bounds };
+  return {
+    stops: fc(stops),
+    changes: fc(changes),
+    lines: fc(lines),
+    highlights: fc(highlights),
+    bounds,
+  };
 }
 
 /**

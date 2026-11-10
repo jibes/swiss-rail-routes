@@ -74,6 +74,7 @@ export const fr = {
   platform: 'Voie {p}',
   platformChanged: 'Voie modifiée : maintenant {p}, au lieu de {was}',
   samePl: 'Même voie',
+  continuesAsLikely: 'Le train continue probablement en tant que {line}',
   continuesAs: 'Le train continue en tant que {line}',
   arrPl: 'Arrivée',
   changePlSr: 'Arrivée voie {a}, train suivant voie {d}',

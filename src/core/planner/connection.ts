@@ -67,6 +67,7 @@ export const isTight = (gapMin: number, walkMin: number) =>
  * train continuing under another number was a "0 min" change) two rail rides meeting at the
  * same stop within a minute, from the same platform. OJP marks neither: no stay-seated element in
  * any recorded answer, only two rides. Not a change: no change counted, no tight warning.
+ * Also one renumbered on the way, by its destination and line (below).
  */
 export function runsOn(a: Section, b: Section): boolean {
   if (a.journey && a.journey === b.journey) return true;
@@ -74,8 +75,26 @@ export function runsOn(a: Section, b: Section): boolean {
   if (stopKey(a.to.stopRef) !== stopKey(b.from.stopRef)) return false;
   const gap = (ms(b.from.dep) - ms(a.to.arr)) / MIN;
   const pa = track(a.to.platform);
-  return gap >= 0 && gap <= 1 && !!pa && pa === track(b.from.platform);
+  const pb = track(b.from.platform);
+  if (gap >= 0 && gap <= 1 && !!pa && pa === pb) return true;
+  // Renumbered at a border or between networks (0.42.0, reported: L3 to Coppet into Annemasse,
+  // RL3 to Coppet out of it, 7 min later): the same destination, the same line number but its
+  // letters, within RENUMBER_MIN, and the same track where both are known (an S-Bahn overtaken
+  // by an IC to the same place leaves from another).
+  const digits = (x: Section) => /\d+/.exec(x.line ?? '')?.[0];
+  return (
+    gap >= 0 &&
+    gap <= RENUMBER_MIN &&
+    !!a.destination &&
+    a.destination === b.destination &&
+    !!digits(a) &&
+    digits(a) === digits(b) &&
+    (!pa || !pb || pa === pb)
+  );
 }
+
+/** Minutes a train renumbered at a stop may stand there before it runs on. */
+export const RENUMBER_MIN = 10;
 
 /** A platform's track, its sector letters left out ("2AB" and "2CD" are both track 2). */
 const track = (p?: string) => (p && /^\d+/.exec(p)?.[0]) || p;
