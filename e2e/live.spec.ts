@@ -206,6 +206,26 @@ test('a platform changed on the day shows on the line', async ({ page }) => {
   await expect(moved.locator('.sr-only')).toHaveText('Platform changed: now 3, was 2A');
 });
 
+test('a delay is the timetable time and how late, never the expected time again', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // 08:50 in Zürich
+  await page.route(/\/journey$/, (route) =>
+    route.fulfill({
+      contentType: 'application/xml',
+      body:
+        '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult>' +
+        '<OnwardCall><siri:StopPointRef>ch:1:sloid:7492:0:94927</siri:StopPointRef><StopPointName><Text xml:lang="de">Interlaken Ost</Text></StopPointName>' +
+        `<ServiceDeparture><TimetabledTime>${FIXTURE_DATE}T08:04:00Z</TimetabledTime><EstimatedTime>${FIXTURE_DATE}T08:06:00Z</EstimatedTime></ServiceDeparture></OnwardCall>` +
+        '</TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
+    }),
+  );
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
+  // Reported, 0.40.0: "17:56 +1" for a train planned at 17:55.
+  const start = page.locator('.trip-line .station').first().locator('time').first();
+  await expect(start).toHaveText(/^09:04 \+2/);
+});
+
 // At a station mid-trip (a stay), the rail is the way here down to its dot and ahead below it,
 // as on a ride: the grey/red split sat at the top of the row (reported on Melide, 5 Nov 2026).
 test('under way at a stay, the rail splits at the station’s dot', async ({ page }) => {

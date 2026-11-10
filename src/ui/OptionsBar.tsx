@@ -3,14 +3,14 @@ import { optionsKey } from '../core/answers';
 import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { isRoundTrip } from '../core/tour';
-import { dayOf, type Trip } from '../core/trip';
+import { dayOf, otherDay, type Trip } from '../core/trip';
 import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
 import { loadOptions, saveOptions } from '../io/tours';
 import { useTrips } from '../trips';
 import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
-import { duration, hhmm, minutesBetween, zurichHm } from './format';
+import { duration, hhmm, minutesBetween, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { RailLoader } from './RailLoader';
 
@@ -50,6 +50,7 @@ export function OptionsBar({
   const t = useT();
   // The route without its name or time: options of one route, whatever time they were asked from.
   const reservations = usePrefs((s) => s.reservations);
+  const lang = usePrefs((s) => s.lang);
   const base = optionsKey(trip.route, reservations);
   // Options loaded with the arrows, for this route and day; kept while you choose among them,
   // and on the device until they have left (`srr.options.v1`), so opening the trip again shows
@@ -233,6 +234,15 @@ export function OptionsBar({
                     )}
                   </b>
                   <span>
+                    {
+                      // Another day than the trip's: said, as the same time on two days looks
+                      // the same (reported, 0.40.0: three 14:48 from Narvik).
+                      otherDay(c.dep, trip.route.date) && (
+                        <span className="day">
+                          {shortDate(otherDay(c.dep, trip.route.date)!, lang)} ·{' '}
+                        </span>
+                      )
+                    }
                     {sameArr
                       ? duration(minutesBetween(c.dep, c.arr))
                       : t(arrKey, { time: hhmm(c.arr) })}

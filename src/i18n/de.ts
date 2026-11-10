@@ -208,6 +208,7 @@ export const de = {
     'Gestrichelt: Dort ist der Gleisverlauf nicht bekannt, die Strecke ist gerade gezeichnet.',
   tripChangedMeanwhile:
     'Diese Reise wurde inzwischen geändert (auf einem anderen Gerät oder in einem anderen Fenster). Beginne neu mit ihr, wie sie jetzt ist.',
+  earlyBy: '{n} Min. früher',
   lateBy: '{n} Min. verspätet',
   screenFailed: 'Auf dieser Ansicht ist etwas schiefgelaufen. Deine Reisen bleiben erhalten.',
   toStart: 'Zurück zum Start',

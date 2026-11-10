@@ -935,6 +935,12 @@
   opacity: 0.8;
 }
 
+/* The title in the card's own colours, also inside a ride, whose bold names are ink
+   (reported: the card's title blank on a ride's stops, 0.40.0). */
+.trip-line .wx-tip b {
+  color: inherit;
+}
+
 .trip-line > li.wx-far {
   display: block;
   margin: 0 0 8px 80px;

@@ -72,6 +72,12 @@ const ZURICH_DAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich' 
 /** The calendar day in Zurich (where trip dates are), `YYYY-MM-DD`, wherever the device is. */
 export const dayOf = (now: number) => ZURICH_DAY.format(now);
 
+/** A connection's day (Zurich) when it is not the trip's own, else nothing: said beside it. */
+export const otherDay = (dep: string, tripDate: string): string | undefined => {
+  const d = dayOf(Date.parse(dep));
+  return d === tripDate ? undefined : d;
+};
+
 /** A Zurich date and time (`YYYY-MM-DD`, `HH:MM`) as an instant. */
 export const zurichTime = (date: string, time: string): number =>
   Date.parse(zurichDateTime(`${date}T${time}`));

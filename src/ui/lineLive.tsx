@@ -17,14 +17,23 @@ export function When({ plan, live }: { plan?: string; live?: number }) {
   if (!plan) return null;
   const planned = Date.parse(plan);
   const late = live !== undefined ? Math.round((live - planned) / 60_000) : 0;
+  // The timetable's time, and how far off the train is beside it: never the expected time with
+  // its delay again on top (reported, 0.40.0: "17:56 +1" for a train planned at 17:55).
   return (
     <time>
-      {hhmm(live ?? planned)}
+      {hhmm(planned)}
       {late > 0 && (
         <span className="late">
           {' '}
           <span aria-hidden="true">+{late}</span>
           <span className="sr-only">{t('lateBy', { n: late })}</span>
+        </span>
+      )}
+      {late < 0 && (
+        <span className="early">
+          {' '}
+          <span aria-hidden="true">−{-late}</span>
+          <span className="sr-only">{t('earlyBy', { n: -late })}</span>
         </span>
       )}
     </time>

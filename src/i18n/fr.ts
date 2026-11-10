@@ -208,6 +208,7 @@ export const fr = {
   mapStraight: 'En pointillé : le tracé n’est pas connu, la ligne est tracée droite.',
   tripChangedMeanwhile:
     'Ce voyage a été modifié entre-temps (sur un autre appareil ou dans une autre fenêtre). Recommence à partir de son état actuel.',
+  earlyBy: '{n} min d’avance',
   lateBy: '{n} min de retard',
   screenFailed: 'Un problème est survenu sur cet écran. Tes voyages sont conservés.',
   toStart: 'Retour à l’accueil',

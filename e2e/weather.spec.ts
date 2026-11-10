@@ -26,6 +26,19 @@ test('the weather stripe: a cell a row, bars where rain is likely, values on a t
 
   // A ride: its rain the highest along the way, said so; its bar only while its stops are folded,
   // as each stop shows its own once open.
+  // A stop inside a ride: its card's title readable (it was painted in the card's colour).
+  await line.locator('.mids-toggle').first().click();
+  const mid = line.locator('.wx-mid').first();
+  await mid.click();
+  const title = mid.locator('.wx-tip b');
+  await expect(title).not.toBeEmpty();
+  const [fg, bg] = await title.evaluate((b) => [
+    getComputedStyle(b).color,
+    getComputedStyle(b.closest('.wx-tip')!).backgroundColor,
+  ]);
+  expect(fg).not.toBe(bg);
+  await line.locator('.mids-toggle').first().click();
+
   const wetRide = line.locator(':scope > li.ride:has(.wx-cell .wx-bar):has(.mids-toggle)').first();
   // By its place, as the selector stops matching once its bar goes.
   const at = await wetRide.evaluate((li) => [...li.parentElement!.children].indexOf(li));

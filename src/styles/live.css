@@ -38,6 +38,11 @@
   font-weight: 600;
 }
 
+/* Early (an arrival ahead of time): said, quietly. */
+.early {
+  color: var(--ink-2);
+}
+
 @keyframes here {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--rail) 50%, transparent);

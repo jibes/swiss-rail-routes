@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: 0.40.0. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. MCP server in `mcp/`. Next: SPEC §3 Should/Could items.
+Status: 0.40.1. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. MCP server in `mcp/`. Next: SPEC §3 Should/Could items.
 
 ## Stack
 

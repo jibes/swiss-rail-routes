@@ -207,6 +207,7 @@ export const it = {
   mapStraight: 'Tratteggiato: lì il tracciato non è noto, la linea è disegnata dritta.',
   tripChangedMeanwhile:
     'Questo viaggio è stato modificato nel frattempo (su un altro dispositivo o in un’altra finestra). Ricomincia da com’è ora.',
+  earlyBy: '{n} min in anticipo',
   lateBy: '{n} min di ritardo',
   screenFailed: 'Qualcosa è andato storto in questa schermata. I viaggi sono conservati.',
   toStart: 'Torna all’inizio',

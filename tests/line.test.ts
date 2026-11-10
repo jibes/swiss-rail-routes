@@ -16,7 +16,7 @@ import {
   stationEntry,
 } from '../src/core/line';
 import type { Tour } from '../src/core/model';
-import { dayOf, newTrip, zurichTime } from '../src/core/trip';
+import { dayOf, newTrip, otherDay, zurichTime } from '../src/core/trip';
 import { retire } from '../src/core/retire';
 import {
   missedByDisruption,
@@ -680,6 +680,13 @@ describe('a finished trip waits in search', () => {
     expect(dayOf(Date.parse('2026-11-07T22:30:00Z'))).toBe('2026-11-07');
     expect(zurichTime('2026-11-07', '08:00')).toBe(Date.parse('2026-11-07T07:00:00Z'));
     expect(zurichTime('2026-07-04', '08:00')).toBe(Date.parse('2026-07-04T06:00:00Z'));
+  });
+
+  it('an option on another day than the trip’s says its day (reported: three 14:48 alike)', () => {
+    expect(otherDay('2026-12-27T13:48:00Z', '2026-12-27')).toBeUndefined();
+    expect(otherDay('2026-12-28T13:48:00Z', '2026-12-27')).toBe('2026-12-28');
+    // Zurich's day: 00:30 on the 28th is 23:30 UTC on the 27th.
+    expect(otherDay('2026-12-27T23:30:00Z', '2026-12-27')).toBe('2026-12-28');
   });
 
   it('puts the newest past trip first when the routes differ', () => {

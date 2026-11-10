@@ -199,6 +199,7 @@ export const en = {
   mapStraight: 'Dashed: the track is not known there, so it is drawn straight.',
   tripChangedMeanwhile:
     'This trip was changed meanwhile (on another device or in another window). Start again from it as it is now.',
+  earlyBy: '{n} min early',
   lateBy: '{n} min late',
   screenFailed: 'Something went wrong on this screen. Your trips are kept.',
   toStart: 'Back to the start',
