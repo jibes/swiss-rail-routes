@@ -140,6 +140,8 @@ test('before departure: edited in place; after its day: in search', async ({ pag
   await page.reload();
   await expect(page.getByRole('list', { name: 'Upcoming' })).toHaveCount(0);
   await page.getByRole('button', { name: 'New trip' }).click();
+  // Folded under the recent stations (0.48.0).
+  await page.getByRole('heading', { name: 'Your trips' }).click();
   await expect(page.getByRole('button', { name: /^T5/ })).toBeVisible();
 });
 

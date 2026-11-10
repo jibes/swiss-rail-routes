@@ -401,6 +401,43 @@
   margin: 14px 0 2px;
 }
 
+/* Scenic lines and your trips, folded under the recent stations while nothing is typed (0.48.0). */
+.add-sheet .fold {
+  display: grid;
+}
+.add-sheet .fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  border-bottom: 1px solid var(--hair);
+}
+.add-sheet .fold > summary::-webkit-details-marker {
+  display: none;
+}
+.add-sheet .fold > summary::after {
+  content: '';
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.6;
+}
+.add-sheet .fold[open] > summary::after {
+  transform: rotate(-135deg);
+}
+.add-sheet .fold > summary .section-label {
+  margin: 0;
+}
+.add-sheet .fold-n {
+  color: var(--ink-2);
+  font-size: 0.85em;
+}
+
 .add-sheet .result {
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);

@@ -134,7 +134,12 @@ test('a trip whose day is over leaves the list and waits in search', async ({ pa
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing planned');
   await page.getByRole('button', { name: 'New trip' }).click();
+  // The stations you entered come first; your trips are folded under them (0.48.0).
+  const sheet = page.locator('.add-sheet');
+  await expect(sheet.locator('.result.recent')).toHaveText([/^Arosa/, /^Chur/]);
   await expect(page.getByRole('heading', { name: 'Your trips' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Chur → Arosa/ })).toBeHidden();
+  await page.getByRole('heading', { name: 'Your trips' }).click();
   await page.getByRole('button', { name: /^Chur → Arosa/ }).click();
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Chur/, /^Arosa/]);
   // A new trip, today.
@@ -142,6 +147,7 @@ test('a trip whose day is over leaves the list and waits in search', async ({ pa
 
   // Forgotten, it is gone from search.
   await page.getByRole('button', { name: 'Add a station' }).click();
+  await page.getByRole('heading', { name: 'Your trips' }).click();
   await page.getByRole('button', { name: /^Forget/ }).click();
   await expect(page.getByRole('heading', { name: 'Your trips' })).toHaveCount(0);
 });
@@ -444,4 +450,29 @@ test('a typed list of lines and stations adds them all', async ({ page }) => {
     /^St\. Moritz/,
     /^Tirano/,
   ]);
+});
+
+// Reported (0.47.1): a round trip in search said "Zürich → Zürich". Now named as the list names
+// it, and a station picked is offered first next time, whichever trip it was for (0.48.0).
+test('your trips say where they went; stations you entered come first', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'chur', 'thusis', 'chur');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.clock.setSystemTime(new Date('2026-11-08T08:00:00Z'));
+  await page.reload();
+  await page.getByRole('button', { name: 'New trip' }).click();
+  const sheet = page.locator('.add-sheet');
+  await expect(sheet.locator('.result.recent').first()).toHaveText(/^Chur/);
+  await page.getByRole('heading', { name: 'Your trips' }).click();
+  await expect(sheet.locator('.result.trip .r-name')).toHaveText(['Chur ↺ Thusis']);
+  // Picked once, first next time: typed and chosen, then offered at the top.
+  await pick(page, 'Landquart');
+  await page.getByRole('button', { name: 'Add a station' }).click();
+  await expect(sheet.locator('.result.recent').first()).toHaveText(/^Chur/);
+  await expect(sheet.locator('.result.recent')).not.toContainText(['Landquart']);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await expect(sheet.locator('.result.recent').first()).toHaveText(/^Landquart/);
 });

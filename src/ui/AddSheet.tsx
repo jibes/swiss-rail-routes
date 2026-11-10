@@ -11,7 +11,11 @@ import { shortDate } from './format';
 import { Icon } from './icons';
 import { MiniLine } from './MiniLine';
 import { RailLoader } from './RailLoader';
-import { directionFrom, TEMPLATES } from './TemplatePicker';
+import { directionFrom, lineName, TEMPLATES } from './TemplatePicker';
+import { autoName } from '../core/naming';
+import { recentStations } from '../core/recentStops';
+import { useRecentStops } from './recentStops';
+import { useTrips } from '../trips';
 import { resolveTyped, splitTyped } from '../core/typedList';
 import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
@@ -166,34 +170,85 @@ export function AddSheet({
         )
       : null;
   const today = dayOf(useNow());
-  const titleOf = (x: Tour) => x.name || `${x.waypoints[0]!.name} → ${x.waypoints.at(-1)!.name}`;
+  // A past trip by its own name, else as the list names trips ("Zürich ↺ Tirano · Chur"), never
+  // its two ends alone: a round trip was "Zürich → Zürich" (reported, 0.47.1).
+  const titleOf = (x: Tour) =>
+    (x.name && !/^(.+) → \1$/.test(x.name) ? x.name : '') ||
+    autoName(x, (r) => index?.byRef(r), lineName);
   // Forgotten just now: one tap brings it back.
   const [forgot, setForgot] = useState<Tour | null>(null);
   const addMine = useTours((s) => s.replaceAll);
 
+  // Stations you entered lately, kept on this device (0.48.0): offered first.
+  const picked = useRecentStops((x) => x.stops);
+  const remember = useRecentStops((x) => x.add);
+  const trips0 = useTrips((x) => x.trips);
+  const pick = (p: Picked) => {
+    if (p.kind === 'station') remember([p.stop]);
+    if (p.kind === 'typed') remember(p.entries.filter((e) => !e.w.line).map((e) => e.w));
+    onPick(p);
+  };
+  const recent = f
+    ? []
+    : recentStations(
+        picked,
+        [
+          ...[...trips0]
+            .sort((a, b) => b.route.date.localeCompare(a.route.date))
+            .map((x) => x.route.waypoints),
+          ...mine.map((x) => x.waypoints),
+        ],
+        [after?.stopRef, next?.stopRef].filter((x): x is string => !!x),
+      );
+  // Nothing typed: the stations first, lines and your trips folded under them.
+  const folded = !f;
+
+  const lineRows = lines.map((tp) => {
+    const reversed = directionFrom(tp, from, stop, nextAt);
+    const [a, b] = reversed ? [tp.chain.at(-1)!, tp.chain[0]!] : [tp.chain[0]!, tp.chain.at(-1)!];
+    return (
+      <button
+        key={tp.id}
+        type="button"
+        className="result"
+        onClick={() => pick({ kind: 'line', template: tp, reversed })}
+      >
+        <span className="r-icon r-line" aria-hidden="true" />
+        <span className="r-name">{templateName(tp, lang)}</span>
+        <span className="r-sub">
+          {a.name} → {b.name}
+        </span>
+      </button>
+    );
+  });
+  const tripRows = trips.map((x) => (
+    <div key={x.id} className="result-row">
+      <button type="button" className="result trip" onClick={() => pick({ kind: 'trip', tour: x })}>
+        <span className="r-name">{titleOf(x)}</span>
+        <MiniLine tour={x} />
+        <span className="r-sub">
+          {x.date < today
+            ? t('wentOn', { date: shortDate(x.date, lang) })
+            : t('stationsN', { n: x.waypoints.filter((w) => !w.ring).length })}
+        </span>
+      </button>
+      <button
+        type="button"
+        className="icon forget"
+        aria-label={t('forgetTrip', { name: titleOf(x) })}
+        onClick={() => {
+          setForgot(x);
+          removeMine(x.id);
+        }}
+      >
+        <Icon name="close" size={18} />
+      </button>
+    </div>
+  ));
   const lineList = lines.length > 0 && (
     <>
       <h3 className="section-label">{t('scenicLines')}</h3>
-      {lines.map((tp) => {
-        const reversed = directionFrom(tp, from, stop, nextAt);
-        const [a, b] = reversed
-          ? [tp.chain.at(-1)!, tp.chain[0]!]
-          : [tp.chain[0]!, tp.chain.at(-1)!];
-        return (
-          <button
-            key={tp.id}
-            type="button"
-            className="result"
-            onClick={() => onPick({ kind: 'line', template: tp, reversed })}
-          >
-            <span className="r-icon r-line" aria-hidden="true" />
-            <span className="r-name">{templateName(tp, lang)}</span>
-            <span className="r-sub">
-              {a.name} → {b.name}
-            </span>
-          </button>
-        );
-      })}
+      {lineRows}
     </>
   );
 
@@ -227,15 +282,17 @@ export function AddSheet({
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return;
+            if (typed && !typed.missing.length && typed.entries.length)
+              return pick({ kind: 'typed', entries: typed.entries });
             const tp = linesFirst ? lines[0] : undefined;
             if (tp)
-              return onPick({
+              return pick({
                 kind: 'line',
                 template: tp,
                 reversed: directionFrom(tp, from, stop, nextAt),
               });
             const s = stations[0] ?? places[0]?.stops[0];
-            if (s) onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } });
+            if (s) pick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } });
           }}
         />
         <div className="results">
@@ -254,7 +311,7 @@ export function AddSheet({
             <button
               type="button"
               className="result typed"
-              onClick={() => onPick({ kind: 'typed', entries: typed.entries })}
+              onClick={() => pick({ kind: 'typed', entries: typed.entries })}
             >
               <span className="r-icon r-line" aria-hidden="true" />
               <span className="r-name">{t('addAll', { n: typed.items.length })}</span>
@@ -278,7 +335,7 @@ export function AddSheet({
             <button
               type="button"
               className="result"
-              onClick={() => onPick({ kind: 'station', stop: back })}
+              onClick={() => pick({ kind: 'station', stop: back })}
             >
               <span className="r-icon r-dot" aria-hidden="true" />
               <span className="r-name">{t('backTo', { stop: back.name })}</span>
@@ -289,7 +346,7 @@ export function AddSheet({
             <button
               type="button"
               className="result"
-              onClick={() => onPick({ kind: 'sameWay', entries: sameWay })}
+              onClick={() => pick({ kind: 'sameWay', entries: sameWay })}
             >
               <span className="r-icon r-dot" aria-hidden="true" />
               <span className="r-name">{t('backSameWay')}</span>
@@ -312,7 +369,7 @@ export function AddSheet({
               key={s.ref}
               type="button"
               className="result"
-              onClick={() => onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
+              onClick={() => pick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
             >
               <span className={`r-icon r-dot ${kindOf(s) ? 'minor' : ''}`} aria-hidden="true" />
               <span className="r-name">{s.name}</span>
@@ -327,7 +384,7 @@ export function AddSheet({
                 key={p.id}
                 type="button"
                 className="result"
-                onClick={() => onPick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
+                onClick={() => pick({ kind: 'station', stop: { stopRef: s.ref, name: s.name } })}
               >
                 <span className="r-icon r-dot minor" aria-hidden="true" />
                 <span className="r-name">{p.name}</span>
@@ -363,7 +420,7 @@ export function AddSheet({
                   type="button"
                   className="result"
                   onClick={() =>
-                    onPick({
+                    pick({
                       kind: 'station',
                       stop: { stopRef: euRef(s.lat, s.lon, s.id), name: s.name },
                     })
@@ -391,36 +448,44 @@ export function AddSheet({
               </button>
             </p>
           )}
-          {trips.length > 0 && <h3 className="section-label">{t('yourTrips')}</h3>}
-          {trips.map((x) => (
-            <div key={x.id} className="result-row">
-              <button
-                type="button"
-                className="result trip"
-                onClick={() => onPick({ kind: 'trip', tour: x })}
-              >
-                <span className="r-name">{titleOf(x)}</span>
-                <MiniLine tour={x} />
-                <span className="r-sub">
-                  {x.date < today
-                    ? t('wentOn', { date: shortDate(x.date, lang) })
-                    : t('stationsN', { n: x.waypoints.filter((w) => !w.ring).length })}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="icon forget"
-                aria-label={t('forgetTrip', { name: titleOf(x) })}
-                onClick={() => {
-                  setForgot(x);
-                  removeMine(x.id);
-                }}
-              >
-                <Icon name="close" size={18} />
-              </button>
-            </div>
-          ))}
-          {!linesFirst && lineList}
+          {!folded && trips.length > 0 && <h3 className="section-label">{t('yourTrips')}</h3>}
+          {!folded && tripRows}
+          {!folded && !linesFirst && lineList}
+          {folded && recent.length > 0 && (
+            <>
+              <h3 className="section-label">{t('recentStations')}</h3>
+              {recent.map((r) => (
+                <button
+                  key={r.stopRef}
+                  type="button"
+                  className="result recent"
+                  onClick={() => pick({ kind: 'station', stop: r })}
+                >
+                  <span className="r-icon r-dot" aria-hidden="true" />
+                  <span className="r-name">{r.name}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {folded && lines.length > 0 && (
+            <details className="fold">
+              <summary>
+                <h3 className="section-label">{t('scenicLines')}</h3>
+                <span className="fold-n">{lines.length}</span>
+              </summary>
+              {lineRows}
+            </details>
+          )}
+          {folded && trips.length > 0 && (
+            <details className="fold" open={recent.length === 0 || undefined}>
+              <summary>
+                <h3 className="section-label">{t('yourTrips')}</h3>
+                <span className="fold-n">{trips.length}</span>
+              </summary>
+              {tripRows}
+            </details>
+          )}
+
           {f.length >= 2 &&
             !stations.length &&
             !places.length &&

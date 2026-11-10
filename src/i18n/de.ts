@@ -340,6 +340,7 @@ export const de = {
   whereStart: 'Wo beginnt die Reise?',
   withoutLine: 'Ohne {line} fahren',
   yourTrips: 'Deine Reisen',
+  recentStations: 'Zuletzt eingegeben',
   partOfLine: 'Teil der Linie {line}: ändere stattdessen ihre Endstationen.',
   timetableStop: 'Vom Fahrplan eingefügt: ändere stattdessen die Stationen davor oder danach.',
   tripDeleted: 'Gelöscht: {name}',

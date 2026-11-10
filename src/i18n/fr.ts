@@ -339,6 +339,7 @@ export const fr = {
   whereStart: 'D’où pars-tu ?',
   withoutLine: 'Sans la ligne {line}',
   yourTrips: 'Tes voyages',
+  recentStations: 'Gares récentes',
   partOfLine: 'Fait partie de la ligne {line} : modifie plutôt ses gares de départ et d’arrivée.',
   timetableStop: 'Ajoutée par l’horaire : modifie plutôt les gares autour.',
   tripDeleted: 'Supprimé : {name}',

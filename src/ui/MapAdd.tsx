@@ -22,6 +22,7 @@ import { Icon } from './icons';
 import { useLayer } from './layers';
 import { useMapAdd, type MapAdd as Add } from './mapAdd';
 import { RailLoader } from './RailLoader';
+import { useRecentStops } from './recentStops';
 import { useStopIndex } from './useStopIndex';
 
 type Stop = { stopRef: string; name: string };
@@ -304,6 +305,7 @@ export function MapAdd({
 
   const put = (c: Chosen) => {
     log('mapPick.add', { stop: c.stop.name, direct: !!c.direct });
+    useRecentStops.getState().add([c.stop]);
     const put = (r: Tour) => insertEntries(r, add.after, [stationEntry(c.stop)]);
     // Under way, into the rest being changed (Update on the trip saves it); before, the trip.
     if (add.rest) useRestDrafts.getState().edit(add.trip, put);

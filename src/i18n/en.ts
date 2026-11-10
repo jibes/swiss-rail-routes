@@ -330,6 +330,7 @@ export const en = {
   whereStart: 'Where do you start?',
   withoutLine: 'Go without the {line}',
   yourTrips: 'Your trips',
+  recentStations: 'Recent stations',
   partOfLine: "Part of the {line} line: change the line's end stations instead.",
   timetableStop: 'Added by the timetable: change the stations around it instead.',
   tripDeleted: 'Deleted: {name}',
