@@ -66,7 +66,7 @@ function modeOf(service: X): Mode {
 
 // The timetable's times are the plan (links, calendar, the question asked again later); an
 // estimate the service already knows (asked on the day) is kept beside them.
-function call(v: X, kind: 'board' | 'alight' | 'mid'): PlatformCall {
+function call(v: X, kind: 'board' | 'alight' | 'mid', places?: Places): PlatformCall {
   const dep = obj(v?.ServiceDeparture);
   const arr_ = obj(v?.ServiceArrival);
   const time = (t: X) => {
@@ -79,9 +79,12 @@ function call(v: X, kind: 'board' | 'alight' | 'mid'): PlatformCall {
   };
   const d = kind === 'alight' ? undefined : time(dep);
   const a = kind === 'board' ? undefined : time(arr_);
+  const ref = str(v?.StopPointRef) ?? '';
+  const pos = places?.get(ref);
   return {
-    stopRef: str(v?.StopPointRef) ?? '',
+    stopRef: ref,
     name: text(v?.StopPointName) ?? '',
+    ...(pos ? { pos } : {}),
     dep: d?.at,
     arr: a?.at,
     ...(d?.est ? { depEst: d.est } : {}),
@@ -183,10 +186,25 @@ function noticeInfoOf(s: X): NoticeInfo {
   };
 }
 
+/** Each stop point's position in the answer's context, [lon, lat]. */
+type Places = Map<string, [number, number]>;
+function placesOf(context: X): Places {
+  const out: Places = new Map();
+  for (const p of arr(obj(context?.Places)?.Place)) {
+    const ref = str(obj(p?.StopPoint)?.StopPointRef);
+    const g = obj(p?.GeoPosition);
+    const lon = Number(str(g?.Longitude));
+    const lat = Number(str(g?.Latitude));
+    if (ref && Number.isFinite(lon) && Number.isFinite(lat)) out.set(ref, [lon, lat]);
+  }
+  return out;
+}
+
 function timedSection(
   leg: X,
   notices: Map<string, string>,
   infos: Map<string, NoticeInfo>,
+  places?: Places,
 ): Section {
   const service = obj(leg?.Service);
   const cat = obj(service?.ProductCategory);
@@ -204,9 +222,9 @@ function timedSection(
     product: text(cat?.Name),
     line: text(service?.PublishedServiceName) ?? str(service?.PublicCode),
     number: str(service?.TrainNumber),
-    from: call(obj(leg?.LegBoard), 'board'),
-    to: call(obj(leg?.LegAlight), 'alight'),
-    intermediate: served.map((v) => call(v, 'mid')),
+    from: call(obj(leg?.LegBoard), 'board', places),
+    to: call(obj(leg?.LegAlight), 'alight', places),
+    intermediate: served.map((v) => call(v, 'mid', places)),
     geometry: geometry(obj(leg?.LegTrack)),
     reservationRequired: codes.includes(RESERVATION_ONLY) || undefined,
     situationIds: situationIds.length ? situationIds : undefined,
@@ -258,6 +276,7 @@ export function parseTrips(xml: string): Connection[] {
 
   const notices = new Map<string, string>();
   const infos = new Map<string, NoticeInfo>();
+  const places = placesOf(obj(delivery.TripResponseContext));
   for (const s of arr(obj(obj(delivery.TripResponseContext)?.Situations)?.PtSituation)) {
     const id = str(s?.SituationNumber);
     const summary = arr(
@@ -293,7 +312,7 @@ export function parseTrips(xml: string): Connection[] {
     )
       return [];
     const sections = arr(trip.Leg).flatMap((leg): Section[] => {
-      if (leg?.TimedLeg) return [timedSection(obj(leg.TimedLeg), notices, infos)];
+      if (leg?.TimedLeg) return [timedSection(obj(leg.TimedLeg), notices, infos, places)];
       if (leg?.TransferLeg) return [walkSection(obj(leg.TransferLeg))];
       if (leg?.ContinuousLeg) return [walkSection(obj(leg.ContinuousLeg))];
       return [];

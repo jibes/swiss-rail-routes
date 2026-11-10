@@ -205,6 +205,17 @@ describe('liveState', () => {
     ],
   });
 
+  it('a change missed by a minute counts as made once the train has left (Vallorcine)', () => {
+    // Due 08:52 for the 08:51: said as missed before it leaves...
+    const before = liveState(chain, at('08:50'), new Map([['j1', late('08:52')]]));
+    expect(before.risks.map((r) => r.reason)).toEqual(['missed']);
+    // ...but once it has left, you are on it, not held at Luzern for the rest of the trip.
+    const s = liveState(chain, at('09:00'), new Map([['j1', late('08:52')]]));
+    expect(s.phase).toBe('riding');
+    expect(s.current).toBe(1);
+    expect(s.risks).toEqual([]);
+  });
+
   it('a missed change holds you there, even after the missed train has arrived', () => {
     // The onward 08:51 would arrive 10:41; at 11:00 you are still in Luzern.
     const s = liveState(chain, at('11:00'), new Map([['j1', late('09:03')]]));

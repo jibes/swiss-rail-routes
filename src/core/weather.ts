@@ -133,6 +133,29 @@ export interface RowWeather extends Sky {
 
 type Place = (ref: string) => LatLon | undefined;
 
+/**
+ * Where the rides' stops are, as their answers placed them (`StopCall.pos`), by key and by ref:
+ * for stops the stop index does not list (St-Gervais-Les-Bains-Le Fayet), 0.42.0.
+ */
+export function positionsIn(rows: LineRow[]): Map<string, LatLon> {
+  const out = new Map<string, LatLon>();
+  for (const r of rows)
+    if (r.type === 'ride')
+      for (const c of [r.section.from, ...r.section.intermediate, r.section.to])
+        if (c.pos) {
+          const p = { lon: c.pos[0], lat: c.pos[1] };
+          out.set(c.stopRef, p);
+          out.set(stopKey(c.stopRef), p);
+        }
+  return out;
+}
+
+/** The stop index's place for a ref, else where the answer put it. */
+export const placeWith = (index: Place, rows: LineRow[]): Place => {
+  const known = positionsIn(rows);
+  return (ref) => index(ref) ?? known.get(ref);
+};
+
 /** The places a trip asks about: its stations and the stops its trains call at, rounded, once. */
 export function weatherPoints(rows: LineRow[], place: Place): LatLon[] {
   const seen = new Map<string, LatLon>();

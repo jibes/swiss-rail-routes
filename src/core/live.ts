@@ -127,6 +127,9 @@ const arrOf = (r: LiveRide) => r.stops.at(-1)!.arr ?? r.stops.at(-1)!.arrPlan ??
 const delay = (expected?: number, plan?: number) =>
   expected !== undefined && plan !== undefined ? Math.round((expected - plan) / 60_000) : 0;
 
+/** Minutes short of a change that may still be made: counted as made once the train has left. */
+export const HOLD_MIN = 2;
+
 export function liveState(
   chain: Connection[],
   now: number,
@@ -147,7 +150,11 @@ export function liveState(
     const walk = a && !sameVehicle ? walkMin(chain, a, b) : 0;
     const margin = a && !sameVehicle ? (depOf(b) - arrOf(a)) / 60_000 : Infinity;
     const boardGone = b.stops[0]!.cancelled;
-    if (b.cancelled || boardGone || margin < walk) {
+    // A change missed by a minute or two is often made (trains wait a little, and an estimate
+    // is rough): once the onward train has left, it counts as made, so where you are moves on
+    // (reported, 0.40.0: "here" stayed at Vallorcine, 1 min short, through a stay at Chamonix).
+    const madeAfterAll = !b.cancelled && !boardGone && margin >= walk - HOLD_MIN && depOf(b) <= now;
+    if ((b.cancelled || boardGone || margin < walk) && !madeAfterAll) {
       // Before boarding, or never boarded: lost. A ride long over was ridden.
       if (arrOf(b) <= now && !b.cancelled && !boardGone && margin >= 0) continue;
       risks.push(

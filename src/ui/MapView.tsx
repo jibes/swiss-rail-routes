@@ -19,7 +19,7 @@ import { accuracyArea, estimatedPosition, shownPosition } from '../core/position
 import { stopKey } from '../core/stops';
 import { isPlanned, tripStatus } from '../core/trip';
 import { plannedRows } from '../core/rows';
-import { tempText } from '../core/weather';
+import { placeWith, tempText } from '../core/weather';
 import { weatherMap } from '../core/weatherMap';
 import { addWeatherLayers, setWeather } from './mapWeather';
 import { weatherWords } from './WeatherCell';
@@ -392,10 +392,10 @@ export default function MapView({ id }: { id: string }) {
         ? weatherMap(
             rows,
             wx.rows,
-            (r) => {
+            placeWith((r) => {
               const s = index.byRef(r);
               return s ? { lat: s.lat, lon: s.lon } : undefined;
-            },
+            }, rows),
             now,
           )
         : null,

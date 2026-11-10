@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LineRow } from '../src/core/rows';
 import {
   parseWeather,
+  placeWith,
   rowWeather,
   skyKind,
   tempText,
@@ -169,5 +170,26 @@ describe('the sky in words and on the map (0.38.0)', () => {
     expect(m.temps.get(bernina.from.stopRef)).toBe(-2);
     expect(m.temps.get(bernina.to.stopRef)).toBe(9);
     expect(m.temps.get('name:Tirano')).toBe(9);
+  });
+});
+
+describe('stops the stop index does not list (0.42.0)', () => {
+  it('are placed where the answer put them, so they get weather too', () => {
+    const fayet = ride('L3', [
+      ['St. Moritz', '15:49'],
+      ['Tirano', '17:05'],
+    ]);
+    fayet.from = {
+      ...fayet.from,
+      stopRef: '8774580',
+      name: 'St-Gervais-Le Fayet',
+      pos: [6.71, 45.91],
+    };
+    const rows: LineRow[] = [{ type: 'ride', section: fayet, leg: 0, sectionIndex: 0 }];
+    const none = () => undefined;
+    // Without: nothing to ask for it (what happened, reported on a trip to Annemasse).
+    expect(weatherPoints(rows, none)).toEqual([]);
+    expect(weatherPoints(rows, placeWith(none, rows))).toEqual([{ lat: 45.9, lon: 6.7 }]);
+    expect(placeWith(none, rows)('8774580')).toEqual({ lat: 45.91, lon: 6.71 });
   });
 });

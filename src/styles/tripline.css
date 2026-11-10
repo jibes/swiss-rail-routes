@@ -858,7 +858,8 @@
   z-index: 1;
   right: 6px;
   top: 0;
-  bottom: 0;
+  /* A pixel into the next row: no hairline gap between rows (one stripe, not stripes). */
+  bottom: -1px;
   width: 16px;
   padding: 0;
   border: 0;
@@ -874,8 +875,20 @@
   border-radius: 0 0 8px 8px;
 }
 
-.trip-line.live > li.passed .wx-cell {
-  opacity: 0.4;
+/* Under way (0.42.0): behind you dimmed, to where you are, and that marked in red, in step with
+   the line's marker; not row by row. */
+.trip-line > li.wx-now {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 6px;
+  width: 16px;
+  height: var(--y);
+  padding: 0;
+  border-bottom: 2px solid var(--rail);
+  border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  pointer-events: none;
 }
 
 /* The chance of rain or snow: as wide as it is likely, its top at the name's. */

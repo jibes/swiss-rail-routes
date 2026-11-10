@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { LineRow } from '../core/rows';
 import {
   AHEAD_DAYS,
+  placeWith,
   rowWeather,
   weatherDays,
   weatherPoints,
@@ -30,10 +31,11 @@ export function useWeather(rows: LineRow[], on: boolean): WeatherState {
   const index = useStopIndex();
   const now = useNow();
   const hour = Math.floor(now / 3_600_000);
-  const place = (ref: string) => {
+  // The stop index's place, else where the answer put the stop (abroad: Le Fayet, 0.42.0).
+  const place = placeWith((ref: string) => {
     const s = index?.byRef(ref);
     return s ? { lat: s.lat, lon: s.lon } : undefined;
-  };
+  }, rows);
   const days = on ? weatherDays(rows) : undefined;
   const points = on && index && days ? weatherPoints(rows, place) : [];
   const start = days ? Date.parse(`${days.from}T00:00:00Z`) : NaN;

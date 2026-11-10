@@ -21,6 +21,10 @@ describe('parseTrips on recorded OJP answers', () => {
       ['cog', '63'],
     ]);
     expect(r[0]!.from).toMatchObject({ name: 'Interlaken Ost', platform: '2A' });
+    // Where each stop is, from the answer's own context (weather for stops the index lacks).
+    const [lon, lat] = r[0]!.from.pos!;
+    expect(lon).toBeCloseTo(7.87, 1);
+    expect(lat).toBeCloseTo(46.69, 1);
     expect(stopKey(r[0]!.from.stopRef)).toBe('ch:1:sloid:7492');
     expect(c.dep).toBe(r[0]!.from.dep);
     expect(c.dep).toMatch(/^2026-11-07T\d\d:\d\d:00Z$/);

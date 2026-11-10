@@ -98,6 +98,11 @@ export interface StopCall {
   /** Expected times, when the timetable service knew a delay as it answered (the day itself). */
   arrEst?: string;
   depEst?: string;
+  /**
+   * Where it is, [lon, lat], as the answer placed it (OJP's context, 0.42.0): for stops the
+   * stop index does not list (St-Gervais-Les-Bains-Le Fayet), for their weather.
+   */
+  pos?: [number, number];
 }
 
 /**
