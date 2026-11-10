@@ -3,7 +3,7 @@
 Follows the portfolio standard: https://github.com/jibes/apps-data/blob/main/STANDARD.md
 List deviations from it here, each with a reason. Product spec: [`docs/SPEC.md`](docs/SPEC.md). Design: [`docs/DESIGN.md`](docs/DESIGN.md) (principles, tokens, screenshot review).
 
-Status: 0.45.1. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. MCP server in `mcp/`. Next: SPEC §3 Should/Could items.
+Status: 0.46.0. One object, one screen, one line (SPEC §3a): every trip dated (new ones today, from now), planned while edited, the same line under way and shared; answers kept on the device; finished trips wait in search. Android shell with trip notifications. MCP server in `mcp/`. Next: SPEC §3 Should/Could items.
 
 ## Stack
 
@@ -62,7 +62,7 @@ Status: 0.45.1. One object, one screen, one line (SPEC §3a): every trip dated (
 - Capacitor shell in `android/` (app ID `ch.brunodev.swissrailroutes` and the release key are permanent). `npm run android:sync` builds and copies `dist/` in (gitignored). `src/native.ts` owns `isNative`; the service worker and update banner are web-only (the banner asks the worker for a new version on every return to view and hourly, `src/ui/updateCheck.ts`: a hash-routed tab never navigates).
 - Back button: `src/io/back.ts` (`@capacitor/app`) goes up one screen (`parentOf`, `src/core/parent.ts`), replacing the address; on the main list the app goes to the background.
 - Notifications: `src/core/notify.ts` (pure: 10 min before a departure, 5 before an exit, 10 before a highlight; none where the same train runs through a stop; none for a trip turned quiet, ⋯ → Notifications off, `Trip.quiet`, synced, 0.44.0) and `src/io/notifications.ts` (cancels all first, then reschedules, on every trips change; without the stop index the trains still, the highlights not; no-op on the web). Texts in i18n (`n*`).
-- Logo V14 (`docs/design/logos/v14/`): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
+- Logo V15 (`docs/design/logos/v15/`, 0.46.0: the valley a V with a rounded tip, white ground below it, no gap; red never drawn under white): every icon, web and Android, comes from `scripts/logo-sets.py --apply`, then `npm run icons`; never edit the generated SVG/XML by hand.
 - Release: bump `package.json` version on `main` → `android.yml` builds, smoke-tests (`scripts/android-smoke.sh`), signs in environment `release`, publishes `v<version>`. The Worker's `ALLOWED_ORIGINS` is the site and `https://localhost` (the app), nothing else; `npm run worker:dev` adds the dev servers with `--var`. `data.yml` opens a pull request from branch `data` when the stop index or GA data changed: merge it with a patch bump.
 - Owner's rule: every push to `main` releases. Bump `package.json` `version` in the same push (`npm version X.Y.Z --no-git-tag-version`): patch for fixes, minor for features. A push without a bump does not release.
 
