@@ -8,6 +8,7 @@ import { lineName } from './TemplatePicker';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { dayOf, newTrip } from '../core/trip';
+import { staysOnDay } from '../core/stay';
 import { markRings } from '../core/line';
 import { autoName } from '../core/naming';
 import { go } from './useHash';
@@ -85,7 +86,13 @@ export function SharedTour({
               add(
                 newTrip(
                   id,
-                  { ...rest, id, date, waypoints: markRings(rest.waypoints) },
+                  // A stay until a date and time moves with the day (review of 11 Nov 2026).
+                  {
+                    ...rest,
+                    id,
+                    date,
+                    waypoints: staysOnDay(markRings(rest.waypoints), rest.date, date),
+                  },
                   undefined,
                   undefined,
                   new Date(),

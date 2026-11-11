@@ -101,9 +101,12 @@ describe('sync engine', () => {
       gets();
       return worker(input, init);
     });
+    a.sync.useSync.setState({ settled: false });
     await a.sync.syncNow();
     expect(gets).not.toHaveBeenCalled();
     expect([...boxes.values()][0]!.v).toBe(before);
+    // Waiting out the back-off still counts as settled: the server's answer was known.
+    expect(a.sync.useSync.getState().settled).toBe(true);
     expect(a.sync.backoffMs(1)).toBe(60_000);
     expect(a.sync.backoffMs(9)).toBe(30 * 60_000);
     // …a tap on Sync now does not: the copy is read in full and the trip written after all.
@@ -202,7 +205,7 @@ describe('sync engine', () => {
     const key = a.sync.useSync.getState().key!;
     const { deriveKeys, parseKey, seal } = await import('../src/core/sync');
     const { id, aes } = await deriveKeys(parseKey(key)!);
-    const newer = await seal({ v: 2, tours: [], trips: [], more: 'unknown to 0.7' }, aes);
+    const newer = await seal({ v: 3, tours: [], trips: [], more: 'unknown to 0.7' }, aes);
     boxes.set(id, { v: 9, data: newer });
     await a.sync.syncNow();
     expect(a.sync.useSync.getState().status).toBe('update');
@@ -218,6 +221,32 @@ describe('sync engine', () => {
     expect(gets).not.toHaveBeenCalled();
     await a.sync.syncNow(true);
     expect(gets).toHaveBeenCalled();
+  });
+
+  // 0.52.0: past trips are trips. The copy is written as format 2, which a version before it
+  // reads as newer and leaves alone (it would retire them again); format 1 is still read.
+  it('reads a format-1 copy and writes it back as format 2', async () => {
+    reset();
+    const a = await device();
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    const { deriveKeys, open, parseKey, seal } = await import('../src/core/sync');
+    const { id, aes } = await deriveKeys(parseKey(key)!);
+    const old = await seal(
+      { v: 1, tours: [], trips: [{ id: 'o', at: Date.now(), value: trip('o', 'Old') }] },
+      aes,
+    );
+    boxes.set(id, { v: 5, data: old });
+    a.useTrips.getState().add(trip('n', 'New'));
+    await a.sync.syncNow(true);
+    expect(a.sync.useSync.getState().status).toBe('ok');
+    expect(
+      a.useTrips
+        .getState()
+        .trips.map((t) => t.id)
+        .sort(),
+    ).toEqual(['n', 'o']);
+    expect((await open<{ v: number }>(boxes.get(id)!.data, aes)).v).toBe(2);
   });
 
   it('a new key carries the deletions and change times along', async () => {

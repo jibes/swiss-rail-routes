@@ -12,7 +12,7 @@ import { log } from './io/log';
 import { watchAutoPlan } from './io/autoplan';
 import { useSync, watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
-import { tripsFromTours } from './core/pastTrips';
+import { migratePastTrips } from './io/migratePast';
 import { expectedArrival } from './core/live';
 import { useLiveStatus } from './ui/useLive';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
@@ -38,16 +38,7 @@ function Migrate({ loaded, tripsLoaded }: { loaded: boolean; tripsLoaded: boolea
   const tours = useTours((s) => s.tours);
   useEffect(() => {
     if (!loaded || !tripsLoaded || !settled || !tours.length) return;
-    // Lists that could not be read are never written.
-    if (useTrips.getState().failed || useTours.getState().failed) return;
-    const trips = useTrips.getState().trips;
-    const back = tripsFromTours(tours, trips, new Date());
-    log('pastTrips.migrate', { tours: tours.length, trips: back.length });
-    void useTrips
-      .getState()
-      .replaceAll([...trips, ...back])
-      .then(() => useTours.getState().replaceAll([]))
-      .catch(() => undefined);
+    void migratePastTrips().catch(() => undefined);
   }, [loaded, tripsLoaded, settled, tours]);
   return null;
 }
@@ -106,7 +97,10 @@ function Columns({ hash, n }: { hash: string; n: 2 | 3 }) {
           // Up and down the trips with the arrow keys; Enter opens one.
           onKeyDown={(e) => {
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-            const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('a.card')];
+            // Only cards shown: not those inside the past trips' fold while it is closed.
+            const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('a.card')].filter(
+              (c) => !c.closest('details:not([open])'),
+            );
             const at = cards.indexOf(document.activeElement as HTMLElement);
             const next = cards[at < 0 ? 0 : at + (e.key === 'ArrowDown' ? 1 : -1)];
             if (!next) return;

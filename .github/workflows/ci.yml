@@ -52,11 +52,12 @@ jobs:
       # Ubuntu's mirrors failing (DNS, 11 Nov 2026) must not stop a release: the browser first,
       # then its system packages for at most two minutes (each unreachable mirror waits 20 s a
       # package); without them the runner image's own libraries serve (only extra fonts miss).
-      # The browser kept between runs (each one downloaded it anew), by the lock file's versions.
+      # The browser kept between runs (each one downloaded it anew), by Playwright's own version:
+      # not the lock file's hash, which every release's version bump changes (second audit).
       - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('node_modules/playwright-core/package.json') }}
       - name: Install Chromium
         run: |
           npx playwright install chromium

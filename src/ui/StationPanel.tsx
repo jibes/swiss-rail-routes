@@ -40,6 +40,7 @@ export function StationPanel({
   stay,
   stayUntil,
   arr,
+  dep,
   day,
   line,
   change,
@@ -60,6 +61,8 @@ export function StationPanel({
   stayUntil?: string;
   /** The plan's arrival here (ISO): a stay's length and end each said from the other. */
   arr?: string;
+  /** The plan's departure from here (ISO): the next train, said when well after the stay. */
+  dep?: string;
   /** The trip's day: a stay until starts from it. */
   day: string;
   line: string;
@@ -146,6 +149,7 @@ export function StationPanel({
               stay={stay}
               until={stayUntil}
               arr={arr}
+              dep={dep}
               day={day}
               act={act}
             />

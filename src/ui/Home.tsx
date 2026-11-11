@@ -23,11 +23,14 @@ import { forgetDeleted, useDeleted } from './undoDelete';
 function Card({
   trip,
   live,
+  past,
   stop,
   open,
 }: {
   trip: Trip;
   live: boolean;
+  /** Over: drawn quieter, and one never planned is said so (none is coming in the background). */
+  past?: boolean;
   open?: boolean;
   stop: Parameters<typeof autoName>[1];
 }) {
@@ -41,7 +44,7 @@ function Card({
     <li>
       <a
         href={`#/trip/${trip.id}`}
-        className={`card ${live ? 'live' : ''}`}
+        className={`card ${live ? 'live' : ''} ${past ? 'past' : ''}`}
         // Beside the open trip (desktop columns): which one it is.
         aria-current={open ? 'page' : undefined}
       >
@@ -62,7 +65,7 @@ function Card({
             {c
               ? `${hhmm(c.dep)} – ${hhmm(c.arr)} · ${duration(minutesBetween(c.dep, c.arr))}`
               : trip.route.waypoints.length > 1
-                ? t('notPlanned')
+                ? t(past ? 'notPlannedPast' : 'notPlanned')
                 : t('addStations')}
           </span>
         </span>
@@ -75,6 +78,9 @@ function Card({
  * The one list (SPEC §3a): every trip has a date; under way first, then coming up, then the
  * trips over, folded (0.52.0: a trip stays a trip).
  */
+/** Trips made with New trip on this device, this visit: the only empty ones tidied away. */
+const madeHere = new Set<string>();
+
 export function Home() {
   const openId = /^\/trip\/([\w-]+)/.exec(useHash())?.[1];
   const t = useT();
@@ -91,9 +97,11 @@ export function Home() {
   const stop = (r: string) => index?.byRef(stopKey(r));
   // "New trip" and then Back leaves an empty trip: tidy it away, unless it is the one open (in
   // columns the list stands beside it; reported in review: the trip being made was deleted).
+  // Only one made on this device: another's, synced in while its first station is still being
+  // chosen there, is not ours to tidy (second audit).
   useEffect(() => {
     for (const x of useTrips.getState().trips)
-      if (!x.route.waypoints.length && x.id !== openId) remove(x.id);
+      if (!x.route.waypoints.length && x.id !== openId && madeHere.has(x.id)) remove(x.id);
   }, [remove, openId]);
   const arrivalOf = (x: Trip) =>
     x.chain ? expectedArrival(x.chain.connections, liveStatus) : undefined;
@@ -162,11 +170,12 @@ export function Home() {
 
       {/* Over (0.52.0): still trips, edited as any other; folded, most recent first. */}
       {past.length > 0 && (
-        <details className="fold past-trips">
+        // Open while one of them is the trip open beside the list.
+        <details className="fold past-trips" open={past.some((x) => x.id === openId) || undefined}>
           <summary className="section-label">{t('pastTripsN', { n: past.length })}</summary>
-          <ul className="cards done" aria-label={t('pastTrips')}>
+          <ul className="cards" aria-label={t('pastTrips')}>
             {past.map((x) => (
-              <Card key={x.id} trip={x} open={x.id === openId} live={false} stop={stop} />
+              <Card key={x.id} trip={x} open={x.id === openId} live={false} past stop={stop} />
             ))}
           </ul>
         </details>
@@ -189,6 +198,7 @@ export function Home() {
               // Today, from the next few minutes: the first connection after then.
               const tour = newTour(id, dayOf(Date.now()));
               tour.anchor = { departAt: nextFive(Date.now()) };
+              madeHere.add(id);
               add(newTrip(id, tour, undefined, undefined, new Date()));
               go(`/trip/${id}`);
             }}

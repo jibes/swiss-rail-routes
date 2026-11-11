@@ -6,7 +6,7 @@ import type { useT } from '../store';
 import { duration, shortDate } from './format';
 
 /** A wait at a change this long is said (review of 11 Nov 2026: hours hid in a dotted gap). */
-const WAIT_SAID_MIN = 10;
+export const WAIT_SAID_MIN = 10;
 
 /**
  * A stay is said, with the time really spent there when the next train leaves well after it;

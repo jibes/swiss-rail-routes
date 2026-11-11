@@ -24,6 +24,8 @@ describe('a stay said as length and end (0.51.0)', () => {
     expect(untilAt('01:00', ARR, '2026-11-12', undefined)).toBe('2026-11-13T01:00');
     // Wrapped past midnight, then a time the same evening: that evening (not 25 h).
     expect(untilAt('23:00', ARR, '2026-11-12', '2026-11-13T01:00')).toBe('2026-11-12T23:00');
+    // The next day chosen on the date pill (a time after the arrival's) is kept.
+    expect(untilAt('15:00', ARR, '2026-11-12', '2026-11-13T16:00')).toBe('2026-11-13T15:00');
     // A day chosen later keeps its day.
     expect(untilAt('09:15', ARR, '2026-11-12', '2026-11-14T08:00')).toBe('2026-11-14T09:15');
     // Unplanned: on the trip's day.

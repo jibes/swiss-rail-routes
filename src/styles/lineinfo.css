@@ -21,8 +21,18 @@
   color: var(--ink-2);
 }
 
-.options-note .text-button {
+/* Try again where something failed: a chip that looks tappable, never broken over two lines
+   (second audit: bare text in the strip, two lines in the whole run). */
+.options-note .text-button,
+.run-sheet .notice button {
   margin-left: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: var(--rail-soft);
+  color: var(--rail-ink);
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .panel .panel-note {
@@ -102,7 +112,8 @@
 }
 
 /* Opened, a stop inside a ride keeps its ring beside its name, not beside the card. */
-.trip-line .ride.with-mids .mids li:has(.plan-panel)::before {
+/* (Its own :not(.here-mid) too: rides.css comes later and would win a tie; second audit.) */
+.trip-line .ride.with-mids .mids li:not(.here-mid):has(.plan-panel)::before {
   top: calc(0.5lh - 5px);
 }
 
@@ -342,6 +353,11 @@
   width: max(100%, 44px);
   height: 44px;
   transform: translate(-50%, -50%);
+}
+/* The badge's reach stays in its own row, wide but no taller than the badge: "N stops" right
+   under it reaches up into the gap (second audit: its taps opened the whole run). */
+.trip-line button.badge.run-open::after {
+  height: 100%;
 }
 .panel-head > .icon {
   width: 44px;

@@ -217,6 +217,15 @@ describe('editing the time to leave by', () => {
     expect(through.waypoints[1]).not.toHaveProperty('leaveBy');
     // A length or a time set in the panel replaces it (0.51.0: the panel no longer offers it).
     expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('leaveBy');
+    // Its opening time too: the panel neither shows nor sets it (review of 11 Nov 2026).
+    const opens = {
+      ...set,
+      waypoints: set.waypoints.map((w, i) => (i === 1 ? { ...w, arriveAfter: '10:00' } : w)),
+    };
+    expect(setEntryStay(opens, 1, 45).waypoints[1]).not.toHaveProperty('arriveAfter');
+    expect(setEntryStayUntil(opens, 1, `${DATE}T17:00`).waypoints[1]).not.toHaveProperty(
+      'arriveAfter',
+    );
     expect(setEntryStayUntil(set, 1, `${DATE}T17:00`).waypoints[1]).not.toHaveProperty('leaveBy');
   });
 });

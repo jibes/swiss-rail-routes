@@ -406,7 +406,11 @@ export default function MapView({ id }: { id: string }) {
       }
       if (fittedFor.current !== map && d.bounds) {
         fittedFor.current = map;
-        map.fitBounds(d.bounds, { padding: 40, duration: 0 });
+        // Room at the foot for the notes over the map (second audit: they hid the trip's end).
+        map.fitBounds(d.bounds, {
+          padding: { top: 40, left: 40, right: 40, bottom: 120 },
+          duration: 0,
+        });
       }
       const keepApart = () => {
         const shown = placeLabels(
@@ -513,6 +517,7 @@ export default function MapView({ id }: { id: string }) {
         map.off('mouseenter', id, pointer);
         map.off('mouseleave', id, plain);
       }
+      plain();
     };
   }, [map, wx, rows, t, adding]);
 
@@ -575,6 +580,7 @@ export default function MapView({ id }: { id: string }) {
       map.off('click', 'lines', open);
       map.off('mouseenter', 'lines', pointer);
       map.off('mouseleave', 'lines', plain);
+      plain();
     };
   }, [map, adding]);
   const startAdd = useMapAdd((s) => s.start);
@@ -584,6 +590,11 @@ export default function MapView({ id }: { id: string }) {
       const b = new maplibregl.LngLatBounds(pts[0]!, pts[0]!);
       for (const p of pts) b.extend(p);
       map.fitBounds(b, { padding: { top: 120, bottom: 160, left: 40, right: 40 }, maxZoom: 11 });
+      // Said once the map rests on it (e2e taps at a point only then; second audit). Already
+      // there, it does not move at all.
+      const fitted = () => box.current?.setAttribute('data-web-fitted', '');
+      if (map.isMoving()) map.once('moveend', fitted);
+      else fitted();
     },
     [map],
   );

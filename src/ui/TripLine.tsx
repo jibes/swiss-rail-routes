@@ -369,6 +369,7 @@ export function TripLine({
             stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
             stayUntil={entries[k]!.w.stayUntil}
             arr={r.arr}
+            dep={r.dep}
             day={route.date ?? ''}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
@@ -588,9 +589,12 @@ export function TripLine({
                   {/* A disruption elsewhere on the train's route weighs nothing here: said with
                       the stops, when they are opened (review of 11 Nov 2026: it stood under
                       nearly every ride). */}
-                  {ws
-                    .filter((w) => w.type !== 'disruption-away' || shown || !mids.length)
-                    .map((w, j) => {
+                  {ws.map((w, j) => {
+                    // Its stops can open (there are more than the vias always shown): said there
+                    // then. Indexed before, so an open notice stays open as the stops fold.
+                    if (w.type === 'disruption-away' && !shown && mids.length > vias.length)
+                      return null;
+                    {
                       const text =
                         w.type === 'seasonal'
                           ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[
@@ -636,7 +640,8 @@ export function TripLine({
                           {text}
                         </span>
                       );
-                    })}
+                    }
+                  })}
                 </div>
                 {cell(
                   i,

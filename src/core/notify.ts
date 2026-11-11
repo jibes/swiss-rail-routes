@@ -7,7 +7,7 @@ import type { LatLon } from './model';
 import { liveRides, type LiveRide } from './live';
 import { runsOn } from './planner/connection';
 import { directionOn, flipSide } from './seat';
-import { sunset } from './sun';
+import { dayAt, sunset } from './sun';
 import type { PlannedTrip as Trip } from './trip';
 
 export const BEFORE_DEPARTURE_MIN = 10;
@@ -97,7 +97,7 @@ export function noticesFor(
           if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at, ride: r };
         }
       if (!best) continue;
-      const set = sunset(trip.route.date, h);
+      const set = sunset(dayAt(best.at), h);
       const nearSunset = set && Math.abs(best.at - set.getTime()) <= SUNSET_NEAR_MIN * 60_000;
       push('highlight', best.at - BEFORE_HIGHLIGHT_MIN * 60_000, {
         name: highlightName(h),

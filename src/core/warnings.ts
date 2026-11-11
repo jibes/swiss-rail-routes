@@ -5,7 +5,7 @@ import { highlightName, type GaData, type GaRule, type RouteTemplate } from './d
 import type { Connection, LatLon, Section, WarningType } from './model';
 import { calls, transferGaps, isTight } from './planner/connection';
 import { stopKey } from './stops';
-import { isAfterSunset, sunset } from './sun';
+import { dayAt, isAfterSunset, sunset } from './sun';
 
 export interface Warning {
   type: WarningType;
@@ -315,7 +315,7 @@ export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
         const d = km(p, h);
         if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at: x.at! };
       }
-      if (best && isAfterSunset(new Date(best.at), ctx.date, h))
+      if (best && isAfterSunset(new Date(best.at), dayAt(best.at), h))
         out.push({ id: h.id, name: highlightName(h), at: best.at });
     }
   return out;
@@ -340,8 +340,9 @@ export function linesAfterDark(
     const own = new Set(t.chain.map((x) => stopKey(x.ref)));
     const on = cs.filter((x) => own.has(x.key));
     if (on.length < 2) continue;
-    const mid = ctx.stop(on[Math.floor((on.length - 1) / 2)]!.key);
-    const set = mid && sunset(ctx.date, mid);
+    const middle = on[Math.floor((on.length - 1) / 2)]!;
+    const mid = ctx.stop(middle.key);
+    const set = mid && sunset(dayAt(middle.at!), mid);
     if (!set) continue;
     const dark = set.getTime() + DUSK_MIN * 60_000;
     const last = on.at(-1)!;

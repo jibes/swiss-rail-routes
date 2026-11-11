@@ -24,8 +24,15 @@ export interface Entry<T> {
   value?: T;
 }
 
+/**
+ * The shared document's format. 2 since 0.52.0: past trips are trips; a version before it would
+ * retire them again as routes, and the two would swap them back and forth for good (review of
+ * 11 Nov 2026). Such a version reads 2 as newer and waits for its update; 1 is still read here.
+ */
+export const DOC_V = 2;
+
 export interface SyncDoc<R, T> {
-  v: 1;
+  v: 1 | 2;
   tours: Entry<R>[];
   trips: Entry<T>[];
   /**

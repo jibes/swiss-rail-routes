@@ -3,6 +3,7 @@
 import type { GaData, RouteTemplate } from '../data';
 import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
+import { dayAt } from '../sun';
 import { zurichDateTime } from '../ojp/request';
 import { withLines } from '../line';
 import { stopKey } from '../stops';
@@ -566,7 +567,9 @@ async function planFrom(
           );
           opts = preferred(own);
         }
-        const fit = leavingBy(opts, rules.leg.from, tour.date, i);
+        // A stay's window is on the day you are there, not the trip's first (review of 11 Nov
+        // 2026: a day-2 stop's leave by was read on day 1).
+        const fit = leavingBy(opts, rules.leg.from, dayAt(b.ready), i);
         for (const c of fit.opts) {
           const w = [
             ...fit.late(c),
@@ -583,7 +586,10 @@ async function planFrom(
             // A place that opens later: the stay starts when it does.
             // A stay until a date and time: no earlier, on whatever day (multi-day trips).
             ready: Math.max(
-              Math.max(ms(expectedArr(c)), timeOn(tour.date, rules.leg.to.arriveAfter) ?? 0) +
+              Math.max(
+                ms(expectedArr(c)),
+                timeOn(dayAt(ms(expectedArr(c))), rules.leg.to.arriveAfter) ?? 0,
+              ) +
                 dwell * MIN,
               rules.leg.to.stayUntil ? ms(zurichDateTime(rules.leg.to.stayUntil)) : 0,
             ),

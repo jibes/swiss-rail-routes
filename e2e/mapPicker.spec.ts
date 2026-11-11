@@ -57,6 +57,7 @@ test('a tap anywhere: the stops near it, stations further, bus stops close, by t
   });
   // West of Kleine Scheidegg, beside Wengen's dot, not on it (the web fitted to the phone's screen),
   // once the map has come to rest (it eases to the web: a fixed wait was flaky on a slow runner).
+  await expect(map.locator('.map')).toHaveAttribute('data-web-fitted', '');
   await expect(map.locator('.map')).not.toHaveAttribute('data-moving', '');
   const box = (await map.locator('.map').boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.25 + 40, box.y + box.height * 0.45);
@@ -85,7 +86,9 @@ test('the web is drawn once for the station it starts from', async ({ page }) =>
   // The map moving, the pointer over it: nothing new to draw.
   await page.mouse.move(200, 400);
   await page.mouse.move(220, 420);
-  await page.waitForTimeout(800);
+  // Once the map rests on the web (no fixed wait: on a slow runner it proved nothing).
+  await expect(page.locator('.map')).toHaveAttribute('data-web-fitted', '');
+  await expect(page.locator('.map')).not.toHaveAttribute('data-moving', '');
   await page.getByRole('button', { name: 'Done' }).click();
   await page.goto('./#/settings');
   const download = page.waitForEvent('download');

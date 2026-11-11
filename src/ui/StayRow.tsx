@@ -4,7 +4,9 @@
 import { useState } from 'react';
 import { shiftUntil, stayEnd, stayLength, untilAt } from '../core/stay';
 import { usePrefs, useT } from '../store';
-import { shortDate } from './format';
+import { hhmm, shortDate } from './format';
+import { zurichDateTime } from '../core/ojp/request';
+import { WAIT_SAID_MIN } from './stayLabel';
 import { Icon } from './icons';
 import type { LineActions } from './StationPanel';
 import { WhenField } from './WhenField';
@@ -23,6 +25,7 @@ export function StayRow({
   stay,
   until,
   arr,
+  dep,
   day,
   act,
 }: {
@@ -33,6 +36,8 @@ export function StayRow({
   until: string | undefined;
   /** The plan's arrival here (ISO), none before it is planned. */
   arr: string | undefined;
+  /** The plan's departure from here (ISO): said when the next train leaves well after the end. */
+  dep?: string;
   /** The trip's day. */
   day: string;
   act: LineActions;
@@ -120,7 +125,13 @@ export function StayRow({
             value={endDay}
             min={arrDay}
             accept={(d) => (DATE.test(d) && d >= arrDay ? d : null)}
-            commit={(d) => setUntil(k, `${d}T${end?.slice(11, 16) ?? '08:00'}`)}
+            // Never before the arrival (second audit: the arrival's day chosen back ended the stay
+            // that morning, before it began): then the arrival's time on that day, the stay as long.
+            commit={(d) => {
+              const at = `${d}T${end?.slice(11, 16) ?? '08:00'}`;
+              const arrived = arr ? stayEnd(arr, stay, undefined) : undefined;
+              setUntil(k, arrived && at < arrived ? arrived : at);
+            }}
           >
             {(d) => (
               <>
@@ -131,6 +142,13 @@ export function StayRow({
           </WhenField>
         </div>
       )}
+      {/* Why the line says more time here than the stay (second audit: "60 min" and "1h45"
+          side by side read as an error). */}
+      {dep &&
+        end &&
+        Date.parse(dep) - Date.parse(zurichDateTime(end)) >= WAIT_SAID_MIN * 60_000 && (
+          <p className="panel-note">{t('stayNextTrain', { time: hhmm(dep) })}</p>
+        )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { Tour } from '../core/model';
 import {
   deriveKeys,
+  DOC_V,
   formatKey,
   joinStamps,
   newKey,
@@ -153,7 +154,7 @@ async function remote(
   }
   // A format this version does not know: merging it could drop or trim what it cannot read,
   // and that would travel back to every device. Wait for the update instead.
-  if (doc?.v !== 1) throw new SyncProblem('update');
+  if (doc?.v !== 1 && doc?.v !== DOC_V) throw new SyncProblem('update');
   return { v: r.v, doc };
 }
 
@@ -183,7 +184,7 @@ function asShared(
       return value ? { id, at: p.at, value } : { id, at: p.at };
     });
   return {
-    v: 1,
+    v: DOC_V,
     tours: side(stamps.tours, local.tours),
     trips: side(stamps.trips, local.trips),
     ...(recent ? { recent } : {}),
@@ -251,7 +252,7 @@ async function round(start: Saved): Promise<Saved> {
     await keepFor(start.key, saved);
     if (!plan.push) return { ...saved, at: now };
     try {
-      const data = await seal({ v: 1, ...plan.merged } satisfies Doc, aes);
+      const data = await seal({ ...plan.merged, v: DOC_V } satisfies Doc, aes);
       if (data.length > MAX_DATA) throw new SyncProblem('tooBig');
       const next = await push(id, v, data);
       log('sync.write', { v: next, chars: data.length });
@@ -319,6 +320,9 @@ async function once(force = false) {
     await round1(force);
   } catch (e) {
     log('sync.storage.fail', { e });
+    // Never left saying it syncs (second audit): storage gone mid-round is an error, an answer.
+    if (useSync.getState().status === 'syncing')
+      useSync.setState({ status: 'error', settled: true });
   }
 }
 
@@ -345,6 +349,9 @@ async function round1(force: boolean) {
       Date.now() - saved.failedAt < backoffMs(saved.fails)
     ) {
       log('sync.wait', { fails: saved.fails, ms: backoffMs(saved.fails) });
+      // What the server held was known at the last round (it answered): what waits on sync
+      // settling (bringing back past trips) need not wait out the back-off too (second audit).
+      if (saved.status !== 'offline') useSync.setState({ status: saved.status, settled: true });
       return;
     }
     useSync.setState({ key: saved.key, status: 'syncing' });

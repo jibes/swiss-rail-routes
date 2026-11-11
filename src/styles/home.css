@@ -102,3 +102,12 @@
   appearance: none;
   -webkit-appearance: none;
 }
+
+/* A trip over (0.52.0): still a trip, drawn quieter than those ahead (second audit). */
+.card.past .mini-line {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.card.past .name {
+  color: var(--ink-2);
+}

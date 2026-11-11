@@ -216,7 +216,16 @@ export function plannedRows(
       for (const key of (s.byRoad ?? []).slice(1, -1))
         if (wanted.has(key) && !calling.has(key))
           seq.push({ type: 'station', name: key, key, role: 'pass', leg });
-      station(s.to.name, s.to.stopRef, leg, { arr: s.to.arr, platformArr: s.to.platform });
+      // A walk's end without its own time: when you get there on foot (second audit: the wait
+      // after a walk, for the next train, was not said, as the row had no arrival).
+      const walkedIn =
+        s.mode === 'walk' && !s.to.arr && s.from.dep && s.walkMin !== undefined
+          ? new Date(Date.parse(s.from.dep) + s.walkMin * 60_000).toISOString()
+          : undefined;
+      station(s.to.name, s.to.stopRef, leg, {
+        arr: s.to.arr ?? walkedIn,
+        platformArr: s.to.platform,
+      });
     });
   });
 

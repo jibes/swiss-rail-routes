@@ -55,14 +55,17 @@ export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
       >
         <div className="sheet-head">
           <h2 id={id}>
-            <span className="badge">{badge(s)}</span> {s.destination ?? s.to.name}
+            <span className="badge">{badge(s)}</span> → {s.destination ?? s.to.name}
           </h2>
           <button type="button" className="icon" aria-label={t('close')} onClick={onClose}>
             <Icon name="close" />
           </button>
         </div>
-        {run === null && <p className="muted">{t('runAsking')}</p>}
-        {run === 'none' && <p className="muted">{t('runUnknown')}</p>}
+        {/* Said as it changes (second audit: neither asking nor failing was announced). */}
+        <div role="status">
+          {run === null && <p className="muted">{t('runAsking')}</p>}
+          {run === 'none' && <p className="muted">{t('runUnknown')}</p>}
+        </div>
         {run === 'failed' && (
           <div className="notice">
             <p>{t('planServer')}</p>
@@ -70,6 +73,8 @@ export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
               type="button"
               className="secondary"
               onClick={() => {
+                // The button goes with the error: focus to the sheet's close, inside its trap.
+                box.current?.querySelector<HTMLButtonElement>('.sheet-head button')?.focus();
                 setRun(null);
                 setAsked((n) => n + 1);
               }}

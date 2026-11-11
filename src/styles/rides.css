@@ -242,9 +242,10 @@
 }
 
 .trip-line .ride .m .ride-l1 > .product {
-  /* The train's kind gives way before where it goes (review of 11 Nov 2026). */
+  /* The train's kind gives way before where it goes (review of 11 Nov 2026), but stays a word
+     ("Replacement bus", not "Re…", second audit): it keeps up to 9em, the rest is the place's. */
   flex-shrink: 100;
-  min-width: 2.5em;
+  min-width: min(max-content, 9em);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

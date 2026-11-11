@@ -177,6 +177,8 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
  * planned there stays; else it is a change, never a scenic line's station). The stations of
  * the current leg already passed stay on it (the line still shows them).
  */
+const withoutTimes = ({ stayUntil: _u, leaveBy: _l, arriveAfter: _a, ...w }: Waypoint) => w;
+
 export function keptLegs(trip: Trip, point: ReplanPoint): Leg[] {
   const passed = new Set(
     (point.keep[point.leg]?.sections ?? []).flatMap((s) =>
@@ -191,7 +193,9 @@ export function keptLegs(trip: Trip, point: ReplanPoint): Leg[] {
             stopKey(point.stop.stopRef) === stopKey(l.to.stopRef)
               ? { ...l.to, templateId: undefined, ring: undefined, line: undefined }
               : {
-                  ...l.to,
+                  // The cut point is no stay of yours: the leg end's times stay with that end
+                  // (review of 11 Nov 2026: Zug was left "until tomorrow 09:00").
+                  ...withoutTimes(l.to),
                   stopRef: point.stop.stopRef,
                   name: point.stop.name,
                   kind: 'stop',
@@ -247,7 +251,13 @@ export function mergeReplan(
   newLegs: Leg[],
   chain: PlannedChain,
 ): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
-  const keptWarnings = trip.chain.warnings.filter((w) => w.legIndex < point.keep.length);
+  // The cut leg's warnings about rides after the cut are gone with them (review of 11 Nov 2026).
+  const cutRides = point.keep[point.leg]?.sections.length ?? Infinity;
+  const keptWarnings = trip.chain.warnings.filter(
+    (w) =>
+      w.legIndex < point.keep.length &&
+      !(w.legIndex === point.leg && w.sectionIndex !== undefined && w.sectionIndex >= cutRides),
+  );
   const offset = point.keep.length;
   const connections = [...point.keep, ...chain.connections];
   // The trip's route as it now runs: what was travelled, then the new rest (its stops, map,

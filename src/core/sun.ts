@@ -41,3 +41,10 @@ export function isAfterSunset(passAt: Date, date: string, at: LatLon, marginMin 
   const s = sunset(date, at);
   return s !== null && passAt.getTime() > s.getTime() - marginMin * 60_000;
 }
+
+const ZURICH_DAY = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich' });
+/**
+ * The day (in Zurich) an instant falls on: a sunset is the one of the day you are there, not the
+ * trip's first (review of 11 Nov 2026: a morning ride on day 2 of a trip was said after dark).
+ */
+export const dayAt = (ms: number) => ZURICH_DAY.format(ms);

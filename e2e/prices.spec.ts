@@ -20,7 +20,12 @@ test('prices on SBB: each leg opens sbb.ch with its stops, date and time', async
   expect(await link.getAttribute('target')).toBe('_blank');
   // Modal (review of 11 Nov 2026): focus inside, Tab stays there, back to More on Close.
   await expect(sheet.locator(':focus')).toHaveCount(1);
-  for (let i = 0; i < 5; i++) await page.keyboard.press('Tab');
+  // Round all of it and one more: still inside; and back from the first to the last.
+  const n = await sheet.locator('button, a[href]').count();
+  for (let i = 0; i <= n; i++) await page.keyboard.press('Tab');
+  await expect(sheet.locator(':focus')).toHaveCount(1);
+  await sheet.getByRole('button', { name: 'Close' }).focus();
+  await page.keyboard.press('Shift+Tab');
   await expect(sheet.locator(':focus')).toHaveCount(1);
   await sheet.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('button', { name: 'More' })).toBeFocused();

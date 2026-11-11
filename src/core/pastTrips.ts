@@ -24,10 +24,22 @@ export function pastRoutes(
     });
 }
 
+/**
+ * A route's id as a trip. A version before 0.52.0 still running (a tab not reloaded) retires a
+ * migrated trip `past-X` again, as `past-past-X`: brought back under its own id, never a longer
+ * one (review of 11 Nov 2026: the ids grew on every round).
+ */
+export const tripIdOf = (tourId: string) => tourId.replace(/^(past-)+/, 'past-');
+
 /** The routes kept before 0.52.0 as trips, not planned, those already in `trips` left out. */
 export function tripsFromTours(tours: Tour[], trips: Trip[], now: Date): Trip[] {
   const have = new Set(trips.map((t) => t.id));
   return tours
-    .filter((x) => x.waypoints.length > 1 && !have.has(x.id))
-    .map((x) => newTrip(x.id, x, undefined, undefined, now));
+    .filter((x) => x.waypoints.length > 1)
+    .flatMap((x) => {
+      const id = tripIdOf(x.id);
+      if (have.has(id)) return [];
+      have.add(id);
+      return [newTrip(id, { ...x, id }, undefined, undefined, now)];
+    });
 }

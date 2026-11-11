@@ -49,7 +49,14 @@ export function untilAt(
   // The day after is the wrap past midnight, not a day chosen: only a later one is kept
   // (reported in review: 01:00 then 23:00 made a 25 h stay).
   const wasDay = was?.slice(0, 10);
-  const at = `${wasDay && wasDay > nextDay(base) ? wasDay : base}T${hm}`;
+  // A day chosen (on the date pill) is kept; the next day reached only by wrapping past midnight
+  // is not. A wrap gives a time before the arrival's, so a later one on the next day was chosen
+  // (review of 11 Nov 2026: Tue 21:00 chosen, retyped 21:30, became Mon).
+  const chosen =
+    !!wasDay &&
+    wasDay > base &&
+    (wasDay > nextDay(base) || !arrived || was!.slice(11, 16) >= arrived.slice(11, 16));
+  const at = `${chosen ? wasDay : base}T${hm}`;
   return arrived && at < arrived ? `${nextDay(base)}T${hm}` : at;
 }
 

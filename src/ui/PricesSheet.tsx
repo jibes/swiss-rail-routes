@@ -92,6 +92,7 @@ export function PricesSheet({
                   {l.from} → {l.to}
                   {/* Opens sbb.ch, outside the app (review of 11 Nov 2026: no cue it leaves). */}
                   <Icon name="external" size={14} />
+                  <span className="sr-only">{t('opensOutside')}</span>
                 </span>
                 <span className="r-sub">{t('pricesLeg', { time: hhmm(l.dep) })}</span>
                 {fares && priceLines(fares[i] ?? 'none')}

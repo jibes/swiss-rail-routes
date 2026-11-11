@@ -43,14 +43,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet public/data src/data/ga.json; then
+          # New files count too (a format bumped writes another name): staged, then compared.
+          git add -A public/data src/data/ga.json
+          if git diff --cached --quiet; then
             echo "No change"; exit 0
           fi
           title="Data: stops $(jq -r .date public/data/stops.v1.json), GA $(jq -r .version src/data/ga.json)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -B data
-          git commit -am "$title"
+          git commit -m "$title"
           # The bot's own branch: replaced on every run that finds a change.
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
           if [ -z "$(gh pr list --head data --state open --json number --jq '.[0].number')" ]; then

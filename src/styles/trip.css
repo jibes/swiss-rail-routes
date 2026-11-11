@@ -445,6 +445,9 @@
 }
 
 .add-sheet .result {
+  /* Full width also inside a fold, whose content is no grid (second audit: dividers stopped
+     at the text). */
+  width: 100%;
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   gap: 2px 10px;

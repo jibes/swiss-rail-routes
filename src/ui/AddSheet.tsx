@@ -399,7 +399,7 @@ export function AddSheet({
               ))}
             </>
           )}
-          {!folded && trips.length > 0 && <h3 className="section-label">{t('yourTrips')}</h3>}
+          {!folded && trips.length > 0 && <h3 className="section-label">{t('pastTrips')}</h3>}
           {!folded && tripRows}
           {!folded && !linesFirst && lineList}
           {folded && recent.length > 0 && (
@@ -430,7 +430,7 @@ export function AddSheet({
           {folded && trips.length > 0 && (
             <details className="fold" open={recent.length === 0 || undefined}>
               <summary>
-                <h3 className="section-label">{t('yourTrips')}</h3>
+                <h3 className="section-label">{t('pastTrips')}</h3>
                 <span className="fold-n">{trips.length}</span>
               </summary>
               {tripRows}

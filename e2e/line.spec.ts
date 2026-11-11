@@ -153,7 +153,7 @@ test('a trip over stays a trip: in past trips, editable, its stations offered ag
   await page.getByRole('button', { name: 'New trip' }).click();
   const sheet = page.locator('.add-sheet');
   await expect(sheet.locator('.result.recent')).toHaveText([/^Arosa/, /^Chur/]);
-  await page.getByRole('heading', { name: 'Your trips' }).click();
+  await page.getByRole('heading', { name: 'Past trips' }).click();
   await page.getByRole('button', { name: /^Chur → Arosa/ }).click();
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Chur/, /^Arosa/]);
   await expect(page.getByLabel('Date')).toHaveValue('2026-11-08');
@@ -549,7 +549,7 @@ test('your trips say where they went; stations you entered come first', async ({
   await page.getByRole('button', { name: 'New trip' }).click();
   const sheet = page.locator('.add-sheet');
   await expect(sheet.locator('.result.recent').first()).toHaveText(/^Chur/);
-  await page.getByRole('heading', { name: 'Your trips' }).click();
+  await page.getByRole('heading', { name: 'Past trips' }).click();
   await expect(sheet.locator('.result.trip .r-name')).toHaveText(['Chur ↺ Thusis']);
   // Picked once, first next time: typed and chosen, then offered at the top.
   await pick(page, 'Landquart');
