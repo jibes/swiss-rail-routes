@@ -1,8 +1,7 @@
 // Where each station's name goes on the map (audit, 11 Nov 2026): kept apart from the others and,
-// where it can be, off the route's line, the weather's icons and other stations (`placeLabels`).
+// where it can be, off the route's line and other stations (`placeLabels`).
 import type * as maplibregl from 'maplibre-gl';
 import { DOT_GAP, placeLabels, type Box, type Side } from '../core/mapLabels';
-import type { WeatherMap } from '../core/weatherMap';
 
 type At = [number, number];
 
@@ -29,13 +28,7 @@ function offsetOf(side: Side, w: number, h: number): [number, number] {
   return [-DOT_GAP - w / 2, 0];
 }
 
-export function placeNames(
-  map: maplibregl.Map,
-  names: MapName[],
-  lines: Lines,
-  dots: At[],
-  weather: WeatherMap | null,
-) {
+export function placeNames(map: maplibregl.Map, names: MapName[], lines: Lines, dots: At[]) {
   const pt = (c: At): At => {
     const p = map.project(c);
     return [p.x, p.y];
@@ -50,19 +43,6 @@ export function placeNames(
     const [x, y] = pt(c);
     return { x: x - DOT, y: y - DOT, w: 2 * DOT, h: 2 * DOT };
   });
-  // As `addWeatherLayers` draws them: a column 12 × 42 px standing 10 px above its station from
-  // zoom 7, the sky 32 px square 8 px right of its stop from zoom 8.
-  const zoom = map.getZoom();
-  if (weather && zoom >= 7)
-    for (const f of weather.rain.features) {
-      const [x, y] = pt(f.geometry.coordinates as At);
-      boxes.push({ x: x - 6, y: y - 52, w: 12, h: 42 });
-    }
-  if (weather && zoom >= 8)
-    for (const f of weather.sky.features) {
-      const [x, y] = pt(f.geometry.coordinates as At);
-      boxes.push({ x: x + 8, y: y - 16, w: 32, h: 32 });
-    }
   const labels = names.map((n) => {
     const [x, y] = pt(n.at);
     return { x, y, w: n.el.offsetWidth, h: n.el.offsetHeight, optional: n.optional };

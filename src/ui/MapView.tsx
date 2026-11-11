@@ -5,8 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import { toProtocol } from '../core/mapCache';
 import { mapData, styleFont } from '../core/mapdata';
-import { useFocusStop } from './focusStop';
-import { log } from '../io/log';
 import { useDark } from './useDark';
 import { inPage, plain, registerMapProtocol, styleOf } from './mapBase';
 export { MAP_STYLE } from './mapBase';
@@ -16,12 +14,6 @@ import { stopKey } from '../core/stops';
 import { isLive, isPlanned } from '../core/trip';
 import { mapName } from '../core/mapLabels';
 import { placeNames, type MapName } from './mapNames';
-import { plannedRows } from '../core/rows';
-import { placeWith, tempText } from '../core/weather';
-import { weatherMap, type WeatherMap } from '../core/weatherMap';
-import { addWeatherLayers, setWeather } from './mapWeather';
-import { weatherWords } from './WeatherCell';
-import { useWeather } from './useWeather';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { usePrefs, useT } from '../store';
@@ -95,7 +87,7 @@ function waveGradient(p: number, dark: boolean): maplibregl.ExpressionSpecificat
   ];
 }
 
-const focusPoint = (p: [number, number] | null) => ({
+const emptyPoints = (p: [number, number] | null) => ({
   type: 'FeatureCollection' as const,
   features: p
     ? [
@@ -108,24 +100,6 @@ const focusPoint = (p: [number, number] | null) => ({
     : [],
 });
 
-/** A station's temperature by its key, else by its name (`<key>\n<name>`). */
-function tempAt(temps: Map<string, number>, both: string) {
-  const [key, name] = both.split('\n');
-  return temps.get(key!) ?? temps.get(`name:${name}`);
-}
-
-/** A name on the map with the temperature there after it, muted (none without one). */
-function showTemp(el: HTMLElement, c: number | undefined) {
-  let span = el.querySelector<HTMLElement>('.map-temp');
-  if (c === undefined) return span?.remove();
-  if (!span) {
-    span = document.createElement('span');
-    span.className = 'map-temp';
-    el.append(span);
-  }
-  span.textContent = ` ${tempText(c)}`;
-}
-
 /** A trip's map: its saved connections, or its last plan while it has none. */
 export default function MapView({ id }: { id: string }) {
   const t = useT();
@@ -133,14 +107,6 @@ export default function MapView({ id }: { id: string }) {
   const tour = trip?.route;
   const tripChain = trip?.chain?.connections;
   const box = useRef<HTMLDivElement>(null);
-  // The station names on the map, by key, and the temperature at each (0.38.0).
-  const nameEls = useRef(new Map<string, HTMLElement>());
-  /** Keeps the names apart again (a temperature added widens one). */
-  const declutterNames = useRef<() => void>(() => undefined);
-  const temps = useRef(new Map<string, number>());
-  /** The weather drawn, for the names to keep off it. */
-  const wxDrawn = useRef<WeatherMap | null>(null);
-  const wxSig = useRef('');
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
   const [straight, setStraight] = useState(false);
@@ -228,14 +194,13 @@ export default function MapView({ id }: { id: string }) {
       map.on('pitch', turned);
       map.on('load', () => {
         if (!map) return;
-        const empty = focusPoint(null);
+        const empty = emptyPoints(null);
         // Line metrics: the wave runs along the line by its progress while the trip is planned.
         map.addSource('lines', { type: 'geojson', data: empty, lineMetrics: true });
         map.addSource('stops', { type: 'geojson', data: empty });
         map.addSource('changes', { type: 'geojson', data: empty });
         map.addSource('highlights', { type: 'geojson', data: empty });
         map.addSource('accuracy', { type: 'geojson', data: accuracyArea(null) });
-        map.addSource('focus', { type: 'geojson', data: empty });
         map.addLayer({
           id: 'accuracy',
           type: 'fill',
@@ -304,19 +269,6 @@ export default function MapView({ id }: { id: string }) {
             'circle-stroke-width': 2,
           },
         });
-        // The station the pointer is on in the trip beside the map (desktop columns).
-        map.addLayer({
-          id: 'focus',
-          type: 'circle',
-          source: 'focus',
-          paint: {
-            'circle-radius': 13,
-            'circle-color': 'rgba(0,0,0,0)',
-            'circle-stroke-color': ACCENT,
-            'circle-stroke-width': 3,
-          },
-        });
-        addWeatherLayers(map, dark);
         // Names need the style's fonts: none on the plain ground (the highlights still show).
         if (style) {
           map.addLayer({
@@ -360,7 +312,6 @@ export default function MapView({ id }: { id: string }) {
     let gone = false;
     let declutter: (() => void) | null = null;
     const names: maplibregl.Marker[] = [];
-    nameEls.current = new Map();
     (async () => {
       const [index, plans] = await Promise.all([stopSearch(), loadPlans()]);
       if (gone) return;
@@ -392,9 +343,6 @@ export default function MapView({ id }: { id: string }) {
         // A change the plan chose: named too, smaller.
         el.className = f.properties.change ? 'map-name change' : 'map-name';
         el.textContent = mapName(String(f.properties.name ?? ''));
-        const key = `${String(f.properties.key)}\n${String(f.properties.name)}`;
-        nameEls.current.set(key, el);
-        showTemp(el, tempAt(temps.current, key));
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
           .setLngLat(f.geometry.coordinates)
           .addTo(map);
@@ -418,10 +366,9 @@ export default function MapView({ id }: { id: string }) {
       const dots = [...d.stops.features, ...d.changes.features, ...d.highlights.features].map(
         (f) => f.geometry.coordinates as [number, number],
       );
-      const keepApart = () => placeNames(map, placed, d.lines, dots, wxDrawn.current);
+      const keepApart = () => placeNames(map, placed, d.lines, dots);
       keepApart();
       declutter = keepApart;
-      declutterNames.current = keepApart;
       map.on('moveend', keepApart);
     })().catch(() => setFailed(true));
     return () => {
@@ -430,101 +377,6 @@ export default function MapView({ id }: { id: string }) {
       for (const m of names) m.remove();
     };
   }, [map, json, id, lang]);
-
-  // The weather (0.38.0): the line's own answer (the same question, kept), drawn on the map;
-  // each named station's temperature after its name.
-  const rows = useMemo(
-    () => (tour && tripChain ? plannedRows(tour, tripChain) : []),
-    [tour, tripChain],
-  );
-  const weather = useWeather(rows, rows.length > 0);
-  const wx = weather && 'rows' in weather ? weather : null;
-  const wmap = useMemo(
-    () =>
-      wx && index
-        ? weatherMap(
-            rows,
-            wx.rows,
-            placeWith((r) => {
-              const s = index.byRef(r);
-              return s ? { lat: s.lat, lon: s.lon } : undefined;
-            }, rows),
-            now,
-          )
-        : null,
-    [wx, index, rows, now],
-  );
-  useEffect(() => {
-    temps.current = wmap?.temps ?? new Map();
-    // Placed again only when what the names keep off changed: the clock rebuilds the weather
-    // every 15 s, mostly the same (third audit: every route point projected again each time).
-    const sig = wmap
-      ? JSON.stringify([[...wmap.temps], wmap.rain.features.length, wmap.sky.features.length])
-      : '';
-    const changed = sig !== wxSig.current;
-    wxSig.current = sig;
-    wxDrawn.current = wmap;
-    if (changed) {
-      for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
-      declutterNames.current();
-    }
-    if (map) setWeather(map, wmap);
-  }, [map, wmap]);
-  // A tap on a column or an icon: the line's own words for it.
-  useEffect(() => {
-    if (!map || !wx) return;
-    let pop: maplibregl.Popup | null = null;
-    const open = (e: maplibregl.MapLayerMouseEvent) => {
-      const f = e.features?.[0];
-      const r = f && rows[Number(f.properties.row)];
-      const w = f && wx.rows[Number(f.properties.row)];
-      if (!r || !w || f.geometry.type !== 'Point') return;
-      const words =
-        r.type === 'station'
-          ? weatherWords(t, w, r.name, r.arr ?? r.dep, wx.source, wx.at)
-          : weatherWords(
-              t,
-              w,
-              `${r.section.from.name} – ${r.section.to.name}`,
-              r.section.from.dep,
-              wx.source,
-              wx.at,
-              true,
-            );
-      const el = document.createElement('div');
-      el.setAttribute('role', 'status');
-      const b = document.createElement('b');
-      b.textContent = words.title;
-      el.append(b);
-      for (const d of words.detail) {
-        const line = document.createElement('span');
-        line.textContent = d;
-        el.append(line);
-      }
-      pop?.remove();
-      pop = new maplibregl.Popup({ closeButton: false, className: 'wx-pop', offset: 12 })
-        .setLngLat(f.geometry.coordinates as [number, number])
-        .setDOMContent(el)
-        .addTo(map);
-      log('weather.map.tap', { row: Number(f.properties.row), type: r.type });
-    };
-    const pointer = () => (map.getCanvas().style.cursor = 'pointer');
-    const plain = () => (map.getCanvas().style.cursor = '');
-    for (const id of ['wx-rain', 'wx-sky']) {
-      map.on('click', id, open);
-      map.on('mouseenter', id, pointer);
-      map.on('mouseleave', id, plain);
-    }
-    return () => {
-      pop?.remove();
-      for (const id of ['wx-rain', 'wx-sky']) {
-        map.off('click', id, open);
-        map.off('mouseenter', id, pointer);
-        map.off('mouseleave', id, plain);
-      }
-      plain();
-    };
-  }, [map, wx, rows, t]);
 
   // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
   // the timetable comes (at most WAVE_MS, so offline it does not run on for good).
@@ -581,15 +433,6 @@ export default function MapView({ id }: { id: string }) {
   useEffect(() => {
     marker.current?.setLngLat([lon, lat]);
   }, [map, placed, source, hereLabel, lon, lat]);
-  const focus = useFocusStop((s) => s.key);
-  const focusAt = focus && index ? index.byRef(focus) : undefined;
-  const fLon = focusAt?.lon;
-  const fLat = focusAt?.lat;
-  useEffect(() => {
-    map
-      ?.getSource<maplibregl.GeoJSONSource>('focus')
-      ?.setData(focusPoint(fLon !== undefined && fLat !== undefined ? [fLon, fLat] : null));
-  }, [map, fLon, fLat]);
   const shownFix = shown?.source === 'location' ? shown.fix : null;
   useEffect(() => {
     map?.getSource<maplibregl.GeoJSONSource>('accuracy')?.setData(accuracyArea(shownFix));

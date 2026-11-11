@@ -149,6 +149,7 @@ export const it = {
   discardChanges: 'Annulla',
   sharedTrip: 'Qualcuno ha condiviso questo viaggio con te, così come è pianificato.',
   saveToTrips: 'Salva viaggio',
+  sendLink: 'Invia il link',
   shareTrip: 'Condividi viaggio',
   change: 'Cambia',
   nChannel: 'Avvisi di viaggio',

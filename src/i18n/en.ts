@@ -143,6 +143,7 @@ export const en = {
   discardChanges: 'Discard',
   sharedTrip: 'Someone shared this trip with you, as they planned it.',
   saveToTrips: 'Save trip',
+  sendLink: 'Send link',
   shareTrip: 'Share trip',
   change: 'Change',
   nChannel: 'Trip alerts',

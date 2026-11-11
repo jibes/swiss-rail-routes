@@ -1,4 +1,4 @@
-// A modal sheet's focus (AddSheet, RunSheet, PricesSheet): it goes in when the sheet opens,
+// A modal sheet's focus (AddSheet, ShareSheet): it goes in when the sheet opens,
 // stays inside while Tab moves, and goes back to where it was when the sheet closes (review of
 // 11 Nov 2026: Prices and the whole run left it behind the scrim).
 import { useEffect, type KeyboardEvent, type RefObject } from 'react';

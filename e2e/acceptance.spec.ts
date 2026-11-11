@@ -81,14 +81,15 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
       expect(await rail('.trip-line .ride:not(.walk)')).toBe('none');
     }
 
-    // The calendar from the menu: one event per train; the map shows the trip and goes back.
+    // The calendar from Share: one event per train; the map shows the trip and goes back.
     const rides = await page.locator('.trip-line .ride:not(.walk)').count();
-    await page.getByRole('button', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Share trip' }).click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: /Calendar/ }).click();
     const ics = readFileSync((await (await download).path())!, 'utf8');
     expect(ics.match(/^BEGIN:VEVENT/gm)?.length, 'events in the .ics').toBe(rides);
     expect(ics).toContain('END:VCALENDAR');
+    await page.getByRole('button', { name: 'Close' }).click();
     await page.getByRole('button', { name: 'Map' }).click();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
     await page.getByRole('button', { name: 'Back', exact: true }).click();

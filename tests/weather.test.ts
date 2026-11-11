@@ -9,7 +9,6 @@ import {
   weatherDays,
   weatherPoints,
 } from '../src/core/weather';
-import { weatherMap } from '../src/core/weatherMap';
 import { conn, index, ride } from './helpers/timetable';
 
 // Open-Meteo's answer for two places (its documented form: one object each, in the order asked).
@@ -116,7 +115,7 @@ describe('a recorded Open-Meteo answer (through the Worker, 6 Nov 2026)', () => 
   });
 });
 
-describe('the sky in words and on the map (0.38.0)', () => {
+describe('the sky in words (0.38.0)', () => {
   it('four kinds of sky; temperatures with a true minus sign', () => {
     expect(skyKind({ cloud: 0.1, rain: 0, day: true })).toBe('sun');
     expect(skyKind({ cloud: 0.5, rain: 0, day: true })).toBe('part');
@@ -125,51 +124,6 @@ describe('the sky in words and on the map (0.38.0)', () => {
     expect(tempText(-2.4)).toBe('\u22122°');
     expect(tempText(-0.4)).toBe('0°');
     expect(tempText(12.6)).toBe('13°');
-  });
-
-  const place = (ref: string) => {
-    const s = index.byRef(ref);
-    return s && { lat: s.lat, lon: s.lon };
-  };
-  const bernina = ride('R 1631', [
-    ['St. Moritz', '12:15'],
-    ['Poschiavo', '13:58'],
-    ['Tirano', '14:32'],
-  ]);
-  const rows: LineRow[] = [
-    {
-      type: 'station',
-      name: 'St. Moritz',
-      key: bernina.from.stopRef,
-      role: 'start',
-      dep: bernina.from.dep,
-    },
-    { type: 'ride', section: bernina, leg: 0, sectionIndex: 0 },
-    { type: 'station', name: 'Tirano', key: bernina.to.stopRef, role: 'end', arr: bernina.to.arr },
-  ];
-
-  it('rain above the stations where it is likely, the ride’s sky by its middle stop, temperatures by key', () => {
-    const w = [
-      { cloud: 0.1, rain: 0.05, day: true, temp: -2 },
-      { cloud: 0.5, rain: 0.7, day: true },
-      { cloud: 0.9, rain: 0.66, day: false, temp: 9 },
-    ];
-    const m = weatherMap(rows, w, place, Date.parse(bernina.from.dep!) + 60_000);
-    // Dry St. Moritz has no column; Tirano 7 tenths, at night.
-    expect(m.rain.features.map((x) => x.properties)).toEqual([
-      { row: 2, tenths: 7, day: false, past: false },
-    ]);
-    const p = place(bernina.intermediate[0]!.stopRef)!;
-    expect(m.sky.features).toEqual([
-      {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-        properties: { row: 1, kind: 'part', past: false },
-      },
-    ]);
-    expect(m.temps.get(bernina.from.stopRef)).toBe(-2);
-    expect(m.temps.get(bernina.to.stopRef)).toBe(9);
-    expect(m.temps.get('name:Tirano')).toBe(9);
   });
 });
 

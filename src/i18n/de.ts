@@ -148,6 +148,7 @@ export const de = {
   discardChanges: 'Verwerfen',
   sharedTrip: 'Jemand hat diese Reise mit dir geteilt, so wie sie geplant ist.',
   saveToTrips: 'Reise speichern',
+  sendLink: 'Link senden',
   shareTrip: 'Reise teilen',
   change: 'Ändern',
   nChannel: 'Reise-Hinweise',

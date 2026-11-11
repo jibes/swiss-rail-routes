@@ -21,8 +21,7 @@ import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
-import { downloadIcs, ShareButton } from './ExportSheet';
-import { reloadTrip, shareHash } from '../io/refresh';
+import { reloadTrip } from '../io/refresh';
 import { PullReload, saidOf, useReload } from './PullReload';
 import { longDate, nextFive, shiftHm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
@@ -30,7 +29,7 @@ import { TripLine } from './TripLine';
 import { TripLive } from './TripLive';
 import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
-import { PricesSheet } from './PricesSheet';
+import { ShareSheet } from './ShareSheet';
 import { PlanNotices } from './PlanNotices';
 import { TripFacts } from './TripFacts';
 import { go } from './useHash';
@@ -160,11 +159,12 @@ export function TripScreen({ id }: { id: string }) {
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
   const [prices, setPrices] = useState(false);
-  // The menu item that opened it is gone with the menu: focus goes back to More.
+  // Closed, focus goes back to the button that opened it.
   const moreButton = useRef<HTMLButtonElement>(null);
+  const shareButton = useRef<HTMLButtonElement>(null);
   const closePrices = useCallback(() => {
     setPrices(false);
-    setTimeout(() => moreButton.current?.focus(), 0);
+    setTimeout(() => shareButton.current?.focus(), 0);
   }, []);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeMenu = useCallback(() => setMenu(false), []);
@@ -300,14 +300,21 @@ export function TripScreen({ id }: { id: string }) {
         >
           <Icon name="map" />
         </button>
-        {isPlanned(trip) ? (
-          <ShareButton label={t('shareTrip')} title={name} hash={() => shareHash(trip)} />
-        ) : (
-          // Its place kept until the trip has a timetable: the icons do not move.
-          <button type="button" className="icon" aria-label={t('shareTrip')} disabled>
-            <Icon name="share" />
-          </button>
-        )}
+        {/* What leaves the app, in one sheet (0.61.0): link, calendar, print, prices on SBB.
+            Its place kept until the trip has a timetable: the icons do not move. */}
+        <button
+          ref={shareButton}
+          type="button"
+          className="icon"
+          aria-label={t('shareTrip')}
+          disabled={!isPlanned(trip)}
+          onClick={() => {
+            log('trip.share', { trip: id });
+            setPrices(true);
+          }}
+        >
+          <Icon name="share" />
+        </button>
         <button
           ref={moreButton}
           type="button"
@@ -336,46 +343,6 @@ export function TripScreen({ id }: { id: string }) {
               >
                 <Icon name="refresh" size={18} />
                 {t('reloadTrip')}
-              </button>
-            )}
-            {isPlanned(trip) && (
-              <button
-                type="button"
-                onClick={() => {
-                  log('export.ics', { trip: id });
-                  downloadIcs(route, name, trip.chain, trip.id);
-                  setMenu(false);
-                }}
-              >
-                <Icon name="calendar" size={18} />
-                {t('calendar')}
-              </button>
-            )}
-            {isPlanned(trip) && (
-              <button
-                type="button"
-                onClick={() => {
-                  log('trip.print', { trip: id });
-                  setMenu(false);
-                  // After the menu has gone, so it is not on the page.
-                  requestAnimationFrame(() => window.print());
-                }}
-              >
-                <Icon name="print" size={18} />
-                {t('print')}
-              </button>
-            )}
-            {isPlanned(trip) && (
-              <button
-                type="button"
-                onClick={() => {
-                  log('trip.prices', { trip: id });
-                  setMenu(false);
-                  setPrices(true);
-                }}
-              >
-                <Icon name="ticket" size={18} />
-                {t('pricesOnSbb')}
               </button>
             )}
             {
@@ -549,9 +516,7 @@ export function TripScreen({ id }: { id: string }) {
           onClose={closeSheet}
         />
       )}
-      {prices && trip.chain && (
-        <PricesSheet connections={trip.chain.connections} onClose={closePrices} />
-      )}
+      {prices && isPlanned(trip) && <ShareSheet trip={trip} name={name} onClose={closePrices} />}
     </main>
   );
 }

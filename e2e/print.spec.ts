@@ -9,17 +9,17 @@ const tours = acceptanceTours(FIXTURE_DATE);
 test('a trip printed: its name, times and line, no controls', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
   await planShared(page, encodeTour({ ...tours.T5!, name: 'T5' }));
-  // The menu offers it and calls the browser's own print.
+  // Share offers it and calls the browser's own print.
   await page.evaluate(() => {
     (window as unknown as { printed: number }).printed = 0;
     window.print = () => void (window as unknown as { printed: number }).printed++;
   });
-  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('button', { name: 'Share trip' }).click();
   await page.getByRole('button', { name: 'Print' }).click();
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { printed: number }).printed))
     .toBe(1);
-  await expect(page.locator('.menu-scrim')).toHaveCount(0);
+  await expect(page.locator('.share-sheet')).toHaveCount(0);
 
   await page.emulateMedia({ media: 'print' });
   for (const sel of ['.bar', '.options-bar', '.trip-line .addrow'])

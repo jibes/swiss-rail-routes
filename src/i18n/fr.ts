@@ -150,6 +150,7 @@ export const fr = {
   discardChanges: 'Annuler',
   sharedTrip: 'Quelqu’un a partagé ce voyage avec toi, tel que planifié.',
   saveToTrips: 'Enregistrer le voyage',
+  sendLink: 'Envoyer le lien',
   shareTrip: 'Partager le voyage',
   change: 'Changer',
   nChannel: 'Alertes de voyage',

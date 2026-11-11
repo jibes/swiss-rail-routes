@@ -77,10 +77,11 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   const answer = recordAnswers(page);
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 shared' }));
 
-  // Share is in the header, visible, not under the dock.
+  // Share is in the header, visible, not under the dock; its sheet sends the link (0.61.0).
   const share = page.getByRole('button', { name: 'Share trip' });
   await expect(share).toBeInViewport();
   await share.click();
+  await page.getByRole('button', { name: 'Send link' }).click();
   await expect(page.getByRole('button', { name: 'Link copied' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toMatch(/#\/s\//);
@@ -119,6 +120,7 @@ test('the trains still show when the rest cannot be loaded; try again gets it', 
   const answer = recordAnswers(page);
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5 bare' }));
   await page.getByRole('button', { name: 'Share trip' }).click();
+  await page.getByRole('button', { name: 'Send link' }).click();
   await expect(page.getByRole('button', { name: 'Link copied' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
 

@@ -60,20 +60,6 @@ test('the weather stripe: a cell a row, bars where rain is likely, values on a t
   await expect(ride.locator('.wx-mid .wx-bar').first()).toBeVisible();
 });
 
-test('the weather on the map: each named station’s temperature after its name', async ({
-  page,
-}) => {
-  await page.clock.install({ time: BEFORE });
-  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T1!, name: 'Map wx' }));
-  await expect(page.getByRole('list', { name: 'The trip' })).toHaveClass(/\bwx\b/, {
-    timeout: 15_000,
-  });
-  await page.getByRole('button', { name: 'Map', exact: true }).click();
-  await expect(page.locator('.map-name .map-temp').first()).toHaveText(/^ (\u2212)?\d+°$/, {
-    timeout: 15_000,
-  });
-});
-
 test('a trip more than a week ahead: no stripe, the day the weather comes from', async ({
   page,
 }) => {
@@ -83,19 +69,6 @@ test('a trip more than a week ahead: no stripe, the day the weather comes from',
   const line = page.getByRole('list', { name: 'The trip' });
   await expect(line.locator('.wx-far')).toHaveText(/^Weather from /, { timeout: 15_000 });
   await expect(line.locator('.wx-cell')).toHaveCount(0);
-  // The tap card on the map: one line each (reported: all on one line, 0.38.0). The card is the
-  // map's popup round the line's words; its layout checked on one built as MapLibre builds it.
-  const display = await page.evaluate(() => {
-    const pop = document.createElement('div');
-    pop.className = 'maplibregl-popup wx-pop';
-    pop.innerHTML =
-      '<div class="maplibregl-popup-content"><div role="status"><b>A</b><span>B</span></div></div>';
-    document.body.append(pop);
-    const shown = getComputedStyle(pop.querySelector('[role=status]')!).display;
-    pop.remove();
-    return shown;
-  });
-  expect(display).toBe('grid');
 });
 
 // Reported, 0.40.0: under way the stripe dimmed row by row, a whole ride behind the train. Now
