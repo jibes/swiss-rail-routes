@@ -260,7 +260,9 @@
 }
 
 /* Where the train goes, as on the boards: shortened, never pushing platform or duration off. */
+/* Positioned, so its words for screen readers stay inside the clip, not past the page's edge. */
 .trip-line .ride .m .towards {
+  position: relative;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;

@@ -12,7 +12,6 @@ import {
   removeEntry,
   replaceEntry,
   setEntryStay,
-  setEntryLeaveBy,
   setEntryStayUntil,
   sameWayBack,
 } from '../core/line';
@@ -253,7 +252,6 @@ export function RestEditor({
         act={{
           replace: (k, s) => edit((r) => replaceEntry(r, k, s)),
           stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
-          leaveBy: (k, hm) => edit((r) => setEntryLeaveBy(r, k, hm)),
           stayUntil: (k, v) => edit((r) => setEntryStayUntil(r, k, v)),
           move: (from, to) => {
             edit((r) => moveEntry(r, from, to));

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
+  DEFAULT_STAY,
   dropLine,
   entriesOf,
   insertEntries,
@@ -8,7 +9,6 @@ import {
   removeEntry,
   replaceEntry,
   reverseRoute,
-  setEntryLeaveBy,
   setEntryStayUntil,
   setEntryStay,
   sameWayBack,
@@ -596,7 +596,6 @@ export function TripScreen({ id }: { id: string }) {
                 replace: (k: number, s: { stopRef: string; name: string }) =>
                   edit((r) => replaceEntry(r, k, s)),
                 stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
-                leaveBy: (k, hm) => edit((r) => setEntryLeaveBy(r, k, hm)),
                 stayUntil: (k, v) => edit((r) => setEntryStayUntil(r, k, v)),
                 move: (from, to) => {
                   edit((r) => moveEntry(r, from, to));
@@ -614,7 +613,7 @@ export function TripScreen({ id }: { id: string }) {
                   log('line.pin', { trip: id, after: k, then });
                   edit((r) => {
                     const x = insertEntries(r, k, [stationEntry(stop)]);
-                    return then === 'stay' ? setEntryStay(x, k + 1, 30) : x;
+                    return then === 'stay' ? setEntryStay(x, k + 1, DEFAULT_STAY) : x;
                   });
                   if (then === 'add') setSheet({ after: k + 1 });
                   else setOpen(k + 1);

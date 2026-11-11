@@ -368,13 +368,23 @@
   gap: 8px;
 }
 
-.panel .leave-by,
-.panel .stay-until {
+/* One row: − 90 min + until 16:30 📅. The one kept is in ink, the other follows it (muted). */
+.panel .stay-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 4px 12px;
+}
+
+.panel .stay-end {
+  display: flex;
+  align-items: center;
   gap: 4px;
-  margin-top: 8px;
+}
+
+.panel .stay-row .derived .stay-input input,
+.panel .stay-row .derived .when-field {
+  color: var(--ink-2);
 }
 
 .stay-input {

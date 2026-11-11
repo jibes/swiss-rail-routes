@@ -292,8 +292,11 @@ const NIGHT_ENDS = '03:00';
  */
 export function sameDayFirst(chains: PlannedChain[], tour: Tour): PlannedChain[] {
   const stays = tour.waypoints.reduce((m, w) => m + w.dwellMin, 0);
-  // Over several days by design (a stay until a later day): no day trip to keep to one day.
-  if (stays >= 12 * 60 || tour.waypoints.some((w) => w.stayUntil)) return chains;
+  // Over several days by design (a stay until a later day): no day trip to keep to one day. A
+  // stay until a time the same day (0.51.0, the panel's "until") is a day trip still.
+  const later = (w: Tour['waypoints'][number]) =>
+    !!w.stayUntil && w.stayUntil.slice(0, 10) > (tour.date ?? '');
+  if (stays >= 12 * 60 || tour.waypoints.some(later)) return chains;
   const nextDay = (c: PlannedChain) => {
     const dep = zurichLocal(ms(c.dep)).slice(0, 10);
     const arr = zurichLocal(ms(c.arr));

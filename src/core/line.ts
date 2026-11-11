@@ -234,14 +234,16 @@ export function setEntryStay<T extends Pick<Tour, 'waypoints'>>(
   const e = entriesOf(tour);
   const x = e[k];
   if (!x || k === 0 || k === e.length - 1) return tour;
-  // Riding through, there is no stay to end by a time.
+  // Riding through, there is no stay to end by a time. A length given is the stay's intent
+  // (0.51.0): a time it ended by (until, leave by) goes, as the panel says the two as one.
   const { leaveBy: _l, arriveAfter: _a, stayUntil: _u, ...through } = x.w;
+  const { leaveBy: _l2, stayUntil: _u2, ...kept } = x.w;
   e[k] = {
     ...x,
     w:
       stay === null
         ? { ...through, kind: 'via', dwellMin: 0 }
-        : { ...x.w, kind: 'stop', dwellMin: stay },
+        : { ...kept, kind: 'stop', dwellMin: stay },
   };
   return fromEntries(tour, e);
 }
@@ -268,7 +270,20 @@ export function dropLine<T extends Pick<Tour, 'waypoints'>>(tour: T, k: number):
   return fromEntries(tour, e);
 }
 
-/** Entry `k`'s stay to end at a date and time (`YYYY-MM-DDTHH:MM`), or as long as its stay. */
+/** A stay until a time: its length beside it, the least a stop can be. */
+export const UNTIL_DWELL = 1;
+/** A stay's length when it is first made, or when its time goes. */
+export const DEFAULT_STAY = 30;
+/** A stay's length once its time to end goes: the time's own length stood for nothing. */
+const lengthWithout = (w: Waypoint) =>
+  w.stayUntil && w.dwellMin <= UNTIL_DWELL ? DEFAULT_STAY : w.dwellMin;
+
+/**
+ * Entry `k`'s stay to end at a date and time (`YYYY-MM-DDTHH:MM`), or as long as its stay. A
+ * time given is the stay's intent (0.51.0): its length is then the least (`UNTIL_DWELL`), so the
+ * next train leaves at that time, or as soon as it can when the stop is reached later; a time to
+ * leave by goes.
+ */
 export function setEntryStayUntil<T extends Pick<Tour, 'waypoints'>>(
   tour: T,
   k: number,
@@ -278,7 +293,13 @@ export function setEntryStayUntil<T extends Pick<Tour, 'waypoints'>>(
   const x = e[k];
   if (!x || x.w.kind !== 'stop') return tour;
   const { stayUntil: _u, ...w } = x.w;
-  e[k] = { ...x, w: until ? { ...w, stayUntil: until } : w };
+  const { leaveBy: _l, ...timed } = w;
+  e[k] = {
+    ...x,
+    w: until
+      ? { ...timed, dwellMin: UNTIL_DWELL, stayUntil: until }
+      : { ...w, dwellMin: lengthWithout(x.w) },
+  };
   return fromEntries(tour, e);
 }
 
@@ -303,7 +324,7 @@ export function reverseRoute<T extends Pick<Tour, 'waypoints'>>(
       const next = e[k + 1];
       const into = next?.w.line;
       return {
-        w: { ...w, ...(into ? { line: into } : {}) },
+        w: { ...w, dwellMin: lengthWithout(x.w), ...(into ? { line: into } : {}) },
         rings: into ? [...next.rings].reverse() : [],
       };
     })

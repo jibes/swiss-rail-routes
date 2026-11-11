@@ -2,7 +2,14 @@
 // attraction closes), and a round trip's way back the fastest.
 import { describe, expect, it } from 'vitest';
 import { parseRoute } from '../src/core/export/routeLink';
-import { setEntryLeaveBy, setEntryStay, setEntryStayUntil } from '../src/core/line';
+import {
+  DEFAULT_STAY,
+  reverseRoute,
+  setEntryLeaveBy,
+  setEntryStay,
+  setEntryStayUntil,
+  UNTIL_DWELL,
+} from '../src/core/line';
 import { decodeTripLink, encodeTripLink } from '../src/core/export/tripLink';
 import type { Tour } from '../src/core/model';
 import { plan, sameDayFirst } from '../src/core/planner/plan';
@@ -161,6 +168,8 @@ describe('a stay until a date and time, over several days (0.44.0)', () => {
     // A day trip: the one back the same day only.
     expect(sameDayFirst([late, same], visit({}))).toEqual([same]);
     expect(sameDayFirst([late, same], visit({ stayUntil: '2026-11-09T08:00' }))).toHaveLength(2);
+    // Until a time the same day (0.51.0): still a day trip.
+    expect(sameDayFirst([late, same], visit({ stayUntil: `${DATE}T16:30` }))).toEqual([same]);
   });
 
   it('kept through storage, route links and trip links; riding through drops it', async () => {
@@ -184,6 +193,15 @@ describe('a stay until a date and time, over several days (0.44.0)', () => {
     expect(set.waypoints[1]!.stayUntil).toBe('2026-11-09T08:00');
     expect(setEntryStay(set, 1, null).waypoints[1]).not.toHaveProperty('stayUntil');
     expect(setEntryStayUntil(set, 1, null).waypoints[1]).not.toHaveProperty('stayUntil');
+    // One kept (0.51.0): a time sets the least length beside it; a length takes the time away.
+    expect(set.waypoints[1]!.dwellMin).toBe(UNTIL_DWELL);
+    expect(setEntryStay(set, 1, 45).waypoints[1]).toMatchObject({ kind: 'stop', dwellMin: 45 });
+    expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('stayUntil');
+    // Its time taken away (or reversed away), a stay is a stay's length again, not a minute.
+    expect(setEntryStayUntil(set, 1, null).waypoints[1]!.dwellMin).toBe(DEFAULT_STAY);
+    const back = reverseRoute(set);
+    expect(back.windowsDropped).toBe(true);
+    expect(back.tour.waypoints.find((w) => w.kind === 'stop')!.dwellMin).toBe(DEFAULT_STAY);
   });
 });
 
@@ -197,7 +215,9 @@ describe('editing the time to leave by', () => {
     expect(setEntryLeaveBy(t, 0, '17:30').waypoints[0]!.leaveBy).toBeUndefined();
     const through = setEntryStay(set, 1, null);
     expect(through.waypoints[1]).not.toHaveProperty('leaveBy');
-    expect(setEntryStay(set, 1, 45).waypoints[1]!.leaveBy).toBe('17:30');
+    // A length or a time set in the panel replaces it (0.51.0: the panel no longer offers it).
+    expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('leaveBy');
+    expect(setEntryStayUntil(set, 1, `${DATE}T17:00`).waypoints[1]).not.toHaveProperty('leaveBy');
   });
 });
 

@@ -1,18 +1,16 @@
-// A station of yours, opened (from TripLine.tsx): its name, ride through or stay (how long, and
-// by when), its scenic line, add after, up, down, remove; a pinned via says so and unpins.
+// A station of yours, opened (from TripLine.tsx): its name, ride through or stay (how long, or
+// until when: one row, StayRow.tsx), its scenic line, add after, up, down, remove; a pinned via says so and unpins.
+import { DEFAULT_STAY } from '../core/line';
 import { useT } from '../store';
 import { Icon } from './icons';
-import { LeaveBy } from './LeaveBy';
-import { StayUntil } from './StayUntil';
+import { StayRow } from './StayRow';
 import type { FindSubstitute } from './MissedNote';
 
 export interface LineActions {
   /** Entry `k` replaced by another station (a station missed: the nearest that works, Use). */
   replace: (k: number, stop: { stopRef: string; name: string }) => void;
   stay: (k: number, min: number | null) => void;
-  /** A stay's time to leave by (the place closes), or any time. */
-  leaveBy?: (k: number, hhmm: string | null) => void;
-  /** A stay until a date and time (several days), or as long as its length (null). */
+  /** A stay until a date and time (kept over its length), or as long as its length (null). */
   stayUntil?: (k: number, until: string | null) => void;
   move: (from: number, to: number) => void;
   remove: (k: number) => void;
@@ -27,19 +25,14 @@ export interface LineActions {
   pin?: (k: number, stop: { stopRef: string; name: string }, then?: 'stay' | 'add') => void;
 }
 
-/** A stay goes up and down in quarter hours; any length can be typed (to 10 h). */
-const STAY_STEP = 15;
-const STAY_MAX = 600;
-const clampStay = (m: number) => Math.min(STAY_MAX, Math.max(1, Math.round(m)));
-
 export function StationPanel({
   k,
   n,
   fixed,
   name,
   stay,
-  leaveBy,
   stayUntil,
+  arr,
   day,
   line,
   change,
@@ -57,8 +50,9 @@ export function StationPanel({
   fixed: number;
   name: string;
   stay: number | null;
-  leaveBy?: string;
   stayUntil?: string;
+  /** The plan's arrival here (ISO): a stay's length and end each said from the other. */
+  arr?: string;
   /** The trip's day: a stay until starts from it. */
   day: string;
   line: string;
@@ -121,18 +115,22 @@ export function StationPanel({
               type="button"
               className={`pill ${stay ? 'on' : ''}`}
               aria-pressed={!!stay}
-              onClick={() => !stay && act.stay(k, 30)}
+              onClick={() => !stay && act.stay(k, DEFAULT_STAY)}
             >
               {t('stayHere')}
             </button>
           </div>
           {stay === null && change && <p className="panel-note">{t('changeNeeded')}</p>}
-          {!!stay && <StayStepper k={k} name={name} stay={stay} act={act} />}
-          {!!stay && act.leaveBy && (
-            <LeaveBy name={name} value={leaveBy} set={(hm) => act.leaveBy!(k, hm)} />
-          )}
-          {!!stay && act.stayUntil && (
-            <StayUntil name={name} value={stayUntil} day={day} set={(v) => act.stayUntil!(k, v)} />
+          {!!stay && (
+            <StayRow
+              k={k}
+              name={name}
+              stay={stay}
+              until={stayUntil}
+              arr={arr}
+              day={day}
+              act={act}
+            />
           )}
         </>
       )}
@@ -201,68 +199,6 @@ export function StationPanel({
             </button>
           ))}
       </div>
-    </div>
-  );
-}
-
-/**
- * How long to stay: a quarter hour less or more, or the number typed (tap it). Saved when the
- * typing ends (Enter, leaving the field), not on every key: each change plans again.
- */
-function StayStepper({
-  k,
-  name,
-  stay,
-  act,
-}: {
-  k: number;
-  name: string;
-  stay: number;
-  act: LineActions;
-}) {
-  const t = useT();
-  const commit = (v: string) => {
-    const m = Number(v);
-    if (v.trim() && Number.isFinite(m) && m > 0 && clampStay(m) !== stay) act.stay(k, clampStay(m));
-  };
-  return (
-    <div className="stepper" role="group" aria-label={t('stayAtStop', { stop: name })}>
-      <button
-        type="button"
-        className="sq"
-        aria-label={t('stayShorter', { n: STAY_STEP })}
-        disabled={stay <= STAY_STEP}
-        onClick={() => act.stay(k, clampStay(stay - STAY_STEP))}
-      >
-        <Icon name="minus" size={18} />
-      </button>
-      <label className="stay-input">
-        <input
-          // A new value from the buttons replaces what was typed.
-          key={stay}
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={STAY_MAX}
-          defaultValue={stay}
-          aria-label={t('stayMinutes', { stop: name })}
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={(e) => commit(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur();
-          }}
-        />
-        <span aria-hidden="true">{t('minUnit')}</span>
-      </label>
-      <button
-        type="button"
-        className="sq"
-        aria-label={t('stayLonger', { n: STAY_STEP })}
-        disabled={stay >= STAY_MAX}
-        onClick={() => act.stay(k, clampStay(stay + STAY_STEP))}
-      >
-        <Icon name="plus" size={18} />
-      </button>
     </div>
   );
 }

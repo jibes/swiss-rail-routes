@@ -27,6 +27,7 @@ import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
 import { RunSheet } from './RunSheet';
 import { runsOn } from '../core/planner/connection';
+import { zurichLocal } from '../core/planner/plan';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
@@ -42,14 +43,19 @@ function stayLabel(
   t: ReturnType<typeof useT>,
   r: StationRow,
   leaveBy?: string,
-  until?: { at: string; lang: string },
+  until?: { at: string; lang: string; day?: string },
 ) {
   if (r.role !== 'stop' || !r.stay) return '';
-  // Until a date and time (several days): said as such, the length beside it moot.
-  if (until)
+  // Until a time: said as such, the length beside it moot; its day only when not the
+  // arrival's (else the trip's).
+  if (until) {
+    const day = (r.arr && zurichLocal(Date.parse(r.arr)).slice(0, 10)) || until.day;
+    const date = until.at.slice(0, 10);
+    const time = until.at.slice(11, 16);
     return t('stayTill', {
-      when: `${shortDate(until.at.slice(0, 10), until.lang)} ${until.at.slice(11, 16)}`,
+      when: date === day ? time : `${shortDate(date, until.lang)} ${time}`,
     });
+  }
   return leaveBy ? t('stayUntil', { min: r.stay, time: leaveBy }) : t('stayFor', { min: r.stay });
 }
 
@@ -226,7 +232,12 @@ export function TripLine({
     const k = act ? r.entry : undefined;
     const isOpen = k !== undefined && open === k;
     const w = r.entry !== undefined ? entries[r.entry]?.w : undefined;
-    const label = stayLabel(t, r, w?.leaveBy, w?.stayUntil ? { at: w.stayUntil, lang } : undefined);
+    const label = stayLabel(
+      t,
+      r,
+      w?.leaveBy,
+      w?.stayUntil ? { at: w.stayUntil, lang, day: route.date } : undefined,
+    );
     // Under way, a station ahead: a tap begins editing the rest there.
     const L = edit ? stationLive(rows, i, live) : undefined;
     if (k === undefined && edit && L && !L.passed && !L.here)
@@ -374,8 +385,8 @@ export function TripLine({
             fixed={fixedFirst ? 1 : 0}
             name={r.name}
             stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
-            leaveBy={entries[k]!.w.leaveBy}
             stayUntil={entries[k]!.w.stayUntil}
+            arr={r.arr}
             day={route.date ?? ''}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}

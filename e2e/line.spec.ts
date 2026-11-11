@@ -236,37 +236,45 @@ test('search: a line typed by its name comes first, a station named so stays fir
   await expect(page.locator('.trip-line .station.entry').first()).not.toContainText('Bernina');
 });
 
-test('a stay with a time to leave by: set, kept after reload, taken off', async ({ page }) => {
+// One row (0.51.0): how long and until when, each filled from the other; the one set last kept.
+test('a stay as length or until: either sets it, kept after reload', async ({ page }) => {
   await page.clock.install({ time: BEFORE });
   allowUnrecorded(page);
   await newTrip(page, 'zürich hb', 'luzern', 'bern');
   const entries = page.getByRole('list', { name: 'The trip' }).locator('.station.entry');
   await entries.nth(1).getByRole('button').first().click();
-  // Only a stay has a time to leave by.
-  await expect(page.getByLabel('Leave Luzern by')).toHaveCount(0);
+  // Only a stay has a length and an end; no time to leave by any more.
+  await expect(page.locator('.panel .stay-row')).toHaveCount(0);
   await page
     .getByRole('group', { name: 'At this station' })
     .getByRole('button', { name: 'Stay', exact: true })
     .click();
-  await expect(page.locator('.panel .leave-by')).toContainText('Leave by Any time');
-  const field = page.getByLabel('Leave Luzern by');
-  await field.fill('17:30');
-  await field.press('Enter');
-  await expect(page.locator('.panel .leave-by')).toContainText('Leave by 17:30');
-  // The line says it without the panel.
-  await expect(entries.nth(1)).toContainText('Stay 30 min, by 17:30');
+  const row = page.getByRole('group', { name: 'Stay at Luzern' });
+  await expect(row.getByLabel('Minutes at Luzern')).toHaveValue('30');
+  await expect(page.getByLabel(/Leave Luzern by/)).toHaveCount(0);
+  const until = row.getByLabel('Stay at Luzern until (time)');
+  await until.fill('17:30');
+  await until.press('Enter');
+  // The line says the time; the day only when it is not the arrival's.
+  await expect(entries.nth(1)).toContainText('Stay until 17:30');
+  await expect(row.locator('.stay-end')).not.toHaveClass(/derived/);
+  await expect(row.locator('.stepper')).toHaveClass(/derived/);
 
   await page.reload();
+  await expect(entries.nth(1)).toContainText('Stay until 17:30');
   await entries.nth(1).getByRole('button').first().click();
-  await expect(page.locator('.panel .leave-by')).toContainText('Leave by 17:30');
-  await page.getByRole('button', { name: 'Leave Luzern at any time' }).click();
-  await expect(page.locator('.panel .leave-by')).toContainText('Leave by Any time');
-  // Riding through again, the time goes with the stay.
+  // A length typed is kept instead: the time goes.
+  const minutes = row.getByLabel('Minutes at Luzern');
+  await minutes.fill('45');
+  await minutes.press('Enter');
+  await expect(entries.nth(1)).toContainText('Stay 45 min');
+  await expect(row.locator('.stepper')).not.toHaveClass(/derived/);
+  // Riding through, both go with the stay.
   await page
     .getByRole('group', { name: 'At this station' })
     .getByRole('button', { name: 'No stop' })
     .click();
-  await expect(page.locator('.panel .leave-by')).toHaveCount(0);
+  await expect(page.locator('.panel .stay-row')).toHaveCount(0);
 });
 
 // Reported on the MCP (5 Nov 2026): "Swissminiatur" found only its pier. A place people go to
@@ -299,17 +307,17 @@ test('reverse direction: the loop the other way, the line with it, a window said
   const line = page.getByRole('list', { name: 'The trip' });
   const entries = line.locator('.station.entry');
   await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
-  // A stay at Luzern, to leave by 17:30.
+  // A stay at Luzern until 17:30.
   await entries.nth(1).getByRole('button').first().click();
   await page
     .getByRole('group', { name: 'At this station' })
     .getByRole('button', { name: 'Stay', exact: true })
     .click();
-  const field = page.getByLabel('Leave Luzern by');
+  const field = page.getByLabel('Stay at Luzern until (time)');
   await field.fill('17:30');
   await field.press('Enter');
   await page.keyboard.press('Escape');
-  await expect(entries.nth(1)).toContainText('by 17:30');
+  await expect(entries.nth(1)).toContainText('until 17:30');
   const ringsOut = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
   expect(ringsOut.length).toBeGreaterThan(0);
 
@@ -320,7 +328,7 @@ test('reverse direction: the loop the other way, the line with it, a window said
   const ringsBack = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
   expect(ringsBack).toEqual([...ringsOut].reverse());
   await expect(entries.nth(2)).toContainText('Stay 30 min');
-  await expect(entries.nth(2)).not.toContainText('by 17:30');
+  await expect(entries.nth(2)).not.toContainText('17:30');
   await expect(
     page.getByRole('status').filter({ hasText: 'Stay time windows removed' }),
   ).toBeVisible();
@@ -394,6 +402,31 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   // Start and end: no train to wait between.
   await expect(line.locator(':scope > li.station').first().locator('.offtrain')).toHaveCount(0);
   await expect(line.locator(':scope > li.station').last().locator('.offtrain')).toHaveCount(0);
+
+  // Nothing moves the page sideways (reported on 0.50.1: a long "→ Genève-Aéroport" left its
+  // words for screen readers past the edge, and a finger panned the page to them).
+  const sideways = await page.evaluate(() => {
+    scrollTo(300, scrollY);
+    // Clipped with the name: held by it, not by the page.
+    const outside = [...document.querySelectorAll<HTMLElement>('.towards .sr-only')].filter(
+      (sr) => !sr.offsetParent?.classList.contains('towards'),
+    ).length;
+    return { x: scrollX, outside };
+  });
+  expect(sideways).toEqual({ x: 0, outside: 0 });
+
+  // A stay's row (0.51.0): its end is the plan's arrival and its length, said beside it.
+  const grum = line
+    .locator(':scope > li.station.entry')
+    .filter({ has: page.locator('.n', { hasText: /^Alp Grüm/ }) });
+  const arr = (await grum.locator(':scope > .t').first().innerText()).match(/\d\d:\d\d/)![0];
+  await grum.getByRole('button').first().click();
+  const stay = page.getByRole('group', { name: 'Stay at Alp Grüm' });
+  await expect(stay.getByLabel('Minutes at Alp Grüm')).toHaveValue('30');
+  const [h, m] = arr.split(':').map(Number) as [number, number];
+  const end = `${String(Math.floor((h * 60 + m + 30) / 60)).padStart(2, '0')}:${String((m + 30) % 60).padStart(2, '0')}`;
+  await expect(stay.locator('.stay-end .when-field').first()).toContainText(end);
+  await expect(stay.locator('.stay-end')).toHaveClass(/derived/);
 });
 
 // Over several days (0.44.0): a stay until a date and time, said on the line; kept after reload.
@@ -410,7 +443,8 @@ test('a stay until a date and time: set, said on the line, taken off', async ({ 
   const day = page.getByLabel('Stay at Luzern until (day)');
   await day.fill('2026-11-09');
   await day.press('Enter');
-  await expect(page.locator('.panel .stay-until')).toContainText(/Stay until .*9.*08:00/);
+  await expect(entries.nth(1)).toContainText(/Stay until .*9.*08:00/);
+  await expect(page.locator('.panel .stay-end')).toContainText(/9/);
   const time = page.getByLabel('Stay at Luzern until (time)');
   await time.fill('09:15');
   await time.press('Enter');
@@ -418,8 +452,11 @@ test('a stay until a date and time: set, said on the line, taken off', async ({ 
   await page.reload();
   await expect(entries.nth(1)).toContainText(/Stay until .*9.*09:15/);
   await entries.nth(1).getByRole('button').first().click();
-  await page.getByRole('button', { name: 'Stay at Luzern for its length only' }).click();
-  await expect(entries.nth(1)).toContainText('Stay 30 min');
+  // A length set takes the time away.
+  const minutes = page.getByLabel('Minutes at Luzern');
+  await minutes.fill('60');
+  await minutes.press('Enter');
+  await expect(entries.nth(1)).toContainText('Stay 60 min');
 });
 
 // Notifications per trip (0.44.0): ⋯ turns them off and on again; the trip keeps it (synced).

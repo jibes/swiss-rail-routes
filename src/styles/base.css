@@ -61,11 +61,17 @@
   box-sizing: border-box;
 }
 
+/* Nothing pushes the page sideways (a strip that scrolls on its own, a long name). On body alone
+   the viewport took it as hidden, which a finger could still pan (reported 0.50.1): the viewport
+   takes html's, and body clips what is in it. */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   min-height: 100dvh;
-  /* Nothing pushes the page sideways (a strip that scrolls on its own, a long name). */
-  overflow-x: clip;
 }
 
 h1,
