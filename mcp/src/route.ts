@@ -90,7 +90,12 @@ export function resolveWhen(
   // On today's date from now, unless a time is asked for: one gone is a trip already under way.
   return {
     date,
-    anchor: { departAt: departAt ?? (soon.slice(0, 10) === date ? soon.slice(11, 16) : '00:00') },
+    // Just before midnight "in 5 min" is tomorrow: from now, not from 00:00 today.
+    anchor: {
+      departAt:
+        departAt ??
+        (soon.slice(0, 10) === date ? soon.slice(11, 16) : zurichLocal(now).slice(11, 16)),
+    },
   };
 }
 
@@ -213,14 +218,20 @@ export function buildRoute(
 export function routeLinkOf(tour: Tour, publicUrl: string): string {
   const stops = tour.waypoints.map((w) => {
     const m = /^ch:1:sloid:(\d+)/.exec(w.stopRef);
-    const code = m ? m[1] : `x${encodeURIComponent(w.stopRef)}`;
+    // `.` and `~` part a link's tokens: escaped too (a station abroad, `eu:48.14,11.56:…`).
+    const code = m
+      ? m[1]
+      : `x${encodeURIComponent(w.stopRef).replaceAll('.', '%2E').replaceAll('~', '%7E')}`;
     const slug = fold(w.name)
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
     return [
       `${slug}.${code}`,
       ...(w.kind === 'stop' ? [String(w.dwellMin)] : []),
-      ...(w.templateId ? [`@${w.templateId}`] : []),
+      ...(w.kind === 'turnaround' ? [`t${w.dwellMin}`] : []),
+      // A line by its rings (`@`) and its end (`l`): lines back to back keep their ends.
+      ...(w.ring && w.templateId ? [`@${w.templateId}`] : []),
+      ...(w.line ? [`l${w.line}`] : []),
       ...(w.arriveAfter ? [`f${w.arriveAfter.replace(':', '')}`] : []),
       ...(w.leaveBy ? [`u${w.leaveBy.replace(':', '')}`] : []),
       ...(w.stayUntil ? [`n${w.stayUntil.replace(/[-T:]/g, '')}`] : []),

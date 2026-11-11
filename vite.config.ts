@@ -40,6 +40,14 @@ export const MAP_CACHING = [
       cacheName: 'srr-tiles-v1',
       expiration: { maxEntries: 800, maxAgeSeconds: 60 * 24 * 3600, purgeOnQuotaError: true },
       cacheableResponse: { statuses: [200] },
+      // Kept without the week's planet build, as the page keeps them (`tileKey` in
+      // src/core/mapCache.ts; inlined, as these rules are copied into the worker as text).
+      plugins: [
+        {
+          cacheKeyWillBeUsed: async ({ request }: { request: Request }) =>
+            request.url.replace(/\/planet\/[^/]+\/(?=\d+\/\d+\/\d+\.)/, '/planet/_/'),
+        },
+      ],
     },
   },
 ];

@@ -7,9 +7,12 @@ import {
   KEPT_AT,
   MAX_AGE_MS,
   mapCacheRule,
+  PLANET_BUILD,
+  tileKey,
   toDrop,
   toProtocol,
 } from '../src/core/mapCache';
+import { MAP_CACHING } from '../vite.config';
 import { mapFetch, resetMapCache, trim } from '../src/io/mapCache';
 
 const H = 'https://tiles.openfreemap.org';
@@ -95,7 +98,7 @@ describe('mapFetch', () => {
     const url = `${H}/planet/x/14/1/2.pbf`;
     expect(await (await mapFetch(url, undefined, d)).text()).toBe('tile');
     await settle();
-    expect(stores.get('srr-tiles-v1')?.get(url)?.headers.get(KEPT_AT)).toBe(String(now));
+    expect(stores.get('srr-tiles-v1')?.get(tileKey(url))?.headers.get(KEPT_AT)).toBe(String(now));
     fetch.mockRejectedValue(new TypeError('offline'));
     expect(await (await mapFetch(url, undefined, d)).text()).toBe('tile');
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -161,5 +164,43 @@ describe('mapFetch', () => {
       `${H}/t/1.pbf`,
       `${H}/t/2.pbf`,
     ]);
+  });
+
+  // Third audit, 11 Nov 2026: the service worker's entries carry no time of ours; the page's
+  // first trim dropped them all.
+  it('trimming keeps what the service worker kept, by when the host served it', async () => {
+    const { caches, stores } = fakeCaches();
+    const d = { caches, fetch: vi.fn(), now: () => now };
+    const cache = await caches.open('srr-tiles-v1');
+    const served = new Date(now - 1000).toUTCString();
+    for (let i = 0; i < 3; i++)
+      await cache.put(`${H}/t/${i}.pbf`, new Response('x', { headers: { date: served } }));
+    await trim(cache, { name: 'srr-tiles-v1', strategy: 'cache-first', maxEntries: 800 }, d);
+    expect(stores.get('srr-tiles-v1')!.size).toBe(3);
+  });
+
+  it('a tile is kept without the planet build, so a new build still finds it', async () => {
+    const { caches } = fakeCaches();
+    const fetch = vi.fn(async () => new Response('tile', { status: 200 }));
+    const d = { caches, fetch, now: () => now };
+    await mapFetch(`${H}/planet/20261105_001001_pt/14/1/2.pbf`, undefined, d);
+    await settle();
+    fetch.mockRejectedValue(new TypeError('offline'));
+    const res = await mapFetch(`${H}/planet/20261112_001001_pt/14/1/2.pbf`, undefined, d);
+    expect(await res.text()).toBe('tile');
+    expect(tileKey(`${H}/planet/20261105_001001_pt/14/1/2.pbf`)).toBe(`${H}/planet/_/14/1/2.pbf`);
+    // The TileJSON's own address keeps its name.
+    expect(tileKey(`${H}/planet`)).toBe(`${H}/planet`);
+  });
+
+  it('the service worker keys tiles the same', async () => {
+    const plugin = (
+      MAP_CACHING[1]!.options as unknown as {
+        plugins: { cacheKeyWillBeUsed: (o: { request: Request }) => Promise<string> }[];
+      }
+    ).plugins[0]!;
+    const url = `${H}/planet/20261105_001001_pt/14/1/2.pbf`;
+    expect(await plugin.cacheKeyWillBeUsed({ request: new Request(url) })).toBe(tileKey(url));
+    expect(PLANET_BUILD.test(url)).toBe(true);
   });
 });

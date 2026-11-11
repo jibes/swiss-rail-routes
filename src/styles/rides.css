@@ -244,8 +244,11 @@
 .trip-line .ride .m .ride-l1 > .product {
   /* The train's kind gives way before where it goes (review of 11 Nov 2026), but stays a word
      ("Replacement bus", not "Re…", second audit): it keeps up to 9em, the rest is the place's. */
-  flex-shrink: 100;
-  min-width: min(max-content, 9em);
+  /* Its own width up to 9em, never less (third audit: `min(max-content, 9em)` is no valid
+     min-width, so the rule was dropped and the kind shrank to nothing at 360 px). */
+  flex-shrink: 0;
+  width: max-content;
+  max-width: 9em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

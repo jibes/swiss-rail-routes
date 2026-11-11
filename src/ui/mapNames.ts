@@ -10,6 +10,8 @@ export interface MapName {
   el: HTMLElement;
   marker: maplibregl.Marker;
   at: At;
+  /** A change the plan chose: hidden rather than over the line or an icon. */
+  optional?: boolean;
 }
 
 interface Lines {
@@ -63,9 +65,11 @@ export function placeNames(
     }
   const labels = names.map((n) => {
     const [x, y] = pt(n.at);
-    return { x, y, w: n.el.offsetWidth, h: n.el.offsetHeight };
+    return { x, y, w: n.el.offsetWidth, h: n.el.offsetHeight, optional: n.optional };
   });
-  const sides = placeLabels(labels, { boxes, lines: runs });
+  const c = map.getContainer();
+  const view = { x: 0, y: 0, w: c.clientWidth, h: c.clientHeight };
+  const sides = placeLabels(labels, { boxes, lines: runs, view });
   names.forEach((n, i) => {
     const side = sides[i];
     n.el.style.visibility = side ? '' : 'hidden';

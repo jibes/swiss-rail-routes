@@ -30,7 +30,8 @@ export function LiveBar() {
         {n && ride
           ? n.kind === 'board'
             ? `${badge(ride.s)} ${hhmm(n.at)}${n.stop.platform ? ` · ${t('platform', { p: n.stop.platform })}` : ''}`
-            : `${t('nowAlight', { stop: n.stop.name })} ${hhmm(n.at)}`
+            : // The time first: an ellipsis takes the station's end, never the time (third audit).
+              `${hhmm(n.at)} · ${t('nowAlight', { stop: n.stop.name })}`
           : trip.name || autoName(trip.route, undefined, lineName)}
       </span>
     </a>

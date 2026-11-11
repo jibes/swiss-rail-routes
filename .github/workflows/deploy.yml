@@ -41,7 +41,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
+      - run: npm ci || (sleep 15 && npm ci) # once more on a network error
       - run: npm run build
         env:
           VITE_BASE: ${{ needs.base.outputs.path }}/

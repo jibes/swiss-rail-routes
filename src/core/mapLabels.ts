@@ -11,18 +11,26 @@ export interface Box {
   h: number;
 }
 
-/** A name to place: its station's dot (`x`, `y`, screen pixels) and the name's size. */
+/**
+ * A name to place: its station's dot (`x`, `y`, screen pixels) and the name's size; `optional`
+ * (a change the plan chose) is hidden rather than drawn over the line or an icon.
+ */
 export interface Label {
   x: number;
   y: number;
   w: number;
   h: number;
+  optional?: boolean;
 }
 
-/** What a name had better not cover: boxes (icons, dots) and lines (each a run of points). */
+/**
+ * What a name had better not cover: boxes (icons, dots), lines (each a run of points), and the
+ * map's own box, which a name should stay inside (third audit: names cut at the map's edge).
+ */
 export interface Obstacles {
   boxes: Box[];
   lines: [number, number][][];
+  view?: Box;
 }
 
 export type Side = 'below' | 'right' | 'left' | 'above';
@@ -90,11 +98,17 @@ const onLine = (b: Box, line: [number, number][]) => {
 
 /** How much a box covers: each icon or dot under it, and each line through it. */
 const covers = (b: Box, o: Obstacles) =>
-  o.boxes.filter((x) => overlaps(x, b, 0)).length + o.lines.filter((l) => onLine(b, l)).length;
+  o.boxes.filter((x) => overlaps(x, b, 0)).length +
+  o.lines.filter((l) => onLine(b, l)).length +
+  (o.view && !inside(b, o.view) ? 1 : 0);
+
+const inside = (b: Box, v: Box) =>
+  b.x >= v.x && b.y >= v.y && b.x + b.w <= v.x + v.w && b.y + b.h <= v.y + v.h;
 
 /**
  * For each name, in order of priority, the side of its dot it goes (`null`: hidden): never over a
- * name placed before; of the sides left, the first covering nothing, else the one covering least.
+ * name placed before; of the sides left, the first covering nothing, else the one covering least
+ * (an optional name none then).
  */
 export function placeLabels(
   labels: Label[],
@@ -111,7 +125,7 @@ export function placeLabels(
       if (!best || n < best.n) best = { side, box, n };
       if (n === 0) break;
     }
-    if (!best) return null;
+    if (!best || (best.n > 0 && l.optional)) return null;
     shown.push(best.box);
     return best.side;
   });

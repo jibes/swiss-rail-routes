@@ -220,9 +220,15 @@
   background: var(--surface);
 }
 
+.options-bar .opts > .shift:first-child {
+  /* Its edge said, so an option passing under it reads as tucked away, not cut (dark too). */
+  box-shadow: 6px 0 6px -6px color-mix(in srgb, var(--ink) 40%, transparent);
+}
+
 .options-bar .opts > .shift:last-child {
   left: auto;
   right: 0;
+  box-shadow: -6px 0 6px -6px color-mix(in srgb, var(--ink) 40%, transparent);
 }
 
 .options-bar .opts {

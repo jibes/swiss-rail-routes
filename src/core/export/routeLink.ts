@@ -7,7 +7,9 @@
 // for people (names come from the stop index). Modifiers: `<min>` get off for that long,
 // `t<min>` turn there, `@<template>` part of that route template, `f<hhmm>` not there before
 // (it opens) and `u<hhmm>` leave by (it closes; 0.20.0, read past by older versions),
-// `n<YYYYMMDDHHMM>` stay until then (0.44.0, several days);
+// `n<YYYYMMDDHHMM>` stay until then (0.44.0, several days), `l<template>` a scenic line ends here
+// (0.57.0: its rings are the stations before it marked `@<template>`, so lines back to back keep
+// their ends; without any `l`, rings are read from the `@` runs as links before it wrote them);
 // `a<hhmm>` and `b<hhmm>` (arrive no earlier, leave no later) were written by older links and
 // are read past: nothing ever enforced them. `@<template>` alone (`.r` reversed) inserts a route template.
 // Settings, each optional: d (date; without one today, or the day of the earliest stay until a
@@ -111,6 +113,8 @@ export function parseRoute(
         w.templateId = m.slice(1);
       else if (/^[fu]([01]\d|2[0-3])[0-5]\d$/.test(m))
         w[m[0] === 'f' ? 'arriveAfter' : 'leaveBy'] = `${m.slice(1, 3)}:${m.slice(3)}`;
+      else if (/^l[a-z0-9-]+$/.test(m) && ctx.templates.some((x) => x.id === m.slice(1)))
+        w.line = m.slice(1);
       // `n<YYYYMMDDHHMM>`: stay until then (0.44.0, several days).
       else if (/^n\d{8}([01]\d|2[0-3])[0-5]\d$/.test(m))
         w.stayUntil = `${m.slice(1, 5)}-${m.slice(5, 7)}-${m.slice(7, 9)}T${m.slice(9, 11)}:${m.slice(11)}`;
@@ -120,6 +124,12 @@ export function parseRoute(
     if (prev?.stopRef === w.stopRef) continue;
     tour = { ...tour, waypoints: [...tour.waypoints, w] };
   }
+  // Lines by their ends (`l`): each station tagged `@` is one of a line's rings.
+  if (tour.waypoints.some((w) => w.line))
+    tour = {
+      ...tour,
+      waypoints: tour.waypoints.map((w) => (w.templateId && !w.line ? { ...w, ring: true } : w)),
+    };
   if (tour.waypoints.length < 2) return null;
   if (!(d && DATE.test(d))) tour = undatedStays(tour, ctx.today);
   const { id: _id, ...rest } = tour;

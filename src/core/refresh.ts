@@ -153,8 +153,13 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
     ...chainWarnings(trip, connections, deps),
     ...trip.chain.warnings.filter((w) => CHOICE.has(w.type)),
   ];
-  if (trip.route.date >= deps.today)
-    for (const { s, ci, si } of missing)
+  // Gone is said for a train of today or later, by its own day (third audit: a trip of several
+  // days begun yesterday never said a train missing from today's answer).
+  for (const { s, ci, si } of missing)
+    if (
+      (s.from.dep ? zurichLocal(Date.parse(s.from.dep)).slice(0, 10) : trip.route.date) >=
+      deps.today
+    )
       warnings.push({
         type: 'train-gone',
         severity: 'error',

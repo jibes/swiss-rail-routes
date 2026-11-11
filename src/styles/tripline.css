@@ -202,6 +202,10 @@
   background: color-mix(in srgb, var(--ink) 9%, transparent);
   color: var(--ink);
   box-shadow: none;
+  /* Wraps within its column, clear of the weather stripe (third audit: "60 Min. Aufenthalt ·
+     1h45 vor Ort" ran under it at 360 px). */
+  max-width: 100%;
+  white-space: normal;
 }
 
 .trip-line .chip.quiet {
@@ -390,6 +394,11 @@
 
 .panel .stay-end {
   display: flex;
+  /* Its day goes under its time where the panel is narrow (third audit: "Mon, Nov 9" ran past
+     the panel at 360 px). */
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 4px;
 }

@@ -367,6 +367,37 @@ describe('mergeReplan: the route follows the replan', () => {
   });
 });
 
+describe('mergeReplan: the change where the rest begins', () => {
+  // Third audit, 11 Nov 2026: two minutes from the IR at Zug to the next train said nothing.
+  it('a tight one is said, as the live view says it', () => {
+    const p = replanPoint(trip, liveState(chain, at('08:15')), at('08:15'))!;
+    const newLeg: Leg = {
+      index: 0,
+      from: w('Zug', 'start'),
+      vias: [],
+      to: w('Arth-Goldau', 'end'),
+    };
+    const rest = conn(
+      ride(
+        'IR 1',
+        [
+          ['Zug', '08:27'],
+          ['Arth-Goldau', '08:45'],
+        ],
+        { journey: 'other' },
+      ),
+    );
+    const v = mergeReplan(trip, p, [newLeg], {
+      connections: [rest],
+      warnings: [],
+      score: 0,
+      dep: rest.dep,
+      arr: rest.arr,
+    });
+    expect(v.chain.warnings.map((x) => x.type)).toContain('tight-transfer');
+  });
+});
+
 describe('mergeReplan', () => {
   it('keeps the travelled part, appends the new plan, re-indexes legs and warnings', () => {
     const p = replanPoint(trip, liveState(chain, at('09:00')), at('09:00'))!;

@@ -73,6 +73,16 @@ describe('typed list', () => {
     expect(names.at(-1)).toBe('Zürich');
   });
 
+  // Third audit, 11 Nov 2026: after a station nearer St. Moritz, "Albula + Bernina" ran the
+  // Albula from St. Moritz to Chur, away from where the Bernina starts.
+  it('a line before another runs to the end they share', () => {
+    const zernez = { stopRef: refOf('Zernez'), name: 'Zernez' };
+    const r = resolveTyped(splitTyped('Albula + Bernina')!, deps, zernez, ZH);
+    expect(
+      r.items.map((x) => (x.kind === 'line' ? `${x.template.id}:${x.from}>${x.to}` : '')),
+    ).toEqual(['albula:Chur>St. Moritz', 'bernina:St. Moritz>Tirano']);
+  });
+
   it('a station named just so before a line starting so; what is not found is said', () => {
     const r = resolveTyped(splitTyped('Bern, Xyzzy')!, deps, ZH);
     expect(r.items).toEqual([{ kind: 'station', stop: { stopRef: refOf('Bern'), name: 'Bern' } }]);

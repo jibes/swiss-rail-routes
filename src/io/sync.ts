@@ -192,6 +192,27 @@ function asShared(
 }
 
 /** One round: read, merge with what this device has now, apply, then write if needed. */
+/**
+ * The merge, with what changed in the list since it was read (`before` → `now`) kept: an item
+ * edited or added meanwhile as it is now, one deleted meanwhile left out.
+ */
+export function rebase<T extends { id: string }>(merged: T[], before: T[], now: T[]): T[] {
+  if (now === before) return merged;
+  const was = new Map(before.map((x) => [x.id, x]));
+  const cur = new Map(now.map((x) => [x.id, x]));
+  const out: T[] = [];
+  const ids = new Set<string>();
+  for (const m of merged) {
+    ids.add(m.id);
+    const b = was.get(m.id);
+    const c = cur.get(m.id);
+    if (b && !c) continue;
+    out.push(c && c !== b ? c : m);
+  }
+  for (const c of now) if (!was.has(c.id) && !ids.has(c.id)) out.push(c);
+  return out;
+}
+
 async function round(start: Saved): Promise<Saved> {
   const bytes = parseKey(start.key);
   if (!bytes) throw new SyncProblem('error');
@@ -211,11 +232,13 @@ async function round(start: Saved): Promise<Saved> {
     const v = got.v < saved.v ? 0 : got.v;
     // Read the lists only now: edits made while waiting for the server are part of this round.
     const now = Date.now();
+    const toursRead = useTours.getState().tours;
+    const tripsRead = useTrips.getState().trips;
     // With what this version cannot read, held as it came: shared on, never deleted.
     const local = {
-      tours: [...useTours.getState().tours, ...(toursList.held() as Tour[])],
+      tours: [...toursRead, ...(toursList.held() as Tour[])],
       // Stored and shared compactly (simplified tracks), once per trip.
-      trips: [...useTrips.getState().trips.map(compactTrip), ...(tripsList.held() as Trip[])],
+      trips: [...tripsRead.map(compactTrip), ...(tripsList.held() as Trip[])],
       recent: useRecentStops.getState().stops,
     };
     const plan = planRound({
@@ -239,10 +262,15 @@ async function round(start: Saved): Promise<Saved> {
     // Turned off, or given a new key, while the server was asked: the shared copy is not
     // applied (turning sync off is also how one stops another device's copy coming in).
     if ((await get<Saved>(KEY))?.key !== start.key) throw new Stopped();
-    // Both lists set first, then both saves awaited: an edit cannot slip in between.
+    // Both lists set first, then both saves awaited: an edit cannot slip in between. One made
+    // while the server was asked is kept over the merge (third audit, 11 Nov 2026: a trip added
+    // then was deleted, an edit reverted); the next round shares it.
     await Promise.all([
-      plan.apply.tours && useTours.getState().replaceAll(plan.apply.tours),
-      trips && useTrips.getState().replaceAll(trips),
+      plan.apply.tours &&
+        useTours
+          .getState()
+          .replaceAll(rebase(plan.apply.tours, toursRead, useTours.getState().tours)),
+      trips && useTrips.getState().replaceAll(rebase(trips, tripsRead, useTrips.getState().trips)),
     ]);
     if (plan.apply.recent) useRecentStops.setState({ stops: plan.apply.recent });
     // What this device now holds is the merge: remember it before writing, so a failed or
@@ -309,6 +337,9 @@ async function exclusive(f: () => Promise<void>) {
   } catch (e) {
     if (!ctrl.signal.aborted) throw e;
     log('sync.lock.timeout', { ms: LOCK_WAIT_MS });
+    // What waits for a first round (the past trips brought back) waits no longer for a tab
+    // that may stay frozen (third audit).
+    if (!useSync.getState().settled) useSync.setState({ settled: true });
   } finally {
     clearTimeout(timer);
   }
@@ -405,7 +436,7 @@ export async function startSync(key = newKey(), carry?: Saved['stamps']) {
   const clean = formatKey(bytes);
   // The same key again (sync turned off and on here): its stamps, so edits made meanwhile
   // count as the newer changes they are. Otherwise what this device has counts as older.
-  const last = await get<{ key: string; stamps: Saved['stamps'] }>(LAST);
+  const last = await get<{ key: string; stamps: Saved['stamps']; at?: number }>(LAST);
   // A new key from this device (renewKey): its own stamps go along, with their real times
   // and deletions, so devices joining again with older copies lose ties as joiners should.
   const stamps =
@@ -418,7 +449,10 @@ export async function startSync(key = newKey(), carry?: Saved['stamps']) {
         });
   await del(LAST);
   log('sync.start', { sameKeyAgain: last?.key === clean });
-  await set(KEY, { key: clean, v: 0, stamps } satisfies Saved);
+  // When it last synced goes along (third audit, 11 Nov 2026: without it the guard against a
+  // copy older than the tombstones never held, and trips deleted elsewhere came back).
+  const at = !carry && last?.key === clean ? last.at : undefined;
+  await set(KEY, { key: clean, v: 0, stamps, ...(at ? { at } : {}) } satisfies Saved);
   useSync.setState({ key: clean, status: 'syncing', at: null });
   await syncNow();
   return true;
@@ -430,7 +464,12 @@ export async function startSync(key = newKey(), carry?: Saved['stamps']) {
  */
 export async function stopSync() {
   const saved = await get<Saved>(KEY);
-  if (saved) await set(LAST, { key: saved.key, stamps: saved.stamps });
+  if (saved)
+    await set(LAST, {
+      key: saved.key,
+      stamps: saved.stamps,
+      ...(saved.at ? { at: saved.at } : {}),
+    });
   log('sync.stop');
   await del(KEY);
   useSync.setState({ key: null, status: 'off', at: null, settled: true });
@@ -451,7 +490,8 @@ export async function renewKey() {
     // Worker did not confirm it, nothing changes and it says so.
     const res = await request(`${base()}/sync/${id}`, { method: 'DELETE' }).catch(() => null);
     log('sync.renew', { status: res?.status ?? 'offline' });
-    if (!res?.ok) {
+    // 410: closed already (a retry after the first answer was lost): renewed all the same.
+    if (!res?.ok && res?.status !== 410) {
       useSync.setState({ status: res ? problemOf(res.status) : 'offline' });
       return false;
     }

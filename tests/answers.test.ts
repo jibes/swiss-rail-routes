@@ -23,6 +23,11 @@ describe('when a kept answer still stands', () => {
     expect(stillGood(kept(today, '2026-11-04T23:00:00Z'), now)).toBe(false);
     expect(SAME_DAY_MS).toBe(15 * 60_000);
   });
+  // Third audit, 11 Nov 2026: a day past the loaded timetable stayed "no connection" until it came.
+  it('no connection at all: 15 minutes, whatever the day', () => {
+    expect(stillGood(kept('2026-11-20', '2026-11-05T09:50:00Z', 2), now)).toBe(true);
+    expect(stillGood(kept('2026-11-20', '2026-11-05T09:40:00Z', 2), now)).toBe(false);
+  });
   it('a past day never; a time ahead of the clock or nonsense never', () => {
     expect(stillGood(kept('2026-11-04', '2026-11-03T08:00:00Z'), now)).toBe(false);
     expect(stillGood(kept('2026-11-07', '2026-11-06T08:00:00Z'), now)).toBe(false);

@@ -3,7 +3,7 @@
 // the host learns the route at those zooms: asked, never in the background. They land in the
 // same caches as the map as seen (the service worker's, else the page's: `mapFetch`).
 import type { StyleSpecification } from 'maplibre-gl';
-import { mapData, styleFont } from '../core/mapdata';
+import { mapData, styleFontStacks } from '../core/mapdata';
 import type { Connection, Tour } from '../core/model';
 import { tilesAlong, tileUrl } from '../core/routeTiles';
 import { log } from '../io/log';
@@ -49,9 +49,9 @@ export async function keepTripMap(
   if (!template) throw new Error('no tiles');
   const extra: string[] = [];
   if (typeof style.glyphs === 'string')
-    for (const font of styleFont(style))
+    for (const stack of styleFontStacks(style))
       extra.push(
-        style.glyphs.replace('{fontstack}', encodeURIComponent(font)).replace('{range}', '0-255'),
+        style.glyphs.replace('{fontstack}', encodeURIComponent(stack)).replace('{range}', '0-255'),
       );
   if (typeof style.sprite === 'string')
     for (const x of ['', '@2x']) extra.push(`${style.sprite}${x}.json`, `${style.sprite}${x}.png`);

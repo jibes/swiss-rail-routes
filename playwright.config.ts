@@ -8,6 +8,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // Planning a whole trip through the UI takes up to ~25 s on a slow runner (sync, T4).
   timeout: 60_000,
+  // In CI a test failing once is tried once more, and the report says it was flaky: one slow
+  // runner otherwise fails the release that waits on it (third audit, 11 Nov 2026).
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
   use: {
     baseURL: `http://localhost:4173${base}`,

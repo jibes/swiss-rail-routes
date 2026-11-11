@@ -224,6 +224,16 @@ describe('a trip as its trains', async () => {
     expect(r2.chain.warnings.some((w) => w.type === 'train-gone')).toBe(false);
   });
 
+  // Third audit, 11 Nov 2026: by the trip's first day, a trip of several days begun yesterday
+  // never said a train of today gone.
+  it('a train is gone by its own day, not the trip’s first', async () => {
+    const back = await opened();
+    const day = rides(trip)[0]!.from.dep!.slice(0, 10);
+    const earlier = { ...back, route: { ...back.route, date: '2026-01-01' } };
+    const r2 = await refreshChain(earlier, deps({ ask: async () => [], today: day }));
+    expect(r2.chain.warnings.some((w) => w.type === 'train-gone')).toBe(true);
+  });
+
   it('no answer changes nothing and is counted, not called gone', async () => {
     const back = await opened();
     const r2 = await refreshChain(

@@ -89,7 +89,7 @@ export function PricesSheet({
             <li key={i}>
               <a href={l.url} target="_blank" rel="noopener noreferrer" className="result">
                 <span className="r-name">
-                  {l.from} → {l.to}
+                  {l.from} → {l.to}{' '}
                   {/* Opens sbb.ch, outside the app (review of 11 Nov 2026: no cue it leaves). */}
                   <Icon name="external" size={14} />
                   <span className="sr-only">{t('opensOutside')}</span>

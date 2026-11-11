@@ -208,11 +208,16 @@ export function liveState(
     if (now < depOf(r) || i === stuck)
       return { phase: 'waiting', rides, current: i, progress, next: board(i), risks };
     if (now < arrOf(r)) {
-      const times = r.stops.map((x) => x.dep ?? x.arr ?? 0);
+      // A stop without times (one walked through beside the train's, stitched in) takes its
+      // place between its neighbours' (third audit, 11 Nov 2026: as 0 the marker jumped past
+      // it, almost to the next stop).
+      const times = between(r.stops.map((x) => x.dep ?? x.arr));
+      const arrAt = (k: number) => r.stops[k]!.arr ?? times[k]!;
+      const depAt = (k: number) => r.stops[k]!.dep ?? times[k]!;
       let j = 0;
-      while (j + 1 < times.length - 1 && now >= (r.stops[j + 1]!.arr ?? times[j + 1]!)) j++;
-      const from = r.stops[j]!.dep ?? r.stops[j]!.arr ?? times[j]!;
-      const to = r.stops[j + 1]!.arr ?? r.stops[j + 1]!.dep ?? times[j + 1]!;
+      while (j + 1 < times.length - 1 && now >= arrAt(j + 1)) j++;
+      const from = depAt(j);
+      const to = arrAt(j + 1);
       const fraction = Math.min(1, Math.max(0, (now - from) / Math.max(1, to - from)));
       return {
         phase: 'riding',
@@ -226,6 +231,23 @@ export function liveState(
     }
   }
   return { phase: 'done', rides, current: rides.length - 1, progress: 1, risks };
+}
+
+/** Times with the gaps filled in a straight line between the known ones on either side. */
+function between(times: (number | undefined)[]): number[] {
+  const out = [...times];
+  for (let k = 0; k < out.length; k++) {
+    if (out[k] !== undefined) continue;
+    let a = k - 1;
+    while (a >= 0 && times[a] === undefined) a--;
+    let b = k + 1;
+    while (b < out.length && times[b] === undefined) b++;
+    const ta = a >= 0 ? times[a] : undefined;
+    const tb = b < out.length ? times[b] : undefined;
+    out[k] =
+      ta !== undefined && tb !== undefined ? ta + ((tb - ta) * (k - a)) / (b - a) : (ta ?? tb ?? 0);
+  }
+  return out as number[];
 }
 
 /** On board, the next train is watched too once its departure is this close (minutes). */

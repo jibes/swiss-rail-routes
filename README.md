@@ -68,7 +68,7 @@ Allowed origins are in `workers/ojp/wrangler.toml` (`ALLOWED_ORIGINS`: the site 
 
 ## Links
 
-A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d=2026-11-21&dep=08:00` (stops as name and SLOID number, `.60` = get off for 60 min, `@bernina` a route template; settings optional; without `d` the day is today, or the day the earliest stay until a date ends when that is later). `#/r/@bernina` alone opens that template. Everything after `#` stays in the browser; the server never sees it. A planned trip shares as its trains (`#/s/…`, packed as numbers: about 425 characters for 14 rides; it ends in `z`, a letter messengers' link detection keeps). Older links (`#/s/` JSON, `#/j/…` snapshots) still open.
+A route's address is its share link: `#/r/zurich-hb.3000~chur.9000.60~@bernina?d=2026-11-21&dep=08:00` (stops as name and SLOID number, `.60` = get off for 60 min, `@bernina` a route template; settings optional; without `d` the day is today, or the day the earliest stay until a date ends when that is later). `#/r/@bernina` alone opens that template. Everything after `#` stays in the browser; the server never sees it. A planned trip shares as its trains (`#/s/…`, packed as numbers: about 340 characters for 14 rides; it ends in `z`, a letter messengers' link detection keeps). Older links (`#/s/` JSON, `#/j/…` snapshots) still open.
 
 ## Privacy
 

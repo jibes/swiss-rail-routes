@@ -1,4 +1,4 @@
-// The five tools: the app's planner and data, answered as JSON. Read-only: nothing about a
+// The six tools: the app's planner and data, answered as JSON. Read-only: nothing about a
 // request outlives the in-memory cache of its answer.
 import { euRef, placeName } from '../../src/core/eu/plan';
 import { searchAttractions, type AttractionData } from '../../src/core/attractions';
@@ -185,6 +185,17 @@ type Step =
   | ReturnType<typeof rideOf>
   | { type: 'walk'; minutes: number; from: string; to: string }
   | { type: 'stay'; at: string; minutes: number };
+
+/**
+ * What left between planning (`at`) and now is no longer on offer, as a plan kept a while goes
+ * stale; what had left already when it was planned was asked for: a trip already taken or under
+ * way, a time gone today (third audit, 11 Nov 2026: every such plan answered "every connection
+ * found has left").
+ */
+const notLeftSince = (at: number, now: number) => (c: { dep: string }) => {
+  const dep = Date.parse(c.dep);
+  return dep >= now || dep < at;
+};
 
 export function createTools(deps: ToolDeps) {
   const { index, timetable, templates, ga, publicUrl } = deps;
@@ -470,8 +481,7 @@ export function createTools(deps: ToolDeps) {
       if (!r) return stillPlanning(job);
       if (!r.options?.length || !r.legs) return failed({ ...r, legs: r.legs });
       const t = now();
-      // Time passed since it was planned: what has left is no longer on offer.
-      const left = r.options.filter((c) => Date.parse(c.dep) >= t);
+      const left = r.options.filter(notLeftSince(job.at, t));
       if (!left.length) throw new ToolError('every connection found has left: plan again');
       // Daylight required: an option riding a scenic line after dark is left out, and said when
       // that leaves none.
@@ -557,7 +567,7 @@ export function createTools(deps: ToolDeps) {
       const t = now();
       const edge = zurichTime(job.tour.date, from);
       const fresh = (r.options ?? [])
-        .filter((c) => Date.parse(c.dep) >= t)
+        .filter(notLeftSince(job.at, t))
         .filter((c) =>
           direction === 'earlier' ? Date.parse(c.dep) < edge : Date.parse(c.dep) > edge,
         )
@@ -652,7 +662,8 @@ export function createTools(deps: ToolDeps) {
       // A train run by an operator outside Switzerland (the TER Vallorcine–Chamonix,
       // `…:ojp:91P52:_x0020_:R:j26:95`): plans carry it, live status the Swiss service has not
       // (round 3, 6 Nov 2026: refused as "bad journey").
-      if (!id.startsWith('ch:') && /^[\w:.-]{1,120}$/.test(id))
+      // Only such an id (`:ojp:` in it); any other not a journey's is refused as one (audit 3).
+      if (!id.startsWith('ch:') && /(^|:)ojp:/.test(id) && /^[\w:.-]{1,120}$/.test(id))
         return {
           status: 'not_available',
           journey: id,

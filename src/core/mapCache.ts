@@ -41,6 +41,15 @@ export function mapCacheRule(url: string): MapCacheRule | undefined {
   return /\.[a-z0-9]+$/i.test(u.pathname) ? TILES : STYLE;
 }
 
+/**
+ * The key a tile is kept under: its address without the week's planet build
+ * (`/planet/20261105_001001_pt/…`), so tiles kept for offline outlive a new build, which the
+ * TileJSON names once it is refreshed (third audit, 11 Nov 2026). The service worker writes the
+ * same (`PLANET_BUILD` inlined in vite.config.ts, as its rules are copied into it as text).
+ */
+export const PLANET_BUILD = /\/planet\/[^/]+\/(?=\d+\/\d+\/\d+\.)/;
+export const tileKey = (url: string) => url.replace(PLANET_BUILD, '/planet/_/');
+
 /** Whether a kept answer is too old to stand (a missing or bad time counts as too old). */
 export function expired(keptAt: number | undefined, now: number): boolean {
   return (

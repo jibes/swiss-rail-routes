@@ -27,7 +27,9 @@ describe('i18n', () => {
   });
 
   it('fills parameters and leaves unknown ones', () => {
-    expect(translate('en', 'build', { sha: 'abc123' })).toBe('Build abc123');
-    expect(translate('en', 'build')).toBe('Build {sha}');
+    expect(translate('en', 'build', { version: '1.2.3', sha: 'abc123' })).toBe(
+      'Version 1.2.3 · Build abc123',
+    );
+    expect(translate('en', 'build', { sha: 'abc123' })).toBe('Version {version} · Build abc123');
   });
 });

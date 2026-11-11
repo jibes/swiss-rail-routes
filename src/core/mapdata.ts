@@ -151,3 +151,18 @@ export function styleFont(style: { layers?: readonly unknown[] }): string[] {
   }
   return ['Noto Sans Regular'];
 }
+
+/**
+ * Every font stack the style's labels ask for, as MapLibre names it in a glyph address (the
+ * fonts joined by commas): what keeping the map for offline fetches (third audit: only the first
+ * layer's, so other labels were missing offline).
+ */
+export function styleFontStacks(style: { layers?: readonly unknown[] }): string[] {
+  const stacks = new Set<string>();
+  for (const layer of style.layers ?? []) {
+    const font = (layer as { layout?: { 'text-font'?: unknown } }).layout?.['text-font'];
+    if (Array.isArray(font) && font.length && font.every((f) => typeof f === 'string'))
+      stacks.add(font.join(','));
+  }
+  return stacks.size ? [...stacks] : ['Noto Sans Regular'];
+}

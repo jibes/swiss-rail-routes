@@ -101,7 +101,10 @@ export function spiderWeb(
     (l) =>
       !all.some(
         (m) =>
-          m !== l && m.keys.length > l.keys.length && m.keys.join('>').startsWith(l.keys.join('>')),
+          m !== l &&
+          m.keys.length > l.keys.length &&
+          // Stop for stop: a key that only begins as another's is not the same stop (audit 3).
+          l.keys.every((k, i) => m.keys[i] === k),
       ),
   );
   return {

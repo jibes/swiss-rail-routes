@@ -69,5 +69,7 @@ describe('saved lists: changes item by item', () => {
       ),
     ).toBeNull();
     expect(settleUnsaved(null, written)).toBeNull();
+    // Left by another tab, which closed: any write here is newer and settles it (third audit).
+    expect(readUnsaved(settleUnsaved(raw, written, (id) => id !== 'c'))).toEqual(new Map());
   });
 });

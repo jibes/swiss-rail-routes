@@ -47,7 +47,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - run: npm ci || (sleep 15 && npm ci) # once more on a network error
 
       # wrangler comes from the lockfile; no third-party action to pin. The token is set on this
       # step only, so npm ci's install scripts never see it.

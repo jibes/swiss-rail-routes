@@ -87,6 +87,31 @@ describe('the map planner’s web', () => {
   });
 });
 
+// Third audit, 11 Nov 2026: a line ending at stop 7 counted as held by one passing stop 7000.
+it('a line is held only by one with the same stops, not ones whose numbers begin alike', () => {
+  const d: Departures = {
+    places: new Map(),
+    rides: [
+      ride(at(9, 0), [
+        ['B', at(9, 8)],
+        ['C', at(9, 15)],
+      ]),
+      ride(at(9, 5), [
+        ['B', at(9, 12)],
+        ['CD', at(9, 20)],
+        ['D', at(9, 30)],
+      ]),
+    ],
+  };
+  const both: Record<string, { lat: number; lon: number }> = { ...P, CD: { lat: 46.3, lon: 7.1 } };
+  const web = spiderWeb(d, {
+    from: 'ch:1:sloid:A',
+    at: at(9, 0),
+    place: (k) => both[k.replace('ch:1:sloid:', '')],
+  });
+  expect(web.lines).toHaveLength(2);
+});
+
 describe('when you leave a station of the trip', () => {
   const route = {
     date: '2026-11-07',

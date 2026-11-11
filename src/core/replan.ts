@@ -2,7 +2,7 @@
 // one can get off, with the rest of the route editable (a spontaneous stop, a longer stay).
 import type { LiveState } from './live';
 import type { Connection, Leg, Section, Tour, Waypoint } from './model';
-import type { PlannedChain } from './planner/plan';
+import { changeWarning, type PlannedChain } from './planner/plan';
 import { normalise } from './edit';
 import { stopKey } from './stops';
 import { zurichDateTime } from './ojp/request';
@@ -253,12 +253,20 @@ export function mergeReplan(
 ): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
   // The cut leg's warnings about rides after the cut are gone with them (review of 11 Nov 2026).
   const cutRides = point.keep[point.leg]?.sections.length ?? Infinity;
+  // A tight change at the cut itself was to the train now replaced: the joint is said anew.
+  const after = (w: { type: string }) => (w.type === 'tight-transfer' ? cutRides - 1 : cutRides);
   const keptWarnings = trip.chain.warnings.filter(
     (w) =>
       w.legIndex < point.keep.length &&
-      !(w.legIndex === point.leg && w.sectionIndex !== undefined && w.sectionIndex >= cutRides),
+      !(w.legIndex === point.leg && w.sectionIndex !== undefined && w.sectionIndex >= after(w)),
   );
   const offset = point.keep.length;
+  // The change where the rest begins (third audit, 11 Nov 2026: a minute from the IR70 at Zug
+  // to the IR1 was offered and said nothing, then the live view called it tight).
+  const joint =
+    point.keep.length && chain.connections[0]
+      ? changeWarning(point.keep.at(-1), chain.connections[0], offset)
+      : [];
   const connections = [...point.keep, ...chain.connections];
   // The trip's route as it now runs: what was travelled, then the new rest (its stops, map,
   // shares and "Save as route" all follow the replanned trip). Date and time stay the trip's.
@@ -277,6 +285,7 @@ export function mergeReplan(
       connections,
       warnings: [
         ...keptWarnings,
+        ...joint,
         ...chain.warnings.map((w) => ({ ...w, legIndex: w.legIndex + offset })),
       ],
       score: chain.score,

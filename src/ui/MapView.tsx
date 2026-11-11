@@ -44,6 +44,8 @@ import { useStopIndex } from './useStopIndex';
 const ACCENT = '#c0261b';
 const ACCENT_DARK = '#7a140d';
 const LOCATION = '#1a73e8';
+/** How far from a ride's line a tap still opens it, in pixels. */
+const TAP_PX = 10;
 
 /**
  * The way each ride goes, as arrowheads on the line: a way back on the same tracks shows
@@ -146,6 +148,7 @@ export default function MapView({ id }: { id: string }) {
   const temps = useRef(new Map<string, number>());
   /** The weather drawn, for the names to keep off it. */
   const wxDrawn = useRef<WeatherMap | null>(null);
+  const wxSig = useRef('');
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
   const [straight, setStraight] = useState(false);
@@ -387,12 +390,16 @@ export default function MapView({ id }: { id: string }) {
       // every station you chose (a via picked on the map as one typed), not a line's own.
       // A station once (a round trip's start and end are one), yours before the plan's changes:
       // the order in which names are kept when they would lie on each other (`placeLabels`).
+      // A station once by its key and by the name shown (third audit: a change's two stops, a
+      // walk apart, were named twice, each with its own temperature).
       const once = new Set<string>();
       const placed: MapName[] = [];
       for (const f of [...d.stops.features, ...d.changes.features]) {
         if (f.properties.ring) continue;
-        if (once.has(String(f.properties.key))) continue;
+        const shown = `name:${mapName(String(f.properties.name ?? ''))}`;
+        if (once.has(String(f.properties.key)) || once.has(shown)) continue;
         once.add(String(f.properties.key));
+        once.add(shown);
         const el = document.createElement('div');
         // A change the plan chose: named too, smaller.
         el.className = f.properties.change ? 'map-name change' : 'map-name';
@@ -404,7 +411,12 @@ export default function MapView({ id }: { id: string }) {
           .setLngLat(f.geometry.coordinates)
           .addTo(map);
         names.push(marker);
-        placed.push({ el, marker, at: f.geometry.coordinates as [number, number] });
+        placed.push({
+          el,
+          marker,
+          at: f.geometry.coordinates as [number, number],
+          optional: !!f.properties.change,
+        });
       }
       if (fittedFor.current !== map && d.bounds) {
         fittedFor.current = map;
@@ -414,7 +426,8 @@ export default function MapView({ id }: { id: string }) {
           duration: 0,
         });
       }
-      const dots = [...d.stops.features, ...d.changes.features].map(
+      // The highlights' dots too, drawn over the stations' (third audit).
+      const dots = [...d.stops.features, ...d.changes.features, ...d.highlights.features].map(
         (f) => f.geometry.coordinates as [number, number],
       );
       const keepApart = () => placeNames(map, placed, d.lines, dots, wxDrawn.current);
@@ -455,9 +468,18 @@ export default function MapView({ id }: { id: string }) {
   );
   useEffect(() => {
     temps.current = wmap?.temps ?? new Map();
+    // Placed again only when what the names keep off changed: the clock rebuilds the weather
+    // every 15 s, mostly the same (third audit: every route point projected again each time).
+    const sig = wmap
+      ? JSON.stringify([[...wmap.temps], wmap.rain.features.length, wmap.sky.features.length])
+      : '';
+    const changed = sig !== wxSig.current;
+    wxSig.current = sig;
     wxDrawn.current = wmap;
-    for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
-    declutterNames.current();
+    if (changed) {
+      for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
+      declutterNames.current();
+    }
     if (map) setWeather(map, wmap);
   }, [map, wmap]);
   // A tap on a column or an icon: the line's own words for it.
@@ -560,10 +582,19 @@ export default function MapView({ id }: { id: string }) {
   const [run, setRun] = useState<Section | null>(null);
   useEffect(() => {
     if (!map || adding) return;
-    const open = (e: maplibregl.MapLayerMouseEvent) => {
+    const open = (e: maplibregl.MapMouseEvent) => {
       // The weather's own card wins where its icon lies on the line.
       if (map.queryRenderedFeatures(e.point, { layers: ['wx-rain', 'wx-sky'] }).length) return;
-      const p = e.features?.[0]?.properties;
+      // A finger's width around the tap: the line is 4 px (third audit: hard to hit on a phone).
+      const { x, y } = e.point;
+      const near = map.queryRenderedFeatures(
+        [
+          [x - TAP_PX, y - TAP_PX],
+          [x + TAP_PX, y + TAP_PX],
+        ],
+        { layers: ['lines'] },
+      );
+      const p = near[0]?.properties;
       const s = p?.planned ? drawn.current[Number(p.leg)]?.sections[Number(p.section)] : undefined;
       if (!s || s.mode === 'walk') return;
       log('run.map', { journey: s.journey });
@@ -571,11 +602,11 @@ export default function MapView({ id }: { id: string }) {
     };
     const pointer = () => (map.getCanvas().style.cursor = 'pointer');
     const plain = () => (map.getCanvas().style.cursor = '');
-    map.on('click', 'lines', open);
+    map.on('click', open);
     map.on('mouseenter', 'lines', pointer);
     map.on('mouseleave', 'lines', plain);
     return () => {
-      map.off('click', 'lines', open);
+      map.off('click', open);
       map.off('mouseenter', 'lines', pointer);
       map.off('mouseleave', 'lines', plain);
       plain();

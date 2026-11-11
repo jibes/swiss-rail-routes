@@ -68,11 +68,16 @@ export function readUnsaved<T extends Item>(raw: string | null): Map<string, T |
 export function settleUnsaved<T extends Item>(
   raw: string | null,
   written: Map<string, T | null>,
+  mine: (id: string) => boolean = () => true,
 ): string | null {
   const left = readUnsaved<T>(raw);
   if (!left.size) return raw;
+  // What this page left goes once that same value is stored (an earlier write of its own may
+  // finish first); what another, closed tab left goes with any write of it here, which is newer
+  // (third audit, 11 Nov 2026: the older copy came back on the next load).
   for (const [id, x] of written)
-    if (left.has(id) && JSON.stringify(left.get(id)) === JSON.stringify(x)) left.delete(id);
+    if (left.has(id) && (!mine(id) || JSON.stringify(left.get(id)) === JSON.stringify(x)))
+      left.delete(id);
   return left.size ? JSON.stringify([...left]) : null;
 }
 
@@ -178,12 +183,17 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       .catch((e: unknown) => log('store.reload.fail', { key, e }));
   });
   const quiet = () => void flush().catch(() => undefined);
+  /** The items this page left unsaved, by id. */
+  const leftHere = new Set<string>();
   /** The page goes: what is not stored yet, added to what another tab closing just left. */
   const leave = () => {
     if (broken || (!pending.size && !writes.size)) return;
     try {
       const left = readUnsaved<T>(localStorage.getItem(unsavedKey));
-      for (const [id, x] of [...writes, ...pending]) left.set(id, x);
+      for (const [id, x] of [...writes, ...pending]) {
+        left.set(id, x);
+        leftHere.add(id);
+      }
       localStorage.setItem(unsavedKey, JSON.stringify([...left]));
       log('store.unsaved.leave', { key, items: left.size });
     } catch (e) {
@@ -196,7 +206,7 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       const storage = unsavedStorage();
       const raw = storage?.getItem(unsavedKey) ?? null;
       if (!storage || raw === null) return;
-      const next = settleUnsaved(raw, changes);
+      const next = settleUnsaved(raw, changes, (id) => leftHere.has(id));
       if (next === null) storage.removeItem(unsavedKey);
       else if (next !== raw) storage.setItem(unsavedKey, next);
     } catch (e) {
@@ -217,9 +227,10 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
       leave();
       quiet();
     });
-    // Back from the browser's page cache, the page itself finishes its writes.
+    // Back from the browser's page cache, the page itself finishes its writes: what it left
+    // goes, another tab's left as it was (third audit: the whole key went).
     window.addEventListener('pageshow', (e) => {
-      if (e.persisted) unsavedStorage()?.removeItem(unsavedKey);
+      if (e.persisted) settle(new Map([...writes, ...pending]));
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') quiet();

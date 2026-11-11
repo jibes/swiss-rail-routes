@@ -21,8 +21,10 @@ on:
 permissions:
   contents: read
 
+# Pull requests: the newest only. Pushes to main each run on their own, so a run GitHub leaves
+# "in progress" never holds the next one (0.54.0's did); their releases queue below.
 concurrency:
-  group: android-${{ github.ref }}
+  group: android-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -47,7 +49,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - run: npm ci || (sleep 15 && npm ci) # once more on a network error
       - run: npm run check
 
       - name: Build web and sync into the shell
@@ -185,6 +187,11 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     # The signing secrets belong in this environment, limited to main (repository settings).
     environment: release
+    # One release at a time; one queued behind another that GitHub replaces is a version
+    # superseded by a newer one, which releases.
+    concurrency:
+      group: android-release
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -202,10 +209,18 @@ jobs:
         id: version
         env:
           VERSION: ${{ needs.apk.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Released means its APK is there: a release cut short (a tag, no APK) is finished.
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
-            echo "v$VERSION is already released."
-            echo "new=false" >> "$GITHUB_OUTPUT"
+            if gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" --json assets \
+              --jq '.assets[].name' | grep -q '\.apk$'; then
+              echo "v$VERSION is already released."
+              echo "new=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "v$VERSION has no APK yet: finishing it."
+            echo "new=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -214,8 +229,10 @@ jobs:
           fi
           latest=$(git tag -l 'v*' | sort -V | tail -1)
           if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "v$VERSION" | sort -V | tail -1)" != "v$VERSION" ]; then
-            echo "::error::v$VERSION is not newer than $latest"
-            exit 1
+            # Its release queued behind a newer one's: superseded, nothing to publish.
+            echo "::notice::v$VERSION is older than $latest, which is released: skipped."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           echo "new=true" >> "$GITHUB_OUTPUT"
 
@@ -273,9 +290,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.apk.outputs.version }}
           FILE: ${{ steps.sign.outputs.file }}
+        # Tried again on GitHub's own errors; a release already made (a try that failed after
+        # it) gets its APK added instead.
         run: |
-          gh release create "v$VERSION" "$FILE" \
-            --target "$GITHUB_SHA" \
-            --title "Viadukt $VERSION" \
-            --generate-notes \
-            --notes "Install or update with Obtainium: add https://github.com/${{ github.repository }}"
+          for wait in 5 15 45 0; do
+            if gh release view "v$VERSION" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload "v$VERSION" "$FILE" -R "$GITHUB_REPOSITORY" --clobber && exit 0
+            else
+              gh release create "v$VERSION" "$FILE" -R "$GITHUB_REPOSITORY" \
+                --target "$GITHUB_SHA" \
+                --title "Viadukt $VERSION" \
+                --generate-notes \
+                --notes "Install or update with Obtainium: add https://github.com/${{ github.repository }}" && exit 0
+            fi
+            [ "$wait" = 0 ] && exit 1
+            sleep "$wait"
+          done

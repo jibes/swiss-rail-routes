@@ -30,6 +30,21 @@ describe('map names kept apart', () => {
     expect(placeLabels([at(0, 0)], { boxes: all, lines: [line] })).toEqual(['below']);
   });
 
+  // Third audit, 11 Nov 2026: names were cut at the map's edge, and a change's name was drawn
+  // over the line and a sun when every side was taken.
+  it('stays inside the map; a change the plan chose rather hides than covers', () => {
+    const view = { x: 0, y: 0, w: 400, h: 300 };
+    expect(placeLabels([at(395, 100)], { boxes: [], lines: [], view })).toEqual(['left']);
+    const line: [number, number][] = [
+      [-100, 0],
+      [500, 0],
+    ];
+    const box = { x: -100, y: -40, w: 600, h: 80 };
+    const blocked = { boxes: [box], lines: [line] };
+    expect(placeLabels([{ ...at(200, 0), optional: true }], blocked)).toEqual([null]);
+    expect(placeLabels([at(200, 0)], blocked)).not.toEqual([null]);
+  });
+
   it('places each side clear of its own dot', () => {
     const l = at(100, 100);
     expect(boxAt(l, 'below')).toEqual({ x: 70, y: 109, w: 60, h: 14 });

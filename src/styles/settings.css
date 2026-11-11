@@ -202,6 +202,8 @@
   margin: 0;
   border-radius: 14px;
   background: var(--hair);
+  /* Its track outlined, so off is seen on a dark ground too (third audit: 3:1 for controls). */
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
   cursor: pointer;
   transition: background 0.15s;
 }

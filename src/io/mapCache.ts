@@ -6,6 +6,7 @@ import {
   expired,
   KEPT_AT,
   mapCacheRule,
+  tileKey,
   toDrop,
   type MapCacheName,
   type MapCacheRule,
@@ -33,13 +34,25 @@ const keptAt = (r: Response | undefined) => {
   return v ? Number(v) : undefined;
 };
 
+/**
+ * When an entry was kept, for trimming: its own time, else the time the host answered it, as
+ * the service worker keeps entries in the same caches without ours (third audit, 11 Nov 2026:
+ * the page's first trim dropped every one of them).
+ */
+const keptOrServed = (r: Response | undefined) => {
+  const at = keptAt(r);
+  if (at !== undefined) return at;
+  const served = Date.parse(r?.headers.get('date') ?? '');
+  return Number.isFinite(served) ? served : undefined;
+};
+
 async function keep(cache: Cache, rule: MapCacheRule, url: string, res: Response, d: MapCacheDeps) {
   if (res.status !== 200) return;
   try {
     const headers = new Headers(res.headers);
     headers.set(KEPT_AT, String(d.now()));
     const body = await res.clone().arrayBuffer();
-    await cache.put(url, new Response(body, { status: 200, statusText: 'OK', headers }));
+    await cache.put(tileKey(url), new Response(body, { status: 200, statusText: 'OK', headers }));
     const n = (kept.get(rule.name) ?? 0) + 1;
     kept.set(rule.name, n);
     if (n % TRIM_EVERY === 1) await trim(cache, rule, d);
@@ -55,7 +68,7 @@ export async function trim(cache: Cache, rule: MapCacheRule, d: MapCacheDeps = r
   const entries = await Promise.all(
     keys.map(async (k): Promise<[string, number | undefined]> => [
       k.url,
-      keptAt(await cache.match(k)),
+      keptOrServed(await cache.match(k)),
     ]),
   );
   const drop = toDrop(entries, rule.maxEntries, d.now());
@@ -82,7 +95,7 @@ export async function mapFetch(
   if (!rule || !d.caches) return d.fetch(url, { signal });
   const cache = await d.caches.open(rule.name).catch(() => undefined);
   if (!cache) return d.fetch(url, { signal });
-  const hit = await cache.match(url).catch(() => undefined);
+  const hit = await cache.match(tileKey(url)).catch(() => undefined);
   const fresh = hit && !expired(keptAt(hit), d.now());
   if (rule.strategy === 'stale-while-revalidate' && hit) {
     void d

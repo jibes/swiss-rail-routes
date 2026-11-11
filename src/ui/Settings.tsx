@@ -352,7 +352,9 @@ export function Settings({ join }: { join?: string }) {
         </ul>
       </section>
 
-      <p className="muted build">{t('build', { sha: __BUILD__.sha })}</p>
+      <p className="muted build">
+        {t('build', { version: __BUILD__.version, sha: __BUILD__.sha })}
+      </p>
     </main>
   );
 }

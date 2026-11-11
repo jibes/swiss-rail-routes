@@ -105,7 +105,7 @@ describe('routes from a request', () => {
     // The line is marked on the end it leads to, Luzern, with its stay.
     const luzern = t.waypoints.find((w) => w.name === 'Luzern')!;
     expect(luzern).toMatchObject({ kind: 'stop', dwellMin: 45, line: 'voralpen-express' });
-    expect(routeLinkOf(t, URL_)).toContain('luzern.5000.45.@voralpen-express');
+    expect(routeLinkOf(t, URL_)).toContain('luzern.5000.45.lvoralpen-express');
   });
 
   it('out and back without a round trip: stations, part of a line by its own', () => {
@@ -211,6 +211,45 @@ describe('routes from a request', () => {
     );
     expect(back.anchor).toEqual({ arriveBy: '21:00' });
     expect(back.date).toBe(FIXTURE_DATE);
+  });
+});
+
+describe('route links back to back (third audit, 11 Nov 2026)', () => {
+  const read = (link: string) => {
+    const [stops, q] = link.split('#/r/')[1]!.split('?');
+    return parseRoute(stops!, new URLSearchParams(q), {
+      templates,
+      name: nameOf,
+      today: '2026-11-02',
+    })!;
+  };
+  const shape = (ws: { name: string; ring?: boolean; line?: string; kind: string }[]) =>
+    ws.map((w) => `${w.name}${w.ring ? '·r' : ''}${w.line ? `<${w.line}` : ''}`);
+
+  it('two lines meeting at a station keep both, each with its rings', () => {
+    const t = buildRoute(
+      {
+        date: FIXTURE_DATE,
+        stops: [{ name: 'Chur' }, { line: 'albula' }, { line: 'bernina' }],
+      },
+      { index, templates, now: NOW },
+    );
+    expect(shape(read(routeLinkOf(t, URL_)).waypoints)).toEqual(shape(t.waypoints));
+  });
+
+  it('a station abroad and a turnaround come back as written', () => {
+    const t = buildRoute(
+      {
+        date: FIXTURE_DATE,
+        stops: [
+          { name: 'Basel SBB' },
+          { ref: 'eu:48.14,11.56:de-DELFI_de:09162:100', name: 'München Hbf' },
+        ],
+      },
+      { index, templates, now: NOW },
+    );
+    const back = read(routeLinkOf(t, URL_));
+    expect(back.waypoints.map((w) => w.stopRef)).toEqual(t.waypoints.map((w) => w.stopRef));
   });
 });
 
@@ -438,6 +477,27 @@ describe('tools, on recorded answers', () => {
     const r = await tools.trainStatus({ journey: '2026-11-07:ojp:91P52:_x0020_:R:j26:95' });
     expect(r).toMatchObject({ status: 'not_available', date: '2026-11-07' });
     expect(asked).toBe(0);
+  });
+
+  // Third audit, 11 Nov 2026: any id not starting `ch:` was said to be a train abroad.
+  it('train_status: an id that is no journey is refused as one', async () => {
+    await expect(createTools(deps()).trainStatus({ journey: 'foo' })).rejects.toThrow(
+      /not a journey id/,
+    );
+  });
+
+  // Third audit: every option of a trip already taken was dropped as "left".
+  it('plan_trip: a trip already taken, or a time gone today, keeps its options', async () => {
+    const after = Date.parse('2026-11-08T08:00:00Z');
+    const past = (await createTools(deps({ now: () => after })).planTrip(T5)) as {
+      options: { departure: string }[];
+    };
+    expect(past.options.length).toBeGreaterThan(0);
+    const sameDay = Date.parse('2026-11-07T14:00:00Z');
+    const gone = (await createTools(deps({ now: () => sameDay })).planTrip(T5)) as {
+      options: { departure: string }[];
+    };
+    expect(gone.options.length).toBeGreaterThan(0);
   });
 
   // Retest round 3, 6 Nov 2026: an unknown journey id was said as the service being down.

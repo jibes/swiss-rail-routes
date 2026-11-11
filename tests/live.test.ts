@@ -40,6 +40,29 @@ describe('liveState', () => {
     expect(s.progress).toBe(0);
   });
 
+  // Third audit, 11 Nov 2026: a stop without times (walked through, stitched in) counted as 0,
+  // and the marker jumped past it to almost the next stop.
+  it('riding past a stop without times: placed between its neighbours', () => {
+    const c = conn(
+      ride(
+        'IR 70',
+        [
+          ['Zürich HB', '08:04'],
+          ['Zug', '08:25'],
+          ['Luzern', '08:45'],
+        ],
+        { journey: 'j1' },
+      ),
+    );
+    const s0 = c.sections[0]!;
+    const zug = s0.intermediate[0]!;
+    const blank = { ...zug, stopRef: ref('Baar'), name: 'Baar', arr: undefined, dep: undefined };
+    const odd = { ...c, sections: [{ ...s0, intermediate: [zug, blank] }] };
+    const s = liveState([odd], at('08:28'));
+    expect(s.between!.i).toBe(1); // Zug → Baar, not past it
+    expect(s.between!.fraction).toBeLessThan(0.5);
+  });
+
   it('riding: between two stops, next is getting off', () => {
     const s = liveState(chain, at('08:35'));
     expect(s.phase).toBe('riding');

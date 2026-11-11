@@ -114,7 +114,16 @@ export function resolveTyped(
       return;
     }
     const next = found[k + 1];
-    const nextRef = next?.kind === 'station' ? next.stop.stopRef : undefined;
+    // A line next: the end the two share, where this one leads (third audit: "Albula +
+    // Bernina" ran the Albula away from St. Moritz, where the Bernina starts).
+    const ends = (tp: RouteTemplate) => [tp.chain[0]!.ref, tp.chain.at(-1)!.ref].map(stopKey);
+    const shared =
+      next?.kind === 'line'
+        ? [x.template.chain[0]!.ref, x.template.chain.at(-1)!.ref].find((r) =>
+            ends(next.template).includes(stopKey(r)),
+          )
+        : undefined;
+    const nextRef = next?.kind === 'station' ? next.stop.stopRef : shared;
     const reversed = lineReversed(
       x.template,
       {

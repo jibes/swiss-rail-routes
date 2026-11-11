@@ -32,12 +32,18 @@ export const dayOfQuery = (q: TripQuery) => q.time.slice(0, 10);
 
 type Meta = Pick<KeptAnswer, 'day' | 'at' | 'size'>;
 
+/** The size of an answer without a connection, `[]`. */
+const EMPTY_SIZE = 2;
+
 /** Whether a kept answer can stand for asking again now. */
 export function stillGood(a: Meta, now: number): boolean {
   const { day } = a;
   if (typeof day !== 'string' || !(a.at <= now)) return false;
   const today = dayOf(now);
   if (day < today) return false;
+  // No connection at all (`[]`): for 15 minutes too, whatever the day (third audit, 11 Nov
+  // 2026: a day past the loaded timetable stayed unplannable on the device until it came).
+  if (a.size <= EMPTY_SIZE) return now - a.at < SAME_DAY_MS;
   // Asked before the day: good until it starts. Asked on the day: 15 minutes.
   if (day > today) return true;
   return dayOf(a.at) === today && now - a.at < SAME_DAY_MS;
