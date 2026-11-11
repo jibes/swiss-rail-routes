@@ -55,8 +55,9 @@ test('a tap anywhere: the stops near it, stations further, bus stops close, by t
   await expect(map.getByText(/Blue: the trains from Kleine Scheidegg/)).toBeVisible({
     timeout: 15_000,
   });
-  // West of Kleine Scheidegg, beside Wengen's dot, not on it (the web fitted to the phone's screen).
-  await page.waitForTimeout(800);
+  // West of Kleine Scheidegg, beside Wengen's dot, not on it (the web fitted to the phone's screen),
+  // once the map has come to rest (it eases to the web: a fixed wait was flaky on a slow runner).
+  await expect(map.locator('.map')).not.toHaveAttribute('data-moving', '');
   const box = (await map.locator('.map').boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.25 + 40, box.y + box.height * 0.45);
   await expect(map.getByRole('heading', { name: 'Near here' })).toBeVisible();

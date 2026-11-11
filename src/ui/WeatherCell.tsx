@@ -1,7 +1,7 @@
 // One row's piece of the weather stripe (0.37.0): the sky's colour fading into the next row's,
 // and a bar from the right as wide as the chance of rain or snow (none under RAIN_MIN). A tap says
 // its values, the forecast's time and whose it is; the same words for screen readers.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RAIN_MIN, skyColour, skyKind, tempText, type Sky } from '../core/weather';
 import { useT } from '../store';
 import { hhmm } from './format';
@@ -62,6 +62,17 @@ export function WeatherCell({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const me = useRef<HTMLButtonElement>(null);
+  // A tap anywhere else closes it: Safari gives a tapped button no focus, so no blur came
+  // (review of 11 Nov 2026: the card stayed until tapped again).
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!me.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [open]);
   if (!w) return mid ? null : <span className="wx-cell" aria-hidden="true" />;
   const { title, label, detail } = weatherWords(t, w, where, when, source, at, !!along);
   const bar = w.rain >= RAIN_MIN && !along?.open && (
@@ -72,6 +83,7 @@ export function WeatherCell({
   );
   return (
     <button
+      ref={me}
       type="button"
       className={mid ? 'wx-mid' : 'wx-cell'}
       style={
@@ -94,5 +106,22 @@ export function WeatherCell({
         </span>
       )}
     </button>
+  );
+}
+
+/**
+ * What the stripe at the right is (review of 11 Nov 2026: a first-time eye did not know): its
+ * name over it, and a tap says how to read it.
+ */
+export function WeatherKey() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="wx-key">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {t('wxKey')}
+      </button>
+      {open && <p className="wx-key-text">{t('wxKeyText')}</p>}
+    </div>
   );
 }

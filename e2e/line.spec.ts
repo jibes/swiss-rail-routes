@@ -291,7 +291,8 @@ test('a place found by its name adds its stop', async ({ page }) => {
   await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByPlaceholder('Station, scenic line or past trip').fill('Swissminiatur');
   const place = page.getByRole('button', {
-    name: /^Swissminiatur Melide · about \d+ min on foot$/,
+    // A walk known (curated) is said as known, not as about (review of 11 Nov 2026).
+    name: /^Swissminiatur Melide · 4 min on foot$/,
   });
   await expect(page.getByRole('heading', { name: 'Places' })).toBeVisible();
   await place.click();

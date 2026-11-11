@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+  # data.yml starts it on its branch: a pull request it opens gets no checks of its own.
+  workflow_dispatch:
   # main is checked by deploy.yml, which calls this workflow
   workflow_call:
     inputs:
@@ -50,6 +52,11 @@ jobs:
       # Ubuntu's mirrors failing (DNS, 11 Nov 2026) must not stop a release: the browser first,
       # then its system packages for at most two minutes (each unreachable mirror waits 20 s a
       # package); without them the runner image's own libraries serve (only extra fonts miss).
+      # The browser kept between runs (each one downloaded it anew), by the lock file's versions.
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
         run: |
           npx playwright install chromium

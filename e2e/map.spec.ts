@@ -264,3 +264,27 @@ test('map controls clear the system bars; turned or tilted, a tap puts north up'
   await north.click();
   await expect(north).toHaveCount(0);
 });
+
+// Review of 11 Nov 2026: zoomed out, T1's names lay on each other and its start and end, the
+// same station, were written twice ("Zürich HBIB"). Kept apart, each station once.
+test('the map’s station names never lie on each other', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T1!, name: 'Names' }));
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  await expect(page.locator('.map-name').first()).toBeVisible();
+  await expect(page.locator('.map-name', { hasText: /^Zürich HB/ })).toHaveCount(1);
+  await expect(page.locator('.map-name', { hasText: /, Bahnhof/ })).toHaveCount(0);
+  const overlapping = await page.locator('.map-name').evaluateAll((els) => {
+    const boxes = els
+      .filter((e) => (e as HTMLElement).style.visibility !== 'hidden')
+      .map((e) => e.getBoundingClientRect());
+    let n = 0;
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const [a, b] = [boxes[i]!, boxes[j]!];
+        if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) n++;
+      }
+    return n;
+  });
+  expect(overlapping).toBe(0);
+});

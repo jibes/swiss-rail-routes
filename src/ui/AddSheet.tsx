@@ -352,7 +352,9 @@ export function AddSheet({
               >
                 <span className="r-icon r-dot minor" aria-hidden="true" />
                 <span className="r-name">{p.name}</span>
-                <span className="r-sub">{t('placeStop', { stop: s.name, n: s.walkMin })}</span>
+                <span className="r-sub">
+                  {t(s.estimate ? 'placeStop' : 'placeStopExact', { stop: s.name, n: s.walkMin })}
+                </span>
               </button>
             );
           })}

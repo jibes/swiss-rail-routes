@@ -19,6 +19,7 @@ import type { Connection, Section } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isLive, isPlanned } from '../core/trip';
+import { mapName, placeLabels } from '../core/mapLabels';
 import { plannedRows } from '../core/rows';
 import { placeWith, tempText } from '../core/weather';
 import { weatherMap } from '../core/weatherMap';
@@ -139,6 +140,8 @@ export default function MapView({ id }: { id: string }) {
   const box = useRef<HTMLDivElement>(null);
   // The station names on the map, by key, and the temperature at each (0.38.0).
   const nameEls = useRef(new Map<string, HTMLElement>());
+  /** Keeps the names apart again (a temperature added widens one). */
+  const declutterNames = useRef<() => void>(() => undefined);
   const temps = useRef(new Map<string, number>());
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
@@ -218,6 +221,9 @@ export default function MapView({ id }: { id: string }) {
         if (!(tiles && 'tile' in e && e.tile)) setFailed(true);
       });
       map.on('moveend', () => setMoved((n) => n + 1));
+      // Moving or still, said on the map's box (e2e waits for still before a tap at a point).
+      map.on('movestart', () => (box.current!.dataset.moving = ''));
+      map.on('moveend', () => delete box.current!.dataset.moving);
       const turned = () => {
         if (map) setTurn({ bearing: map.getBearing(), pitch: map.getPitch() });
       };
@@ -357,6 +363,7 @@ export default function MapView({ id }: { id: string }) {
     ];
     const routeJson = JSON.stringify(current);
     let gone = false;
+    let declutter: (() => void) | null = null;
     const names: maplibregl.Marker[] = [];
     nameEls.current = new Map();
     (async () => {
@@ -375,12 +382,19 @@ export default function MapView({ id }: { id: string }) {
       map.getSource<maplibregl.GeoJSONSource>('highlights')?.setData(d.highlights);
       // Named without the style's fonts (HTML markers), so the plain ground has names too:
       // every station you chose (a via picked on the map as one typed), not a line's own.
+      // A station once (a round trip's start and end are one), yours before the plan's changes:
+      // the order in which names are kept when they would lie on each other (`placeLabels`).
+      const once = new Set<string>();
+      const els: HTMLElement[] = [];
       for (const f of [...d.stops.features, ...d.changes.features]) {
         if (f.properties.ring) continue;
+        if (once.has(String(f.properties.key))) continue;
+        once.add(String(f.properties.key));
         const el = document.createElement('div');
         // A change the plan chose: named too, smaller.
         el.className = f.properties.change ? 'map-name change' : 'map-name';
-        el.textContent = String(f.properties.name ?? '');
+        el.textContent = mapName(String(f.properties.name ?? ''));
+        els.push(el);
         const key = `${String(f.properties.key)}\n${String(f.properties.name)}`;
         nameEls.current.set(key, el);
         showTemp(el, tempAt(temps.current, key));
@@ -394,9 +408,23 @@ export default function MapView({ id }: { id: string }) {
         fittedFor.current = map;
         map.fitBounds(d.bounds, { padding: 40, duration: 0 });
       }
+      const keepApart = () => {
+        const shown = placeLabels(
+          els.map((el) => {
+            const r = el.getBoundingClientRect();
+            return { x: r.left, y: r.top, w: r.width, h: r.height };
+          }),
+        );
+        els.forEach((el, i) => (el.style.visibility = shown[i] ? '' : 'hidden'));
+      };
+      keepApart();
+      declutter = keepApart;
+      declutterNames.current = keepApart;
+      map.on('moveend', keepApart);
     })().catch(() => setFailed(true));
     return () => {
       gone = true;
+      if (declutter) map.off('moveend', declutter);
       for (const m of names) m.remove();
     };
   }, [map, json, id, lang]);
@@ -427,6 +455,7 @@ export default function MapView({ id }: { id: string }) {
   useEffect(() => {
     temps.current = wmap?.temps ?? new Map();
     for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
+    declutterNames.current();
     if (map) setWeather(map, wmap);
   }, [map, wmap]);
   // A tap on a column or an icon: the line's own words for it.

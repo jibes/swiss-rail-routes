@@ -13,6 +13,8 @@ const q: TripQuery = {
 };
 
 afterEach(() => {
+  // Here, not after the assertion: a failing one must not leave fake timers to the next test.
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
@@ -45,6 +47,5 @@ describe('a busy Worker', () => {
     await vi.advanceTimersByTimeAsync(2000);
     await p;
     expect(fetch).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
   });
 });

@@ -60,7 +60,13 @@ for (const [id, tour] of Object.entries(tours).filter(([k]) => k !== 'T5L')) {
         await opts.nth(i).click();
         await expect(opts.nth(i)).toHaveAttribute('aria-pressed', 'true');
       }
-      expect(await page.locator('.trip-line .ride').count()).toBeGreaterThan(0);
+      // Each option's line holds its trains: as many as the option's strip says it changes, plus one.
+      const changes = Number(
+        (await page.locator('.facts').innerText()).match(/(\d+) change/)?.[1] ?? 0,
+      );
+      expect(await page.locator('.trip-line .ride .run-open').count()).toBeGreaterThanOrEqual(
+        changes + 1,
+      );
     }
     // T3 walks (Interlaken Ost to its bus stop, Thun): a walk's rail is dashed, a ride's solid.
     if (id === 'T3') {

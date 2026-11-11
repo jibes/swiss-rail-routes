@@ -19,10 +19,20 @@ test('the weather stripe: a cell a row, bars where rain is likely, values on a t
   const wet = line.locator(':scope > li.station .wx-cell:has(.wx-bar)').first();
   await expect(wet).toBeVisible();
   await expect(wet).toHaveAttribute('aria-label', /: Rain 70 %$/);
+  // The stripe is named, and a tap says how to read it (review of 11 Nov 2026).
+  const key = page.getByRole('button', { name: 'Weather ↓' });
+  await key.click();
+  await expect(page.locator('.wx-key-text')).toContainText('gold for sun');
+  await key.click();
+  await expect(page.locator('.wx-key-text')).toHaveCount(0);
   await wet.click();
   await expect(line.locator('.wx-tip')).toContainText(/Forecast of \d\d:\d\d, Open-Meteo/);
   // The temperature there, a true minus below zero (0.38.0).
   await expect(line.locator('.wx-tip')).toContainText(/ · (\u2212)?\d+° · Rain 70 %/);
+  // A tap elsewhere closes it (Safari gives no blur on a tapped button).
+  await page.locator('h1').first().dispatchEvent('pointerdown');
+  await expect(line.locator('.wx-tip')).toHaveCount(0);
+  await wet.click();
 
   // A ride: its rain the highest along the way, said so; its bar only while its stops are folded,
   // as each stop shows its own once open.

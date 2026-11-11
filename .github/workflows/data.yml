@@ -22,6 +22,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # To start CI on the data branch (a pull request made with this token starts none).
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,7 +55,9 @@ jobs:
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
           if [ -z "$(gh pr list --head data --state open --json number --jq '.[0].number')" ]; then
             gh pr create --base main --head data --title "$title" \
-              --body "Monthly stop index and GA exceptions, from data.yml. Checks ran on the data (stops, data, acceptance). Merge with a version bump (\`npm version patch --no-git-tag-version\`) so the app releases with the new data."
+              --body "Monthly stop index and GA exceptions, from data.yml. Checks ran on the data (stops, data, acceptance); the whole CI runs on the branch too. Merge with a version bump (\`npm version patch --no-git-tag-version\`) so the app releases with the new data."
           else
             gh pr edit data --title "$title"
           fi
+          # Its checks: the whole CI (typecheck, unit, e2e) on the new data, shown on the pull request.
+          gh workflow run ci.yml --ref data

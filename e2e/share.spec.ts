@@ -99,7 +99,10 @@ test('the trip screen shares the exact timetable: a link that opens the same tri
   await expect(other.getByRole('heading', { level: 1 })).toHaveText('T5 shared');
   await expect(other.locator('.hero-times')).toContainText('09:04');
   await expect(other.getByRole('status').filter({ hasText: 'Up to date' })).toBeAttached();
-  expect(asked.length).toBeGreaterThan(0);
+  // Once per train the link holds, no more (review of 11 Nov 2026: "more than none" could not
+  // tell one question from many).
+  expect(asked).toHaveLength(await other.locator('.trip-line .ride .run-open').count());
+  expect(asked).toHaveLength(2);
   expect(asked.every((q) => q.vias.length === 0)).toBe(true);
   await expect(other.locator('main')).toContainText(/\d+ stops?/);
   otherErrors.check();

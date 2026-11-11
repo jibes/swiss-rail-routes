@@ -31,7 +31,7 @@ import { stayLabel } from './stayLabel';
 import { productText } from './product';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
-import { WeatherCell } from './WeatherCell';
+import { WeatherCell, WeatherKey } from './WeatherCell';
 
 export type { LineActions } from './StationPanel';
 
@@ -439,6 +439,7 @@ export function TripLine({
     );
   return (
     <>
+      {wx && !travelled && <WeatherKey />}
       <ol
         className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
         ref={box}
