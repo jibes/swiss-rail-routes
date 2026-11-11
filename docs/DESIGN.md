@@ -20,7 +20,7 @@ All colours, radii and spacing are CSS custom properties in `src/styles/base.css
 
 ## Navigation
 
-One list (Now, Coming up) and one trip screen (SPEC §3a, 0.4.0). Every trip has a date; a finished one folds under Past trips, still a trip (0.52.0). Under way a trip shows itself live: a live bar on the list, and the app opens to it.
+One list (Now, Upcoming, Past trips folded) and one trip screen (SPEC §3a, 0.4.0). Every trip has a date; a finished one folds under Past trips, still a trip (0.52.0). Under way a trip shows itself live: a live bar on the list, and the app opens to it.
 
 ## Screens
 

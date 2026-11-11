@@ -327,3 +327,31 @@
   color: var(--ink-3);
   padding-left: 11px;
 }
+
+/* A finger's reach where the look is small (review of 11 Nov 2026): the badge, a line's ×, the
+   panel's cross get a 44 px target around them, their look unchanged. */
+.trip-line button.badge.run-open,
+.panel .via-line button {
+  position: relative;
+}
+.trip-line button.badge.run-open::after,
+.panel .via-line button::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: max(100%, 44px);
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+.panel-head > .icon {
+  width: 44px;
+  height: 44px;
+  margin: -4px -4px -4px 0;
+}
+
+/* The stripe's own reach: a little either side of its 16 px, within the row's room for it. */
+.wx-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0 -6px;
+}

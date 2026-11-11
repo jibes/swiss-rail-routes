@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { legLinks } from '../core/export/sbb';
 import type { Connection } from '../core/model';
 import { cheapest, fareQueryOf, type Fare } from '../core/ojp/fare';
@@ -7,6 +7,7 @@ import { usePrefs, useT } from '../store';
 import { hhmm } from './format';
 import { Icon } from './icons';
 import { useLayer } from './layers';
+import { useModal } from './useModal';
 
 /** A leg's cheapest tickets, without and with Half Fare; null while asked, 'none' when unknown. */
 type LegFares = { full: Fare[]; half: Fare[] } | 'none' | null;
@@ -26,6 +27,9 @@ export function PricesSheet({
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  // Focus in, kept inside while Tab moves, and back when it closes.
+  const trap = useModal(box);
   useLayer(true, onClose);
   const links = legLinks(connections, lang);
   const [fares, setFares] = useState<LegFares[] | null>(null);
@@ -65,7 +69,14 @@ export function PricesSheet({
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet prices-sheet" role="dialog" aria-modal="true" aria-labelledby={id}>
+      <div
+        ref={box}
+        className="sheet prices-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={id}
+        onKeyDown={trap}
+      >
         <div className="sheet-head">
           <h2 id={id}>{t('pricesOnSbb')}</h2>
           <button type="button" className="icon" aria-label={t('close')} onClick={onClose}>
@@ -79,6 +90,8 @@ export function PricesSheet({
               <a href={l.url} target="_blank" rel="noopener noreferrer" className="result">
                 <span className="r-name">
                   {l.from} → {l.to}
+                  {/* Opens sbb.ch, outside the app (review of 11 Nov 2026: no cue it leaves). */}
+                  <Icon name="external" size={14} />
                 </span>
                 <span className="r-sub">{t('pricesLeg', { time: hhmm(l.dep) })}</span>
                 {fares && priceLines(fares[i] ?? 'none')}

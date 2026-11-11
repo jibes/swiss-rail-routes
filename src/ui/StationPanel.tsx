@@ -1,6 +1,7 @@
 // A station of yours, opened (from TripLine.tsx): its name, ride through or stay (how long, or
 // until when: one row, StayRow.tsx), its scenic line, add after, up, down, remove; a pinned via says so and unpins.
 import { DEFAULT_STAY } from '../core/line';
+import { useEffect, useRef } from 'react';
 import { useT } from '../store';
 import { Icon } from './icons';
 import { StayRow } from './StayRow';
@@ -24,6 +25,12 @@ export interface LineActions {
   /** A station the plan chose made yours, after entry `k`: a via; with a stay; or adding on. */
   pin?: (k: number, stop: { stopRef: string; name: string }, then?: 'stay' | 'add') => void;
 }
+
+/**
+ * Moved up or down, the panel opens again under the station's new place: focus goes to the same
+ * button there, so the keyboard can move it on (review of 11 Nov 2026: it fell to the page).
+ */
+let refocus: 'up' | 'down' | null = null;
 
 export function StationPanel({
   k,
@@ -60,6 +67,17 @@ export function StationPanel({
   close: () => void;
 }) {
   const t = useT();
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!refocus) return;
+    const b = box.current?.querySelector<HTMLButtonElement>(`[data-move="${refocus}"]`);
+    refocus = null;
+    // Else the panel's first control (moved where it is pinned, it has no up and down).
+    (b && !b.disabled
+      ? b
+      : box.current?.querySelector<HTMLButtonElement>('button:not([disabled])')
+    )?.focus();
+  }, []);
   const inner = k > 0 && k < n - 1;
   const closeButton = (
     <button type="button" className="icon" aria-label={t('close')} onClick={close}>
@@ -83,7 +101,7 @@ export function StationPanel({
   // train does. So it is neither renamed nor moved: unpin it, or stay there.
   const pinned = !!pinnedHere;
   return (
-    <div className="panel">
+    <div className="panel" ref={box}>
       {/* The name, not a field (0.35.1: another station is added and this one removed); a pinned
           via says so by its pin. The cross closes the panel. */}
       <div className="panel-head">
@@ -159,8 +177,12 @@ export function StationPanel({
               type="button"
               className="sq"
               aria-label={t('moveUp', { name })}
+              data-move="up"
               disabled={k <= fixed}
-              onClick={() => act.move(k, k - 1)}
+              onClick={() => {
+                refocus = 'up';
+                act.move(k, k - 1);
+              }}
             >
               <Icon name="up" size={18} />
             </button>
@@ -168,8 +190,12 @@ export function StationPanel({
               type="button"
               className="sq"
               aria-label={t('moveDown', { name })}
+              data-move="down"
               disabled={k === n - 1}
-              onClick={() => act.move(k, k + 1)}
+              onClick={() => {
+                refocus = 'down';
+                act.move(k, k + 1);
+              }}
             >
               <Icon name="down" size={18} />
             </button>

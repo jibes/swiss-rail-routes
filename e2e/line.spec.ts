@@ -59,6 +59,8 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   // Moving Interlaken Ost up takes the Brünig line away (its two ends are no longer neighbours).
   await page.getByRole('button', { name: 'Move Interlaken Ost up' }).click();
   await expect(entries).toHaveText([/^Zürich HB/, /^Interlaken Ost/, /^Luzern/, /^Zürich HB/]);
+  // Focus stays in its panel, not on the page (review, 0.53.0); here pinned, so no up/down.
+  await expect(page.locator('.panel :focus')).toHaveCount(1);
   await expect(line.locator('.station.ring')).toHaveCount(0);
   // A via between your first and last station is pinned: its panel unpins it.
   await page.getByRole('button', { name: 'Unpin Interlaken Ost' }).click();
@@ -420,6 +422,11 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   });
   expect(sideways).toEqual({ x: 0, outside: 0 });
 
+  // Long waits at a change are said, and kinds in the app's language (review, 0.53.0).
+  await expect(line.locator('.station .chip', { hasText: 'Wait 1h00' })).toHaveCount(1);
+  await expect(line.locator('.product', { hasText: 'Replacement bus' }).first()).toBeVisible();
+  await expect(line.locator('.product', { hasText: 'Ersatzverkehr' })).toHaveCount(0);
+
   // A stay's row (0.51.0): its end is the plan's arrival and its length, said beside it.
   const grum = line
     .locator(':scope > li.station.entry')
@@ -570,6 +577,18 @@ test.describe('a small phone', () => {
       .first()
       .click();
     await expect(page.locator('.panel .stay-row')).toBeVisible();
+    // The time really spent there, beside the stay asked for (0.53.0); the chip shows again
+    // once the panel closes.
+    await expect(
+      page.locator('.trip-line .station.entry .chip', { hasText: 'Stay 60 min · 1h45 here' }),
+    ).toHaveCount(1);
+    // A disruption elsewhere on the VAE's route is said with its stops, not under the ride.
+    const vae = page.locator('.trip-line li.ride', {
+      has: page.locator('.product', { hasText: 'Voralpen-Express' }),
+    });
+    await expect(vae.locator('.warn', { hasText: 'elsewhere' })).toHaveCount(0);
+    await vae.locator('.mids-toggle').click();
+    await expect(vae.locator('.warn', { hasText: 'elsewhere' })).toHaveCount(1);
     const out = await page.evaluate(() => {
       const p = document.querySelector('.trip-line .panel')!.getBoundingClientRect();
       return [...document.querySelectorAll('.trip-line .panel button, .trip-line .panel input')]

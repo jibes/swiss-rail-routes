@@ -27,7 +27,8 @@ import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
 import { RunSheet } from './RunSheet';
 import { runsOn } from '../core/planner/connection';
-import { zurichLocal } from '../core/planner/plan';
+import { stayLabel } from './stayLabel';
+import { productText } from './product';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell } from './WeatherCell';
@@ -37,27 +38,6 @@ export type { LineActions } from './StationPanel';
 const SEVERITY: Record<Warning['severity'], string> = { error: 'red', warn: 'amber', info: 'info' };
 
 const isWalk = (r?: LineRow) => r?.type === 'ride' && r.section.mode === 'walk';
-
-/** Only a stay is said: a change shows as a big dot with two times. */
-function stayLabel(
-  t: ReturnType<typeof useT>,
-  r: StationRow,
-  leaveBy?: string,
-  until?: { at: string; lang: string; day?: string },
-) {
-  if (r.role !== 'stop' || !r.stay) return '';
-  // Until a time: said as such, the length beside it moot; its day only when not the
-  // arrival's (else the trip's).
-  if (until) {
-    const day = (r.arr && zurichLocal(Date.parse(r.arr)).slice(0, 10)) || until.day;
-    const date = until.at.slice(0, 10);
-    const time = until.at.slice(11, 16);
-    return t('stayTill', {
-      when: date === day ? time : `${shortDate(date, until.lang)} ${time}`,
-    });
-  }
-  return leaveBy ? t('stayUntil', { min: r.stay, time: leaveBy }) : t('stayFor', { min: r.stay });
-}
 
 /**
  * The trip as one line (SPEC §3a): what you entered are buttons that open the one panel (name,
@@ -372,6 +352,8 @@ export function TripLine({
           <button
             type="button"
             className="grip"
+            // A pointer's: the keyboard has the panel's up and down (review of 11 Nov 2026).
+            tabIndex={-1}
             aria-label={t('dragToMove', { stop: r.name })}
             onPointerDown={(e) => startDrag(k, e)}
           >
@@ -522,7 +504,7 @@ export function TripLine({
                         >
                           {badge(s)}
                         </button>
-                        {s.product && <b className="product">{s.product}</b>}
+                        {s.product && <b className="product">{productText(t, s.product)}</b>}
                         {dest && (
                           <span className="towards">
                             <span aria-hidden="true">→ {dest}</span>
@@ -602,51 +584,58 @@ export function TripLine({
                       })()}
                     />
                   )}
-                  {ws.map((w, j) => {
-                    const text =
-                      w.type === 'seasonal'
-                        ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[lang] ??
-                          t(w.key, w.params))
-                        : t(w.key, localParams(w.params, lang, TEMPLATES));
-                    // A disruption opens the operator's own message on a tap.
-                    const detail = NOTICE_TYPES.has(w.type) && s.notices?.length ? s.notices : null;
-                    const wid = `${id}-${j}`;
-                    return detail ? (
-                      <span key={j} className="warn-wrap">
-                        <button
-                          type="button"
-                          className={`warn ${SEVERITY[w.severity]} more`}
-                          aria-expanded={more === wid}
-                          onClick={() => setMore(more === wid ? null : wid)}
-                        >
-                          <span>{text}</span>
-                          <Icon name="chevron" size={14} />
-                        </button>
-                        {more === wid && (
-                          <span className="detail">
-                            {detail.map((d, k) => {
-                              // Until when, and the operator's own remarks (0.19.1).
-                              const info = s.noticeInfo?.[k];
-                              return (
-                                <span key={k}>
-                                  {d}
-                                  {info?.until &&
-                                    ` ${t('noticeUntil', { date: dayMonth(info.until, lang) })}`}
-                                  {info?.detail && (
-                                    <span className="notice-more">{info.detail}</span>
-                                  )}
-                                </span>
-                              );
-                            })}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
-                        {text}
-                      </span>
-                    );
-                  })}
+                  {/* A disruption elsewhere on the train's route weighs nothing here: said with
+                      the stops, when they are opened (review of 11 Nov 2026: it stood under
+                      nearly every ride). */}
+                  {ws
+                    .filter((w) => w.type !== 'disruption-away' || shown || !mids.length)
+                    .map((w, j) => {
+                      const text =
+                        w.type === 'seasonal'
+                          ? (TEMPLATES.find((x) => x.id === w.params.template)?.season?.note[
+                              lang
+                            ] ?? t(w.key, w.params))
+                          : t(w.key, localParams(w.params, lang, TEMPLATES));
+                      // A disruption opens the operator's own message on a tap.
+                      const detail =
+                        NOTICE_TYPES.has(w.type) && s.notices?.length ? s.notices : null;
+                      const wid = `${id}-${j}`;
+                      return detail ? (
+                        <span key={j} className="warn-wrap">
+                          <button
+                            type="button"
+                            className={`warn ${SEVERITY[w.severity]} more`}
+                            aria-expanded={more === wid}
+                            onClick={() => setMore(more === wid ? null : wid)}
+                          >
+                            <span>{text}</span>
+                            <Icon name="chevron" size={14} />
+                          </button>
+                          {more === wid && (
+                            <span className="detail">
+                              {detail.map((d, k) => {
+                                // Until when, and the operator's own remarks (0.19.1).
+                                const info = s.noticeInfo?.[k];
+                                return (
+                                  <span key={k}>
+                                    {d}
+                                    {info?.until &&
+                                      ` ${t('noticeUntil', { date: dayMonth(info.until, lang) })}`}
+                                    {info?.detail && (
+                                      <span className="notice-more">{info.detail}</span>
+                                    )}
+                                  </span>
+                                );
+                              })}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
+                          {text}
+                        </span>
+                      );
+                    })}
                 </div>
                 {cell(
                   i,

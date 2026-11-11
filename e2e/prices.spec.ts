@@ -18,6 +18,12 @@ test('prices on SBB: each leg opens sbb.ch with its stops, date and time', async
   expect(url.searchParams.get('moment')).toBe('dep');
   expect(url.searchParams.get('date')).toBe(`"${FIXTURE_DATE}"`);
   expect(await link.getAttribute('target')).toBe('_blank');
+  // Modal (review of 11 Nov 2026): focus inside, Tab stays there, back to More on Close.
+  await expect(sheet.locator(':focus')).toHaveCount(1);
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Tab');
+  await expect(sheet.locator(':focus')).toHaveCount(1);
+  await sheet.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('button', { name: 'More' })).toBeFocused();
 });
 
 // Show prices: the cheapest tickets of each leg, without and with Half Fare, asked on the tap.

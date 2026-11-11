@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { expectedArrival } from '../core/live';
 import {
   DEFAULT_STAY,
@@ -195,7 +195,12 @@ export function TripScreen({ id }: { id: string }) {
         () => setKeeping({ done: 0, total: 0, failed: 1, over: true }),
       );
   };
-  const closePrices = useCallback(() => setPrices(false), []);
+  // The menu item that opened it is gone with the menu: focus goes back to More.
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const closePrices = useCallback(() => {
+    setPrices(false);
+    setTimeout(() => moreButton.current?.focus(), 0);
+  }, []);
   // A via just unpinned, for a few seconds: Undo pins it back where it was.
   const [unpinned, setUnpinned] = useState<{
     k: number;
@@ -349,6 +354,7 @@ export function TripScreen({ id }: { id: string }) {
           </button>
         )}
         <button
+          ref={moreButton}
           type="button"
           className="icon"
           aria-label={t('more')}

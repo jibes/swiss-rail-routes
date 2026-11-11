@@ -2,7 +2,7 @@
 // it starts to where it ends, the part you ride in full and the rest dimmed. One request on the
 // tap (the Worker's /journey, as the live view asks); a train abroad, or one OJP does not know,
 // says so.
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Section } from '../core/model';
 import { journeyQueryOf } from '../core/ojp/request';
 import { UnknownJourneyError } from '../core/ojp/journey';
@@ -13,10 +13,14 @@ import { useT } from '../store';
 import { badge, hhmm } from './format';
 import { Icon } from './icons';
 import { useLayer } from './layers';
+import { useModal } from './useModal';
 
 export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
   const t = useT();
   const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  // Focus in, kept inside while Tab moves, and back when it closes.
+  const trap = useModal(box);
   useLayer(true, onClose);
   const q = s.journey ? journeyQueryOf(s.journey) : null;
   // 'none': a train the service does not know (abroad, unknown); 'failed': the service did not
@@ -41,7 +45,14 @@ export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
   }, [asked]);
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet run-sheet" role="dialog" aria-modal="true" aria-labelledby={id}>
+      <div
+        ref={box}
+        className="sheet run-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={id}
+        onKeyDown={trap}
+      >
         <div className="sheet-head">
           <h2 id={id}>
             <span className="badge">{badge(s)}</span> {s.destination ?? s.to.name}

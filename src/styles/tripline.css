@@ -181,8 +181,14 @@
   color: var(--ink-2);
 }
 
+/* Open: the name in ink (red reads as a disruption) and no stay chip, as the panel says it
+   (review of 11 Nov 2026). */
 .trip-line .station.open .n {
-  color: var(--rail-ink);
+  color: var(--ink);
+}
+
+.trip-line .station.open > .m .chip {
+  display: none;
 }
 
 .trip-line .chip {

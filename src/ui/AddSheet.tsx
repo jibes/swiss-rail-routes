@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { searchAttractions, type AttractionData } from '../core/attractions';
 import { templateName, type RouteTemplate } from '../core/data';
 import attractionData from '../data/attractions.json';
@@ -22,6 +22,7 @@ import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
 import { dayOf } from '../core/trip';
 import { useLayer } from './layers';
+import { useModal } from './useModal';
 import { euRef, placeName } from '../core/eu/plan';
 import type { EuStop } from '../core/eu/request';
 import { fetchEuStops } from '../io/ojp';
@@ -89,37 +90,9 @@ export function AddSheet({
   const abroadNow = abroad?.q === q.trim() ? abroad.found : undefined;
   const input = useRef<HTMLInputElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
-  // Focus goes into the sheet, and back to where it was when the sheet closes.
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    input.current?.focus();
-    return () => {
-      // After the key that closed it is done: Enter on a result must not also press the
-      // button focus goes back to (it would open the sheet again).
-      setTimeout(() => {
-        if (before?.isConnected) before.focus();
-      }, 0);
-    };
-  }, []);
+  // Focus in, kept inside while Tab moves, and back when it closes.
+  const trap = useModal(sheet, input);
   useLayer(true, onClose);
-  /** Tab stays inside the sheet (it is modal). */
-  const trap = (e: React.KeyboardEvent) => {
-    if (e.key !== 'Tab' || !sheet.current) return;
-    const all = [
-      ...sheet.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input, [href], [tabindex]:not([tabindex="-1"])',
-      ),
-    ];
-    const first = all[0];
-    const last = all.at(-1);
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last?.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first?.focus();
-    }
-  };
 
   const f = fold(q.trim());
   const stop = (r: string) => index?.byRef(stopKey(r));
@@ -444,7 +417,7 @@ export function AddSheet({
             </>
           )}
           {folded && lines.length > 0 && (
-            <details className="fold">
+            <details className="fold" open={(!recent.length && !trips.length) || undefined}>
               <summary>
                 <h3 className="section-label">{t('scenicLines')}</h3>
                 <span className="fold-n">{lines.length}</span>
