@@ -14,6 +14,10 @@ test('pick on the map: the trip’s map, the trains from its last station, a tap
   // Adding changes the trip: its new plan has no recorded answer, and needs none here.
   allowUnrecorded(page);
   await page.getByRole('button', { name: 'Add a station' }).click();
+  // From its last station, said whole (reported in review: "From Kleine Scheidegg at").
+  await expect(page.getByRole('button', { name: /Pick on the map/ })).toContainText(
+    /From Kleine Scheidegg$/,
+  );
   await page.getByRole('button', { name: /Pick on the map/ }).click();
   // The trip's own map, not another: its screen, adding from Kleine Scheidegg.
   await expect(page).toHaveURL(/#\/trip\/[^/]+\/map$/);

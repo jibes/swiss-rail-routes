@@ -5,6 +5,7 @@
 import { useEffect, useId, useState } from 'react';
 import type { Section } from '../core/model';
 import { journeyQueryOf } from '../core/ojp/request';
+import { UnknownJourneyError } from '../core/ojp/journey';
 import { wholeRun, type RunStop } from '../core/run';
 import { log } from '../io/log';
 import { fetchJourney } from '../io/ojp';
@@ -18,23 +19,26 @@ export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
   const id = useId();
   useLayer(true, onClose);
   const q = s.journey ? journeyQueryOf(s.journey) : null;
-  const [run, setRun] = useState<RunStop[] | 'none' | null>(q ? null : 'none');
+  // 'none': a train the service does not know (abroad, unknown); 'failed': the service did not
+  // answer (reported in review: that was blamed on the train, with no way to ask again).
+  const [run, setRun] = useState<RunStop[] | 'none' | 'failed' | null>(q ? null : 'none');
+  const [asked, setAsked] = useState(0);
   useEffect(() => {
     if (!q) return;
     const ctrl = new AbortController();
-    log('run.open', { journey: s.journey });
+    log('run.open', { journey: s.journey, again: asked > 0 });
     fetchJourney(q, ctrl.signal).then(
       (j) => setRun(j.calls.length ? wholeRun(j.calls, s) : 'none'),
       (e: unknown) => {
         if (ctrl.signal.aborted) return;
         log('run.fail', { journey: s.journey, e });
-        setRun('none');
+        setRun(e instanceof UnknownJourneyError ? 'none' : 'failed');
       },
     );
     return () => ctrl.abort();
-    // One request per sheet: the ride does not change while it is open.
+    // One request per sheet and tap on Try again: the ride does not change while it is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [asked]);
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet run-sheet" role="dialog" aria-modal="true" aria-labelledby={id}>
@@ -48,6 +52,21 @@ export function RunSheet({ s, onClose }: { s: Section; onClose: () => void }) {
         </div>
         {run === null && <p className="muted">{t('runAsking')}</p>}
         {run === 'none' && <p className="muted">{t('runUnknown')}</p>}
+        {run === 'failed' && (
+          <div className="notice">
+            <p>{t('planServer')}</p>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setRun(null);
+                setAsked((n) => n + 1);
+              }}
+            >
+              {t('retry')}
+            </button>
+          </div>
+        )}
         {Array.isArray(run) && (
           <ol className="run" aria-label={t('runLabel')}>
             {run.map((x, i) => (

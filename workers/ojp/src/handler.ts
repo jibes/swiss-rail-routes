@@ -46,6 +46,19 @@ const KINDS = {
 } as const;
 type Kind = keyof typeof KINDS;
 
+/**
+ * Trips asked for the day itself carry delays and cancellations: kept a minute, not ten
+ * (review of 11 Nov 2026: pull-to-reload got an answer up to ten minutes old).
+ */
+export const SAME_DAY_TRIP_CACHE = 60;
+const zurichDay = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich' });
+function cacheSeconds(kind: Kind, q: unknown, now: Date): number {
+  const time = kind === 'trip' ? (q as { time?: unknown }).time : undefined;
+  if (typeof time === 'string' && time.slice(0, 10) === zurichDay.format(now))
+    return SAME_DAY_TRIP_CACHE;
+  return KINDS[kind].cache;
+}
+
 export interface Deps {
   apiKey: string;
   /** OJP Fare's own key (one per API) and address; without a key /fare answers 503. */
@@ -197,7 +210,7 @@ async function route(req: Request, d: Deps): Promise<Response> {
         new Response(text, {
           headers: {
             'Content-Type': 'application/xml',
-            'Cache-Control': `public, max-age=${spec.cache}`,
+            'Cache-Control': `public, max-age=${cacheSeconds(kind, q, d.now())}`,
           },
         }),
       ),
@@ -347,6 +360,8 @@ async function europe(
 
 /** A forecast is kept an hour: the models run every few hours, and Open-Meteo's free use counts. */
 const WEATHER_CACHE_S = 3600;
+/** A partial answer from MET Norway (Open-Meteo refused): kept only this long. */
+const WEATHER_FALLBACK_CACHE_S = 300;
 
 /**
  * Weather along a trip (0.37.0): Open-Meteo for rounded places and at most two days, from typed
@@ -385,6 +400,7 @@ async function weather(
     return reply(502, 'upstream');
   }
   let text = await up.text();
+  let cacheS = WEATHER_CACHE_S;
   // Open-Meteo says a refusal in the body too ({"error":true,"reason":"Daily API request limit…"}):
   // MET Norway instead, a place a request, as many as the Worker may ask at once.
   if (!up.ok || /^\s*\{\s*"error"\s*:\s*true/.test(text)) {
@@ -392,6 +408,9 @@ async function weather(
     if (!fallback)
       return reply(up.status === 429 || /limit/i.test(text) ? 503 : 502, 'weather busy');
     text = fallback;
+    // MET answers the first places only: kept briefly, so Open-Meteo answers in full again
+    // once it can (review of 11 Nov 2026: half a stripe stayed empty for an hour).
+    cacheS = WEATHER_FALLBACK_CACHE_S;
   }
   d.defer(
     d.cache.put(
@@ -399,7 +418,7 @@ async function weather(
       new Response(text, {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': `public, max-age=${WEATHER_CACHE_S}`,
+          'Cache-Control': `public, max-age=${cacheS}`,
         },
       }),
     ),

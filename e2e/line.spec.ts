@@ -513,6 +513,9 @@ test('a typed list of lines and stations adds them all', async ({ page }) => {
   await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula, Bernina, back');
   // A bare "back" returns to the start.
   await expect(page.getByRole('button', { name: /^Add all 3/ })).toContainText(/Zürich HB$/);
+  // Matched in full, it is the answer: nothing said as not found, nothing to ask abroad.
+  await expect(page.locator('.add-sheet')).not.toContainText('No station found');
+  await expect(page.getByRole('button', { name: /^Search stations abroad/ })).toHaveCount(0);
   await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina, Xyzzy');
   await expect(page.getByText('Not found: Xyzzy')).toBeVisible();
   await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina');

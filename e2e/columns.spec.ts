@@ -5,6 +5,19 @@ import { allowUnrecorded, BEFORE, expect, newTrip, test } from './fixtures';
 test.describe('three columns', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  // Reported in review (0.51.0): the list beside the trip tidied away the empty trip being made.
+  test('a new trip stays open beside the list, also after a reload', async ({ page }) => {
+    await page.clock.install({ time: BEFORE });
+    await page.goto('./');
+    await page.getByRole('button', { name: 'New trip' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
+    await page.reload();
+    await expect(
+      page.locator('.col-main').getByRole('button', { name: 'Choose where you start' }),
+    ).toBeVisible();
+  });
+
   test('list, trip and map side by side; the map address shows the trip beside it', async ({
     page,
   }) => {

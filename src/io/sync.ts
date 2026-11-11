@@ -313,7 +313,16 @@ async function exclusive(f: () => Promise<void>) {
   }
 }
 
+/** One round; storage failing on the way is logged, never an unhandled rejection. */
 async function once(force = false) {
+  try {
+    await round1(force);
+  } catch (e) {
+    log('sync.storage.fail', { e });
+  }
+}
+
+async function round1(force: boolean) {
   if (!syncAvailable()) return;
   if (!useTours.getState().loaded || !useTrips.getState().loaded) return;
   // Lists that could not be read look empty: syncing them would delete everything elsewhere.
@@ -326,11 +335,11 @@ async function once(force = false) {
       if (useSync.getState().key) useSync.setState({ key: null, status: 'off', settled: true });
       return;
     }
-    // A write unsent and the last rounds failed: each round downloads the whole copy (mobile
-    // data), so wait as the back-off says, unless asked to now.
+    // The last rounds failed (a write unsent, a newer format, a copy it cannot read, busy):
+    // each round downloads the whole copy (mobile data), so wait as the back-off says, unless
+    // asked to now (review of 11 Nov 2026: only unsent writes waited; the rest asked every minute).
     if (
       !force &&
-      saved.unsent &&
       saved.fails &&
       saved.failedAt &&
       Date.now() - saved.failedAt < backoffMs(saved.fails)

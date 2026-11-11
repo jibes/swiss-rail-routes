@@ -89,10 +89,12 @@ export function Home() {
   const now = useNow();
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));
-  // "New trip" and then Back leaves an empty trip: tidy it away on coming back.
+  // "New trip" and then Back leaves an empty trip: tidy it away, unless it is the one open (in
+  // columns the list stands beside it; reported in review: the trip being made was deleted).
   useEffect(() => {
-    for (const x of useTrips.getState().trips) if (!x.route.waypoints.length) remove(x.id);
-  }, [remove]);
+    for (const x of useTrips.getState().trips)
+      if (!x.route.waypoints.length && x.id !== openId) remove(x.id);
+  }, [remove, openId]);
   const arrivalOf = (x: Trip) =>
     x.chain ? expectedArrival(x.chain.connections, liveStatus) : undefined;
   const { live, ahead, past } = sortTrips(trips, now, arrivalOf);

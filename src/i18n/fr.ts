@@ -289,6 +289,7 @@ export const fr = {
   unpinAction: 'Désépingler',
   mapPickOpen: 'Choisir sur la carte',
   mapPickTitle: 'Choisir sur la carte',
+  mapPickFromStop: 'Depuis {stop}',
   mapPickFrom: 'Depuis {stop} à {time}',
   mapPickAdded: '{n} ajouté(s)',
   mapPickLoading: 'Recherche des trains depuis ici…',

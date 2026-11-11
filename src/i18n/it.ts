@@ -288,6 +288,7 @@ export const it = {
   unpinAction: 'Sblocca',
   mapPickOpen: 'Scegli sulla mappa',
   mapPickTitle: 'Scegli sulla mappa',
+  mapPickFromStop: 'Da {stop}',
   mapPickFrom: 'Da {stop} alle {time}',
   mapPickAdded: '{n} aggiunte',
   mapPickLoading: 'Cerco i treni da qui…',

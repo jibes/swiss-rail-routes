@@ -172,7 +172,9 @@ export function savedList<T extends Item>(key: string, read: (raw: unknown) => T
     // them, and an edit just taken out of `pending` is not lost from memory.
     void writing
       .then(() => get(key))
-      .then((raw) => listener?.(applyChanges(readStored(raw), pending)))
+      // This tab's edits not known stored yet, in flight too (reported in review: an edit
+      // begun meanwhile was reverted in memory, then overwritten by the next one).
+      .then((raw) => listener?.(applyChanges(readStored(raw), new Map([...writes, ...pending]))))
       .catch((e: unknown) => log('store.reload.fail', { key, e }));
   });
   const quiet = () => void flush().catch(() => undefined);

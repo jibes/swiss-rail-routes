@@ -290,6 +290,7 @@ export const de = {
   unpinAction: 'Lösen',
   mapPickOpen: 'Auf der Karte wählen',
   mapPickTitle: 'Auf der Karte wählen',
+  mapPickFromStop: 'Ab {stop}',
   mapPickFrom: 'Ab {stop} um {time}',
   mapPickAdded: '{n} hinzugefügt',
   mapPickLoading: 'Züge ab hier werden gesucht…',

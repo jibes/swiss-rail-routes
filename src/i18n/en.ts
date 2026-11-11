@@ -281,6 +281,7 @@ export const en = {
   unpinAction: 'Unpin',
   mapPickOpen: 'Pick on the map',
   mapPickTitle: 'Pick on the map',
+  mapPickFromStop: 'From {stop}',
   mapPickFrom: 'From {stop} at {time}',
   mapPickAdded: '{n} added',
   mapPickLoading: 'Finding the trains from here…',

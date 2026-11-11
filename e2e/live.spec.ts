@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
+import { allowUnrecorded, BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
@@ -302,6 +302,30 @@ test('a delay in a stop list stays on the time’s line, via rows included', asy
 });
 
 // A train's whole run (0.45.0): a tap on its badge shows every stop it calls at, the part you
+// The service not answering is said as such, with Try again (review of 11 Nov 2026: it was
+// blamed on the train, "not known").
+test('the whole run when the service does not answer: said so, asked again', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  let fail = true;
+  await page.route(/\/journey$/, (route) =>
+    fail
+      ? route.fulfill({ status: 502, body: 'upstream' })
+      : route.fulfill({
+          contentType: 'application/xml',
+          body: '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult></TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
+        }),
+  );
+  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Run' }));
+  await page.getByRole('button', { name: 'Whole run of R62' }).click();
+  const sheet = page.locator('.run-sheet');
+  await expect(sheet).toContainText('The timetable service is not answering');
+  await expect(sheet).not.toContainText('not known');
+  fail = false;
+  await sheet.getByRole('button', { name: 'Try again' }).click();
+  await expect(sheet).not.toContainText('not answering');
+});
+
 // ride in full and the rest dimmed; one request on the tap.
 test('a tap on a train shows its whole run, your part marked', async ({ page }) => {
   await page.clock.install({ time: BEFORE });

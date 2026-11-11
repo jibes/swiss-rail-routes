@@ -13,6 +13,8 @@ const syncBoxes = new Map<string, SyncRecord>();
 
 function setup(over: Partial<Deps> = {}) {
   const store = new Map<string, string>();
+  /** How long each answer kept may be served (its Cache-Control), by cache key. */
+  const ages: string[] = [];
   const pending: Promise<unknown>[] = [];
   const upstream = vi.fn(
     async (_url: string | URL | Request, _init?: RequestInit) => new Response('<OJP/>'),
@@ -24,7 +26,10 @@ function setup(over: Partial<Deps> = {}) {
     fetch: upstream as unknown as typeof fetch,
     cache: {
       match: async (k) => (store.has(k.url) ? new Response(store.get(k.url)) : undefined),
-      put: async (k, r) => void store.set(k.url, await r.text()),
+      put: async (k, r) => {
+        ages.push(r.headers.get('Cache-Control') ?? '');
+        store.set(k.url, await r.text());
+      },
     },
     limit: async () => true,
     limitWrite: async () => true,
@@ -49,7 +54,7 @@ function setup(over: Partial<Deps> = {}) {
       }),
       deps,
     );
-  return { call, upstream, flush: () => Promise.all(pending) };
+  return { call, upstream, ages, flush: () => Promise.all(pending) };
 }
 
 describe('OJP worker', () => {
@@ -64,6 +69,16 @@ describe('OJP worker', () => {
     expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer secret-key');
     expect(String(init!.body)).toContain('<OJPTripRequest>');
     expect([...res.headers.values()].join()).not.toContain('secret-key');
+  });
+
+  it('keeps trips of the day itself a minute, others ten (review of 11 Nov 2026)', async () => {
+    const other = setup();
+    await other.call();
+    await other.flush();
+    const today = setup({ now: () => new Date('2026-11-07T07:00:00Z') });
+    await today.call();
+    await today.flush();
+    expect([other.ages, today.ages]).toEqual([['public, max-age=600'], ['public, max-age=60']]);
   });
 
   it('serves repeats from the cache without asking upstream or the limiter', async () => {
@@ -403,6 +418,9 @@ describe('weather (0.37.0)', () => {
     expect(asked[1]).toBe(
       'https://met.example/weatherapi/locationforecast/2.0/complete?lat=46.5&lon=9.85',
     );
+    // Its answer is partial: kept briefly, so Open-Meteo answers in full once it can.
+    await s.flush();
+    expect(s.ages).toEqual(['public, max-age=300']);
     expect(
       (s.upstream.mock.calls[1]![1]!.headers as Record<string, string>)['User-Agent'],
     ).toContain('Viadukt');

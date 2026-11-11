@@ -3,7 +3,7 @@
 // first asked as is; when no answer passes every via, it is split into sub-queries of one via
 // plus the next via as destination, and the answers are stitched, merging the two halves of a
 // ride that continues through the split point.
-import type { Connection, Section, StopCall, Waypoint } from '../model';
+import type { Connection, NoticeInfo, Section, StopCall, Waypoint } from '../model';
 import { stopKey } from '../stops';
 import { MIN, ms, rides, visited } from './connection';
 
@@ -39,7 +39,20 @@ export function subLegs(from: Waypoint, vias: Waypoint[], to: Waypoint) {
  * they stay on the ride, without times, and the via still counts as passed.
  */
 function merge(a: Section, b: Section, walked: StopCall[] = []): Section {
-  const through = { ...a.to, dep: b.from.dep };
+  // Leaving here on time or late: the second half's departure, its estimate with it.
+  const through = {
+    ...a.to,
+    dep: b.from.dep,
+    ...(b.from.depEst ? { depEst: b.from.depEst } : {}),
+  };
+  // Each notice with its own more (grade, validity): both halves', the same one once (reported
+  // in review: the second half's info notice lost its grade and was said red).
+  const said = new Map<string, NoticeInfo>();
+  for (const x of [a, b])
+    (x.notices ?? []).forEach((n, i) => {
+      if (!said.has(n)) said.set(n, x.noticeInfo?.[i] ?? {});
+    });
+  const infos = [...said.values()];
   const near = walked
     .filter((x) => x.stopRef !== a.to.stopRef && x.stopRef !== b.from.stopRef)
     .map((x) => ({ stopRef: x.stopRef, name: x.name }));
@@ -49,7 +62,8 @@ function merge(a: Section, b: Section, walked: StopCall[] = []): Section {
     intermediate: [...a.intermediate, through, ...near, ...b.intermediate],
     geometry: a.geometry && b.geometry ? [...a.geometry, ...b.geometry] : undefined,
     situationIds: [...new Set([...(a.situationIds ?? []), ...(b.situationIds ?? [])])],
-    notices: [...new Set([...(a.notices ?? []), ...(b.notices ?? [])])],
+    notices: [...said.keys()],
+    ...(a.noticeInfo || b.noticeInfo ? { noticeInfo: infos } : {}),
   };
 }
 
@@ -70,7 +84,16 @@ export function join(a: Connection, b: Connection): Connection {
     ];
   } else sections = [...a.sections, ...b.sections];
   const n = sections.filter((s) => s.mode !== 'walk').length;
-  return { legIndex: a.legIndex, dep: a.dep, arr: b.arr, transfers: Math.max(0, n - 1), sections };
+  return {
+    legIndex: a.legIndex,
+    dep: a.dep,
+    arr: b.arr,
+    // Delays known stay with the joined connection: the planner chains on them.
+    ...(a.depEst ? { depEst: a.depEst } : {}),
+    ...(b.arrEst ? { arrEst: b.arrEst } : {}),
+    transfers: Math.max(0, n - 1),
+    sections,
+  };
 }
 
 const sameVehicle = (a: Connection, b: Connection) => {

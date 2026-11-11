@@ -182,3 +182,43 @@ describe('stitched diversity', () => {
     expect(new Set(out.map((c) => c.dep)).size).toBe(2);
   });
 });
+
+// Review of 11 Nov 2026: the second half's notice lost its grade (an information notice was said
+// red), and a stitched connection lost the delays the planner chains on.
+describe('one ride from two halves', () => {
+  it('keeps each notice’s grade and the delays known', () => {
+    const a = conn(
+      ride(
+        'IR 70',
+        [
+          ['Zürich HB', '08:00'],
+          ['Zug', '08:20'],
+        ],
+        { journey: 'j' },
+      ),
+    );
+    a.depEst = '2026-11-07T07:05:00Z';
+    a.sections[0]!.from.depEst = a.depEst;
+    const b = conn(
+      ride(
+        'IR 70',
+        [
+          ['Zug', '08:21'],
+          ['Luzern', '08:45'],
+        ],
+        { journey: 'j' },
+      ),
+    );
+    b.arrEst = '2026-11-07T07:50:00Z';
+    Object.assign(b.sections[0]!, {
+      situationIds: ['s1'],
+      notices: ['Information zu X'],
+      noticeInfo: [{ grade: 'info' }],
+    });
+    const j = join(a, b);
+    expect(j.sections).toHaveLength(1);
+    expect(j.sections[0]!.notices).toEqual(['Information zu X']);
+    expect(j.sections[0]!.noticeInfo).toEqual([{ grade: 'info' }]);
+    expect([j.depEst, j.arrEst]).toEqual([a.depEst, b.arrEst]);
+  });
+});

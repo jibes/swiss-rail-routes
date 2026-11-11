@@ -11,6 +11,14 @@ describe('i18n', () => {
     }
   });
 
+  it('every translation names the same placeholders (a missing one shows as "{stop}")', () => {
+    const marks = (v: string) => [...new Set(v.match(/\{\w+\}/g) ?? [])].sort();
+    const en = CATALOGUES.en as Record<string, string>;
+    for (const lang of LANGS)
+      for (const [k, v] of Object.entries(CATALOGUES[lang] as Record<string, string>))
+        expect(marks(v), `${lang}.${k}`).toEqual(marks(en[k]!));
+  });
+
   it('picks the first supported browser language', () => {
     expect(pickLang(['rm-CH', 'de-CH', 'en'])).toBe('de');
     expect(pickLang(['fr'])).toBe('fr');

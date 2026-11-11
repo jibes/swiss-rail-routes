@@ -207,6 +207,17 @@ describe('sync engine', () => {
     await a.sync.syncNow();
     expect(a.sync.useSync.getState().status).toBe('update');
     expect(boxes.get(id)!.data).toBe(newer);
+    // The next round by itself waits too (review of 11 Nov 2026: it downloaded the whole copy
+    // every minute); asked to, it goes.
+    const gets = vi.fn();
+    vi.stubGlobal('fetch', (input: string | URL | Request, init?: RequestInit) => {
+      gets();
+      return worker(input, init);
+    });
+    await a.sync.syncNow();
+    expect(gets).not.toHaveBeenCalled();
+    await a.sync.syncNow(true);
+    expect(gets).toHaveBeenCalled();
   });
 
   it('a new key carries the deletions and change times along', async () => {

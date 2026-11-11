@@ -167,7 +167,11 @@ export function splitLoops(tour: Tour): Tour {
  * a change within a connection and as the live view will: tight below TIGHT_TRANSFER_MIN or
  * the walk between them. Said on the ride you leave. A stay planned there is time enough.
  */
-function changeWarning(prev: Connection | undefined, c: Connection, legIndex: number): Warning[] {
+export function changeWarning(
+  prev: Connection | undefined,
+  c: Connection,
+  legIndex: number,
+): Warning[] {
   const a = rides(prev ?? c).at(-1);
   const b = rides(c)[0];
   if (!prev || !a || !b || !a[0].to.arr || !b[0].from.dep) return [];

@@ -201,6 +201,9 @@ export function AddSheet({
         ],
         [after?.stopRef, next?.stopRef].filter((x): x is string => !!x),
       );
+  // A typed list matched in full is the answer: no "nothing found", no search abroad for it
+  // (review of 11 Nov 2026: "Add all 3", then "No station found").
+  const listed = !!typed && !typed.missing.length && typed.entries.length > 0;
   // Nothing typed: the stations first, lines and your trips folded under them.
   const folded = !f;
 
@@ -292,9 +295,7 @@ export function AddSheet({
                 <Icon name="map" />
               </span>
               <span className="r-name">{t('mapPickOpen')}</span>
-              <span className="r-sub">
-                {t('mapPickFrom', { stop: after.name, time: '' }).trim()}
-              </span>
+              <span className="r-sub">{t('mapPickFromStop', { stop: after.name })}</span>
             </button>
           )}
           {typed && typed.missing.length === 0 && typed.entries.length > 0 && (
@@ -382,7 +383,7 @@ export function AddSheet({
               </button>
             );
           })}
-          {f.length >= 3 && !abroadNow && (
+          {f.length >= 3 && !abroadNow && !listed && (
             <button type="button" className="result" onClick={askAbroad}>
               <span className="r-icon" aria-hidden="true">
                 <Icon name="globe" />
@@ -462,6 +463,7 @@ export function AddSheet({
           )}
 
           {f.length >= 2 &&
+            !listed &&
             !stations.length &&
             !places.length &&
             !trips.length &&

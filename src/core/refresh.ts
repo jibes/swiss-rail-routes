@@ -4,7 +4,15 @@
 import type { GaData, RouteTemplate } from './data';
 import type { Connection, LatLon, Section } from './model';
 import { rides } from './planner/connection';
-import { legRules, mergeRepeats, splitLoops, zurichLocal, type PlannedChain } from './planner/plan';
+import {
+  changeWarning,
+  legRules,
+  lineMissed,
+  mergeRepeats,
+  splitLoops,
+  zurichLocal,
+  type PlannedChain,
+} from './planner/plan';
 import type { TripQuery } from './ojp/request';
 import { stopKey } from './stops';
 import type { PlannedTrip, Trip } from './trip';
@@ -41,8 +49,11 @@ export function chainWarnings(
   deps: Pick<RefreshDeps, 'templates' | 'ga' | 'stop' | 'place'>,
 ): Warning[] {
   const rules = legRules(splitLoops(mergeRepeats(trip.route)), deps);
-  return connections.flatMap((c, i) =>
-    warningsFor(c, {
+  // The trains' own warnings, and those the planner says across legs that the trains alone
+  // tell: a tight change between two legs, a line not ridden (reported in review: a reload
+  // dropped them for good).
+  return connections.flatMap((c, i) => [
+    ...warningsFor(c, {
       legIndex: i,
       date: trip.route.date,
       ticket: trip.route.ticket,
@@ -51,8 +62,13 @@ export function chainWarnings(
       stop: deps.stop,
       place: deps.place,
     }),
-  );
+    ...changeWarning(connections[i - 1], c, i),
+    ...(rules[i] ? lineMissed(c, rules[i], i) : []),
+  ]);
 }
+
+/** Said by the planner about the choice itself (other options, the stay's window): kept as said. */
+const CHOICE: ReadonlySet<Warning['type']> = new Set(['window-missed', 'next-day', 'sparse']);
 
 export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promise<Refreshed> {
   const asked = trip.chain.connections.flatMap((c, ci) =>
@@ -133,7 +149,10 @@ export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promis
       ...(arrEst ? { arrEst } : {}),
     };
   });
-  const warnings = chainWarnings(trip, connections, deps);
+  const warnings = [
+    ...chainWarnings(trip, connections, deps),
+    ...trip.chain.warnings.filter((w) => CHOICE.has(w.type)),
+  ];
   if (trip.route.date >= deps.today)
     for (const { s, ci, si } of missing)
       warnings.push({

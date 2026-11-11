@@ -1,0 +1,329 @@
+/* The trip line's later parts, split from tripline.css (kept after it: same cascade): the
+   panel's head, cards the plan's stations open, being planned, weather, how full, heights,
+   new days, the whole run. */
+
+/* The panel's head: the station's name as a field, the cross that closes the panel. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.panel-head .picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-head > .icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--ink-2);
+}
+
+.options-note .text-button {
+  margin-left: 8px;
+}
+
+.panel .panel-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* A station the plan chose, opened (TripLine planPanel): a card as yours, its actions a row. */
+.mids li .plan-panel {
+  flex-basis: 100%;
+  margin: 6px 0 8px;
+}
+
+.pin-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+.pin-menu .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A stop inside a ride: its name opens the same. */
+.mid-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mids li:has(.plan-panel) {
+  flex-wrap: wrap;
+}
+
+.sq.pinned {
+  color: var(--rail);
+}
+
+/* A pinned via: the pin is its state, by the name; the panel's Unpin is the action. */
+.pin-mark {
+  display: inline-flex;
+  margin-left: 6px;
+  color: var(--rail);
+  vertical-align: -1px;
+}
+
+.panel-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+  flex: 1;
+}
+
+.panel-name svg {
+  color: var(--rail);
+}
+
+.panel-name .muted {
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.pill.unpin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Opened, a stop inside a ride keeps its ring beside its name, not beside the card. */
+.trip-line .ride.with-mids .mids li:has(.plan-panel)::before {
+  top: calc(0.5lh - 5px);
+}
+
+/* Being planned (0.36.0): a wave runs down the rail, over what is about to be replaced; the
+   times wait as shimmering bars. One band over the whole line, at the rail (50 + 15 px). */
+.trip-line.planning::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 62px;
+  width: 6px;
+  pointer-events: none;
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--bg) 85%, transparent),
+      transparent
+    )
+    no-repeat;
+  background-size: 100% 180px;
+  animation: rail-wave 1.6s ease-in-out infinite;
+}
+
+@keyframes rail-wave {
+  from {
+    background-position: 0 -180px;
+  }
+  to {
+    background-position: 0 calc(100% + 180px);
+  }
+}
+
+/* Without motion: no band, the rail dimmed while it is planned. */
+@media (prefers-reduced-motion: reduce) {
+  .trip-line.planning::after {
+    display: none;
+  }
+
+  .trip-line.planning .rail {
+    opacity: 0.5;
+  }
+}
+/* Weather along the line (0.37.0, WeatherCell.tsx): a stripe at the right, its own column. */
+.trip-line.wx > li {
+  padding-right: 28px;
+}
+
+.wx-cell {
+  position: absolute;
+  z-index: 1;
+  right: 6px;
+  top: 0;
+  /* A pixel into the next row: no hairline gap between rows (one stripe, not stripes). */
+  bottom: -1px;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.trip-line.wx > li:nth-child(1 of .station, .ride) .wx-cell {
+  border-radius: 8px 8px 0 0;
+}
+
+.trip-line.wx > li:nth-last-child(1 of .station, .ride) .wx-cell {
+  border-radius: 0 0 8px 8px;
+}
+
+/* Under way (0.42.0): behind you dimmed, to where you are, and that marked in red, in step with
+   the line's marker; not row by row. */
+.trip-line > li.wx-now {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 6px;
+  width: 16px;
+  height: var(--y);
+  padding: 0;
+  border-bottom: 2px solid var(--rail);
+  border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  pointer-events: none;
+}
+
+/* The chance of rain or snow: as wide as it is likely, its top at the name's. */
+.wx-bar {
+  position: absolute;
+  right: 0;
+  top: 9px;
+  height: 18px;
+  border-radius: 2px 0 0 2px;
+  background: rgb(40 105 215 / 0.9);
+}
+
+.wx-bar.night {
+  background: #bcd6ff;
+  box-shadow: inset 0 0 0 1.5px #fff;
+}
+
+/* A stop inside a ride: its bar on the stripe, beside its name (the li's right is 22 px short). */
+.wx-mid {
+  position: absolute;
+  z-index: 2;
+  right: -22px;
+  top: 3px;
+  width: 16px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.wx-mid .wx-bar {
+  top: 0;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.wx-tip {
+  position: absolute;
+  z-index: 6;
+  right: 22px;
+  top: 0;
+  width: 200px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+.wx-tip span {
+  opacity: 0.8;
+}
+
+/* The title in the card's own colours, also inside a ride, whose bold names are ink
+   (reported: the card's title blank on a ride's stops, 0.40.0). */
+.trip-line .wx-tip b {
+  color: inherit;
+}
+
+.trip-line > li.wx-far {
+  display: block;
+  margin: 0 0 8px 80px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.trip-line .wx-note {
+  grid-column: 3;
+  margin: 2px 0 6px 8px;
+}
+
+/* How full the train is expected to be, for your class (0.39.0): only when seats are few. */
+.trip-line .occ {
+  color: var(--amber);
+}
+.trip-line .occ-3 {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* A mountain station's height after its name (0.40.0): muted, never in the way. */
+.trip-line .n .alt {
+  margin-left: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* A new day (0.44.0): under the time where it changes, quiet. */
+.trip-line .t .day-of {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* A train's badge opens its whole run (0.45.0): a button that looks like the badge. */
+.trip-line button.badge.run-open {
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* The whole run: the part you ride in full, the rest dimmed. */
+.run-sheet .badge {
+  font-size: 13px;
+  padding: 2px 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+}
+.run {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.run li {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  padding: 5px 0;
+  font-variant-numeric: tabular-nums;
+}
+.run li.yours {
+  font-weight: 600;
+  border-left: 3px solid var(--rail);
+  padding-left: 8px;
+}
+.run li.other {
+  color: var(--ink-3);
+  padding-left: 11px;
+}

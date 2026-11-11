@@ -208,7 +208,15 @@ export default function MapView({ id }: { id: string }) {
         bounds: [5.9, 45.8, 10.5, 47.8],
         attributionControl: { compact: true },
       });
-      map.on('error', () => setFailed(true));
+      // One tile failing on a map that shows others is no failure of the map (review of
+      // 11 Nov 2026: the note stayed on a working map); none shown yet, it is.
+      let tiles = false;
+      map.on('data', (e) => {
+        if (e.dataType === 'source' && 'tile' in e && e.tile) tiles = true;
+      });
+      map.on('error', (e) => {
+        if (!(tiles && 'tile' in e && e.tile)) setFailed(true);
+      });
       map.on('moveend', () => setMoved((n) => n + 1));
       const turned = () => {
         if (map) setTurn({ bearing: map.getBearing(), pitch: map.getPitch() });
@@ -422,8 +430,11 @@ export default function MapView({ id }: { id: string }) {
     if (map) setWeather(map, wmap);
   }, [map, wmap]);
   // A tap on a column or an icon: the line's own words for it.
+  // Adding on the map: the web from a station of this trip, under its red; a tap is the
+  // adding's then, not the weather's (review of 11 Nov 2026).
+  const adding = useMapAdd((s) => s.add?.trip === id);
   useEffect(() => {
-    if (!map || !wx) return;
+    if (!map || !wx || adding) return;
     let pop: maplibregl.Popup | null = null;
     const open = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
@@ -474,7 +485,7 @@ export default function MapView({ id }: { id: string }) {
         map.off('mouseleave', id, plain);
       }
     };
-  }, [map, wx, rows, t]);
+  }, [map, wx, rows, t, adding]);
 
   // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
   // the timetable comes (at most WAVE_MS, so offline it does not run on for good).
@@ -511,8 +522,7 @@ export default function MapView({ id }: { id: string }) {
     };
   }, [map, replanning, dark]);
 
-  // Adding on the map: the web from a station of this trip, under its red.
-  const adding = useMapAdd((s) => s.add?.trip === id);
+  // Adding on the map: the web from a station of this trip, under its red (`adding`, above).
   // A ride's line tapped: its train's whole run (0.47.0), the sheet its badge opens on the list.
   const drawn = useRef<Connection[]>([]);
   const [run, setRun] = useState<Section | null>(null);

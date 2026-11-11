@@ -107,6 +107,22 @@ describe('asking the timetable with answers kept', () => {
     expect(fetchTrips).toHaveBeenCalledTimes(2);
   });
 
+  it('tidies again every 50 kept: an app open for days does not grow for good', async () => {
+    vi.useFakeTimers({ now: at('2026-11-05T10:00:00Z'), toFake: ['Date'] });
+    const logged: string[] = [];
+    vi.doMock('../src/io/log', () => ({ log: (e: string) => void logged.push(e) }));
+    const { cachedTrips } = await setup();
+    for (let i = 0; i < 52; i++)
+      await cachedTrips(
+        q(
+          `2026-11-07T${String(Math.floor(i / 60) + 8).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+        ),
+      );
+    await new Promise((r) => setTimeout(r, 50));
+    vi.doUnmock('../src/io/log');
+    expect(logged.filter((e) => e === 'answers.tidy')).toHaveLength(2);
+  });
+
   it('tidying drops answers about days gone', async () => {
     vi.useFakeTimers({ now: at('2026-11-05T10:00:00Z'), toFake: ['Date'] });
     const { fetchTrips, cachedTrips, tidyAnswers } = await setup();

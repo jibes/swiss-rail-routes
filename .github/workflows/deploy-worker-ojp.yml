@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - workers/ojp/**
-      - src/core/ojp/**
+      # The Worker bundles core modules beyond ojp/ (eu/, weather, stops, sun, model): all of core.
+      - src/core/**
       - package-lock.json
       - .github/workflows/deploy-worker-ojp.yml
   workflow_dispatch:

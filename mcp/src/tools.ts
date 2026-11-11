@@ -228,7 +228,14 @@ export function createTools(deps: ToolDeps) {
     job.done.then(
       () => {
         job.running = false;
-        if (jobs.size > KEEP_PLANS) jobs.delete(jobs.keys().next().value as string);
+        // The oldest done one goes, never one still running (review of 11 Nov 2026: it fell out
+        // of the count of plans at once, and was asked for twice).
+        if (jobs.size > KEEP_PLANS)
+          for (const [k, j] of jobs)
+            if (!j.running) {
+              jobs.delete(k);
+              break;
+            }
       },
       // Failed: asked again, it tries again.
       () => void jobs.delete(key),
