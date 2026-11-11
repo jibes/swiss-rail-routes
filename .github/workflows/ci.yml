@@ -47,17 +47,13 @@ jobs:
           # e2e answers this host from recorded OJP answers (e2e/plan.spec.ts).
           VITE_OJP_URL: https://ojp.invalid
 
-      # Ubuntu's mirrors failing (DNS, 11 Nov 2026) must not stop a release: the browser's own
-      # system packages are tried three times, then the browser alone (the runner image already
-      # has the libraries Chromium needs; only extra fonts would be missing).
+      # Ubuntu's mirrors failing (DNS, 11 Nov 2026) must not stop a release: the browser first,
+      # then its system packages for at most two minutes (each unreachable mirror waits 20 s a
+      # package); without them the runner image's own libraries serve (only extra fonts miss).
       - name: Install Chromium
         run: |
-          for i in 1 2 3; do
-            npx playwright install --with-deps chromium && exit 0
-            echo "::warning::playwright install --with-deps failed (try $i)"
-            sleep $((i * 20))
-          done
           npx playwright install chromium
+          timeout 120 npx playwright install-deps chromium || echo "::warning::system packages for Chromium not installed (mirrors unreachable)"
       - run: npm run e2e
 
       - if: failure()
