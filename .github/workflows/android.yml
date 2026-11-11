@@ -223,7 +223,13 @@ jobs:
         if: steps.version.outputs.new == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n apk-unsigned -D in
+        # Tried again on GitHub's own errors (0.54.0 failed on a 502 here).
+        run: |
+          for wait in 5 15 45 0; do
+            gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n apk-unsigned -D in && exit 0
+            [ "$wait" = 0 ] && exit 1
+            rm -rf in; sleep "$wait"
+          done
 
       - name: Sign
         if: steps.version.outputs.new == 'true'
