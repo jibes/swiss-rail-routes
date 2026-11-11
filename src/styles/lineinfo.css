@@ -1,6 +1,6 @@
 /* The trip line's later parts, split from tripline.css (kept after it: same cascade): the
    panel's head, cards the plan's stations open, being planned, weather, how full, heights,
-   new days, the whole run. */
+   new days. */
 
 /* The panel's head: the station's name as a field, the cross that closes the panel. */
 .panel-head {
@@ -22,9 +22,8 @@
 }
 
 /* Try again where something failed: a chip that looks tappable, never broken over two lines
-   (second audit: bare text in the strip, two lines in the whole run). */
-.options-note .text-button,
-.run-sheet .notice button {
+   (second audit: bare text in the strip). */
+.options-note .text-button {
   margin-left: 8px;
   min-height: 36px;
   padding: 0 12px;
@@ -305,49 +304,11 @@
   white-space: nowrap;
 }
 
-/* A train's badge opens its whole run (0.45.0): a button that looks like the badge. */
-.trip-line button.badge.run-open {
-  background: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* The whole run: the part you ride in full, the rest dimmed. */
-.run-sheet .badge {
-  font-size: 13px;
-  padding: 2px 6px;
-  border: 1.5px solid var(--ink);
-  border-radius: 5px;
-}
-.run {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-}
-.run li {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 8px;
-  padding: 5px 0;
-  font-variant-numeric: tabular-nums;
-}
-.run li.yours {
-  font-weight: 600;
-  border-left: 3px solid var(--rail);
-  padding-left: 8px;
-}
-.run li.other {
-  color: var(--ink-3);
-  padding-left: 11px;
-}
-
-/* A finger's reach where the look is small (review of 11 Nov 2026): the badge, a line's ×, the
-   panel's cross get a 44 px target around them, their look unchanged. */
-.trip-line button.badge.run-open,
+/* A finger's reach where the look is small (review of 11 Nov 2026): a line's ×, the panel's
+   cross get a 44 px target around them, their look unchanged. */
 .panel .via-line button {
   position: relative;
 }
-.trip-line button.badge.run-open::after,
 .panel .via-line button::after {
   content: '';
   position: absolute;
@@ -355,11 +316,6 @@
   width: max(100%, 44px);
   height: 44px;
   transform: translate(-50%, -50%);
-}
-/* The badge's reach stays in its own row, wide but no taller than the badge: "N stops" right
-   under it reaches up into the gap (second audit: its taps opened the whole run). */
-.trip-line button.badge.run-open::after {
-  height: 100%;
 }
 .panel-head > .icon {
   width: 44px;

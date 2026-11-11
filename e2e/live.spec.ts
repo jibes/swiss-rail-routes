@@ -1,8 +1,7 @@
-import type { Locator, Page } from '@playwright/test';
 import { encodeTour } from '../tests/helpers/share';
 import { FIXTURE_DATE } from '../tests/acceptance/ojp';
 import { acceptanceTours } from '../tests/acceptance/tours';
-import { allowUnrecorded, BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
+import { BEFORE, expect, newTrip, pick, planShared, test } from './fixtures';
 
 // T5 (Interlaken Ost 09:04 → Kleine Scheidegg), lived through with a controlled clock.
 // Live calls (/journey) are not recorded: the screen falls back to timetable times.
@@ -300,111 +299,6 @@ test('a delay in a stop list stays on the time’s line, via rows included', asy
   expect(rows.some((r) => r.via)).toBe(true);
   expect(rows.filter((r) => !r.oneLine || !r.beside)).toEqual([]);
 });
-
-// A train's whole run (0.45.0): a tap on its badge shows every stop it calls at, the part you
-// The service not answering is said as such, with Try again (review of 11 Nov 2026: it was
-// blamed on the train, "not known").
-test('the whole run when the service does not answer: said so, asked again', async ({ page }) => {
-  await page.clock.install({ time: BEFORE });
-  allowUnrecorded(page);
-  let fail = true;
-  await page.route(/\/journey$/, (route) =>
-    fail
-      ? route.fulfill({ status: 502, body: 'upstream' })
-      : route.fulfill({
-          contentType: 'application/xml',
-          body: '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult></TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
-        }),
-  );
-  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Run' }));
-  await page.getByRole('button', { name: 'Whole run of R62' }).click();
-  const sheet = page.locator('.run-sheet');
-  await expect(sheet).toContainText('The timetable service is not answering');
-  await expect(sheet).not.toContainText('not known');
-  fail = false;
-  await sheet.getByRole('button', { name: 'Try again' }).click();
-  await expect(sheet).not.toContainText('not answering');
-});
-
-// ride in full and the rest dimmed; one request on the tap.
-test('a tap on a train shows its whole run, your part marked', async ({ page }) => {
-  await page.clock.install({ time: BEFORE });
-  const call = (ref: string, name: string, dep: string) =>
-    `<OnwardCall><siri:StopPointRef>${ref}</siri:StopPointRef><StopPointName><Text xml:lang="de">${name}</Text></StopPointName>` +
-    `<ServiceDeparture><TimetabledTime>${FIXTURE_DATE}T${dep}:00Z</TimetabledTime></ServiceDeparture></OnwardCall>`;
-  await page.route(/\/journey$/, (route) =>
-    route.fulfill({
-      contentType: 'application/xml',
-      body:
-        '<?xml version="1.0" encoding="utf-8"?><OJP xmlns:siri="http://www.siri.org.uk/siri" xmlns="http://www.vdv.de/ojp"><OJPResponse><siri:ServiceDelivery><OJPTripInfoDelivery><TripInfoResult>' +
-        call('ch:1:sloid:7000', 'Bern', '07:30') +
-        call('ch:1:sloid:7492', 'Interlaken Ost', '08:04') +
-        call('ch:1:sloid:7388', 'Wilderswil', '08:08') +
-        call('ch:1:sloid:7389', 'Zweilütschinen', '08:13') +
-        call('ch:1:sloid:7384', 'Lauterbrunnen', '08:26') +
-        '</TripInfoResult></OJPTripInfoDelivery></siri:ServiceDelivery></OJPResponse></OJP>',
-    }),
-  );
-  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Run' }));
-  await page.getByRole('button', { name: 'Whole run of R62' }).click();
-  const run = page.getByRole('list', { name: 'The train’s stops' });
-  await expect(run.locator('li')).toHaveCount(5);
-  await expect(run.locator('li.other').first()).toHaveText(/Bern/);
-  await expect(run.locator('li.yours').first()).toHaveText(/Interlaken Ost/);
-  await expect(run.locator('li.yours').last()).toHaveText(/Lauterbrunnen/);
-
-  // The same from the map (0.47.0): a tap on a ride's line opens its train's whole run.
-  await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: 'Map', exact: true }).click();
-  const map = page.locator('.map');
-  await expect(map.locator('canvas')).toBeVisible();
-  // Points on the drawn line (the rail's red), found on a screenshot. Where a weather icon lies on
-  // it the weather's card wins (by design), so a few points along it are tried.
-  let points: [number, number][] = [];
-  await expect
-    .poll(async () => (points = await redPixels(page, map)).length, { timeout: 15_000 })
-    .toBeGreaterThan(0);
-  const box = (await map.boundingBox())!;
-  const stops = page.getByRole('list', { name: 'The train’s stops' }).locator('li');
-  for (const [x, y] of points) {
-    await page.locator('.maplibregl-popup').evaluateAll((els) => els.forEach((e) => e.remove()));
-    await map.click({ position: { x: x * box.width, y: y * box.height } });
-    if (
-      await stops
-        .first()
-        .waitFor({ timeout: 1500 })
-        .then(
-          () => true,
-          () => false,
-        )
-    )
-      break;
-  }
-  await expect(stops).toHaveCount(5);
-});
-
-/** Points along a screenshot's red pixels (the rail's line), as fractions of its size (the
- * screenshot is at the device's scale); none before it is drawn. */
-async function redPixels(page: Page, at: Locator): Promise<[number, number][]> {
-  const png = (await at.screenshot()).toString('base64');
-  return page.evaluate(async (b64) => {
-    const img = new Image();
-    img.src = `data:image/png;base64,${b64}`;
-    await img.decode();
-    const c = document.createElement('canvas');
-    c.width = img.width;
-    c.height = img.height;
-    const g = c.getContext('2d')!;
-    g.drawImage(img, 0, 0);
-    const d = g.getImageData(0, 0, c.width, c.height).data;
-    const red: [number, number][] = [];
-    for (let i = 0; i < d.length; i += 4)
-      if (d[i]! > 150 && d[i + 1]! < 80 && d[i + 2]! < 80)
-        red.push([((i / 4) % c.width) / c.width, Math.floor(i / 4 / c.width) / c.height]);
-    if (red.length < 50) return [];
-    return [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6].map((q) => red[Math.floor(red.length * q)]!);
-  }, png);
-}
 
 // Put in after it left (0.49.0, reported: an already started trip could not be entered): today
 // at 09:30, a trip from 09:00 is planned from 09:00 and is under way at once.

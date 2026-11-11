@@ -65,7 +65,7 @@ export function PullReload({
         e.touches.length === 1 &&
         window.scrollY <= 0 &&
         // Not over what lies on top: a sheet, the menu, the map planner (its map pans by finger).
-        !document.querySelector('.menu-scrim, .scrim, dialog[open], .maplibregl-canvas.adding') &&
+        !document.querySelector('.menu-scrim, .scrim, dialog[open]') &&
         !el.closest?.('input, textarea, select') &&
         getComputedStyle(el).touchAction !== 'none'
           ? { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }

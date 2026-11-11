@@ -9,7 +9,6 @@ import { compactTrip, type Trip } from '../core/trip';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
 import { keepPlan, planRoute, routeJson } from '../io/planTrip';
 import { loadPlans } from '../io/tours';
-import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { askNotifications } from '../io/notifications';
 import { log } from '../io/log';
@@ -30,7 +29,7 @@ const QUIET_MS = 400;
 
 export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const update = useTrips((s) => s.update);
-  const reservations = usePrefs((s) => s.reservations);
+  const reservations = 'avoid';
   // The status with the route it is about: after an edit an old error or "done" never shows
   // for the new route (it is planning until said otherwise).
   const [st, setSt] = useState<{ json: string; status: PlanStatus; detail: string }>({

@@ -14,8 +14,6 @@ interface TripsState {
   load: () => Promise<void>;
   add: (t: Trip) => void;
   update: (id: string, edit: (t: Trip) => Trip) => void;
-  /** Planned trips that have not left yet are planned again, as the choices they were planned under changed. */
-  replanUpcoming: (now: number) => void;
   /** Changes the route; its timetable goes and is planned again (usePlanner). */
   editRoute: (id: string, edit: (r: Tour) => Tour) => void;
   remove: (id: string) => void;
@@ -59,15 +57,6 @@ export const useTrips = create<TripsState>()((set, get) => ({
     });
     set({ trips });
     void tripsList.save(before, trips).catch(() => undefined);
-  },
-  replanUpcoming: (now) => {
-    const before = get().trips;
-    const trips = before.map((t) =>
-      t.chain && Date.parse(t.chain.dep) > now ? withoutTimetable(t) : t,
-    );
-    log('trip.replanUpcoming', { trips: trips.filter((t, i) => t !== before[i]).length });
-    set({ trips });
-    void tripsList.save(before, trips, true).catch(() => undefined);
   },
   editRoute: (id, edit) => {
     const before = get().trips;

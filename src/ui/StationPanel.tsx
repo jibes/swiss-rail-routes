@@ -5,7 +5,6 @@ import { useEffect, useRef } from 'react';
 import { useT } from '../store';
 import { Icon } from './icons';
 import { StayRow } from './StayRow';
-import type { FindSubstitute } from './MissedNote';
 
 export interface LineActions {
   /** Entry `k` replaced by another station (a station missed: the nearest that works, Use). */
@@ -21,7 +20,6 @@ export interface LineActions {
   /** An hour later (a station not reached may be at another time). */
   later: () => void;
   /** The nearest station that works in place of entry `k` (a tap on a station missed). */
-  find?: FindSubstitute;
   /** A station the plan chose made yours, after entry `k`: a via; with a stay; or adding on. */
   pin?: (k: number, stop: { stopRef: string; name: string }, then?: 'stay' | 'add') => void;
 }

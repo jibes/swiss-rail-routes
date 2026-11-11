@@ -303,51 +303,6 @@ export function setEntryStayUntil<T extends Pick<Tour, 'waypoints'>>(
   return fromEntries(tour, e);
 }
 
-/**
- * The route the other way round: the stations in reverse order (a round trip, starting and
- * ending at one station, runs its loop the other way from the same start), each line on its
- * new end with its stations reversed, stays with their stations. A stay's window (leave by,
- * arrive after) does not fit the new order and goes; `windowsDropped` says whether one did.
- * Reversing twice gives the route back.
- */
-export function reverseRoute<T extends Pick<Tour, 'waypoints'>>(
-  tour: T,
-): { tour: T; windowsDropped: boolean } {
-  const e = entriesOf(tour);
-  let windowsDropped = false;
-  const out: Entry[] = e
-    .map((x, k) => {
-      const { leaveBy, arriveAfter, stayUntil, line: _l, ...w } = x.w;
-      if (leaveBy || arriveAfter || stayUntil) windowsDropped = true;
-      // The line that led here from the entry before now leads from here to it: it is
-      // recorded on that entry, reversed.
-      const next = e[k + 1];
-      const into = next?.w.line;
-      return {
-        w: { ...w, dwellMin: lengthWithout(x.w), ...(into ? { line: into } : {}) },
-        rings: into ? [...next.rings].reverse() : [],
-      };
-    })
-    .reverse();
-  return { tour: fromEntries(tour, out), windowsDropped };
-}
-
-/**
- * The way back the same way (SPEC §3, 0.47.0): from the route's last station to its first by
- * the stations and lines of the way out, reversed, ridden through (the stays were on the way
- * out). Empty when there is nothing to retrace: no station between, or back at the start.
- */
-export function sameWayBack(tour: Pick<Tour, 'waypoints'>): Entry[] {
-  const e = entriesOf(tour);
-  if (e.length < 3 || stopKey(e[0]!.w.stopRef) === stopKey(e.at(-1)!.w.stopRef)) return [];
-  return entriesOf(reverseRoute(tour).tour)
-    .slice(1)
-    .map((x) => {
-      const { leaveBy: _l, arriveAfter: _a, stayUntil: _u, ...w } = x.w;
-      return { ...x, w: { ...w, kind: 'via' as const, dwellMin: 0 } };
-    });
-}
-
 /** The template ids whose lines a move of entry `from` to `to` would switch off. */
 export function linesLostByMove(tour: Pick<Tour, 'waypoints'>, from: number, to: number): string[] {
   const before = entriesOf(tour);

@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { localParams, templateName, type RouteTemplate } from '../core/data';
 import { entriesOf, lineTo, linesLostByMove } from '../core/line';
-import type { Section, Tour } from '../core/model';
+import type { Tour } from '../core/model';
 import { pinAfter, towards, viasOnRides, type LineRow, type StationRow } from '../core/rows';
 import { NOTICE_TYPES, type Warning } from '../core/warnings';
 import { usePrefs, useT } from '../store';
@@ -25,7 +25,6 @@ import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './line
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
 import { useHereY } from './useHereY';
-import { RunSheet } from './RunSheet';
 import { runsOn } from '../core/planner/connection';
 import { stayLabel } from './stayLabel';
 import { productText } from './product';
@@ -88,7 +87,6 @@ export function TripLine({
   const [hint, setHint] = useState<string | null>(null);
   const [more, setMore] = useState<string | null>(null);
   // A train's whole run, opened by a tap on its badge (0.45.0).
-  const [run, setRun] = useState<Section | null>(null);
   // A ride's stops between: a tap decides; until then the ride being travelled shows them.
   const [midsOpen, setMidsOpen] = useState<Map<string, boolean>>(new Map());
   const [drag, setDrag] = useState<{
@@ -498,14 +496,7 @@ export function TripLine({
                           goes (its platform beside the station's name, 0.50.0); then its stops,
                           how long and the notes. */}
                       <span className="ride-l1">
-                        <button
-                          type="button"
-                          className="badge run-open"
-                          aria-label={t('runOpen', { line: badge(s) })}
-                          onClick={() => setRun(s)}
-                        >
-                          {badge(s)}
-                        </button>
+                        <span className="badge">{badge(s)}</span>
                         {s.product && <b className="product">{productText(t, s.product)}</b>}
                         {dest && (
                           <span className="towards">
@@ -733,16 +724,7 @@ export function TripLine({
               {L?.here && <span className="sr-only">{t('youAreHere')}</span>}
               {whyLocked(r, i)}
               {r.missed && !(rows[i - 1] as StationRow | undefined)?.missed && (
-                <MissedNote
-                  // A new route (an edit, an hour later) drops a suggestion and stops a search.
-                  key={JSON.stringify(route.waypoints)}
-                  rows={rows}
-                  i={i}
-                  warnings={warnings}
-                  later={act?.later}
-                  find={act?.find}
-                  use={act?.replace}
-                />
+                <MissedNote rows={rows} i={i} warnings={warnings} later={act?.later} />
               )}
               {editing(r)}
               {cell(i, r.name, r.arr ?? r.dep)}
@@ -770,7 +752,6 @@ export function TripLine({
           </li>
         )}
       </ol>
-      {run && <RunSheet s={run} onClose={() => setRun(null)} />}
     </>
   );
 }

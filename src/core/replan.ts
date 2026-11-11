@@ -225,25 +225,6 @@ export function travelledRoute(trip: Trip, point: ReplanPoint): Tour | null {
   };
 }
 
-/**
- * The whole way as it now stands under way (0.47.1): the way here, then the rest from the
- * station you are at (which ends the one and starts the other, so it is there once). What
- * "Back the same way" retraces when the rest is changed.
- */
-export function wholeWay(
-  travelled: Pick<Tour, 'waypoints'> | null,
-  rest: Pick<Tour, 'waypoints'>,
-): Pick<Tour, 'waypoints'> {
-  const before = travelled?.waypoints ?? [];
-  const joint =
-    before.length && rest.waypoints.length
-      ? stopKey(before.at(-1)!.stopRef) === stopKey(rest.waypoints[0]!.stopRef)
-      : false;
-  return {
-    waypoints: normalise([...(joint ? before.slice(0, -1) : before), ...rest.waypoints]),
-  };
-}
-
 /** The revised trip: the travelled part, then the new plan; warnings re-indexed by leg. */
 export function mergeReplan(
   trip: Trip,

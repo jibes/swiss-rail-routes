@@ -7,8 +7,6 @@ interface Env {
   OJP_API_KEY: string;
   OJP_URL: string;
   /** OJP Fare's key (a Worker secret) and address. */
-  OJP_FARE_API_KEY?: string;
-  OJP_FARE_URL: string;
   TRANSITOUS_URL: string;
   WEATHER_URL: string;
   METNO_URL: string;
@@ -55,8 +53,6 @@ export default {
     return handle(req, {
       apiKey: env.OJP_API_KEY ?? '',
       upstream: env.OJP_URL,
-      fareKey: env.OJP_FARE_API_KEY,
-      fareUpstream: env.OJP_FARE_URL,
       transitous: env.TRANSITOUS_URL,
       weatherUpstream: env.WEATHER_URL,
       metNo: env.METNO_URL,

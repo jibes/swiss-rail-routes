@@ -21,12 +21,6 @@ import {
   tripRequestXml,
 } from '../../../src/core/ojp/request';
 import {
-  fareRequestXml,
-  fareTripRequestXml,
-  parseFareQuery,
-  pickTrip,
-} from '../../../src/core/ojp/fareRequest';
-import {
   euPlanUrl,
   euStations,
   euStopsUrl,
@@ -61,9 +55,6 @@ function cacheSeconds(kind: Kind, q: unknown, now: Date): number {
 
 export interface Deps {
   apiKey: string;
-  /** OJP Fare's own key (one per API) and address; without a key /fare answers 503. */
-  fareKey?: string;
-  fareUpstream?: string;
   /** Open-Meteo (weather, 0.37.0): asked by the Worker alone, rounded places and days. */
   weatherUpstream?: string;
   /** MET Norway (0.36.4): asked when Open-Meteo refuses, a place a request. */
@@ -152,7 +143,6 @@ async function route(req: Request, d: Deps): Promise<Response> {
   if (req.method !== 'POST') return reply(405, 'method');
   if (!d.apiKey) return reply(503, 'not configured: OJP_API_KEY');
 
-  if (path === '/fare') return fare(req, d, reply, h);
   if (path === '/eu/stops' || path === '/eu/plan') return europe(path, req, d, reply, h);
   if (path === '/weather') return weather(req, d, reply, h);
 
@@ -218,90 +208,6 @@ async function route(req: Request, d: Deps): Promise<Response> {
   return new Response(text, {
     status: 200,
     headers: { ...h, 'Content-Type': 'application/xml', 'X-Cache': 'miss' },
-  });
-}
-
-/** Prices do not change by the minute: an answer is kept for six hours. */
-const FARE_CACHE_S = 6 * 3600;
-
-/**
- * POST /fare (0.30.0): a connection's price. The trip is asked of OJP here, and OJP's own Trip
- * whose trains are the app's goes to OJP Fare: nothing the app sends is passed on as XML.
- */
-async function fare(
-  req: Request,
-  d: Deps,
-  reply: (status: number, body: string, extra?: Record<string, string>) => Response,
-  h: Record<string, string>,
-): Promise<Response> {
-  if (!d.fareKey || !d.fareUpstream) return reply(503, 'not configured: OJP_FARE_API_KEY');
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return reply(400, 'json');
-  }
-  const q = parseFareQuery(body);
-  if (typeof q === 'string') return reply(400, q);
-  const cacheReq = new Request(
-    `https://cache.invalid/${await sha256(`fare:${JSON.stringify(q)}`)}`,
-  );
-  const hit = await d.cache.match(cacheReq);
-  if (hit)
-    return new Response(hit.body, {
-      status: 200,
-      headers: { ...h, 'Content-Type': 'application/xml', 'X-Cache': 'hit' },
-    });
-  // Two calls upstream: both count.
-  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (!(await d.limit(ip)) || !(await d.limit(ip)))
-    return reply(429, 'rate', { 'Retry-After': '60' });
-  const ask = async (url: string, key: string, xml: string) => {
-    try {
-      return await d.fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/xml' },
-        body: xml,
-        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-      });
-    } catch {
-      return null;
-    }
-  };
-  const trips = await ask(d.upstream, d.apiKey, fareTripRequestXml(q, d.now(), REQUESTOR));
-  if (!trips?.ok) return reply(502, `upstream ${trips?.status ?? 'none'}`);
-  const trip = pickTrip(await trips.text(), q.journeys);
-  if (!trip) return reply(404, 'trip not found');
-  const up = await ask(d.fareUpstream, d.fareKey, fareRequestXml(trip, q, d.now(), REQUESTOR));
-  if (!up?.ok) {
-    // The service's own words (its gateway says why it refused), never our request or key.
-    const why = up ? (await up.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200) : '';
-    return reply(
-      up?.status === 429 ? 503 : 502,
-      `fare upstream ${up?.status ?? 'none'}${why ? `: ${why}` : ''}`,
-    );
-  }
-  const text = await up.text();
-  // Kept only with a price in it: an empty delivery or an error is asked again next time.
-  if (/<(?:\w+:)?FareProduct>/.test(text) && !/<(?:\w+:)?ErrorCondition>/.test(text))
-    d.defer(
-      d.cache.put(
-        cacheReq,
-        new Response(text, {
-          headers: {
-            'Content-Type': 'application/xml',
-            'Cache-Control': `public, max-age=${FARE_CACHE_S}`,
-          },
-        }),
-      ),
-    );
-  return new Response(text, {
-    status: 200,
-    headers: {
-      ...h,
-      'Content-Type': 'application/xml',
-      'X-Cache': 'miss',
-    },
   });
 }
 

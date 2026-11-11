@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { parseRoute } from '../src/core/export/routeLink';
 import {
   DEFAULT_STAY,
-  reverseRoute,
   setEntryLeaveBy,
   setEntryStay,
   setEntryStayUntil,
@@ -197,11 +196,8 @@ describe('a stay until a date and time, over several days (0.44.0)', () => {
     expect(set.waypoints[1]!.dwellMin).toBe(UNTIL_DWELL);
     expect(setEntryStay(set, 1, 45).waypoints[1]).toMatchObject({ kind: 'stop', dwellMin: 45 });
     expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('stayUntil');
-    // Its time taken away (or reversed away), a stay is a stay's length again, not a minute.
+    // Its time taken away, a stay is a stay's length again, not a minute.
     expect(setEntryStayUntil(set, 1, null).waypoints[1]!.dwellMin).toBe(DEFAULT_STAY);
-    const back = reverseRoute(set);
-    expect(back.windowsDropped).toBe(true);
-    expect(back.tour.waypoints.find((w) => w.kind === 'stop')!.dwellMin).toBe(DEFAULT_STAY);
   });
 });
 

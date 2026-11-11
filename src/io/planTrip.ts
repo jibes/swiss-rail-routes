@@ -4,7 +4,6 @@
 import { plan, type PlanResult } from '../core/planner/plan';
 import { compactTrip, dayOf, type Trip } from '../core/trip';
 import { GA, TEMPLATES } from '../data';
-import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { cachedTrips } from './answers';
@@ -74,7 +73,8 @@ function join(key: string, r: Running, signal?: AbortSignal): Promise<PlanResult
  */
 export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promise<PlanResult> {
   const json = routeJson(trip);
-  const reservations = usePrefs.getState().reservations;
+  // The one choice of reservation trains (0.58.0: no setting): avoided where another goes.
+  const reservations = 'avoid' as const;
   const key = `${trip.id}|${json}|${keep}|${reservations}`;
   const known = running.get(key);
   if (known) {
@@ -147,11 +147,6 @@ export function planRoute(trip: Trip, signal?: AbortSignal, keep = true): Promis
 
 /** The trip takes the recommended option, unless its route changed or it was planned since. */
 export function keepPlan(id: string, json: string, r: PlanResult): boolean {
-  // Planned before the setting changed: the trip waits for the plan under the new one.
-  if ((r.reservations ?? 'avoid') !== usePrefs.getState().reservations) {
-    log('plan.keep.outdated', { trip: id });
-    return true;
-  }
   const chain = r.recommended ?? r.options?.[0];
   if (!chain || !r.legs) {
     log('plan.keep.none', { trip: id });

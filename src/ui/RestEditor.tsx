@@ -13,26 +13,21 @@ import {
   replaceEntry,
   setEntryStay,
   setEntryStayUntil,
-  sameWayBack,
 } from '../core/line';
 import type { LiveState } from '../core/live';
 import type { Tour } from '../core/model';
 import type { PlanResult } from '../core/planner/plan';
-import { mergeReplan, replanPoint, travelledRoute, wholeWay } from '../core/replan';
+import { mergeReplan, replanPoint, travelledRoute } from '../core/replan';
 import { plannedRows, routeRows } from '../core/rows';
 import { isPlanned, revise, type PlannedTrip } from '../core/trip';
 import { log } from '../io/log';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
-import { findSubstitute } from '../io/substitute';
 import { planRoute } from '../io/planTrip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
 import { AddSheet, entriesFor, type Picked } from './AddSheet';
 import { shiftHm, zurichHm } from './format';
 import { useLayer } from './layers';
-import { useMapAdd } from './mapAdd';
-import { go } from './useHash';
-import { leaveTime } from '../core/spider';
 import { OptionsBar } from './OptionsBar';
 import { PlanNotices, type PlanState } from './PlanNotices';
 import { restDraft, useRestDrafts } from './restDraft';
@@ -265,17 +260,6 @@ export function RestEditor({
           addAfter: (k) => setSheet({ after: k }),
           add: () => setSheet({ after: entries.length - 1 }),
           later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
-          // The rest's own: Use edits the draft. The station you are at is fixed and the way here
-          // is behind you, so neither is ever offered or replaced.
-          find: (k, signal) =>
-            k === 0
-              ? Promise.resolve(null)
-              : findSubstitute(
-                  { ...trip, id: `${trip.id}-replan`, route: draft },
-                  k,
-                  signal,
-                  travelled?.waypoints.map((w) => w.stopRef) ?? [],
-                ),
         }}
       />
 
@@ -304,26 +288,8 @@ export function RestEditor({
           next={entries[sheet.after + 1]?.w}
           // "Back to the start": the trip's own start, not where you are now.
           first={sheet.after === entries.length - 1 ? trip.route.waypoints[0] : undefined}
-          // The whole way as it now stands, the way here included, retraced from the rest's end.
-          sameWay={
-            sheet.after === entries.length - 1 ? sameWayBack(wholeWay(travelled, draft)) : undefined
-          }
           onPick={pick}
           onClose={closeSheet}
-          // On the trip's map, into the rest: beside the trip (desktop columns), else its screen.
-          onMap={() => {
-            const w = entries[sheet.after]!.w;
-            log('mapPick.open', { trip: id, after: sheet.after, rest: true });
-            useMapAdd.getState().start({
-              trip: id,
-              after: sheet.after,
-              from: { stopRef: w.stopRef, name: w.name },
-              at: leaveTime(draft, chain?.connections, w.stopRef),
-              rest: true,
-            });
-            setSheet(null);
-            if (!document.querySelector('.col-map .mapview')) go(`/trip/${id}/map`);
-          }}
         />
       )}
     </>

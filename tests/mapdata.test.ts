@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { insertTemplate, newTour } from './helpers/edit';
 import { highlightName, localParams } from '../src/core/data';
 import { markRings } from '../src/core/line';
-import { mapData, styleFont, styleFontStacks } from '../src/core/mapdata';
+import { mapData, styleFont } from '../src/core/mapdata';
 import { conn, index, ref, ride, templates } from './helpers/timetable';
 
 const stop = (r: string) => index.byRef(r);
@@ -128,22 +128,5 @@ describe('styleFont', () => {
     ).toEqual(['Noto Sans Bold']);
     expect(styleFont({ layers: [] })).toEqual(['Noto Sans Regular']);
     expect(styleFont({})).toEqual(['Noto Sans Regular']);
-  });
-});
-
-describe('styleFontStacks', () => {
-  it('every stack the labels ask for, once, as a glyph address names it', () => {
-    const layer = (f?: string[]) => ({ layout: f ? { 'text-font': f } : {} });
-    expect(
-      styleFontStacks({
-        layers: [
-          layer(),
-          layer(['Noto Sans Regular']),
-          layer(['Noto Sans Bold', 'Noto Sans Regular']),
-          layer(['Noto Sans Regular']),
-        ],
-      }),
-    ).toEqual(['Noto Sans Regular', 'Noto Sans Bold,Noto Sans Regular']);
-    expect(styleFontStacks({})).toEqual(['Noto Sans Regular']);
   });
 });

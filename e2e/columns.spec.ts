@@ -56,13 +56,7 @@ test.describe('three columns', () => {
     const s = await sheet.boundingBox();
     expect(s!.x).toBeGreaterThanOrEqual(m!.x);
     expect(s!.x + s!.width).toBeLessThanOrEqual(m!.x + m!.width + 1);
-    // Pick on the map: the map beside the trip adds, no other map; the trip stays beside it.
-    await main.getByRole('button', { name: /Pick on the map/ }).click();
-    await expect(map.getByText(/^From St\. Moritz at /)).toBeVisible();
-    await expect(page.locator('.mapview')).toHaveCount(1);
-    await expect(main.getByRole('heading', { level: 1 })).toHaveText('Chur → St. Moritz');
-    await map.getByRole('button', { name: 'Done' }).click();
-    await expect(map.getByText(/^From St\. Moritz at /)).toHaveCount(0);
+    await page.keyboard.press('Escape');
     // The trip's map address: the trip in its column, the map beside it.
     const id = new URL(page.url()).hash.split('/')[2]!;
     await page.goto(`./#/trip/${id}/map`);

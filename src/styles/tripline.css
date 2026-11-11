@@ -578,22 +578,6 @@
   font-size: 13px;
 }
 
-/* A station that works in its place: on its own line under the reason, its choices beside it. */
-.trip-line .missed-note .substitute {
-  flex-basis: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  color: var(--ink);
-}
-
-.trip-line .missed-note .substitute-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .trip-line .missed-note [aria-disabled='true'] {
   opacity: 0.6;
 }

@@ -299,55 +299,6 @@ test('a place found by its name adds its stop', async ({ page }) => {
   await expect(page.locator('.trip-line .station', { hasText: 'Melide' })).toBeVisible();
 });
 
-// ⋯ → Reverse direction: a round trip runs its loop the other way from the same start, the
-// scenic line with it; a stay keeps its station, its time to leave by goes and is said. These
-// routes are about editing: the reversed one is planned, but nothing is recorded for it.
-test('reverse direction: the loop the other way, the line with it, a window said gone', async ({
-  page,
-}) => {
-  await page.clock.install({ time: BEFORE });
-  allowUnrecorded(page);
-  await newTrip(page, 'zürich hb', 'luzern');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await pick(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await page.getByRole('button', { name: /^Back to Zürich HB/ }).click();
-  const line = page.getByRole('list', { name: 'The trip' });
-  const entries = line.locator('.station.entry');
-  await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
-  // A stay at Luzern until 17:30.
-  await entries.nth(1).getByRole('button').first().click();
-  await page
-    .getByRole('group', { name: 'At this station' })
-    .getByRole('button', { name: 'Stay', exact: true })
-    .click();
-  const field = page.getByLabel('Stay at Luzern until (time)');
-  await field.fill('17:30');
-  await field.press('Enter');
-  await page.keyboard.press('Escape');
-  await expect(entries.nth(1)).toContainText('until 17:30');
-  const ringsOut = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
-  expect(ringsOut.length).toBeGreaterThan(0);
-
-  await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('button', { name: 'Reverse direction' }).click();
-  await expect(entries).toHaveText([/^Zürich HB/, /^Interlaken Ost/, /^Luzern/, /^Zürich HB/]);
-  // The Brünig line now runs Interlaken Ost → Luzern: its stations between, in that order.
-  const ringsBack = (await line.locator('.station.ring').allInnerTexts()).map((x) => x.trim());
-  expect(ringsBack).toEqual([...ringsOut].reverse());
-  await expect(entries.nth(2)).toContainText('Stay 30 min');
-  await expect(entries.nth(2)).not.toContainText('17:30');
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Stay time windows removed' }),
-  ).toBeVisible();
-
-  // Twice is the trip it was (without the window).
-  await page.getByRole('button', { name: 'More' }).click();
-  await page.getByRole('button', { name: 'Reverse direction' }).click();
-  await expect(entries).toHaveText([/^Zürich HB/, /^Luzern/, /^Interlaken Ost/, /^Zürich HB/]);
-  await expect(entries.nth(1)).toContainText('Stay 30 min');
-});
-
 // Off the train at a station (0.42.0): from the dot down to the next train the rail is dotted, as
 // a walk is: at every change and stay; a station ridden through stays solid.
 test('the rail is dotted wherever you are off the train', async ({ page }) => {
@@ -484,57 +435,6 @@ test('notifications off for one trip, and on again', async ({ page }) => {
   await page.getByRole('button', { name: 'Notifications on' }).click();
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Notifications off' })).toBeVisible();
-});
-
-// SPEC §3 (0.47.0): back the same way, beside back to the start: the way out reversed, its
-// scenic line ridden back on it, nothing stayed at.
-test('back the same way retraces the way out, its line too', async ({ page }) => {
-  await page.clock.install({ time: BEFORE });
-  allowUnrecorded(page);
-  await newTrip(page, 'zürich hb', 'luzern');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await pick(page, 'brünig', /^Brünig.*Luzern → Interlaken Ost/);
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  const same = page.getByRole('button', { name: /^Back the same way/ });
-  await expect(same).toContainText('via Luzern');
-  await same.click();
-  const line = page.getByRole('list', { name: 'The trip' });
-  await expect(line.locator('.station.entry')).toHaveText([
-    /^Zürich HB/,
-    /^Luzern/,
-    /^Interlaken Ost/,
-    /^Luzern/,
-    /^Zürich HB/,
-  ]);
-  // The Brünig both ways: its stations drawn on the way back too.
-  const rings = await line.locator('.station.ring').count();
-  expect(rings % 2).toBe(0);
-  expect(rings).toBeGreaterThan(0);
-});
-
-// SPEC §3 (0.47.0): several typed at once, matched on the device, added in one tap, in order.
-test('a typed list of lines and stations adds them all', async ({ page }) => {
-  await page.clock.install({ time: BEFORE });
-  allowUnrecorded(page);
-  await newTrip(page, 'zürich hb');
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula, Bernina, back');
-  // A bare "back" returns to the start.
-  await expect(page.getByRole('button', { name: /^Add all 3/ })).toContainText(/Zürich HB$/);
-  // Matched in full, it is the answer: nothing said as not found, nothing to ask abroad.
-  await expect(page.locator('.add-sheet')).not.toContainText('No station found');
-  await expect(page.getByRole('button', { name: /^Search stations abroad/ })).toHaveCount(0);
-  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina, Xyzzy');
-  await expect(page.getByText('Not found: Xyzzy')).toBeVisible();
-  await page.getByPlaceholder('Station, scenic line or past trip').fill('Albula + Bernina');
-  await page.getByRole('button', { name: /^Add all 2/ }).click();
-  const line = page.getByRole('list', { name: 'The trip' });
-  await expect(line.locator('.station.entry')).toHaveText([
-    /^Zürich HB/,
-    /^Chur/,
-    /^St\. Moritz/,
-    /^Tirano/,
-  ]);
 });
 
 // Reported (0.47.1): a round trip in search said "Zürich → Zürich". Now named as the list names

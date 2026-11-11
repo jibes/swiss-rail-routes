@@ -24,16 +24,6 @@ export function recordedAnswer(body: string): string | null {
   return null;
 }
 
-/** A fare question's recorded answers (tests/fixtures/fares/<sha1>: OJP's trip, then OJP Fare's). */
-export function recordedFare(body: string): { trip: string; fare: string } | null {
-  const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
-  const f = `tests/fixtures/fares/${key}`;
-  if (!existsSync(`${f}.xml.gz`)) return null;
-  if (process.env.FIXTURE_LOG) appendFileSync(process.env.FIXTURE_LOG, f + '\n');
-  const read = (x: string) => gunzipSync(readFileSync(x)).toString('utf8');
-  return { trip: read(`${f}-trip.xml.gz`), fare: read(`${f}.xml.gz`) };
-}
-
 /** A Transitous answer (stations or a plan abroad) for the Worker's question (tests/fixtures/eu/e2e). */
 export function recordedEu(body: string): string | null {
   const key = createHash('sha1').update(body).digest('hex').slice(0, 12);
@@ -102,13 +92,12 @@ export async function answerWorker(page: Page, problems: string[] = []) {
     const req = route.request();
     const body = req.postData() ?? undefined;
     const path = new URL(req.url()).pathname;
-    const fare = body && path === '/fare' ? recordedFare(body) : null;
     const eu = body && path.startsWith('/eu/') ? recordedEu(body) : null;
-    const recorded = body ? (fare?.trip ?? eu ?? recordedAnswer(body)) : null;
+    const recorded = body ? (eu ?? recordedAnswer(body)) : null;
     if (
       body &&
       !recorded &&
-      /\/(trip|departures|fare|eu\/stops|eu\/plan)$/.test(path) &&
+      /\/(trip|departures|eu\/stops|eu\/plan)$/.test(path) &&
       !lenient.has(page)
     )
       problems.push(`no recorded answer for ${body}`);
@@ -124,8 +113,6 @@ export async function answerWorker(page: Page, problems: string[] = []) {
       {
         apiKey: 'e2e',
         upstream: 'https://ojp.example/',
-        fareKey: 'e2e',
-        fareUpstream: 'https://fare.example/',
         transitous: 'https://transitous.example',
         weatherUpstream: 'https://weather.example',
         allowedOrigins: [
@@ -135,9 +122,8 @@ export async function answerWorker(page: Page, problems: string[] = []) {
         // OJP: the recorded answer to this very query, else a failure the app must show.
         fetch: (async (url: string) => {
           if (String(url).startsWith('https://weather.example/')) return madeUpWeather(String(url));
-          const answer = String(url).startsWith('https://fare.example/') ? fare?.fare : recorded;
-          return answer
-            ? new Response(answer, { status: 200 })
+          return recorded
+            ? new Response(recorded, { status: 200 })
             : new Response('no recorded answer', { status: 500 });
         }) as typeof fetch,
         cache: { match: async () => undefined, put: async () => undefined },

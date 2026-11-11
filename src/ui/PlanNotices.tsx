@@ -1,5 +1,5 @@
 import type { PlanResult } from '../core/planner/plan';
-import { usePrefs, useT } from '../store';
+import { useT } from '../store';
 import { RailLoader } from './RailLoader';
 
 export type PlanState = 'planning' | 'done' | 'error' | 'unavailable';
@@ -22,7 +22,6 @@ export function PlanNotices({
   retry: () => void;
 }) {
   const t = useT();
-  const never = usePrefs((s) => s.reservations) === 'never';
   const leg = (i: number) => ({
     from: result?.legs?.[i]?.from.name ?? '',
     to: result?.legs?.[i]?.to.name ?? '',
@@ -64,12 +63,6 @@ export function PlanNotices({
           {t('relaxedLeg', leg(r.legIndex))}
         </p>
       ))}
-      {never &&
-        state === 'done' &&
-        result &&
-        (!result.options?.length || result.relaxed.length > 0) && (
-          <p className="notice">{t('reservationsLeftOut')}</p>
-        )}
     </>
   );
 }

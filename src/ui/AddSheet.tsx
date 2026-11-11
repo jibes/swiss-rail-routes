@@ -17,7 +17,6 @@ import { autoName } from '../core/naming';
 import { recentStations } from '../core/recentStops';
 import { useRecentStops } from './recentStops';
 import { useTrips } from '../trips';
-import { resolveTyped, splitTyped } from '../core/typedList';
 import { useStopIndex } from './useStopIndex';
 import { useNow } from './useNow';
 import { dayOf } from '../core/trip';
@@ -30,9 +29,7 @@ import { fetchEuStops } from '../io/ojp';
 export type Picked =
   | { kind: 'station'; stop: Pick<Waypoint, 'stopRef' | 'name'> }
   | { kind: 'line'; template: RouteTemplate; reversed: boolean }
-  | { kind: 'trip'; tour: Tour }
-  | { kind: 'sameWay'; entries: Entry[] }
-  | { kind: 'typed'; entries: Entry[] };
+  | { kind: 'trip'; tour: Tour };
 
 /**
  * The one way to add (SPEC §3a): a sheet that finds stations, scenic lines and your past trips.
@@ -44,22 +41,16 @@ export function AddSheet({
   after,
   next,
   first,
-  sameWay,
   onPick,
   onClose,
-  onMap,
 }: {
   title: string;
   after?: Pick<Waypoint, 'stopRef' | 'name'>;
   next?: Pick<Waypoint, 'stopRef' | 'name'>;
   /** The trip's first station: offered as the way back (a round trip) when adding at the end. */
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
-  /** The way back to it the way out came (`sameWayBack`), offered beside it. */
-  sameWay?: Entry[];
   onPick: (p: Picked) => void;
   onClose: () => void;
-  /** Pick on the map instead: the trains from `after` (the map planner). */
-  onMap?: () => void;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -128,25 +119,6 @@ export function AddSheet({
   const linesFirst =
     !!f && lines.some((tp) => has(own(tp))) && !stations.some((x) => fold(x.name) === f);
   const back = !f && first && after && after.stopRef !== first.stopRef ? first : undefined;
-  // Several typed at once ("Albula, Bernina, back via Vereina"): one row adds them all.
-  const parts = index ? splitTyped(q) : null;
-  const typed =
-    parts && index
-      ? resolveTyped(
-          parts,
-          {
-            lines: TEMPLATES,
-            names: (tp) => ({ own: named(tp), products: [...(tp.products ?? [])] }),
-            station: (text) => {
-              const s = index.search(text, 1)[0];
-              return s && { stopRef: s.ref, name: s.name };
-            },
-            stop,
-          },
-          after,
-          first,
-        )
-      : null;
   const today = dayOf(now);
   // A past trip by its own name, else as the list names trips ("Zürich ↺ Tirano · Chur"), never
   // its two ends alone: a round trip was "Zürich → Zürich" (reported, 0.47.1).
@@ -160,7 +132,6 @@ export function AddSheet({
   const trips0 = useTrips((x) => x.trips);
   const pick = (p: Picked) => {
     if (p.kind === 'station') remember([p.stop]);
-    if (p.kind === 'typed') remember(p.entries.filter((e) => !e.w.line).map((e) => e.w));
     onPick(p);
   };
   const recent = f
@@ -174,9 +145,6 @@ export function AddSheet({
         ],
         [after?.stopRef, next?.stopRef].filter((x): x is string => !!x),
       );
-  // A typed list matched in full is the answer: no "nothing found", no search abroad for it
-  // (review of 11 Nov 2026: "Add all 3", then "No station found").
-  const listed = !!typed && !typed.missing.length && typed.entries.length > 0;
   // Nothing typed: the stations first, lines and your trips folded under them.
   const folded = !f;
 
@@ -248,8 +216,6 @@ export function AddSheet({
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return;
-            if (typed && !typed.missing.length && typed.entries.length)
-              return pick({ kind: 'typed', entries: typed.entries });
             const tp = linesFirst ? lines[0] : undefined;
             if (tp)
               return pick({
@@ -262,39 +228,6 @@ export function AddSheet({
           }}
         />
         <div className="results">
-          {after && onMap && !f && (
-            <button type="button" className="result" onClick={onMap}>
-              <span className="r-icon" aria-hidden="true">
-                <Icon name="map" />
-              </span>
-              <span className="r-name">{t('mapPickOpen')}</span>
-              <span className="r-sub">{t('mapPickFromStop', { stop: after.name })}</span>
-            </button>
-          )}
-          {typed && typed.missing.length === 0 && typed.entries.length > 0 && (
-            <button
-              type="button"
-              className="result typed"
-              onClick={() => pick({ kind: 'typed', entries: typed.entries })}
-            >
-              <span className="r-icon r-line" aria-hidden="true" />
-              <span className="r-name">{t('addAll', { n: typed.items.length })}</span>
-              <span className="r-sub">
-                {typed.items
-                  .map((x) =>
-                    x.kind === 'line'
-                      ? `${templateName(x.template, lang)} (${x.from} → ${x.to})`
-                      : x.stop.name,
-                  )
-                  .join(' · ')}
-              </span>
-            </button>
-          )}
-          {typed && typed.missing.length > 0 && (
-            <p className="muted typed-missing">
-              {t('typedMissing', { parts: typed.missing.join(', ') })}
-            </p>
-          )}
           {back && (
             <button
               type="button"
@@ -304,24 +237,6 @@ export function AddSheet({
               <span className="r-icon r-dot" aria-hidden="true" />
               <span className="r-name">{t('backTo', { stop: back.name })}</span>
               <span className="r-sub">{t('roundTrip')}</span>
-            </button>
-          )}
-          {back && sameWay && sameWay.length > 1 && (
-            <button
-              type="button"
-              className="result"
-              onClick={() => pick({ kind: 'sameWay', entries: sameWay })}
-            >
-              <span className="r-icon r-dot" aria-hidden="true" />
-              <span className="r-name">{t('backSameWay')}</span>
-              <span className="r-sub">
-                {t('viaStops', {
-                  stops: sameWay
-                    .slice(0, -1)
-                    .map((x) => x.w.name)
-                    .join(' · '),
-                })}
-              </span>
             </button>
           )}
           {linesFirst && lineList}
@@ -358,7 +273,7 @@ export function AddSheet({
               </button>
             );
           })}
-          {f.length >= 3 && !abroadNow && !listed && (
+          {f.length >= 3 && !abroadNow && (
             <button type="button" className="result" onClick={askAbroad}>
               <span className="r-icon" aria-hidden="true">
                 <Icon name="globe" />
@@ -438,7 +353,6 @@ export function AddSheet({
           )}
 
           {f.length >= 2 &&
-            !listed &&
             !stations.length &&
             !places.length &&
             !trips.length &&
@@ -473,6 +387,5 @@ function kindOf(s: Stop) {
 export function entriesFor(p: Picked, day: string): Entry[] {
   if (p.kind === 'station') return [stationEntry(p.stop)];
   if (p.kind === 'line') return lineEntries(p.template, p.reversed);
-  if (p.kind === 'sameWay' || p.kind === 'typed') return p.entries;
   return entriesOf({ waypoints: staysOnDay(p.tour.waypoints, p.tour.date, day) });
 }

@@ -4,7 +4,6 @@
 // line closed all day would otherwise be asked about all day), and at once when the device is
 // back online or the route changes.
 import { dayOf, isPlanned, type Trip } from '../core/trip';
-import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { log } from './log';
 import { keepPlan, planRoute, routeJson } from './planTrip';
@@ -75,12 +74,6 @@ export function watchAutoPlan() {
     }
   }
   const off = useTrips.subscribe((s, p) => s.trips !== p.trips && next());
-  // A trip with no connection may have one under another choice of reservation trains.
-  const offPrefs = usePrefs.subscribe((s, p) => {
-    if (s.reservations === p.reservations) return;
-    failed.clear();
-    next();
-  });
   const online = () => {
     failed.clear();
     next();
@@ -90,7 +83,6 @@ export function watchAutoPlan() {
   next();
   return () => {
     off();
-    offPrefs();
     clearTimeout(timer);
     win?.removeEventListener('online', online);
   };

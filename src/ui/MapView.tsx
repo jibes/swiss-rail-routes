@@ -6,16 +6,11 @@ import { expectedArrival } from '../core/live';
 import { toProtocol } from '../core/mapCache';
 import { mapData, styleFont } from '../core/mapdata';
 import { useFocusStop } from './focusStop';
-import { entriesOf } from '../core/line';
-import { leaveTime } from '../core/spider';
 import { log } from '../io/log';
-import { MapAdd } from './MapAdd';
-import { useMapAdd } from './mapAdd';
-import { RunSheet } from './RunSheet';
 import { useDark } from './useDark';
 import { inPage, plain, registerMapProtocol, styleOf } from './mapBase';
 export { MAP_STYLE } from './mapBase';
-import type { Connection, Section } from '../core/model';
+import type { Connection } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isLive, isPlanned } from '../core/trip';
@@ -27,7 +22,6 @@ import { weatherMap, type WeatherMap } from '../core/weatherMap';
 import { addWeatherLayers, setWeather } from './mapWeather';
 import { weatherWords } from './WeatherCell';
 import { useWeather } from './useWeather';
-import { restDraft, useRestDrafts } from './restDraft';
 import { stopSearch } from '../io/stops';
 import { loadPlans } from '../io/tours';
 import { usePrefs, useT } from '../store';
@@ -44,8 +38,6 @@ import { useStopIndex } from './useStopIndex';
 const ACCENT = '#c0261b';
 const ACCENT_DARK = '#7a140d';
 const LOCATION = '#1a73e8';
-/** How far from a ride's line a tap still opens it, in pixels. */
-const TAP_PX = 10;
 
 /**
  * The way each ride goes, as arrowheads on the line: a way back on the same tracks shows
@@ -199,7 +191,6 @@ export default function MapView({ id }: { id: string }) {
 
   // The map, once per trip and theme: what is drawn on it follows the trip below, so adding a
   // stop (on the map or beside it) never builds it again.
-  const [font, setFont] = useState<string[] | null>(null);
   useEffect(() => {
     if (!id || !box.current) return;
     let map: maplibregl.Map | undefined;
@@ -345,7 +336,6 @@ export default function MapView({ id }: { id: string }) {
               'text-halo-width': 1.5,
             },
           });
-          setFont(styleFont(style));
         }
         setMap(map);
       });
@@ -353,7 +343,6 @@ export default function MapView({ id }: { id: string }) {
     return () => {
       gone = true;
       setMap(null);
-      setFont(null);
       map?.remove();
     };
   }, [id, dark]);
@@ -380,7 +369,6 @@ export default function MapView({ id }: { id: string }) {
         savedChain ??
         (saved?.tourJson === routeJson ? saved.result.recommended?.connections : undefined);
       const d = mapData(current, chain, TEMPLATES, (r) => index.byRef(r), lang);
-      drawn.current = chain ?? [];
       setStraight(d.lines.features.some((f) => !f.properties.exact));
       map.getSource<maplibregl.GeoJSONSource>('lines')?.setData(d.lines);
       map.getSource<maplibregl.GeoJSONSource>('stops')?.setData(d.stops);
@@ -483,11 +471,8 @@ export default function MapView({ id }: { id: string }) {
     if (map) setWeather(map, wmap);
   }, [map, wmap]);
   // A tap on a column or an icon: the line's own words for it.
-  // Adding on the map: the web from a station of this trip, under its red; a tap is the
-  // adding's then, not the weather's (review of 11 Nov 2026).
-  const adding = useMapAdd((s) => s.add?.trip === id);
   useEffect(() => {
-    if (!map || !wx || adding) return;
+    if (!map || !wx) return;
     let pop: maplibregl.Popup | null = null;
     const open = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
@@ -539,7 +524,7 @@ export default function MapView({ id }: { id: string }) {
       }
       plain();
     };
-  }, [map, wx, rows, t, adding]);
+  }, [map, wx, rows, t]);
 
   // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
   // the timetable comes (at most WAVE_MS, so offline it does not run on for good).
@@ -575,86 +560,6 @@ export default function MapView({ id }: { id: string }) {
       if (map.getLayer('lines-wave')) map.removeLayer('lines-wave');
     };
   }, [map, replanning, dark]);
-
-  // Adding on the map: the web from a station of this trip, under its red (`adding`, above).
-  // A ride's line tapped: its train's whole run (0.47.0), the sheet its badge opens on the list.
-  const drawn = useRef<Connection[]>([]);
-  const [run, setRun] = useState<Section | null>(null);
-  useEffect(() => {
-    if (!map || adding) return;
-    const open = (e: maplibregl.MapMouseEvent) => {
-      // The weather's own card wins where its icon lies on the line.
-      if (map.queryRenderedFeatures(e.point, { layers: ['wx-rain', 'wx-sky'] }).length) return;
-      // A finger's width around the tap: the line is 4 px (third audit: hard to hit on a phone).
-      const { x, y } = e.point;
-      const near = map.queryRenderedFeatures(
-        [
-          [x - TAP_PX, y - TAP_PX],
-          [x + TAP_PX, y + TAP_PX],
-        ],
-        { layers: ['lines'] },
-      );
-      const p = near[0]?.properties;
-      const s = p?.planned ? drawn.current[Number(p.leg)]?.sections[Number(p.section)] : undefined;
-      if (!s || s.mode === 'walk') return;
-      log('run.map', { journey: s.journey });
-      setRun(s);
-    };
-    const pointer = () => (map.getCanvas().style.cursor = 'pointer');
-    const plain = () => (map.getCanvas().style.cursor = '');
-    map.on('click', open);
-    map.on('mouseenter', 'lines', pointer);
-    map.on('mouseleave', 'lines', plain);
-    return () => {
-      map.off('click', open);
-      map.off('mouseenter', 'lines', pointer);
-      map.off('mouseleave', 'lines', plain);
-      plain();
-    };
-  }, [map, adding]);
-  const startAdd = useMapAdd((s) => s.start);
-  const fitWeb = useCallback(
-    (pts: [number, number][]) => {
-      if (!map || !pts.length) return;
-      const b = new maplibregl.LngLatBounds(pts[0]!, pts[0]!);
-      for (const p of pts) b.extend(p);
-      map.fitBounds(b, { padding: { top: 120, bottom: 160, left: 40, right: 40 }, maxZoom: 11 });
-      // Said once the map rests on it (e2e taps at a point only then; second audit). Already
-      // there, it does not move at all.
-      const fitted = () => box.current?.setAttribute('data-web-fitted', '');
-      if (map.isMoving()) map.once('moveend', fitted);
-      else fitted();
-    },
-    [map],
-  );
-  /**
-   * From the trip's last station, when the plan leaves it (or arrives and stays). Under way
-   * (0.46.0), from the rest's: what is added goes into the rest being changed, begun here if
-   * the trip screen has not begun it, and Update on the trip saves it.
-   */
-  const addFromEnd = () => {
-    if (!tour || !trip) return;
-    let rest = useRestDrafts.getState().drafts[id];
-    if (underWay && !rest && state && isPlanned(trip)) {
-      rest = restDraft(trip, state, live.now) ?? undefined;
-      if (rest) useRestDrafts.getState().set(id, rest);
-    }
-    const under = underWay ? rest : undefined;
-    if (underWay && !under) return;
-    const route = under?.route ?? tour;
-    const entries = entriesOf(route);
-    const after = entries.length - 1;
-    const w = entries[after]?.w;
-    if (!w) return;
-    log('mapPick.open', { trip: id, after, from: 'map', rest: !!under });
-    startAdd({
-      trip: id,
-      after,
-      from: { stopRef: w.stopRef, name: w.name },
-      at: leaveTime(route, under ? undefined : tripChain, w.stopRef),
-      ...(under ? { rest: true } : {}),
-    });
-  };
 
   // The marker: one, its look by what it is from (made anew only when that changes).
   const marker = useRef<maplibregl.Marker | null>(null);
@@ -704,17 +609,6 @@ export default function MapView({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="map-tools">
-          {!adding && (!underWay || state) && map && (
-            <button
-              type="button"
-              className="icon"
-              aria-label={t('mapAddStops')}
-              title={t('mapAddStops')}
-              onClick={addFromEnd}
-            >
-              <Icon name="plus" />
-            </button>
-          )}
           {canLocate() && (
             <button
               type="button"
@@ -770,8 +664,6 @@ export default function MapView({ id }: { id: string }) {
         )}
         {straight && !failed && <p className="notice map-legend">{t('mapStraight')}</p>}
       </div>
-      {map && adding && <MapAdd map={map} dark={dark} font={font} fit={fitWeb} />}
-      {run && <RunSheet s={run} onClose={() => setRun(null)} />}
       <div ref={box} className="map" />
     </main>
   );

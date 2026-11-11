@@ -55,7 +55,7 @@ export function OptionsBar({
 }) {
   const t = useT();
   // The route without its name or time: options of one route, whatever time they were asked from.
-  const reservations = usePrefs((s) => s.reservations);
+  const reservations = 'avoid';
   const lang = usePrefs((s) => s.lang);
   const base = optionsKey(trip.route, reservations);
   // Options loaded with the arrows, for this route and day; kept while you choose among them,

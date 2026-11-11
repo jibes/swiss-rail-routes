@@ -743,24 +743,6 @@ html.pull-reload {
   font-size: 13px;
 }
 
-.prices .fare {
-  font-variant-numeric: tabular-nums;
-}
-
-.prices .fare-main {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.prices-sheet > .pill.wide {
-  width: 100%;
-  justify-content: center;
-}
-
 .prices-sheet > p {
   margin: 0;
-}
-
-.prices .fare-main .muted {
-  font-weight: 400;
 }

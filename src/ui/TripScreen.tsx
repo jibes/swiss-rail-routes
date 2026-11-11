@@ -8,10 +8,8 @@ import {
   moveEntry,
   removeEntry,
   replaceEntry,
-  reverseRoute,
   setEntryStayUntil,
   setEntryStay,
-  sameWayBack,
   stationEntry,
 } from '../core/line';
 import type { Tour } from '../core/model';
@@ -45,11 +43,6 @@ import { WhenField } from './WhenField';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
-import { findSubstitute } from '../io/substitute';
-import { leaveTime } from '../core/spider';
-import { useMapAdd } from './mapAdd';
-import type { Kept } from './keepMap';
-import { useDark } from './useDark';
 import { RestEditor } from './RestEditor';
 import { staysOnDay } from '../core/stay';
 import { restDraft, useRestDrafts } from './restDraft';
@@ -164,37 +157,9 @@ export function TripScreen({ id }: { id: string }) {
     return saidOf(r, trip.route.date < dayOf(Date.now()));
   });
   const [renaming, setRenaming] = useState(false);
-  // Said after Reverse direction dropped a stay's time window.
-  const [windowsGone, setWindowsGone] = useState(false);
-  useEffect(() => {
-    if (!windowsGone) return;
-    const t = setTimeout(() => setWindowsGone(false), 4000);
-    return () => clearTimeout(t);
-  }, [windowsGone]);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
-  // The map planner: it adds after this entry, one after the other.
-  // Beside the trip (desktop columns) it takes the map's column, not the trip's.
-  const startMapAdd = useMapAdd((s) => s.start);
   const [prices, setPrices] = useState(false);
-  // Keep map for offline (0.34.0): its progress while it runs, then what came of it.
-  const [keeping, setKeeping] = useState<(Kept & { over: boolean }) | null>(null);
-  const dark = useDark();
-  const keepMap = () => {
-    const ctrl = new AbortController();
-    setKeeping({ done: 0, total: 0, failed: 0, over: false });
-    // Loaded on the tap: it brings the map's own setup (MapLibre), not on the trip screen.
-    import('./keepMap')
-      .then((m) =>
-        m.keepTripMap(route, trip?.chain?.connections, lang, dark, ctrl.signal, (k) =>
-          setKeeping({ ...k, over: false }),
-        ),
-      )
-      .then(
-        (k) => setKeeping({ ...k, over: true }),
-        () => setKeeping({ done: 0, total: 0, failed: 1, over: true }),
-      );
-  };
   // The menu item that opened it is gone with the menu: focus goes back to More.
   const moreButton = useRef<HTMLButtonElement>(null);
   const closePrices = useCallback(() => {
@@ -423,40 +388,6 @@ export function TripScreen({ id }: { id: string }) {
                 {t('pricesOnSbb')}
               </button>
             )}
-            {isPlanned(trip) && (
-              <button
-                type="button"
-                disabled={!!keeping && !keeping.over}
-                onClick={() => {
-                  log('trip.keepMap', { trip: id });
-                  setMenu(false);
-                  keepMap();
-                }}
-              >
-                <Icon name="map" size={18} />
-                {t('keepMap')}
-              </button>
-            )}
-            {/* Before it leaves only: under way, Replan from here changes the rest. */}
-            {!liveTrip && entries.length >= 2 && (
-              <button
-                type="button"
-                onClick={() => {
-                  let dropped = false;
-                  edit((r) => {
-                    const x = reverseRoute(r);
-                    dropped = x.windowsDropped;
-                    return x.tour;
-                  });
-                  log('trip.reverse', { trip: id, windowsDropped: dropped });
-                  setWindowsGone(dropped);
-                  setMenu(false);
-                }}
-              >
-                <Icon name="reverse" size={18} />
-                {t('reverseDirection')}
-              </button>
-            )}
             {
               <button
                 type="button"
@@ -506,10 +437,6 @@ export function TripScreen({ id }: { id: string }) {
           </div>
         </div>
       )}
-
-      <div className="toast" role="status" hidden={!windowsGone}>
-        <span>{windowsGone ? t('windowsDropped') : ''}</span>
-      </div>
 
       {!liveTrip && when}
 
@@ -621,8 +548,6 @@ export function TripScreen({ id }: { id: string }) {
                 add: () => setSheet({ after: entries.length - 1 }),
                 later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
               }),
-              // Not through `logged`: it returns what it finds, and its signal is no log data.
-              find: (k, signal) => findSubstitute(trip, k, signal),
             }}
           />
         </>
@@ -638,48 +563,12 @@ export function TripScreen({ id }: { id: string }) {
           after={entries[sheet.after]?.w}
           next={entries[sheet.after + 1]?.w}
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
-          sameWay={sheet.after === entries.length - 1 ? sameWayBack(route) : undefined}
           onPick={pick}
           onClose={closeSheet}
-          onMap={
-            sheet.after >= 0
-              ? () => {
-                  const w = entries[sheet.after]!.w;
-                  log('mapPick.open', { trip: id, after: sheet.after });
-                  // On the trip's own map: beside the trip (desktop columns), else its screen.
-                  startMapAdd({
-                    trip: id,
-                    after: sheet.after,
-                    from: { stopRef: w.stopRef, name: w.name },
-                    at: leaveTime(route, trip.chain?.connections, w.stopRef),
-                  });
-                  setSheet(null);
-                  if (!document.querySelector('.col-map .mapview')) go(`/trip/${id}/map`);
-                }
-              : undefined
-          }
         />
       )}
       {prices && trip.chain && (
         <PricesSheet connections={trip.chain.connections} onClose={closePrices} />
-      )}
-      {keeping && (
-        <p className="toast kept" role="status">
-          <span>
-            {!keeping.over
-              ? t('keepMapRunning', { done: keeping.done, total: keeping.total || '…' })
-              : !keeping.total
-                ? t('keepMapFailed')
-                : keeping.failed
-                  ? t('keepMapPartly', { n: keeping.done - keeping.failed, total: keeping.total })
-                  : t('keepMapDone', { n: keeping.total })}
-          </span>
-          {keeping.over && (
-            <button type="button" className="text-button" onClick={() => setKeeping(null)}>
-              {t('close')}
-            </button>
-          )}
-        </p>
       )}
       {unpinned && (
         <p className="toast unpinned" role="status">

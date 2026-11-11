@@ -232,55 +232,10 @@ describe('OJP worker', () => {
   });
 });
 
-describe('fares (0.30.0)', () => {
-  const Q = {
-    origin: { ref: 'ch:1:sloid:7492', name: 'Interlaken Ost' },
-    destination: { ref: 'ch:1:sloid:7374', name: 'Kleine Scheidegg' },
-    vias: [],
-    time: '2026-11-07T09:05',
-    journeys: ['ch:1:sjyid:100017:plan:147', 'ch:1:sjyid:100128:plan:347'],
-    travelClass: 2,
-    halfFare: true,
-  };
-  const trip = (refs: string[]) =>
-    `<TripResult><Trip><Id>t</Id>${refs.map((r) => `<Leg><TimedLeg><Service><JourneyRef>${r}</JourneyRef></Service></TimedLeg></Leg>`).join('')}</Trip></TripResult>`;
-  const fareSetup = (answers: string[]) => {
-    const s = setup({ fareKey: 'fare-key', fareUpstream: 'https://api.example/ojpfare/' });
-    s.upstream.mockImplementation(async () => new Response(answers.shift() ?? '<OJP/>'));
-    return s;
-  };
-
-  it('asks OJP for the trip, and OJP Fare for OJP’s own Trip with these trains', async () => {
-    const { call, upstream } = fareSetup([
-      `<OJP>${trip(['other'])}${trip(Q.journeys)}</OJP>`,
-      '<OJP><FareResult/></OJP>',
-    ]);
-    const res = await call('/fare', { body: JSON.stringify(Q) });
-    expect(res.status).toBe(200);
-    expect(upstream.mock.calls).toHaveLength(2);
-    expect(String(upstream.mock.calls[0]![0])).toBe('https://api.example/ojp20');
-    const [url, init] = upstream.mock.calls[1]!;
-    expect(String(url)).toBe('https://api.example/ojpfare/');
-    expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer fare-key');
-    const xml = String(init!.body);
-    expect(xml).toContain(`<TripFareRequest>${trip(Q.journeys).slice(12, -13)}</TripFareRequest>`);
-    expect(xml).toContain('<EntitlementProductRef>HTA</EntitlementProductRef>');
-    expect(xml).toContain('<FareClass>secondClass</FareClass>');
-  });
-
-  it('a trip OJP no longer has is said; no key, no fares; a bad query is refused', async () => {
-    expect(
-      (await fareSetup([trip(['other'])]).call('/fare', { body: JSON.stringify(Q) })).status,
-    ).toBe(404);
-    expect((await setup().call('/fare', { body: JSON.stringify(Q) })).status).toBe(503);
-    const bad = fareSetup([]);
-    expect((await bad.call('/fare', { body: JSON.stringify({ ...Q, journeys: [] }) })).status).toBe(
-      400,
-    );
-    expect(
-      (await bad.call('/fare', { body: JSON.stringify({ ...Q, travelClass: 3 }) })).status,
-    ).toBe(400);
-    expect(bad.upstream).not.toHaveBeenCalled();
+// No /fare (0.58.0): prices are sbb.ch's, through its own links.
+describe('no fares', () => {
+  it('/fare is no route of the Worker', async () => {
+    expect((await setup().call('/fare', { body: '{}' })).status).toBe(404);
   });
 });
 
