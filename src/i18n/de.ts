@@ -237,13 +237,6 @@ export const de = {
   duplicate: 'Duplizieren',
   more: 'Mehr',
   colsPick: 'Wähle eine Reise aus der Liste oder beginne eine neue.',
-  pinVia: 'Anheften',
-  pinStay: 'Hier bleiben',
-  pinAdd: 'Halt ab hier hinzufügen',
-  timetableStopPin:
-    'Der Plan führt hier durch. Hefte den Halt an, damit er bleibt, wie auch immer geplant wird.',
-  unpin: '{stop} lösen',
-  unpinned: '{stop} gelöst.',
   pricesOnSbb: 'Preise bei der SBB',
   pricesHint: 'Jeder Teil der Reise öffnet sich auf sbb.ch, mit Billetten und Preisen.',
   searchAbroad: 'Bahnhöfe im Ausland suchen: «{q}»',
@@ -269,8 +262,6 @@ export const de = {
   wxFrom: 'Wetter ab {date}',
   wxRainStay: 'Regen wahrscheinlich während des Aufenthalts ({n} %)',
   pricesLeg: 'Ab {time}',
-  pinnedVia: 'Angeheftet',
-  unpinAction: 'Lösen',
   noTripsYet:
     'Eine neue Reise beginnt bei einer Station, einer Panoramalinie oder einer deiner früheren Reisen.',
   notPlannedPast: 'Nicht geplant',
@@ -299,6 +290,9 @@ export const de = {
   pastTripsN: 'Vergangene Reisen ({n})',
   recentStations: 'Zuletzt eingegeben',
   partOfLine: 'Teil der Linie {line}: ändere stattdessen ihre Endstationen.',
+  keepStation: 'Station behalten',
+  timetableStopPin:
+    'Der Plan führt hier durch. Behalte sie, um sie zu einer deiner Stationen zu machen.',
   timetableStop: 'Vom Fahrplan eingefügt: ändere stattdessen die Stationen davor oder danach.',
   tripDeleted: 'Gelöscht: {name}',
   undo: 'Rückgängig',

@@ -29,7 +29,6 @@ const P = {
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',
   ticket: 'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10',
-  pin: 'M9 4h6l-1 6 3 3H7l3-3-1-6zM12 13v8',
   external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   // Notifications (a bell).
   bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 20a2 2 0 0 0 4 0',

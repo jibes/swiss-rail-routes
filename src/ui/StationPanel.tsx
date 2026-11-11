@@ -1,5 +1,5 @@
 // A station of yours, opened (from TripLine.tsx): its name, ride through or stay (how long, or
-// until when: one row, StayRow.tsx), its scenic line, add after, up, down, remove; a pinned via says so and unpins.
+// until when: one row, StayRow.tsx), its scenic line, add after, up, down, remove.
 import { DEFAULT_STAY } from '../core/line';
 import { useEffect, useRef } from 'react';
 import { useT } from '../store';
@@ -21,7 +21,8 @@ export interface LineActions {
   later: () => void;
   /** The nearest station that works in place of entry `k` (a tap on a station missed). */
   /** A station the plan chose made yours, after entry `k`: a via; with a stay; or adding on. */
-  pin?: (k: number, stop: { stopRef: string; name: string }, then?: 'stay' | 'add') => void;
+  /** A station the plan chose, kept: one of yours after entry `k`. */
+  pin?: (k: number, stop: { stopRef: string; name: string }) => void;
 }
 
 /**
@@ -44,10 +45,7 @@ export function StationPanel({
   change,
   act,
   close,
-  pinnedHere,
 }: {
-  /** A pinned via (TripLine's pinnedAt): neither renamed nor moved. */
-  pinnedHere?: boolean;
   /** You asked to ride through, but the plan changes trains here. */
   change: boolean;
   k: number;
@@ -73,7 +71,7 @@ export function StationPanel({
     if (!refocus) return;
     const b = box.current?.querySelector<HTMLButtonElement>(`[data-move="${refocus}"]`);
     refocus = null;
-    // Else the panel's first control (moved where it is pinned, it has no up and down).
+    // Else the panel's first control (at an end, one of up and down is off).
     (b && !b.disabled
       ? b
       : box.current?.querySelector<HTMLButtonElement>('button:not([disabled])')
@@ -98,22 +96,13 @@ export function StationPanel({
         </div>
       </div>
     );
-  // A via between your first and last station is pinned: the plan must pass it, where the
-  // train does. So it is neither renamed nor moved: unpin it, or stay there.
-  const pinned = !!pinnedHere;
   return (
     <div className="panel" ref={box}>
-      {/* The name, not a field (0.35.1: another station is added and this one removed); a pinned
-          via says so by its pin. The cross closes the panel. */}
+      {/* The name, not a field (0.35.1: another station is added and this one removed). The
+          cross closes the panel. */}
       <div className="panel-head">
         <p className="panel-name">
           <span>{name}</span>
-          {pinned && (
-            <>
-              <Icon name="pin" size={16} />
-              <span className="muted">{t('pinnedVia')}</span>
-            </>
-          )}
         </p>
         {closeButton}
       </div>
@@ -173,59 +162,43 @@ export function StationPanel({
         {t('addAfter')}
       </button>
       <div className="acts">
-        {!pinned && (
-          <>
-            <button
-              type="button"
-              className="sq"
-              aria-label={t('moveUp', { name })}
-              data-move="up"
-              disabled={k <= fixed}
-              onClick={() => {
-                refocus = 'up';
-                act.move(k, k - 1);
-              }}
-            >
-              <Icon name="up" size={18} />
-            </button>
-            <button
-              type="button"
-              className="sq"
-              aria-label={t('moveDown', { name })}
-              data-move="down"
-              disabled={k === n - 1}
-              onClick={() => {
-                refocus = 'down';
-                act.move(k, k + 1);
-              }}
-            >
-              <Icon name="down" size={18} />
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="sq"
+          aria-label={t('moveUp', { name })}
+          data-move="up"
+          disabled={k <= fixed}
+          onClick={() => {
+            refocus = 'up';
+            act.move(k, k - 1);
+          }}
+        >
+          <Icon name="up" size={18} />
+        </button>
+        <button
+          type="button"
+          className="sq"
+          aria-label={t('moveDown', { name })}
+          data-move="down"
+          disabled={k === n - 1}
+          onClick={() => {
+            refocus = 'down';
+            act.move(k, k + 1);
+          }}
+        >
+          <Icon name="down" size={18} />
+        </button>
         <span className="sp" />
-        {n > 1 &&
-          (pinned ? (
-            // The action in words: the pin by the name is the state.
-            <button
-              type="button"
-              className="pill unpin"
-              aria-label={t('unpin', { stop: name })}
-              onClick={() => act.remove(k)}
-            >
-              <Icon name="pin" size={16} />
-              {t('unpinAction')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="sq danger"
-              aria-label={t('removeStation', { stop: name })}
-              onClick={() => act.remove(k)}
-            >
-              <Icon name="trash" size={18} />
-            </button>
-          ))}
+        {n > 1 && (
+          <button
+            type="button"
+            className="sq danger"
+            aria-label={t('removeStation', { stop: name })}
+            onClick={() => act.remove(k)}
+          >
+            <Icon name="trash" size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

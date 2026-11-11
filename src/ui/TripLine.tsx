@@ -150,14 +150,6 @@ export function TripLine({
   };
 
   const onRide = viasOnRides(rows);
-  /** Your via between your first and last station: pinned (the plan must pass it). */
-  const pinnedAt = (k: number) =>
-    k > 0 &&
-    k < n - 1 &&
-    entries[k]?.w.kind === 'via' &&
-    // A scenic line's ends are the line's (you chose the line): they keep the whole panel.
-    !lineTo(entries, k) &&
-    !lineTo(entries, k + 1);
   const onRideRows = new Set([...onRide.values()].flat().map((v) => v.row));
 
   /** A station's name: opens the panel (yours), says why not (the timetable's), or just is. */
@@ -268,14 +260,6 @@ export function TripLine({
           {r.name}
           {alt(r)}
           {platformBy(i, 'name')}
-          {pinnedAt(k) && (
-            <>
-              <span className="pin-mark" title={t('pinnedVia')} aria-hidden="true">
-                <Icon name="pin" size={14} />
-              </span>
-              <span className="sr-only">{t('pinnedVia')}</span>
-            </>
-          )}
         </span>
         {label && <span className={`chip ${r.stay ? '' : 'quiet'}`}>{label}</span>}
       </button>
@@ -283,8 +267,9 @@ export function TripLine({
   };
 
   /**
-   * A station the plan chose, opened: a card as your own stations' panel, with its name, why it
-   * is there and, where it can be made yours after entry `k`, Pin, Stay here, Add stop from here.
+   * A station the plan chose, opened: a card with its name, why it is there and, where it can be
+   * made yours after entry `k`, Keep (0.59.0: one action; its own panel then sets a stay or adds
+   * after it).
    */
   const planPanel = (
     k: number | undefined,
@@ -293,9 +278,9 @@ export function TripLine({
     close: () => void,
   ) => {
     const pin = k !== undefined && act?.pin;
-    const made = (how?: 'stay' | 'add') => {
+    const keep = () => {
       setHint(null);
-      act!.pin!(k!, stop, how);
+      act!.pin!(k!, stop);
     };
     return (
       <div className="panel plan-panel" role="status">
@@ -309,19 +294,10 @@ export function TripLine({
         </div>
         <p className="panel-note">{why}</p>
         {pin && (
-          <div className="pin-menu">
-            <button type="button" className="pill" onClick={() => made()}>
-              <Icon name="pin" size={16} />
-              {t('pinVia')}
-            </button>
-            <button type="button" className="pill" onClick={() => made('stay')}>
-              {t('pinStay')}
-            </button>
-            <button type="button" className="pill" onClick={() => made('add')}>
-              <Icon name="plus" size={16} />
-              {t('pinAdd')}
-            </button>
-          </div>
+          <button type="button" className="pill" onClick={keep}>
+            <Icon name="plus" size={16} />
+            {t('keepStation')}
+          </button>
         )}
       </div>
     );
@@ -346,7 +322,7 @@ export function TripLine({
     if (k === undefined || open !== k) return null;
     return (
       <>
-        {n > 1 && !(fixedFirst && k === 0) && !pinnedAt(k) && (
+        {n > 1 && !(fixedFirst && k === 0) && (
           <button
             type="button"
             className="grip"
@@ -371,7 +347,6 @@ export function TripLine({
             day={route.date ?? ''}
             line={lineName(lineTo(entries, k))}
             change={r.role === 'change'}
-            pinnedHere={pinnedAt(k)}
             act={act}
             close={() => setOpen?.(null)}
           />

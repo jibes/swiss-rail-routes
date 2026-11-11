@@ -46,19 +46,6 @@
   margin: 6px 0 8px;
 }
 
-.pin-menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0 2px;
-}
-
-.pin-menu .pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* A stop inside a ride: its name opens the same. */
 .mid-name {
   padding: 0;
@@ -74,18 +61,6 @@
   flex-wrap: wrap;
 }
 
-.sq.pinned {
-  color: var(--rail);
-}
-
-/* A pinned via: the pin is its state, by the name; the panel's Unpin is the action. */
-.pin-mark {
-  display: inline-flex;
-  margin-left: 6px;
-  color: var(--rail);
-  vertical-align: -1px;
-}
-
 .panel-name {
   display: flex;
   align-items: center;
@@ -93,21 +68,6 @@
   margin: 0;
   font-weight: 600;
   flex: 1;
-}
-
-.panel-name svg {
-  color: var(--rail);
-}
-
-.panel-name .muted {
-  font-weight: 400;
-  font-size: 13px;
-}
-
-.pill.unpin {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 /* Opened, a stop inside a ride keeps its ring beside its name, not beside the card. */

@@ -122,7 +122,6 @@ export async function fetchJourney(
   return out;
 }
 
-
 /** A leg abroad (0.33.0) from Transitous through the Worker (`euLeg`, shared with the MCP). */
 async function fetchEuTrips(
   url: string,

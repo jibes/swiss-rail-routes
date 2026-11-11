@@ -59,11 +59,11 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   // Moving Interlaken Ost up takes the Brünig line away (its two ends are no longer neighbours).
   await page.getByRole('button', { name: 'Move Interlaken Ost up' }).click();
   await expect(entries).toHaveText([/^Zürich HB/, /^Interlaken Ost/, /^Luzern/, /^Zürich HB/]);
-  // Focus stays in its panel, not on the page (review, 0.53.0); here pinned, so no up/down.
+  // Focus stays in its panel, not on the page (review, 0.53.0).
   await expect(page.locator('.panel :focus')).toHaveCount(1);
   await expect(line.locator('.station.ring')).toHaveCount(0);
-  // A via between your first and last station is pinned: its panel unpins it.
-  await page.getByRole('button', { name: 'Unpin Interlaken Ost' }).click();
+  // A station between your first and last is removed as any (0.59.0: no pins).
+  await page.getByRole('button', { name: 'Remove Interlaken Ost' }).click();
   await expect(entries).toHaveCount(3);
 
   // The panel names its station, it does not rename it (0.35.1: add another, remove this one).
