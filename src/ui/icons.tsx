@@ -22,7 +22,9 @@ const P = {
   reverse: 'M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   refresh: 'M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  // Three dots as small rings, so they weigh as the other icons' lines do (audit, 11 Nov 2026:
+  // dots of a bare stroke's width looked thin).
+  more: 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
   locate: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v4M12 18v4M2 12h4M18 12h4',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4',

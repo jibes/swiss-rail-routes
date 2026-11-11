@@ -97,4 +97,19 @@ describe('route links', () => {
     expect(read('#/r/zurich-hb.3000')).toBeNull();
     expect(read('#/r/@nope~chur.9000')).toBeNull();
   });
+
+  it('puts a link without a date on the days its stays name', () => {
+    const stay = (n: string) => `#/r/zurich-hb.3000~chur.9000.30.n${n}~zurich-hb.3000`;
+    const until = (h: string) => read(h)!.waypoints.find((w) => w.stayUntil)?.stayUntil;
+    // Days ahead: the trip on the stay's day, not today with a stay of a week.
+    expect(read(stay('202611200915'))!.date).toBe('2026-11-20');
+    expect(until(stay('202611200915'))).toBe('2026-11-20T09:15');
+    // Gone: today, the stay moved along with it.
+    expect(read(stay('202611100915'))!.date).toBe('2026-11-14');
+    expect(until(stay('202611100915'))).toBe('2026-11-14T09:15');
+    // A date given wins; no stay until a day leaves today.
+    expect(read(`${stay('202611200915')}?d=2026-11-19`)!.date).toBe('2026-11-19');
+    expect(until(`${stay('202611200915')}?d=2026-11-19`)).toBe('2026-11-20T09:15');
+    expect(read('#/r/zurich-hb.3000~chur.9000.60~zurich-hb.3000')!.date).toBe('2026-11-14');
+  });
 });

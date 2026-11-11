@@ -10,10 +10,13 @@
 // `n<YYYYMMDDHHMM>` stay until then (0.44.0, several days);
 // `a<hhmm>` and `b<hhmm>` (arrive no earlier, leave no later) were written by older links and
 // are read past: nothing ever enforced them. `@<template>` alone (`.r` reversed) inserts a route template.
-// Settings, each optional: d (date, default today), dep or arr (time, default dep=08:00),
+// Settings, each optional: d (date; without one today, or the day of the earliest stay until a
+// date when that is later, as the stays name the trip's days: never before today, the stays
+// moving with it), dep or arr (time, default dep=08:00),
 // ticket (default GA), class (default 2), name, notes.
 import type { RouteTemplate } from '../data';
 import { insertTemplate, normalise } from '../edit';
+import { staysOnDay } from '../stay';
 import type { TicketType, Tour, Waypoint } from '../model';
 
 const TICKETS: TicketType[] = ['GA', 'Tageskarte', 'Halbtax', 'none'];
@@ -43,6 +46,19 @@ function refOf(c: string): string | null {
       return null;
     }
   return null;
+}
+
+/**
+ * A link without a date whose stays end on a day (audit, 11 Nov 2026: such a link opened today
+ * with its stays where they were, gone or days off): the trip goes on the earliest of those days,
+ * or today with the stays moved along, when that day is gone.
+ */
+function undatedStays(tour: Tour, today: string): Tour {
+  const days = tour.waypoints.flatMap((w) => (w.stayUntil ? [w.stayUntil.slice(0, 10)] : []));
+  if (!days.length) return tour;
+  const first = days.reduce((a, b) => (b < a ? b : a));
+  if (first >= today) return { ...tour, date: first };
+  return { ...tour, date: today, waypoints: staysOnDay(tour.waypoints, first, today) };
 }
 
 /** Reads `<stops>` and its settings back into a route (without id); null if unreadable. */
@@ -105,6 +121,7 @@ export function parseRoute(
     tour = { ...tour, waypoints: [...tour.waypoints, w] };
   }
   if (tour.waypoints.length < 2) return null;
+  if (!(d && DATE.test(d))) tour = undatedStays(tour, ctx.today);
   const { id: _id, ...rest } = tour;
   // Start and end where they are now, every station between them kept as what it is.
   const middle = (w: Waypoint): Waypoint =>

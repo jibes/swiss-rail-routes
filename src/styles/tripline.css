@@ -687,7 +687,8 @@
   width: 44px;
 }
 
-.options-bar .shift:disabled {
+.options-bar .shift:disabled > * {
+  /* The icon, not the button: its ground stays opaque over the options under it. */
   opacity: 0.3;
 }
 

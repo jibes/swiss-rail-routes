@@ -116,8 +116,8 @@ test('more options that fail to load change nothing; a tap chooses one', async (
   await expect(page.locator('.opt.loading')).toBeVisible();
   // As many options as a day of loading gives (copies of the first): the strip scrolls, the
   // page keeps the screen's width (on a phone the page itself would grow, so `innerWidth` is
-  // measured against the device's width, not the page's), and the arrows scroll with the
-  // options: earlier before the first, later after the last.
+  // measured against the device's width, not the page's), and the arrows stay at the strip's
+  // ends however it is scrolled (audit, 11 Nov 2026: at 360 px "Later" began out of view).
   const width = page.viewportSize()!.width;
   const fits = await page.evaluate(() => {
     const strip = document.querySelector('.options-bar .opts')!;
@@ -129,19 +129,23 @@ test('more options that fail to load change nothing; a tap chooses one', async (
       list.appendChild(copy);
     }
     const [earlier, later] = [...strip.querySelectorAll<HTMLElement>(':scope > .shift')];
-    const items = [...list.children] as HTMLElement[];
+    const box = strip.getBoundingClientRect();
+    const inView = () => {
+      const [e, l] = [earlier!.getBoundingClientRect(), later!.getBoundingClientRect()];
+      return e.left >= box.left - 1 && l.right <= box.right + 1 && l.left > e.right;
+    };
+    strip.scrollLeft = 0;
+    const atStart = inView();
+    strip.scrollLeft = strip.scrollWidth;
+    const atEnd = inView();
+    strip.scrollLeft = 0;
     const page = document.querySelector('.page')!.getBoundingClientRect();
     return {
       inner: innerWidth,
       scroll: document.documentElement.scrollWidth,
       bar: document.querySelector('.options-bar')!.getBoundingClientRect().right <= page.right,
       scrolls: strip.scrollWidth > strip.clientWidth,
-      arrows:
-        !!earlier &&
-        !!later &&
-        earlier.offsetLeft + earlier.offsetWidth <= items[0]!.offsetLeft &&
-        later.offsetLeft >= items.at(-1)!.offsetLeft + items.at(-1)!.offsetWidth &&
-        later.offsetLeft + later.offsetWidth > strip.clientWidth,
+      arrows: !!earlier && !!later && atStart && atEnd,
     };
   });
   expect(fits, 'no sideways page scroll').toEqual({

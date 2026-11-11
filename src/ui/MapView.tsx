@@ -19,10 +19,11 @@ import type { Connection, Section } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
 import { isLive, isPlanned } from '../core/trip';
-import { mapName, placeLabels } from '../core/mapLabels';
+import { mapName } from '../core/mapLabels';
+import { placeNames, type MapName } from './mapNames';
 import { plannedRows } from '../core/rows';
 import { placeWith, tempText } from '../core/weather';
-import { weatherMap } from '../core/weatherMap';
+import { weatherMap, type WeatherMap } from '../core/weatherMap';
 import { addWeatherLayers, setWeather } from './mapWeather';
 import { weatherWords } from './WeatherCell';
 import { useWeather } from './useWeather';
@@ -143,6 +144,8 @@ export default function MapView({ id }: { id: string }) {
   /** Keeps the names apart again (a temperature added widens one). */
   const declutterNames = useRef<() => void>(() => undefined);
   const temps = useRef(new Map<string, number>());
+  /** The weather drawn, for the names to keep off it. */
+  const wxDrawn = useRef<WeatherMap | null>(null);
   const [failed, setFailed] = useState(false);
   // Some stretch has no track shape (drawn straight and dashed): say what dashed means.
   const [straight, setStraight] = useState(false);
@@ -385,7 +388,7 @@ export default function MapView({ id }: { id: string }) {
       // A station once (a round trip's start and end are one), yours before the plan's changes:
       // the order in which names are kept when they would lie on each other (`placeLabels`).
       const once = new Set<string>();
-      const els: HTMLElement[] = [];
+      const placed: MapName[] = [];
       for (const f of [...d.stops.features, ...d.changes.features]) {
         if (f.properties.ring) continue;
         if (once.has(String(f.properties.key))) continue;
@@ -394,15 +397,14 @@ export default function MapView({ id }: { id: string }) {
         // A change the plan chose: named too, smaller.
         el.className = f.properties.change ? 'map-name change' : 'map-name';
         el.textContent = mapName(String(f.properties.name ?? ''));
-        els.push(el);
         const key = `${String(f.properties.key)}\n${String(f.properties.name)}`;
         nameEls.current.set(key, el);
         showTemp(el, tempAt(temps.current, key));
-        names.push(
-          new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 9] })
-            .setLngLat(f.geometry.coordinates)
-            .addTo(map),
-        );
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat(f.geometry.coordinates)
+          .addTo(map);
+        names.push(marker);
+        placed.push({ el, marker, at: f.geometry.coordinates as [number, number] });
       }
       if (fittedFor.current !== map && d.bounds) {
         fittedFor.current = map;
@@ -412,15 +414,10 @@ export default function MapView({ id }: { id: string }) {
           duration: 0,
         });
       }
-      const keepApart = () => {
-        const shown = placeLabels(
-          els.map((el) => {
-            const r = el.getBoundingClientRect();
-            return { x: r.left, y: r.top, w: r.width, h: r.height };
-          }),
-        );
-        els.forEach((el, i) => (el.style.visibility = shown[i] ? '' : 'hidden'));
-      };
+      const dots = [...d.stops.features, ...d.changes.features].map(
+        (f) => f.geometry.coordinates as [number, number],
+      );
+      const keepApart = () => placeNames(map, placed, d.lines, dots, wxDrawn.current);
       keepApart();
       declutter = keepApart;
       declutterNames.current = keepApart;
@@ -458,6 +455,7 @@ export default function MapView({ id }: { id: string }) {
   );
   useEffect(() => {
     temps.current = wmap?.temps ?? new Map();
+    wxDrawn.current = wmap;
     for (const [key, el] of nameEls.current) showTemp(el, tempAt(temps.current, key));
     declutterNames.current();
     if (map) setWeather(map, wmap);
