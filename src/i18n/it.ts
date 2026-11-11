@@ -147,7 +147,6 @@ export const it = {
   liveTimetable: 'Orario',
   youAreHere: 'Sei qui',
   discardChanges: 'Annulla',
-  updateTrip: 'Aggiorna viaggio',
   sharedTrip: 'Qualcuno ha condiviso questo viaggio con te, così come è pianificato.',
   saveToTrips: 'Salva viaggio',
   shareTrip: 'Condividi viaggio',

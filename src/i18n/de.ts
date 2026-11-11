@@ -146,7 +146,6 @@ export const de = {
   liveTimetable: 'Fahrplanzeiten',
   youAreHere: 'Du bist hier',
   discardChanges: 'Verwerfen',
-  updateTrip: 'Reise aktualisieren',
   sharedTrip: 'Jemand hat diese Reise mit dir geteilt, so wie sie geplant ist.',
   saveToTrips: 'Reise speichern',
   shareTrip: 'Reise teilen',

@@ -1,8 +1,8 @@
 // The rest of a trip under way, edited in place on the trip screen (0.46.0; before, its own
 // screen, "Replan from here"). The way here grey above, then the rest from where you are (fixed),
-// planned as you edit, with the same notices and options strip as before it leaves; Update makes
-// a new version (undo keeps one), Discard drops the draft. The draft lives in `restDraft`, so the
-// map planner adds to the same one.
+// planned as you edit, with the same notices and options strip as before it leaves. A change is
+// the trip's once its plan comes (0.60.0: no Update or Discard; Undo on the trip takes it back),
+// and with nothing open and nothing changed the trip is shown as it runs again.
 import { useCallback, useEffect, useState } from 'react';
 import {
   dropLine,
@@ -62,7 +62,6 @@ export function RestEditor({
   const [planned, setPlanned] = useState<Planned | null>(null);
   /** The last plan that came, for any version of the rest: shown dimmed while the next comes. */
   const [last, setLast] = useState<PlanResult | null>(null);
-  const [changed, setChanged] = useState(false);
   const [open, setOpen] = useState<number | null>(() => d?.focus?.open ?? null);
   const [sheet, setSheet] = useState<{ after: number } | null>(() =>
     d?.focus?.add ? { after: entriesOf(d.route).length - 1 } : null,
@@ -111,6 +110,38 @@ export function RestEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [json, attempt]);
 
+  // Changed meanwhile (another device, another tab, undo): its legs and trains are not the ones
+  // the rest was cut from.
+  const changed = !!d && trip.version !== d.opened.version;
+  // A change is the trip's once its plan is there; nothing open and nothing changed: done.
+  useEffect(() => {
+    if (!d) return;
+    const r = planned?.json === json && planned.state === 'done' ? planned.result : null;
+    const c = r ? (d.picked ?? r.recommended ?? null) : null;
+    const dirtyNow = json !== d.initial || d.picked !== null;
+    if (dirtyNow && r && c && !changed) {
+      log('replan.save', { trip: id, dep: c.dep, arr: c.arr });
+      update(id, (x) =>
+        !isPlanned(x)
+          ? x
+          : revise(
+              x,
+              mergeReplan(
+                x,
+                replanPoint(x, d.opened.state, d.opened.now, (key) => {
+                  const st = index?.byRef(key);
+                  return st ? [st.lon, st.lat] : undefined;
+                }) || d.point,
+                r.legs ?? [],
+                c,
+              ),
+              new Date(),
+            ),
+      );
+      drafts().discard(id);
+    } else if (!dirtyNow && open === null && sheet === null) drafts().discard(id);
+  }, [d, planned, json, changed, open, sheet, id, index, update, drafts]);
+
   if (!d || !draft) return null;
   const { point } = d;
   const mine = planned?.json === json ? planned : null;
@@ -138,33 +169,6 @@ export function RestEditor({
   const edit = (f: (x: Tour) => Tour) => drafts().edit(id, f);
   const anchor = 'departAt' in draft.anchor ? draft.anchor.departAt : draft.anchor.arriveBy;
 
-  const save = () => {
-    if (!chain || !result) return;
-    // Changed meanwhile (another device, another tab, undo): its legs and trains are not the
-    // ones this plan was cut from.
-    if (useTrips.getState().trips.find((x) => x.id === id)?.version !== d.opened.version)
-      return setChanged(true);
-    log('replan.save', { trip: id, dep: chain.dep, arr: chain.arr });
-    update(id, (x) =>
-      !isPlanned(x)
-        ? x
-        : revise(
-            x,
-            mergeReplan(
-              x,
-              replanPoint(x, d.opened.state, d.opened.now, (key) => {
-                const st = index?.byRef(key);
-                return st ? [st.lon, st.lat] : undefined;
-              }) || point,
-              result.legs ?? [],
-              chain,
-            ),
-            new Date(),
-          ),
-    );
-    drafts().discard(id);
-  };
-
   const discard = () => {
     log('replan.discard', { trip: id });
     drafts().discard(id);
@@ -175,7 +179,6 @@ export function RestEditor({
     const fresh = restDraft(trip, state, now);
     if (fresh) drafts().set(id, fresh);
     else drafts().discard(id);
-    setChanged(false);
     setOpen(null);
   };
 
@@ -263,22 +266,13 @@ export function RestEditor({
         }}
       />
 
-      {!changed && (
-        <div className="dock">
-          <div className="dock-inner">
-            <button type="button" className="secondary" onClick={discard}>
-              {t('discardChanges')}
-            </button>
-            <button
-              type="button"
-              className="primary wide"
-              disabled={!dirty || !chain}
-              onClick={save}
-            >
-              {t('updateTrip')}
-            </button>
-          </div>
-        </div>
+      {/* Changed, and no plan for it: the change is taken back here (else it waits). */}
+      {dirty && (planState === 'error' || planState === 'unavailable') && (
+        <p className="muted">
+          <button type="button" className="text-button" onClick={discard}>
+            {t('discardChanges')}
+          </button>
+        </p>
       )}
 
       {sheet && (

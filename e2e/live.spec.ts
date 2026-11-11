@@ -61,9 +61,10 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
     0,
   );
 
-  // The lists show the live bar; opening the app goes straight to Now.
+  // The list's card of the trip under way says its next step, the time first (0.60.0: no bar
+  // above the list); opening the app goes straight to Now.
   await page.goto('./#/trips');
-  await expect(page.locator('.livebar')).toBeVisible();
+  await expect(page.locator('.card.live .sub')).toHaveText(/ · \d\d:\d\d · Get off at /);
   await page.goto('./');
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
   // A reload stays where it was (only opening the app goes to the trip under way).
@@ -73,7 +74,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Under way');
 });
 
-test('under way, what lies ahead is changed on the line itself: a stop, update, undo', async ({
+test('under way, what lies ahead is changed on the line itself: a stop, at once, undo', async ({
   page,
 }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
@@ -82,39 +83,26 @@ test('under way, what lies ahead is changed on the line itself: a stop, update, 
   await page.clock.runFor('25:00');
   const line = page.getByRole('list', { name: 'The trip', exact: true });
   // One screen (0.46.0): no separate Replan from here. Behind you nothing opens; a station
-  // ahead begins changing the rest, on the same screen.
+  // ahead opens its panel, the way here grey above.
   await expect(page.getByRole('link', { name: 'Replan from here' })).toHaveCount(0);
   await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  // The rest from here is planned at once, without a failure first.
-  await expect(page.getByRole('button', { name: 'Update trip' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('alert')).toHaveCount(0);
-  // Nothing changed yet: nothing to update. The way here, grey, above the rest.
-  await expect(page.getByRole('button', { name: 'Update trip' })).toBeDisabled();
   await expect(page.locator('.trip-line.past .ride')).toHaveCount(1);
   await expect(page.locator('.trip-line.past .station')).toHaveText([/Interlaken Ost/]);
-  // Discard: back as it was.
-  await page.getByRole('button', { name: 'Discard' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  // No Update, no Discard (0.60.0): closed with nothing changed, the trip runs as it was.
   await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(page.locator('.trip-line.past')).toHaveCount(0);
 
-  // Again, by adding: where you are is fixed, only "Add after".
+  // Adding: where you are is fixed, only "Add after".
   await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
   await line.locator('.station.entry').first().getByRole('button').first().click();
   await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add after' }).click();
   await pick(page, 'Wengen');
-
-  const wengen = line.locator('.station.entry', { hasText: 'Wengen' });
-  await wengen.getByRole('button', { name: /^Wengen/ }).click();
-  await page.getByRole('button', { name: 'Stay', exact: true }).click();
-  // Planned as you edit: no Find button, Update once the plan is there.
-  await expect(page.getByRole('button', { name: 'Find connections' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Update trip' })).toBeEnabled({ timeout: 30_000 });
-  await page.getByRole('button', { name: 'Update trip' }).click({ timeout: 30_000 });
-
-  // The trip under way again: the new plan (via Wengen), undo available.
-  await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
+  // The trip's at once, once its plan is there: the trip under way again, via Wengen.
+  await expect(page.locator('.trip-line.past')).toHaveCount(0, { timeout: 30_000 });
   await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo last change' }).click();
   // No Wengen station any more (the GA note still names its stretch, Wengen–Kleine Scheidegg).

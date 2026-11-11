@@ -205,17 +205,6 @@
   cursor: grabbing;
 }
 
-.live-tag {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--rail);
-  color: var(--on-rail);
-  font-size: 12px;
-  font-weight: 700;
-  vertical-align: 2px;
-}
-
 a.primary,
 a.secondary {
   text-decoration: none;

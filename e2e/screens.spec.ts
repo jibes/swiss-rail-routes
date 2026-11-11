@@ -47,14 +47,10 @@ for (const scheme of ['light', 'dark'] as const) {
       .click();
     await page.locator('.trip-line.past').waitFor();
     // Planned at once (the rest from here may have no recorded answer: then its notice).
-    await page
-      .getByRole('button', { name: 'Update trip' })
-      .or(page.getByRole('alert'))
-      .first()
-      .waitFor({ timeout: 30_000 });
+    await page.locator('.panel').or(page.getByRole('alert')).first().waitFor({ timeout: 30_000 });
     await page.screenshot({ path: `${dir}/${scheme}-6-replan.png` });
     await page.goto('./#/');
-    await page.locator('.livebar').waitFor();
+    await page.locator('.card.live').waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: `${dir}/${scheme}-5-list-live.png` });
     expect(true).toBe(true);

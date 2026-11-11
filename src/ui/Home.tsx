@@ -1,16 +1,15 @@
 import { useEffect } from 'react';
-import { expectedArrival } from '../core/live';
+import { expectedArrival, liveState } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
-import { dayOf, newTrip, sortTrips, type Trip } from '../core/trip';
+import { dayOf, isPlanned, newTrip, sortTrips, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
 import { useTours } from '../tours';
 import { useTrips } from '../trips';
-import { duration, hhmm, minutesBetween, nextFive } from './format';
+import { badge, duration, hhmm, minutesBetween, nextFive } from './format';
 import { Icon } from './icons';
-import { LiveBar } from './LiveBar';
 import { Logo } from './Logo';
 import { MiniLine } from './MiniLine';
 import { go, useHash } from './useHash';
@@ -26,9 +25,12 @@ function Card({
   past,
   stop,
   open,
+  next,
 }: {
   trip: Trip;
   live: boolean;
+  /** Under way: its next step, said in place of its times (0.60.0: the bar above the list went). */
+  next?: string;
   /** Over: drawn quieter, and one never planned is said so (none is coming in the background). */
   past?: boolean;
   open?: boolean;
@@ -62,16 +64,35 @@ function Card({
             <span className="sr-only">
               {fmt({ weekday: 'long', day: 'numeric', month: 'long' })} ·{' '}
             </span>
-            {c
-              ? `${hhmm(c.dep)} – ${hhmm(c.arr)} · ${duration(minutesBetween(c.dep, c.arr))}`
-              : trip.route.waypoints.length > 1
-                ? t(past ? 'notPlannedPast' : 'notPlanned')
-                : t('addStations')}
+            {next
+              ? next
+              : c
+                ? `${hhmm(c.dep)} – ${hhmm(c.arr)} · ${duration(minutesBetween(c.dep, c.arr))}`
+                : trip.route.waypoints.length > 1
+                  ? t(past ? 'notPlannedPast' : 'notPlanned')
+                  : t('addStations')}
           </span>
         </span>
       </a>
     </li>
   );
+}
+
+/** A trip under way's next step, the time first: boarding (train, time, platform) or getting off. */
+function nextStep(
+  x: Trip,
+  now: number,
+  status: Parameters<typeof liveState>[2],
+  t: ReturnType<typeof useT>,
+): string | undefined {
+  if (!isPlanned(x)) return undefined;
+  const s = liveState(x.chain.connections, now, status);
+  const n = s.next;
+  const ride = n ? s.rides[n.ride] : undefined;
+  if (!n || !ride) return undefined;
+  return n.kind === 'board'
+    ? `${hhmm(n.at)} · ${badge(ride.s)}${n.stop.platform ? ` · ${t('platform', { p: n.stop.platform })}` : ''}`
+    : `${hhmm(n.at)} · ${t('nowAlight', { stop: n.stop.name })}`;
 }
 
 /**
@@ -109,7 +130,6 @@ export function Home() {
 
   return (
     <main className="page home">
-      <LiveBar />
       <div className="brand">
         <Logo />
         <span>{t('appName')}</span>
@@ -133,7 +153,14 @@ export function Home() {
           {ahead.length > 0 && <h2 className="section-label">{t('nowSection')}</h2>}
           <ul className="cards" aria-label={t('nowSection')}>
             {live.map((x) => (
-              <Card key={x.id} trip={x} open={x.id === openId} live stop={stop} />
+              <Card
+                key={x.id}
+                trip={x}
+                open={x.id === openId}
+                live
+                next={nextStep(x, now, liveStatus, t)}
+                stop={stop}
+              />
             ))}
           </ul>
         </section>

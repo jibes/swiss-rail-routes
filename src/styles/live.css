@@ -122,32 +122,6 @@
   font-size: 12px;
 }
 
-.livebar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: var(--r);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  color: var(--ink);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.livebar .live-tag {
-  margin: 0;
-}
-
-.livebar-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 /* With the stops open, SyncHere sets --fm in px to where the train is between the stops shown. */
 .mids .here-mid {
   height: 0;

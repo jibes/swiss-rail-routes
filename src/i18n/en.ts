@@ -141,7 +141,6 @@ export const en = {
   liveTimetable: 'Timetable times',
   youAreHere: 'You are here',
   discardChanges: 'Discard',
-  updateTrip: 'Update trip',
   sharedTrip: 'Someone shared this trip with you, as they planned it.',
   saveToTrips: 'Save trip',
   shareTrip: 'Share trip',

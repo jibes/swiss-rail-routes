@@ -122,7 +122,8 @@ export function TripScreen({ id }: { id: string }) {
     log('replan.begin', { trip: liveTrip.id, at: key ? 'station' : 'add' });
     useRestDrafts
       .getState()
-      .set(liveTrip.id, { ...d, focus: key && open > 0 ? { open } : key ? {} : { add: true } });
+      // The station tapped opens (where you are: its own panel, Add after); else the add sheet.
+      .set(liveTrip.id, { ...d, focus: key ? { open: Math.max(0, open) } : { add: true } });
   };
   // Under way but not left yet: its options stay (from the saved plan, nothing asked).
   const notLeft = !!liveTrip && now < Date.parse(liveTrip.chain.dep);
