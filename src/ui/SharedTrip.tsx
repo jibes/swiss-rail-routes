@@ -4,10 +4,7 @@ import { decodeTrip } from '../core/export/tripShare';
 import { linkWarnings, reloadTrip, stopNames } from '../io/refresh';
 import { PullReload, saidOf, useReload } from './PullReload';
 import { compactTrip, dayOf, isPlanned, type PlannedTrip } from '../core/trip';
-import { markRings, routeKey } from '../core/line';
 import { lineName } from './TemplatePicker';
-import { useTours } from '../tours';
-import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
 import { useTrips } from '../trips';
 import { plannedRows } from '../core/rows';
@@ -27,7 +24,6 @@ export function SharedTrip({ hash }: { hash: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const add = useTrips((s) => s.add);
-  const now = useNow();
   const [trip, setTrip] = useState<PlannedTrip | null | undefined>(undefined);
   const [bare, setBare] = useState(false);
   const shown = useRef<PlannedTrip | null>(null);
@@ -97,7 +93,6 @@ export function SharedTrip({ hash }: { hash: string }) {
         </button>
       </main>
     );
-  const past = trip.route.date < dayOf(now);
   return (
     <main className="page trip-screen">
       <PullReload busy={busy} said={said} reload={reload} />
@@ -128,33 +123,10 @@ export function SharedTrip({ hash }: { hash: string }) {
         warnings={trip.chain.warnings}
         planning={false}
       />
-      {past && <p className="notice">{t('sharedPast')}</p>}
       <div className="dock">
         <div className="dock-inner">
-          {past ? (
-            <button
-              type="button"
-              className="primary wide"
-              onClick={() => {
-                // Its day is over: kept as one of your trips (in search), to go again.
-                const tour = {
-                  ...trip.route,
-                  id: `shared-${trip.id}`,
-                  name: trip.name,
-                  waypoints: markRings(trip.route.waypoints),
-                };
-                const key = routeKey(tour);
-                const tours = useTours.getState().tours.filter((x) => routeKey(x) !== key);
-                void useTours
-                  .getState()
-                  .replaceAll([tour, ...tours])
-                  .catch(() => undefined);
-                location.replace('#/');
-              }}
-            >
-              {t('saveToYourTrips')}
-            </button>
-          ) : (
+          {/* Any day, gone or not (0.52.0): a trip like any other. */}
+          {
             <button
               type="button"
               className="primary wide"
@@ -175,7 +147,7 @@ export function SharedTrip({ hash }: { hash: string }) {
             >
               {t('saveToTrips')}
             </button>
-          )}
+          }
         </div>
       </div>
     </main>

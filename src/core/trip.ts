@@ -69,8 +69,6 @@ export function compactTrip<T extends Trip>(t: T): T {
   };
 }
 
-export type TripStatus = 'upcoming' | 'live' | 'past';
-
 /** Live from 30 min before the first departure to 15 min after the last arrival. */
 export const LIVE_BEFORE_MIN = 30;
 export const LIVE_AFTER_MIN = 15;
@@ -102,37 +100,30 @@ export const changesOf = (connections: Pick<Connection, 'sections'>[]): number =
   }, 0);
 
 /**
- * `arrival`: the expected arrival with live delays, so a late last train keeps it live. A trip
- * not planned yet is upcoming until its day is over.
+ * The one thing a trip's time decides (0.52.0): whether it is under way now, from
+ * `LIVE_BEFORE_MIN` before its first departure to `LIVE_AFTER_MIN` after its last arrival
+ * (`arrival`: the expected one, so a late last train keeps it live). Only live information
+ * (the marker, delays, the rest planned from where you are) depends on it: a trip is edited
+ * the same way whenever it is.
  */
-export function tripStatus(
-  t: Pick<Trip, 'chain' | 'editedAt'> & { route?: Pick<Tour, 'date'> },
-  now: number,
-  arrival?: number,
-): TripStatus {
-  if (!t.chain)
-    return t.route && t.route.date < dayOf(now) && !enteredLate(t, now) ? 'past' : 'upcoming';
+export function isLive(t: Pick<Trip, 'chain'>, now: number, arrival?: number): boolean {
+  if (!t.chain) return false;
   const dep = Date.parse(t.chain.dep);
   const arr = Math.max(Date.parse(t.chain.arr), arrival ?? 0);
-  if (now < dep - LIVE_BEFORE_MIN * 60_000) return 'upcoming';
-  if (now > arr + LIVE_AFTER_MIN * 60_000) return enteredLate(t, now) ? 'upcoming' : 'past';
-  return 'live';
+  return now >= dep - LIVE_BEFORE_MIN * 60_000 && now <= arr + LIVE_AFTER_MIN * 60_000;
 }
 
 /**
- * Entered after its time (0.49.0): its route changed today, after the trip left (or, before it
- * is planned, dated before today). Such a trip is being put in, not one that ran: it stays as
- * before it leaves (in the list, every station editable, planned) until the day you changed it
- * is over; one still running is under way as any other.
+ * Over: its last arrival (and `LIVE_AFTER_MIN`) behind, or, not planned, its day. For the list's
+ * order and what is done in the background only; an over trip is edited as any other.
  */
-export function enteredLate(
-  t: Pick<Trip, 'chain' | 'editedAt'> & { route?: Pick<Tour, 'date'> },
+export function isOver(
+  t: Pick<Trip, 'chain'> & { route: Pick<Tour, 'date'> },
   now: number,
+  arrival?: number,
 ): boolean {
-  if (!t.editedAt) return false;
-  const at = Date.parse(t.editedAt);
-  if (dayOf(at) !== dayOf(now)) return false;
-  return t.chain ? at > Date.parse(t.chain.dep) : !!t.route && t.route.date < dayOf(now);
+  if (!t.chain) return t.route.date < dayOf(now);
+  return now > Math.max(Date.parse(t.chain.arr), arrival ?? 0) + LIVE_AFTER_MIN * 60_000;
 }
 
 /** The trip without its timetable: the route stays, and is planned again. */
@@ -198,20 +189,23 @@ export function undo<T extends Trip>(t: T): T {
   return { ...t, ...t.previous, version: t.version + 1, previous: undefined };
 }
 
-/** Upcoming and live trips soonest first, then past ones most recent first. */
 /** The expected arrival of a trip from live data, when there is some (see expectedArrival). */
 export type ArrivalOf = (t: Trip) => number | undefined;
 
+/** The list's three parts: under way, ahead (soonest first), over (most recent first). */
 export function sortTrips(
   trips: Trip[],
   now: number,
   arrivalOf: ArrivalOf = () => undefined,
-): { current: Trip[]; past: Trip[] } {
+): { live: Trip[]; ahead: Trip[]; past: Trip[] } {
   const dep = (t: Trip) => departure(t);
-  const past = (t: Trip) => tripStatus(t, now, arrivalOf(t)) === 'past';
+  const live = trips.filter((t) => isLive(t, now, arrivalOf(t)));
+  const rest = trips.filter((t) => !live.includes(t));
+  const over = (t: Trip) => isOver(t, now, arrivalOf(t));
   return {
-    current: trips.filter((t) => !past(t)).sort((a, b) => dep(a) - dep(b)),
-    past: trips.filter(past).sort((a, b) => dep(b) - dep(a)),
+    live: live.sort((a, b) => dep(a) - dep(b)),
+    ahead: rest.filter((t) => !over(t)).sort((a, b) => dep(a) - dep(b)),
+    past: rest.filter(over).sort((a, b) => dep(b) - dep(a)),
   };
 }
 
@@ -224,6 +218,4 @@ export function departure(t: Trip): number {
 
 /** The trip under way now, if any (the one that started last). */
 export const liveTrip = (trips: Trip[], now: number, arrivalOf: ArrivalOf = () => undefined) =>
-  trips
-    .filter((t) => tripStatus(t, now, arrivalOf(t)) === 'live')
-    .sort((a, b) => departure(b) - departure(a))[0];
+  trips.filter((t) => isLive(t, now, arrivalOf(t))).sort((a, b) => departure(b) - departure(a))[0];

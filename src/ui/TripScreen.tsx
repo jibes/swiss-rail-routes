@@ -18,7 +18,7 @@ import type { Tour } from '../core/model';
 import { autoName } from '../core/naming';
 import { plannedRows, routeRows, type LineRow } from '../core/rows';
 import { stopKey } from '../core/stops';
-import { compactTrip, dayOf, isPlanned, newTrip, tripStatus } from '../core/trip';
+import { compactTrip, dayOf, isPlanned, newTrip, isLive } from '../core/trip';
 import { acceptDate, acceptTime, earliestDay, timeOnDate } from '../core/when';
 import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
@@ -51,6 +51,7 @@ import { useMapAdd } from './mapAdd';
 import type { Kept } from './keepMap';
 import { useDark } from './useDark';
 import { RestEditor } from './RestEditor';
+import { staysOnDay } from '../core/stay';
 import { restDraft, useRestDrafts } from './restDraft';
 
 /** Into that element (the map's column), else where it stands. */
@@ -110,14 +111,13 @@ export function TripScreen({ id }: { id: string }) {
   const liveStatus = useLiveStatus((s) => s.status);
   const index = useStopIndex();
   const stop = (r: string) => index?.byRef(stopKey(r));
-  const status = trip
-    ? tripStatus(
-        trip,
-        now,
-        trip.chain ? expectedArrival(trip.chain.connections, liveStatus) : undefined,
-      )
-    : 'upcoming';
-  const liveTrip = trip && status === 'live' && isPlanned(trip) ? trip : undefined;
+  // Under way now: the one thing its time decides (0.52.0). Any other time it is edited in place.
+  const liveTrip =
+    trip &&
+    isPlanned(trip) &&
+    isLive(trip, now, expectedArrival(trip.chain.connections, liveStatus))
+      ? trip
+      : undefined;
   const live = useLive(liveTrip);
   // Under way, the rest being changed (0.46.0): edited in place, the same draft as the map's.
   const rest = useRestDrafts((s) => (liveTrip ? s.drafts[liveTrip.id] : undefined));
@@ -233,7 +233,7 @@ export function TripScreen({ id }: { id: string }) {
     log('add.pick', { trip: id, kind: p.kind, after: at });
     if (p.kind === 'trip' && !route.waypoints.length && !trip.name)
       update(id, (x) => ({ ...x, name: p.tour.name }));
-    edit((r) => insertEntries(r, at, entriesFor(p)));
+    edit((r) => insertEntries(r, at, entriesFor(p, r.date)));
     setSheet(null);
     setOpen(null);
   };
@@ -250,9 +250,11 @@ export function TripScreen({ id }: { id: string }) {
         commit={(d) => {
           log('when.date', { trip: id, date: d });
           const hm = timeOnDate(d, today, nextFive(now), anchor);
+          // A stay until a date and time moves with the trip (reported in review: it stayed).
           edit((r) => ({
             ...r,
             date: d,
+            waypoints: staysOnDay(r.waypoints, r.date, d),
             ...(hm !== anchor ? { anchor: { departAt: hm } } : {}),
           }));
         }}
@@ -290,6 +292,7 @@ export function TripScreen({ id }: { id: string }) {
       {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
       {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
         <OptionsBar
+          fromNow={!!liveTrip}
           trip={trip}
           result={planner.result}
           planning={planning}
@@ -414,7 +417,7 @@ export function TripScreen({ id }: { id: string }) {
                 {t('pricesOnSbb')}
               </button>
             )}
-            {isPlanned(trip) && status !== 'past' && (
+            {isPlanned(trip) && (
               <button
                 type="button"
                 disabled={!!keeping && !keeping.over}
@@ -429,7 +432,7 @@ export function TripScreen({ id }: { id: string }) {
               </button>
             )}
             {/* Before it leaves only: under way, Replan from here changes the rest. */}
-            {!liveTrip && status !== 'past' && entries.length >= 2 && (
+            {!liveTrip && entries.length >= 2 && (
               <button
                 type="button"
                 onClick={() => {
@@ -448,7 +451,7 @@ export function TripScreen({ id }: { id: string }) {
                 {t('reverseDirection')}
               </button>
             )}
-            {status !== 'past' && (
+            {
               <button
                 type="button"
                 onClick={() => {
@@ -461,7 +464,7 @@ export function TripScreen({ id }: { id: string }) {
                 <Icon name="bell" size={18} />
                 {t(trip.quiet ? 'notificationsOn' : 'notificationsOff')}
               </button>
-            )}
+            }
             <button
               type="button"
               onClick={() => {
@@ -502,7 +505,7 @@ export function TripScreen({ id }: { id: string }) {
         <span>{windowsGone ? t('windowsDropped') : ''}</span>
       </div>
 
-      {!liveTrip && !(status === 'past' && isPlanned(trip)) && when}
+      {!liveTrip && when}
 
       {renaming ? (
         <input
@@ -555,17 +558,6 @@ export function TripScreen({ id }: { id: string }) {
             options={notLeft ? optionsBar : null}
           />
         )
-      ) : status === 'past' && isPlanned(trip) ? (
-        // Over, until its day ends: the record, read-only (then it waits in search).
-        <>
-          <p className="notice">{t('doneToday')}</p>
-          <TripLine
-            route={route}
-            rows={plannedRows(route, trip.chain.connections)}
-            warnings={trip.chain.warnings}
-            planning={false}
-          />
-        </>
       ) : (
         <>
           {chain && <TripFacts chain={chain} />}

@@ -35,7 +35,13 @@ export function OptionsBar({
   choose,
   from,
   move,
+  fromNow = true,
 }: {
+  /**
+   * Under way: a connection gone is none to choose (it would end the trip at once). Any other
+   * time (0.52.0: a trip put in after it ran, or one gone) every connection that day is.
+   */
+  fromNow?: boolean;
   trip: Trip;
   /** The screen's own plan (its options, the recommended one). */
   result: PlanResult | null;
@@ -85,9 +91,9 @@ export function OptionsBar({
   const extra = more.base === base ? more.list : [];
   const chosen = trip.chain && trip.legs ? [{ c: trip.chain, legs: trip.legs }] : [];
   const now = useNow();
-  // Gone already (today): no option any more, but for the one chosen.
+  // Gone already (under way): no option any more, but for the one chosen.
   const ahead = (o: Option) =>
-    Date.parse(o.c.dep) > now || (!!trip.chain && keyOf(o.c) === keyOf(trip.chain));
+    !fromNow || Date.parse(o.c.dep) > now || (!!trip.chain && keyOf(o.c) === keyOf(trip.chain));
   const all = [...new Map([...extra, ...own, ...chosen].map((o) => [keyOf(o.c), o])).values()]
     .filter(ahead)
     .sort((a, b) => Date.parse(a.c.dep) - Date.parse(b.c.dep));
@@ -124,7 +130,7 @@ export function OptionsBar({
     // finds connections leaving at or after the time it is given).
     // Never from before now: a connection gone is none to choose (and choosing it would end the
     // trip at once).
-    const floor = Date.now();
+    const floor = fromNow ? Date.now() : -Infinity;
     const at = Math.max(
       floor,
       dir === 'later' ? Date.parse(last.c.dep) + 60_000 : Date.parse(first.c.dep) - 120 * 60_000,
@@ -142,7 +148,12 @@ export function OptionsBar({
     setNone(null);
     try {
       const r = await planRoute(
-        { ...trip, route: { ...trip.route, anchor: { departAt: zurichHm(at) } } },
+        {
+          ...trip,
+          // Not under way, a time gone is asked for as such (planRoute's fromNow keeps it).
+          ...(fromNow ? {} : { editedAt: new Date().toISOString() }),
+          route: { ...trip.route, anchor: { departAt: zurichHm(at) } },
+        },
         undefined,
         false,
       );

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { expectedArrival } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
-import { dayOf, departure, newTrip, sortTrips, tripStatus, type Trip } from '../core/trip';
+import { dayOf, newTrip, sortTrips, type Trip } from '../core/trip';
 import { newTour } from '../core/edit';
 import { usePrefs, useT } from '../store';
 import { lineName } from './TemplatePicker';
@@ -72,8 +72,8 @@ function Card({
 }
 
 /**
- * The one list (SPEC §3a, 0.4.0): every trip has a date; under way first, then coming up. A trip
- * whose day is over waits in search (New trip → your trips).
+ * The one list (SPEC §3a): every trip has a date; under way first, then coming up, then the
+ * trips over, folded (0.52.0: a trip stays a trip).
  */
 export function Home() {
   const openId = /^\/trip\/([\w-]+)/.exec(useHash())?.[1];
@@ -95,13 +95,7 @@ export function Home() {
   }, [remove]);
   const arrivalOf = (x: Trip) =>
     x.chain ? expectedArrival(x.chain.connections, liveStatus) : undefined;
-  const { current, past } = sortTrips(trips, now, arrivalOf);
-  // Over today: kept here, read-only, until the day ends (then they wait in search).
-  const doneToday = past.filter((x) => x.route.date === dayOf(now));
-  const live = current.filter((x) => tripStatus(x, now, arrivalOf(x)) === 'live');
-  const ahead = current
-    .filter((x) => !live.includes(x))
-    .sort((a, b) => departure(a) - departure(b));
+  const { live, ahead, past } = sortTrips(trips, now, arrivalOf);
 
   return (
     <main className="page home">
@@ -122,7 +116,7 @@ export function Home() {
           {t('storageFailed')}
         </p>
       )}
-      {!current.length && <p className="muted empty">{t('noTripsYet')}</p>}
+      {!live.length && !ahead.length && <p className="muted empty">{t('noTripsYet')}</p>}
       {live.length > 0 && (
         <section>
           {/* Only trips under way: the title says so already ("Under way"). */}
@@ -164,15 +158,16 @@ export function Home() {
         </div>
       )}
 
-      {doneToday.length > 0 && (
-        <section>
-          <h2 className="section-label">{t('doneTodaySection')}</h2>
-          <ul className="cards done" aria-label={t('doneTodaySection')}>
-            {doneToday.map((x) => (
+      {/* Over (0.52.0): still trips, edited as any other; folded, most recent first. */}
+      {past.length > 0 && (
+        <details className="fold past-trips">
+          <summary className="section-label">{t('pastTripsN', { n: past.length })}</summary>
+          <ul className="cards done" aria-label={t('pastTrips')}>
+            {past.map((x) => (
               <Card key={x.id} trip={x} open={x.id === openId} live={false} stop={stop} />
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
       <footer className="home-foot">

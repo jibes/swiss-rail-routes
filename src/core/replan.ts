@@ -5,6 +5,7 @@ import type { Connection, Leg, Section, Tour, Waypoint } from './model';
 import type { PlannedChain } from './planner/plan';
 import { normalise } from './edit';
 import { stopKey } from './stops';
+import { zurichDateTime } from './ojp/request';
 import type { PlannedTrip as Trip, TripVersion } from './trip';
 
 export interface ReplanPoint {
@@ -131,14 +132,17 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
   // Waiting before the leg's first ride, the stay at its start counts even when the point is
   // the bus stop a short walk from the station.
   const key = stopKey(point.stop.stopRef);
-  const stay =
+  const here =
     stopKey(current.to.stopRef) === key && cutLeg
-      ? current.to.dwellMin
+      ? current.to
       : point.keep.length === point.leg
-        ? current.from.dwellMin
-        : 0;
+        ? current.from
+        : undefined;
   const arrived = point.keep.length ? Date.parse(point.keep.at(-1)!.arr) : point.at;
-  const leave = Math.max(point.at, arrived + stay * 60_000);
+  // A stay until a date and time (0.51.0) ends then, whatever its length says (reported in
+  // review: changing the rest during a night's stay planned you out at once).
+  const until = here?.stayUntil ? Date.parse(zurichDateTime(here.stayUntil)) : 0;
+  const leave = Math.max(point.at, arrived + (here?.dwellMin ?? 0) * 60_000, until);
   const all: Waypoint[] = [
     ...current.vias.filter((w) => !passed.has(stopKey(w.stopRef))),
     current.to,

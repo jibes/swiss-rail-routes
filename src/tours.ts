@@ -1,4 +1,6 @@
-// Your past trips (code: tours) in memory, saved item by item (src/io/listStore.ts).
+// The routes kept as your past trips before 0.52.0 (code: tours), saved item by item
+// (src/io/listStore.ts): read once to bring them back as trips (`Migrate` in App.tsx), and synced
+// until then.
 import { create } from 'zustand';
 import type { Tour } from './core/model';
 import { log } from './io/log';

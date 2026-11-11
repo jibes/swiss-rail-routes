@@ -3,7 +3,7 @@
 // apart; a failure is tried again after ten minutes, then twenty, forty… up to four hours (a
 // line closed all day would otherwise be asked about all day), and at once when the device is
 // back online or the route changes.
-import { isPlanned, tripStatus, type Trip } from '../core/trip';
+import { dayOf, isPlanned, type Trip } from '../core/trip';
 import { usePrefs } from '../store';
 import { useTrips } from '../trips';
 import { log } from './log';
@@ -28,7 +28,8 @@ export function watchAutoPlan() {
     return (
       !isPlanned(t) &&
       t.route.waypoints.length >= 2 &&
-      tripStatus(t, now) === 'upcoming' &&
+      // Today and later: a day gone is planned only when opened (0.52.0).
+      t.route.date >= dayOf(now) &&
       (!f || nextTry(f) <= now)
     );
   };

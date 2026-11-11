@@ -123,33 +123,38 @@ test('an edit survives a reload right after it', async ({ page }) => {
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Bern/, /^Thun/]);
 });
 
-test('a trip whose day is over leaves the list and waits in search', async ({ page }) => {
+// One object (0.52.0): a trip over stays a trip, folded under Past trips and edited as any
+// other; its stations are offered again when adding.
+test('a trip over stays a trip: in past trips, editable, its stations offered again', async ({
+  page,
+}) => {
   await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
   await newTrip(page, 'Chur', 'Arosa');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.getByRole('link', { name: /Chur → Arosa/ })).toBeVisible();
 
-  // The Sunday after: gone from the list, offered first in search.
+  // The Sunday after: no longer ahead, folded under Past trips.
   await page.clock.setSystemTime(new Date('2026-11-08T08:00:00Z'));
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nothing planned');
+  await expect(page.getByRole('link', { name: /Chur → Arosa/ })).toBeHidden();
+  await page.getByText('Past trips (1)').click();
+  await page.getByRole('link', { name: /Chur → Arosa/ }).click();
+  // Edited as any other: its date and its stations.
+  await expect(page.getByLabel('Date')).toHaveValue('2026-11-02');
+  await page.locator('.trip-line .station.entry').first().getByRole('button').first().click();
+  await expect(page.getByRole('button', { name: 'Add after' })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+
+  // A new trip: the stations you entered first, your trips folded under them.
   await page.getByRole('button', { name: 'New trip' }).click();
-  // The stations you entered come first; your trips are folded under them (0.48.0).
   const sheet = page.locator('.add-sheet');
   await expect(sheet.locator('.result.recent')).toHaveText([/^Arosa/, /^Chur/]);
-  await expect(page.getByRole('heading', { name: 'Your trips' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Chur → Arosa/ })).toBeHidden();
   await page.getByRole('heading', { name: 'Your trips' }).click();
   await page.getByRole('button', { name: /^Chur → Arosa/ }).click();
   await expect(page.locator('.trip-line .station.entry')).toHaveText([/^Chur/, /^Arosa/]);
-  // A new trip, today.
   await expect(page.getByLabel('Date')).toHaveValue('2026-11-08');
-
-  // Forgotten, it is gone from search.
-  await page.getByRole('button', { name: 'Add a station' }).click();
-  await page.getByRole('heading', { name: 'Your trips' }).click();
-  await page.getByRole('button', { name: /^Forget/ }).click();
-  await expect(page.getByRole('heading', { name: 'Your trips' })).toHaveCount(0);
 });
 
 test('delete at once, with Undo for a few seconds', async ({ page }) => {
@@ -544,4 +549,73 @@ test('your trips say where they went; stations you entered come first', async ({
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'New trip' }).click();
   await expect(sheet.locator('.result.recent').first()).toHaveText(/^Landquart/);
+});
+
+// Reported in review (0.51.0): at 360 px the panel's own buttons ran past it, under the weather
+// stripe. Every control of a stay's panel lies inside the panel.
+test.describe('a small phone', () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+  test('the station panel fits the line', async ({ page }) => {
+    await page.clock.install({ time: BEFORE });
+    await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T3!, name: 'T3' }));
+    await page
+      .getByRole('list', { name: 'The trip', exact: true })
+      .locator('.station.entry')
+      .filter({ has: page.locator('.n', { hasText: /^Luzern/ }) })
+      .first()
+      .getByRole('button')
+      .first()
+      .click();
+    await expect(page.locator('.panel .stay-row')).toBeVisible();
+    const out = await page.evaluate(() => {
+      const p = document.querySelector('.trip-line .panel')!.getBoundingClientRect();
+      return [...document.querySelectorAll('.trip-line .panel button, .trip-line .panel input')]
+        .filter((el) => el.getBoundingClientRect().right > p.right + 0.5)
+        .map((el) => el.getAttribute('aria-label') ?? el.textContent);
+    });
+    expect(out).toEqual([]);
+  });
+});
+
+// One object (0.52.0): the routes kept as "your trips" before come back once as past trips.
+test('your trips kept before come back as past trips', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await page.goto('./');
+  await page.evaluate(
+    () =>
+      new Promise<void>((done, fail) => {
+        const open = indexedDB.open('keyval-store');
+        open.onupgradeneeded = () => open.result.createObjectStore('keyval');
+        open.onerror = () => fail(open.error);
+        open.onsuccess = () => {
+          const tx = open.result.transaction('keyval', 'readwrite');
+          tx.objectStore('keyval').put(
+            [
+              {
+                id: 'past-old',
+                name: 'Old one',
+                date: '2026-10-20',
+                anchor: { departAt: '08:00' },
+                ticket: 'GA',
+                travelClass: 2,
+                schema: 1,
+                waypoints: [
+                  { stopRef: 'ch:1:sloid:9000', name: 'Chur', kind: 'start', dwellMin: 0 },
+                  { stopRef: 'ch:1:sloid:9157', name: 'Arosa', kind: 'end', dwellMin: 0 },
+                ],
+              },
+            ],
+            'srr.tours.v1',
+          );
+          tx.oncomplete = () => done();
+        };
+      }),
+  );
+  await page.reload();
+  await page.getByText('Past trips (1)').click();
+  await expect(page.getByRole('list', { name: 'Past trips' })).toContainText('Old one');
+  // Once: after another reload it is there once, and the old list is empty.
+  await page.reload();
+  await expect(page.getByText('Past trips (1)')).toBeVisible();
 });

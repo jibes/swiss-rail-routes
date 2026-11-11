@@ -13,8 +13,14 @@ export function normalise(waypoints: Waypoint[]): Waypoint[] {
           : w.kind === 'start' || w.kind === 'end'
             ? 'via'
             : w.kind;
-    const dwellMin = kind === 'stop' || kind === 'turnaround' ? w.dwellMin : 0;
-    return kind === w.kind && dwellMin === w.dwellMin ? w : { ...w, kind, dwellMin };
+    const stays = kind === 'stop' || kind === 'turnaround';
+    const dwellMin = stays ? w.dwellMin : 0;
+    // No stay, no time it ends by (reported in review: a hidden stay until next morning kept a
+    // day trip's late returns once its station became the end).
+    const timed = !stays && (w.stayUntil || w.leaveBy || w.arriveAfter);
+    if (kind === w.kind && dwellMin === w.dwellMin && !timed) return w;
+    const { stayUntil: _u, leaveBy: _l, arriveAfter: _a, ...plain } = w;
+    return { ...(stays ? w : plain), kind, dwellMin };
   });
 }
 

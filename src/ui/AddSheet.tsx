@@ -3,10 +3,11 @@ import { searchAttractions, type AttractionData } from '../core/attractions';
 import { templateName, type RouteTemplate } from '../core/data';
 import attractionData from '../data/attractions.json';
 import { entriesOf, lineEntries, stationEntry, type Entry } from '../core/line';
+import { pastRoutes } from '../core/pastTrips';
+import { staysOnDay } from '../core/stay';
 import type { Tour, Waypoint } from '../core/model';
 import { fold, stopKey, type Stop } from '../core/stops';
 import { usePrefs, useT } from '../store';
-import { useTours } from '../tours';
 import { shortDate } from './format';
 import { Icon } from './icons';
 import { MiniLine } from './MiniLine';
@@ -63,8 +64,12 @@ export function AddSheet({
   const lang = usePrefs((s) => s.lang);
   const id = useId();
   const index = useStopIndex();
-  const mine = useTours((s) => s.tours);
-  const removeMine = useTours((s) => s.remove);
+  const now = useNow();
+  // Your past trips (0.52.0: the trips over, not a list of their own).
+  const mine = pastRoutes(
+    useTrips((x) => x.trips),
+    now,
+  );
   const [q, setQ] = useState('');
   // Stations abroad (0.33.0, Transitous): asked only on the tap, for the text as it was then.
   const [abroad, setAbroad] = useState<{ q: string; found: EuStop[] | 'asking' | 'failed' }>();
@@ -169,15 +174,12 @@ export function AddSheet({
           first,
         )
       : null;
-  const today = dayOf(useNow());
+  const today = dayOf(now);
   // A past trip by its own name, else as the list names trips ("Zürich ↺ Tirano · Chur"), never
   // its two ends alone: a round trip was "Zürich → Zürich" (reported, 0.47.1).
   const titleOf = (x: Tour) =>
     (x.name && !/^(.+) → \1$/.test(x.name) ? x.name : '') ||
     autoName(x, (r) => index?.byRef(r), lineName);
-  // Forgotten just now: one tap brings it back.
-  const [forgot, setForgot] = useState<Tour | null>(null);
-  const addMine = useTours((s) => s.replaceAll);
 
   // Stations you entered lately, kept on this device (0.48.0): offered first.
   const picked = useRecentStops((x) => x.stops);
@@ -196,7 +198,6 @@ export function AddSheet({
           ...[...trips0]
             .sort((a, b) => b.route.date.localeCompare(a.route.date))
             .map((x) => x.route.waypoints),
-          ...mine.map((x) => x.waypoints),
         ],
         [after?.stopRef, next?.stopRef].filter((x): x is string => !!x),
       );
@@ -231,17 +232,6 @@ export function AddSheet({
             ? t('wentOn', { date: shortDate(x.date, lang) })
             : t('stationsN', { n: x.waypoints.filter((w) => !w.ring).length })}
         </span>
-      </button>
-      <button
-        type="button"
-        className="icon forget"
-        aria-label={t('forgetTrip', { name: titleOf(x) })}
-        onClick={() => {
-          setForgot(x);
-          removeMine(x.id);
-        }}
-      >
-        <Icon name="close" size={18} />
       </button>
     </div>
   ));
@@ -433,21 +423,6 @@ export function AddSheet({
               ))}
             </>
           )}
-          {forgot && (
-            <p className="forgot" role="status">
-              <span>{t('forgotten', { name: titleOf(forgot) })}</span>
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  void addMine([forgot, ...useTours.getState().tours]).catch(() => undefined);
-                  setForgot(null);
-                }}
-              >
-                {t('undo')}
-              </button>
-            </p>
-          )}
           {!folded && trips.length > 0 && <h3 className="section-label">{t('yourTrips')}</h3>}
           {!folded && tripRows}
           {!folded && !linesFirst && lineList}
@@ -514,10 +489,13 @@ function kindOf(s: Stop) {
   return undefined;
 }
 
-/** What a pick adds to the line: a station, a scenic line's two ends, a past trip's stations. */
-export function entriesFor(p: Picked): Entry[] {
+/**
+ * What a pick adds to the line: a station, a scenic line's two ends, a past trip's stations (its
+ * stays until a date and time moved to `day`, the trip's).
+ */
+export function entriesFor(p: Picked, day: string): Entry[] {
   if (p.kind === 'station') return [stationEntry(p.stop)];
   if (p.kind === 'line') return lineEntries(p.template, p.reversed);
   if (p.kind === 'sameWay' || p.kind === 'typed') return p.entries;
-  return entriesOf(p.tour);
+  return entriesOf({ waypoints: staysOnDay(p.tour.waypoints, p.tour.date, day) });
 }

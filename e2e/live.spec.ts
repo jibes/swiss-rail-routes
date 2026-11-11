@@ -123,7 +123,7 @@ test('under way, what lies ahead is changed on the line itself: a stop, update, 
   await expect(line.locator('.station', { hasText: 'Kleine Scheidegg' })).toHaveCount(1);
 });
 
-test('before departure: edited in place; after its day: in search', async ({ page }) => {
+test('before departure and after its day: edited in place', async ({ page }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T05:00:00Z`) }); // 06:00, hours before
   await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'T5' }));
 
@@ -135,14 +135,15 @@ test('before departure: edited in place; after its day: in search', async ({ pag
   await page.goto('./');
   await expect(page.getByRole('list', { name: 'Upcoming' }).getByRole('link')).toHaveCount(1);
 
-  // The day after: gone from the list, T5 waits in search.
+  // The day after: no longer ahead, a past trip (0.52.0), still edited in place.
   await page.clock.setSystemTime(new Date(`2026-11-08T08:00:00Z`));
   await page.reload();
   await expect(page.getByRole('list', { name: 'Upcoming' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'New trip' }).click();
-  // Folded under the recent stations (0.48.0).
-  await page.getByRole('heading', { name: 'Your trips' }).click();
-  await expect(page.getByRole('button', { name: /^T5/ })).toBeVisible();
+  await page.getByText('Past trips (1)').click();
+  await page.getByRole('list', { name: 'Past trips' }).getByRole('link').click();
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await page.locator('.trip-line .station.entry').first().getByRole('button').first().click();
+  await expect(page.getByRole('button', { name: 'Add after' })).toBeVisible();
 });
 
 // T3 walks at Interlaken Ost and Thun: once passed, the stations beside a walk are grey all

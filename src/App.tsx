@@ -12,7 +12,7 @@ import { log } from './io/log';
 import { watchAutoPlan } from './io/autoplan';
 import { useSync, watchSync } from './io/sync';
 import { liveTrip } from './core/trip';
-import { retire } from './core/retire';
+import { tripsFromTours } from './core/pastTrips';
 import { expectedArrival } from './core/live';
 import { useLiveStatus } from './ui/useLive';
 import { onNotificationTap, scheduleTrips } from './io/notifications';
@@ -20,7 +20,6 @@ import { isNative } from './native';
 import { tripsLoaded as tripsRead, useTrips } from './trips';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { useHash } from './ui/useHash';
-import { useNow } from './ui/useNow';
 import { NotFound } from './ui/NotFound';
 import { useColumns } from './ui/useColumns';
 import { useFocusStop } from './ui/focusStop';
@@ -31,34 +30,25 @@ const OPENED = 'srr.opened.v1';
 const MapView = lazy(() => import('./ui/MapView'));
 
 /**
- * A trip whose day is over leaves the list and waits in search (your trips), checked as the clock
- * moves on. Its own component: the shared 15 s clock re-renders only it, not the whole app.
+ * One object (0.52.0): the routes kept as "your trips" before (a trip whose day was over left the
+ * list) come back as trips, once, after the lists are read and sync has settled.
  */
-function Retire({ loaded, tripsLoaded }: { loaded: boolean; tripsLoaded: boolean }) {
-  const now = useNow();
+function Migrate({ loaded, tripsLoaded }: { loaded: boolean; tripsLoaded: boolean }) {
   const settled = useSync((s) => s.settled);
+  const tours = useTours((s) => s.tours);
   useEffect(() => {
-    if (!loaded || !tripsLoaded || !settled) return;
+    if (!loaded || !tripsLoaded || !settled || !tours.length) return;
     // Lists that could not be read are never written.
     if (useTrips.getState().failed || useTours.getState().failed) return;
-    const live = useLiveStatus.getState().status;
-    const r = retire(useTrips.getState().trips, useTours.getState().tours, now, (t) =>
-      t.chain ? expectedArrival(t.chain.connections, live) : undefined,
-    );
-    if (!r.changed) return;
-    log('retire', {
-      trips: useTrips.getState().trips.length - r.trips.length,
-      pastTrips: r.tours.length - useTours.getState().tours.length,
-    });
-    void useTours
-      .getState()
-      .replaceAll(r.tours)
-      .catch(() => undefined);
+    const trips = useTrips.getState().trips;
+    const back = tripsFromTours(tours, trips, new Date());
+    log('pastTrips.migrate', { tours: tours.length, trips: back.length });
     void useTrips
       .getState()
-      .replaceAll(r.trips)
+      .replaceAll([...trips, ...back])
+      .then(() => useTours.getState().replaceAll([]))
       .catch(() => undefined);
-  }, [loaded, tripsLoaded, settled, now]);
+  }, [loaded, tripsLoaded, settled, tours]);
   return null;
 }
 
@@ -241,7 +231,7 @@ export function App() {
 
   return (
     <>
-      <Retire loaded={loaded} tripsLoaded={tripsLoaded} />
+      <Migrate loaded={loaded} tripsLoaded={tripsLoaded} />
       {loaded && tripsLoaded ? (
         columns > 1 ? (
           <Columns hash={hash} n={columns as 2 | 3} />

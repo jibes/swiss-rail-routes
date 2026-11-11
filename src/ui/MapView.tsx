@@ -18,7 +18,7 @@ export { MAP_STYLE } from './mapBase';
 import type { Connection, Section } from '../core/model';
 import { accuracyArea, estimatedPosition, shownPosition } from '../core/position';
 import { stopKey } from '../core/stops';
-import { isPlanned, tripStatus } from '../core/trip';
+import { isLive, isPlanned } from '../core/trip';
 import { plannedRows } from '../core/rows';
 import { placeWith, tempText } from '../core/weather';
 import { weatherMap } from '../core/weatherMap';
@@ -154,14 +154,12 @@ export default function MapView({ id }: { id: string }) {
   // Where you are: by the time while the trip is under way, by the device when asked to.
   const now = useNow();
   const liveStatus = useLiveStatus((s) => s.status);
-  const status = trip
-    ? tripStatus(
-        trip,
-        now,
-        trip.chain ? expectedArrival(trip.chain.connections, liveStatus) : undefined,
-      )
-    : 'upcoming';
-  const live = useLive(trip && status === 'live' && isPlanned(trip) ? trip : undefined);
+  // Live information only depends on the time (0.52.0); the trip is edited the same way always.
+  const underWay =
+    !!trip &&
+    isPlanned(trip) &&
+    isLive(trip, now, expectedArrival(trip.chain.connections, liveStatus));
+  const live = useLive(underWay && trip && isPlanned(trip) ? trip : undefined);
   const state = live.state;
   const index = useStopIndex();
   const estimate = useMemo(
@@ -480,7 +478,7 @@ export default function MapView({ id }: { id: string }) {
 
   // Being planned (0.36.0): a light wave runs along the line, the way it will be redrawn, until
   // the timetable comes (at most WAVE_MS, so offline it does not run on for good).
-  const replanning = !!trip && !isPlanned(trip) && status === 'upcoming';
+  const replanning = !!trip && !isPlanned(trip);
   useEffect(() => {
     // Without motion, nothing: the trip line says it is being planned.
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -558,12 +556,12 @@ export default function MapView({ id }: { id: string }) {
   const addFromEnd = () => {
     if (!tour || !trip) return;
     let rest = useRestDrafts.getState().drafts[id];
-    if (status === 'live' && !rest && state && isPlanned(trip)) {
+    if (underWay && !rest && state && isPlanned(trip)) {
       rest = restDraft(trip, state, live.now) ?? undefined;
       if (rest) useRestDrafts.getState().set(id, rest);
     }
-    const under = status === 'live' ? rest : undefined;
-    if (status === 'live' && !under) return;
+    const under = underWay ? rest : undefined;
+    if (underWay && !under) return;
     const route = under?.route ?? tour;
     const entries = entriesOf(route);
     const after = entries.length - 1;
@@ -627,7 +625,7 @@ export default function MapView({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <div className="map-tools">
-          {!adding && (status === 'upcoming' || (status === 'live' && state)) && map && (
+          {!adding && (!underWay || state) && map && (
             <button
               type="button"
               className="icon"

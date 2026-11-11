@@ -17,7 +17,7 @@ import {
 } from '../src/core/line';
 import type { Tour } from '../src/core/model';
 import { dayOf, newTrip, otherDay, zurichTime } from '../src/core/trip';
-import { retire } from '../src/core/retire';
+import { pastRoutes, tripsFromTours } from '../src/core/pastTrips';
 import {
   missedByDisruption,
   plannedRows,
@@ -650,7 +650,7 @@ describe('rows: the replacement bus outside the station', () => {
   });
 });
 
-describe('a finished trip waits in search', () => {
+describe('past trips stay trips (0.52.0)', () => {
   const chain = (day: string) => ({
     connections: [],
     warnings: [],
@@ -661,22 +661,31 @@ describe('a finished trip waits in search', () => {
   const tripOn = (id: string, day: string, route = trip()) =>
     newTrip(id, { ...route, id: 'r', date: day, name: id } as Tour, [], chain(day), new Date(0));
 
-  it('moves past trips into your trips, newest first, the same stations once', () => {
+  it('offers past trips’ routes newest first, the same stations once, none ahead', () => {
+    const other = insertEntries(start(), 0, [stationEntry(s('Bern'))]);
     const now = Date.parse('2026-11-10T12:00:00Z');
-    const r = retire(
-      [tripOn('a', '2026-11-01'), tripOn('b', '2026-11-07'), tripOn('c', '2026-11-20')],
-      [{ ...trip(), id: 'old', name: 'old', date: '2026-10-01' } as Tour],
+    const r = pastRoutes(
+      [
+        tripOn('a', '2026-11-01'),
+        tripOn('b', '2026-11-07'),
+        tripOn('older', '2026-10-01', other),
+        tripOn('c', '2026-11-20'),
+        tripOn('one', '2026-11-02', start()),
+      ],
       now,
     );
-    expect(r.changed).toBe(true);
-    expect(r.trips.map((t) => t.id)).toEqual(['c']);
-    expect(r.tours.map((t) => t.name)).toEqual(['b']);
+    expect(r.map((t) => t.name)).toEqual(['b', 'older']);
+    expect(r[0]!.id).toBe('b');
   });
 
-  it('gives a retired trip the same id on every device, and counts days in Zurich', () => {
-    const r = retire([tripOn('a', '2026-11-01')], [], Date.parse('2026-11-03T12:00:00Z'));
-    expect(r.tours[0]!.id).toBe('past-a');
-    // 23:30 in Zurich on the 7th is already the 8th in UTC: the trip of the 7th is not over yet.
+  it('brings the routes kept before back as trips, once, by their own id', () => {
+    const tour = { ...trip(), id: 'past-x', name: 'x', date: '2026-10-01' } as Tour;
+    const back = tripsFromTours([tour], [], new Date(0));
+    expect(back.map((t) => [t.id, t.route.date, !!t.chain])).toEqual([
+      ['past-x', '2026-10-01', false],
+    ]);
+    expect(tripsFromTours([tour], back, new Date(0))).toEqual([]);
+    // 23:30 in Zurich on the 7th is already the 8th in UTC: days are counted in Zurich.
     expect(dayOf(Date.parse('2026-11-07T22:30:00Z'))).toBe('2026-11-07');
     expect(zurichTime('2026-11-07', '08:00')).toBe(Date.parse('2026-11-07T07:00:00Z'));
     expect(zurichTime('2026-07-04', '08:00')).toBe(Date.parse('2026-07-04T06:00:00Z'));
@@ -685,46 +694,7 @@ describe('a finished trip waits in search', () => {
   it('an option on another day than the trip’s says its day (reported: three 14:48 alike)', () => {
     expect(otherDay('2026-12-27T13:48:00Z', '2026-12-27')).toBeUndefined();
     expect(otherDay('2026-12-28T13:48:00Z', '2026-12-27')).toBe('2026-12-28');
-    // Zurich's day: 00:30 on the 28th is 23:30 UTC on the 27th.
     expect(otherDay('2026-12-27T23:30:00Z', '2026-12-27')).toBe('2026-12-28');
-  });
-
-  it('puts the newest past trip first when the routes differ', () => {
-    const other = insertEntries(start(), 0, [stationEntry(s('Bern'))]);
-    const r = retire(
-      [tripOn('older', '2026-11-01', other), tripOn('newer', '2026-11-07')],
-      [],
-      Date.parse('2026-11-10T12:00:00Z'),
-    );
-    expect(r.tours.map((t) => t.name)).toEqual(['newer', 'older']);
-  });
-
-  it('keeps a trip whose last train runs late past midnight, until it has arrived', () => {
-    const t = tripOn('late', '2026-11-07');
-    // Planned to arrive 18:00Z on the 7th; live data says 00:20 Zurich on the 8th.
-    const late = Date.parse('2026-11-07T23:20:00Z');
-    const at = Date.parse('2026-11-07T23:10:00Z'); // 00:10 on the 8th in Zurich
-    expect(retire([t], [], at, () => late).changed).toBe(false);
-    expect(retire([t], [], late + 60 * 60_000, () => late).changed).toBe(true);
-  });
-
-  it('drops a past trip of a single station without keeping it', () => {
-    const one = tripOn('one', '2026-11-01', start());
-    const r = retire([one], [], Date.parse('2026-11-10T12:00:00Z'));
-    expect(r.trips).toEqual([]);
-    expect(r.tours).toEqual([]);
-  });
-
-  it('retires a trip never planned once its day is over, and nothing early', () => {
-    const draft = newTrip(
-      'd',
-      { ...trip(), id: 'r', date: '2026-11-07', name: 'd' } as Tour,
-      undefined,
-      undefined,
-      new Date(0),
-    );
-    expect(retire([draft], [], Date.parse('2026-11-07T20:00:00Z')).changed).toBe(false);
-    expect(retire([draft], [], Date.parse('2026-11-08T08:00:00Z')).tours).toHaveLength(1);
   });
 });
 

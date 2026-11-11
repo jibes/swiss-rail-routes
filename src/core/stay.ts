@@ -36,7 +36,7 @@ const nextDay = (d: string) => {
 /**
  * A time typed for the stay's end, made a date and time: on the arrival's day (else the trip's),
  * a time before the arrival the day after (across midnight); a stay kept until a later day
- * (`was`, chosen by its date) keeps that day.
+ * than that (`was`, chosen by its date) keeps its day.
  */
 export function untilAt(
   hm: string,
@@ -46,12 +46,44 @@ export function untilAt(
 ): string {
   const arrived = arr ? zurichLocal(Date.parse(arr)) : undefined;
   const base = arrived?.slice(0, 10) ?? day;
+  // The day after is the wrap past midnight, not a day chosen: only a later one is kept
+  // (reported in review: 01:00 then 23:00 made a 25 h stay).
   const wasDay = was?.slice(0, 10);
-  const at = `${wasDay && wasDay > base ? wasDay : base}T${hm}`;
+  const at = `${wasDay && wasDay > nextDay(base) ? wasDay : base}T${hm}`;
   return arrived && at < arrived ? `${nextDay(base)}T${hm}` : at;
 }
 
 /** A stay's time moved by `min` minutes. */
 export function shiftUntil(until: string, min: number): string {
   return zurichLocal(Date.parse(zurichDateTime(until)) + min * MIN);
+}
+
+const dayMs = (d: string) => Date.parse(`${d}T12:00:00Z`);
+
+/** Days from `from` to `to` (both `YYYY-MM-DD`). */
+export const daysBetween = (from: string, to: string) =>
+  Math.round((dayMs(to) - dayMs(from)) / 86_400_000);
+
+/** A stay's time moved by whole days (its clock time kept). */
+export function untilByDays(until: string, days: number): string {
+  if (!days) return until;
+  const t = new Date(`${until.slice(0, 10)}T12:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + days);
+  return `${t.toISOString().slice(0, 10)}${until.slice(10)}`;
+}
+
+/**
+ * Stations moved from one day to another (a trip's date changed, a past trip's stations reused):
+ * a stay until a date and time moves with them, so it lasts as long as it did.
+ */
+export function staysOnDay<W extends { stayUntil?: string }>(
+  waypoints: W[],
+  from: string,
+  to: string,
+): W[] {
+  const days = daysBetween(from, to);
+  if (!days) return waypoints;
+  return waypoints.map((w) =>
+    w.stayUntil ? { ...w, stayUntil: untilByDays(w.stayUntil, days) } : w,
+  );
 }

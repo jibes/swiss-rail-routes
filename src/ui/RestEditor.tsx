@@ -186,7 +186,7 @@ export function RestEditor({
 
   const pick = (p: Picked) => {
     const at = sheet?.after ?? entries.length - 1;
-    edit((r) => insertEntries(r, at, entriesFor(p)));
+    edit((r) => insertEntries(r, at, entriesFor(p, r.date)));
     setSheet(null);
     setOpen(null);
   };

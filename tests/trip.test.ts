@@ -9,7 +9,8 @@ import {
   newTrip,
   revise,
   sortTrips,
-  tripStatus,
+  isLive,
+  isOver,
   undo,
   withoutTimetable,
   type Trip,
@@ -33,45 +34,41 @@ describe('without its timetable', () => {
     expect(x.route).toEqual(t.route);
     expect(x.chain).toBeUndefined();
     expect(x.legs).toBeUndefined();
-    expect(tripStatus(x, at('09:00'))).toBe('upcoming');
+    expect(isLive(x, at('09:00'))).toBe(false);
+    expect(isOver(x, at('20:00'))).toBe(false);
   });
 });
 
-describe('trip status', () => {
+describe('live is the one status (0.52.0)', () => {
   const t = trip('a', '08:00', '18:00');
   it('is live from 30 min before departure to 15 min after arrival', () => {
-    expect(tripStatus(t, at('07:29'))).toBe('upcoming');
-    expect(tripStatus(t, at('07:30'))).toBe('live');
-    expect(tripStatus(t, at('18:15'))).toBe('live');
-    expect(tripStatus(t, at('18:16'))).toBe('past');
+    expect(isLive(t, at('07:29'))).toBe(false);
+    expect(isLive(t, at('07:30'))).toBe(true);
+    expect(isLive(t, at('18:15'))).toBe(true);
+    expect(isLive(t, at('18:16'))).toBe(false);
+    // A late last train keeps it live.
+    expect(isLive(t, at('18:30'), at('18:20'))).toBe(true);
   });
 
-  it('put in after its time (0.49.0): as before it leaves, for the day it was changed', () => {
-    // Changed at 19:00, after it ran 08:00–18:00: being put in, not one that ran.
-    const late = { ...t, editedAt: '2026-11-07T19:00:00Z' };
-    expect(tripStatus(late, at('19:30'))).toBe('upcoming');
-    // The day after, it ran.
-    expect(tripStatus(late, Date.parse('2026-11-08T08:00:00Z'))).toBe('past');
-    // Changed before it left: it ran, over once over.
-    expect(tripStatus({ ...t, editedAt: '2026-11-07T07:00:00Z' }, at('19:30'))).toBe('past');
-    // Put in while it runs: under way as any other.
-    expect(tripStatus({ ...t, editedAt: '2026-11-07T09:00:00Z' }, at('10:00'))).toBe('live');
-    // Not planned yet, dated a day gone, changed today: being put in.
+  it('over: its arrival behind, or not planned, its day', () => {
+    expect(isOver(t, at('18:15'))).toBe(false);
+    expect(isOver(t, at('18:16'))).toBe(true);
     const unplanned = withoutTimetable({ ...t, route: { ...t.route, date: '2026-11-05' } });
-    expect(tripStatus(unplanned, at('10:00'))).toBe('past');
-    expect(tripStatus({ ...unplanned, editedAt: '2026-11-07T09:00:00Z' }, at('10:00'))).toBe(
-      'upcoming',
-    );
+    expect(isOver(unplanned, at('10:00'))).toBe(true);
+    expect(
+      isOver({ ...unplanned, route: { ...unplanned.route, date: '2026-11-07' } }, at('20:00')),
+    ).toBe(false);
   });
 
-  it('sorts current soonest first, past latest first, and finds the live one', () => {
+  it('sorts live, ahead soonest first, past latest first, and finds the live one', () => {
     const list = [
       trip('late', '15:00', '16:00'),
       trip('now', '09:00', '12:00'),
       trip('done', '06:00', '07:00'),
     ];
     const s = sortTrips(list, at('10:00'));
-    expect(s.current.map((x) => x.name)).toEqual(['now', 'late']);
+    expect(s.live.map((x) => x.name)).toEqual(['now']);
+    expect(s.ahead.map((x) => x.name)).toEqual(['late']);
     expect(s.past.map((x) => x.name)).toEqual(['done']);
     expect(liveTrip(list, at('10:00'))?.name).toBe('now');
     expect(liveTrip(list, at('13:00'))).toBeUndefined();

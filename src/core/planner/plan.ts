@@ -132,6 +132,7 @@ export function mergeRepeats(tour: Tour): Tour {
         dwellMin: Math.max(prev.dwellMin, w.dwellMin),
         templateId: w.templateId ?? prev.templateId,
         line: w.line ?? prev.line,
+        ...((w.stayUntil ?? prev.stayUntil) ? { stayUntil: w.stayUntil ?? prev.stayUntil } : {}),
       };
     } else out.push(w);
   }
@@ -674,13 +675,19 @@ export async function plan(tour: Tour, deps: PlanDeps): Promise<PlanResult> {
   // Arrive by: start early enough for the stays and 90 min a leg, then, while nothing arrives
   // in time, earlier by as much as the earliest arrival was late (at least an hour). A miss can
   // be a whole night (the way back runs next morning), so the day's start is always tried.
-  const by = ms(zurichDateTime(`${tour.date}T${tour.anchor.arriveBy}`));
+  // Over several days (a stay until a later day): arriving by that time on the last day, and
+  // leaving on the trip's own from its start (reported in review: nothing was ever in time).
+  const lastDay = tour.waypoints.reduce(
+    (d, w) => (w.stayUntil && w.stayUntil.slice(0, 10) > d ? w.stayUntil.slice(0, 10) : d),
+    tour.date,
+  );
+  const by = ms(zurichDateTime(`${lastDay}T${tour.anchor.arriveBy}`));
   const dayStart = ms(zurichDateTime(`${tour.date}T${DAY_START}`));
   const legs = expandLegs(splitLoops(mergeRepeats(tour))).length;
   const dwell = tour.waypoints.reduce((s, w) => s + w.dwellMin, 0);
   // Not before the day's start while that is an option (an arrival before it has none).
   const inDayFrom = (was: number, t: number) => (was > dayStart ? Math.max(t, dayStart) : t);
-  let start = inDayFrom(by, by - (dwell + 90 * legs) * MIN);
+  let start = lastDay > tour.date ? dayStart : inDayFrom(by, by - (dwell + 90 * legs) * MIN);
   let last: Planned = { relaxed: [], chains: [] };
   const cache: Answers = new Map();
   for (let attempt = 0; attempt < 6; attempt++) {

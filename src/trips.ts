@@ -2,7 +2,7 @@
 // 300 ms of quiet, adds and removes at once. Other tabs' saves come in as they happen.
 import { create } from 'zustand';
 import type { Tour } from './core/model';
-import { tripStatus, withoutTimetable, type Trip } from './core/trip';
+import { withoutTimetable, type Trip } from './core/trip';
 import { log } from './io/log';
 import { tripsList } from './io/trips';
 
@@ -14,7 +14,7 @@ interface TripsState {
   load: () => Promise<void>;
   add: (t: Trip) => void;
   update: (id: string, edit: (t: Trip) => Trip) => void;
-  /** Planned trips that have not started are planned again, as the choices they were planned under changed. */
+  /** Planned trips that have not left yet are planned again, as the choices they were planned under changed. */
   replanUpcoming: (now: number) => void;
   /** Changes the route; its timetable goes and is planned again (usePlanner). */
   editRoute: (id: string, edit: (r: Tour) => Tour) => void;
@@ -63,7 +63,7 @@ export const useTrips = create<TripsState>()((set, get) => ({
   replanUpcoming: (now) => {
     const before = get().trips;
     const trips = before.map((t) =>
-      t.chain && tripStatus(t, now) === 'upcoming' ? withoutTimetable(t) : t,
+      t.chain && Date.parse(t.chain.dep) > now ? withoutTimetable(t) : t,
     );
     log('trip.replanUpcoming', { trips: trips.filter((t, i) => t !== before[i]).length });
     set({ trips });

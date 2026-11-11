@@ -1,6 +1,7 @@
 // A stay as one row (0.51.0): − 90 min + until 16:30 (and its day, when not the arrival's).
 // Each is filled from the other by the plan's arrival; the one edited last is kept: a length
 // stays a length when the plan moves, a time stays that time.
+import { useState } from 'react';
 import { shiftUntil, stayEnd, stayLength, untilAt } from '../core/stay';
 import { usePrefs, useT } from '../store';
 import { shortDate } from './format';
@@ -49,9 +50,13 @@ export function StayRow({
     if (until && setUntil && length + Math.max(d, 0) > STAY_MAX) setUntil(k, shiftUntil(until, d));
     else act.stay(k, clampStay(length + d));
   };
+  // What is typed, held while the field has focus: a plan coming in meanwhile changes nothing.
+  const [draft, setDraft] = useState<string | null>(null);
+  // Only a length typed that differs is kept: tabbing through leaves a stay until a time as it is.
   const commit = (v: string) => {
+    setDraft(null);
     const m = Number(v);
-    if (v.trim() && Number.isFinite(m) && m > 0 && (until || clampStay(m) !== stay))
+    if (v.trim() && Number.isFinite(m) && m > 0 && clampStay(m) !== length)
       act.stay(k, clampStay(m));
   };
   return (
@@ -68,15 +73,17 @@ export function StayRow({
         </button>
         <label className="stay-input">
           <input
-            // A new value from the buttons, or from the time, replaces what was typed.
-            key={length ?? 'none'}
             type="number"
             inputMode="numeric"
             min={1}
-            defaultValue={length ?? ''}
+            value={draft ?? length ?? ''}
             placeholder="–"
             aria-label={t('stayMinutes', { stop: name })}
-            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => setDraft(e.currentTarget.value)}
+            onFocus={(e) => {
+              setDraft(String(length ?? ''));
+              e.currentTarget.select();
+            }}
             onBlur={(e) => commit(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();

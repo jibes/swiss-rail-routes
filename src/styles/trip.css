@@ -401,11 +401,14 @@
   margin: 14px 0 2px;
 }
 
-/* Scenic lines and your trips, folded under the recent stations while nothing is typed (0.48.0). */
-.add-sheet .fold {
+/* Scenic lines and your trips, folded under the recent stations; the list's past trips (0.52.0).
+   Was: folded under the recent stations while nothing is typed (0.48.0). */
+.add-sheet .fold,
+.home .fold {
   display: grid;
 }
-.add-sheet .fold > summary {
+.add-sheet .fold > summary,
+.home .fold > summary {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -414,10 +417,12 @@
   list-style: none;
   border-bottom: 1px solid var(--hair);
 }
-.add-sheet .fold > summary::-webkit-details-marker {
+.add-sheet .fold > summary::-webkit-details-marker,
+.home .fold > summary::-webkit-details-marker {
   display: none;
 }
-.add-sheet .fold > summary::after {
+.add-sheet .fold > summary::after,
+.home .fold > summary::after {
   content: '';
   margin-left: auto;
   width: 8px;
@@ -427,7 +432,8 @@
   transform: rotate(45deg);
   opacity: 0.6;
 }
-.add-sheet .fold[open] > summary::after {
+.add-sheet .fold[open] > summary::after,
+.home .fold[open] > summary::after {
   transform: rotate(-135deg);
 }
 .add-sheet .fold > summary .section-label {

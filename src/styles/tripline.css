@@ -317,6 +317,8 @@
 .trip-line .panel {
   grid-column: 3 / -1;
   display: grid;
+  /* Never wider than the line (reported in review: at 360 px its buttons ran under the stripe). */
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   margin: 0 0 12px 8px;
   padding: 12px;
@@ -365,7 +367,11 @@
 .panel .stepper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+}
+
+.panel .stepper .sq {
+  width: 40px;
 }
 
 /* One row: − 90 min + until 16:30 📅. The one kept is in ink, the other follows it (muted). */
@@ -395,7 +401,7 @@
 }
 
 .stay-input input {
-  width: 3.2em;
+  width: 2.6em;
   min-height: 44px;
   padding: 0 4px;
   border: 0;
