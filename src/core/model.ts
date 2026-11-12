@@ -32,7 +32,8 @@ export interface Waypoint {
   arriveAfter?: string;
   /**
    * A stay that ends at a date and time, `YYYY-MM-DDTHH:MM` in Zurich (0.44.0): the next train
-   * leaves no earlier, on whatever day; for trips over several days (Kiruna until Monday 08:00).
+   * leaves no earlier. On the day it starts since 0.64.0 (one trip per day of travel); a later
+   * one, from before or a link, splits the trip there (`splitNights`).
    */
   stayUntil?: string;
 }

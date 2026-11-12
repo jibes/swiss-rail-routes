@@ -2,6 +2,7 @@
 // 300 ms of quiet, adds and removes at once. Other tabs' saves come in as they happen.
 import { create } from 'zustand';
 import type { Tour } from './core/model';
+import { splitAllNights, splitNights } from './core/nights';
 import { withoutTimetable, type Trip } from './core/trip';
 import { log } from './io/log';
 import { tripsList } from './io/trips';
@@ -28,9 +29,12 @@ export const useTrips = create<TripsState>()((set, get) => ({
   load: async () => {
     if (get().loaded) return;
     try {
-      const trips = await tripsList.load();
-      log('trips.load', { count: trips.length });
+      const saved = await tripsList.load();
+      // One trip per day of travel (0.64.0): one kept over a night is split there, once.
+      const trips = splitAllNights(saved);
+      log('trips.load', { count: trips.length, split: trips.length - saved.length });
       set({ trips, loaded: true });
+      if (trips !== saved) void tripsList.save(saved, trips, true).catch(() => undefined);
     } catch {
       set({ loaded: true, failed: true });
     }
@@ -38,7 +42,9 @@ export const useTrips = create<TripsState>()((set, get) => ({
   add: (t) => {
     log('trip.add', { trip: t.id, date: t.route.date, stops: t.route.waypoints.length });
     const before = get().trips;
-    const trips = [t, ...before];
+    // A link or a copy kept over a night comes in as one trip a day (0.64.0).
+    const parts = splitNights(t);
+    const trips = [...parts, ...before.filter((x) => !parts.some((p) => p.id === x.id))];
     set({ trips });
     void tripsList.save(before, trips, true).catch(() => undefined);
   },
@@ -88,8 +94,9 @@ export const useTrips = create<TripsState>()((set, get) => ({
   replaceAll: (trips) => {
     log('trips.replaceAll', { count: trips.length });
     const before = get().trips;
-    // Items this version cannot read stay out of the screens, held and saved as they came.
-    const { items, saved } = tripsList.replace(before, trips);
+    // Items this version cannot read stay out of the screens, held and saved as they came; one
+    // kept over a night (an older version's) split as it comes in.
+    const { items, saved } = tripsList.replace(before, splitAllNights(trips));
     set({ trips: items });
     return saved;
   },

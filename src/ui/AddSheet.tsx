@@ -28,6 +28,8 @@ import { fetchEuStops } from '../io/ojp';
 
 export type Picked =
   | { kind: 'station'; stop: Pick<Waypoint, 'stopRef' | 'name'> }
+  /** A new trip from where the last one ends, on the day after (0.64.0). */
+  | { kind: 'onward'; stop: Pick<Waypoint, 'stopRef' | 'name'>; date: string }
   | { kind: 'line'; template: RouteTemplate; reversed: boolean }
   | { kind: 'trip'; tour: Tour };
 
@@ -41,6 +43,7 @@ export function AddSheet({
   after,
   next,
   first,
+  onward,
   onPick,
   onClose,
 }: {
@@ -49,6 +52,8 @@ export function AddSheet({
   next?: Pick<Waypoint, 'stopRef' | 'name'>;
   /** The trip's first station: offered as the way back (a round trip) when adding at the end. */
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
+  /** A new trip's start: where the last trip ends, and the day after it (`onwardFrom`). */
+  onward?: { stopRef: string; name: string; date: string; from: string };
   onPick: (p: Picked) => void;
   onClose: () => void;
 }) {
@@ -228,6 +233,28 @@ export function AddSheet({
           }}
         />
         <div className="results">
+          {onward && !f && (
+            <button
+              type="button"
+              className="result"
+              onClick={() =>
+                pick({
+                  kind: 'onward',
+                  stop: { stopRef: onward.stopRef, name: onward.name },
+                  date: onward.date,
+                })
+              }
+            >
+              <span className="r-icon r-dot" aria-hidden="true" />
+              <span className="r-name">{t('onwardFrom', { stop: onward.name })}</span>
+              <span className="r-sub">
+                {t('onwardAfter', {
+                  trip: `${onward.from} → ${onward.name}`,
+                  date: shortDate(onward.date, lang),
+                })}
+              </span>
+            </button>
+          )}
           {back && (
             <button
               type="button"
@@ -385,7 +412,7 @@ function kindOf(s: Stop) {
  * stays until a date and time moved to `day`, the trip's).
  */
 export function entriesFor(p: Picked, day: string): Entry[] {
-  if (p.kind === 'station') return [stationEntry(p.stop)];
+  if (p.kind === 'station' || p.kind === 'onward') return [stationEntry(p.stop)];
   if (p.kind === 'line') return lineEntries(p.template, p.reversed);
   return entriesOf({ waypoints: staysOnDay(p.tour.waypoints, p.tour.date, day) });
 }

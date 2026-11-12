@@ -224,6 +224,8 @@ export const en = {
   arrAt: 'arr. {time}',
   renameTrip: 'Rename trip',
   backTo: 'Back to {stop}',
+  onwardFrom: 'From {stop}',
+  onwardAfter: 'After {trip} · {date}',
   chooseStart: 'Choose where you start',
   close: 'Close',
   dragToMove: 'Drag to move {stop}',

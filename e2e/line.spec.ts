@@ -393,34 +393,33 @@ test('the rail is dotted wherever you are off the train', async ({ page }) => {
   await expect(stay.locator('.stay-end')).toHaveClass(/derived/);
 });
 
-// Over several days (0.44.0): a stay until a date and time, said on the line; kept after reload.
-test('a stay until a date and time: set, said on the line, taken off', async ({ page }) => {
+// One trip per day of travel (0.64.0): a stay ends its day (no day to pick), a route kept over a
+// night opens as one trip a day, and a new trip offers to start where the last one ends.
+test('a night ends the trip: a link over a night is two trips; the next starts where it ended', async ({
+  page,
+}) => {
   await page.clock.install({ time: BEFORE });
   allowUnrecorded(page);
-  await newTrip(page, 'zürich hb', 'luzern', 'bern');
-  const entries = page.getByRole('list', { name: 'The trip' }).locator('.station.entry');
-  await entries.nth(1).getByRole('button').first().click();
-  await page
-    .getByRole('group', { name: 'At this station' })
-    .getByRole('button', { name: 'Stay', exact: true })
-    .click();
-  const day = page.getByLabel('Stay at Luzern until (day)');
-  await day.fill('2026-11-09');
-  await day.press('Enter');
-  await expect(entries.nth(1)).toContainText(/Stay until .*9.*08:00/);
-  await expect(page.locator('.panel .stay-end')).toContainText(/9/);
-  const time = page.getByLabel('Stay at Luzern until (time)');
-  await time.fill('09:15');
-  await time.press('Enter');
-  await expect(entries.nth(1)).toContainText(/Stay until .*9.*09:15/);
-  await page.reload();
-  await expect(entries.nth(1)).toContainText(/Stay until .*9.*09:15/);
-  await entries.nth(1).getByRole('button').first().click();
-  // A length set takes the time away.
-  const minutes = page.getByLabel('Minutes at Luzern');
-  await minutes.fill('60');
-  await minutes.press('Enter');
-  await expect(entries.nth(1)).toContainText('Stay 60 min');
+  // Chur → Arosa, a night there until 10:00 on the 9th, → Chur.
+  await page.goto('./#/r/chur.9000~arosa.9157.30.n202611091000~chur.9000?d=2026-11-08');
+  await page.getByRole('button', { name: 'Plan this trip' }).click();
+  const line = page.getByRole('list', { name: 'The trip' });
+  await expect(line.locator('.station.entry')).toHaveCount(2);
+  await expect(line.locator('.station.entry').last()).toContainText('Arosa');
+  // The stay at a station has a time on its day only.
+  await line.locator('.station.entry').last().getByRole('button').first().click();
+  await expect(page.getByLabel(/until \(day\)/)).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.goto('./#/trips');
+  const cards = page.getByRole('list', { name: 'Upcoming' }).getByRole('link');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.nth(1)).toContainText('Arosa → Chur');
+
+  // A new trip: from where the last one ends, the day after.
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByRole('button', { name: /^From Chur/ }).click();
+  await expect(line.locator('.station.entry').first()).toContainText('Chur');
+  await expect(page.getByLabel('Date')).toHaveValue('2026-11-10');
 });
 
 // Notifications per trip (0.44.0): ⋯ turns them off and on again; the trip keeps it (synced).

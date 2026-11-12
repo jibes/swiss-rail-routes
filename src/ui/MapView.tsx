@@ -183,6 +183,12 @@ export default function MapView({ id }: { id: string }) {
       map.on('error', (e) => {
         if (!(tiles && 'tile' in e && e.tile)) setFailed(true);
       });
+      // An icon the tile style names but its sprite lacks (`circle-11`, `wood-pattern`, log of
+      // 11 Nov 2026): drawn as nothing, not warned about on every tile.
+      map.on('styleimagemissing', (e) => {
+        if (map && !map.hasImage(e.id))
+          map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+      });
       map.on('moveend', () => setMoved((n) => n + 1));
       // Moving or still, said on the map's box (e2e waits for still before a tap at a point).
       map.on('movestart', () => (box.current!.dataset.moving = ''));

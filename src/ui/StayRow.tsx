@@ -1,10 +1,10 @@
-// A stay as one row (0.51.0): − 90 min + until 16:30 (and its day, when not the arrival's).
+// A stay as one row (0.51.0): − 90 min + until 16:30, on the day it starts (0.64.0).
 // Each is filled from the other by the plan's arrival; the one edited last is kept: a length
 // stays a length when the plan moves, a time stays that time.
 import { useState } from 'react';
 import { shiftUntil, stayEnd, stayLength, untilAt } from '../core/stay';
-import { usePrefs, useT } from '../store';
-import { hhmm, shortDate } from './format';
+import { useT } from '../store';
+import { hhmm } from './format';
 import { zurichDateTime } from '../core/ojp/request';
 import { WAIT_SAID_MIN } from './stayLabel';
 import { Icon } from './icons';
@@ -16,7 +16,6 @@ const STAY_STEP = 15;
 const STAY_MAX = 600;
 const clampStay = (m: number) => Math.min(STAY_MAX, Math.max(1, Math.round(m)));
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function StayRow({
@@ -43,17 +42,17 @@ export function StayRow({
   act: LineActions;
 }) {
   const t = useT();
-  const lang = usePrefs((s) => s.lang);
   const length = stayLength(arr, stay, until);
   const end = stayEnd(arr, stay, until);
-  const arrDay = (arr && stayEnd(arr, 0, undefined)?.slice(0, 10)) || day;
-  const endDay = end?.slice(0, 10) ?? arrDay;
   const setUntil = act.stayUntil;
-  // A long stay until a time (another day) moves by its time: its length is past the stepper's.
+  // A stay until a time moves by its time, never past its day (0.64.0: a night ends the trip).
+  const later = until ? shiftUntil(until, STAY_STEP) : undefined;
+  const lastOfDay = !!until && later!.slice(0, 10) !== until.slice(0, 10);
   const step = (d: number) => {
     if (length === undefined) return;
-    if (until && setUntil && length + Math.max(d, 0) > STAY_MAX) setUntil(k, shiftUntil(until, d));
-    else act.stay(k, clampStay(length + d));
+    if (until && setUntil) {
+      if (d < 0 || !lastOfDay) setUntil(k, shiftUntil(until, d));
+    } else act.stay(k, clampStay(length + d));
   };
   // What is typed, held while the field has focus: a plan coming in meanwhile changes nothing.
   const [draft, setDraft] = useState<string | null>(null);
@@ -100,7 +99,7 @@ export function StayRow({
           type="button"
           className="sq"
           aria-label={t('stayLonger', { n: STAY_STEP })}
-          disabled={length === undefined || (!until && length >= STAY_MAX)}
+          disabled={length === undefined || (until ? lastOfDay : length >= STAY_MAX)}
           onClick={() => step(STAY_STEP)}
         >
           <Icon name="plus" size={18} />
@@ -113,32 +112,14 @@ export function StayRow({
             type="time"
             label={t('stayUntilTimeLabel', { name })}
             value={end?.slice(11, 16) ?? ''}
-            accept={(hm) => (TIME.test(hm) ? hm : null)}
-            commit={(hm) => setUntil(k, untilAt(hm, arr, day, until))}
-          >
-            {(hm) => hm || '––:––'}
-          </WhenField>
-          {/* Its day, said only when not the arrival's (across midnight, several days). */}
-          <WhenField
-            type="date"
-            label={t('stayUntilDateLabel', { name })}
-            value={endDay}
-            min={arrDay}
-            accept={(d) => (DATE.test(d) && d >= arrDay ? d : null)}
-            // Never before the arrival (second audit: the arrival's day chosen back ended the stay
-            // that morning, before it began): then the arrival's time on that day, the stay as long.
-            commit={(d) => {
-              const at = `${d}T${end?.slice(11, 16) ?? '08:00'}`;
-              const arrived = arr ? stayEnd(arr, stay, undefined) : undefined;
-              setUntil(k, arrived && at < arrived ? arrived : at);
+            // A time before the arrival is refused: a stay ends the day it starts (0.64.0).
+            accept={(hm) => (TIME.test(hm) && untilAt(hm, arr, day) ? hm : null)}
+            commit={(hm) => {
+              const at = untilAt(hm, arr, day);
+              if (at) setUntil(k, at);
             }}
           >
-            {(d) => (
-              <>
-                <Icon name="calendar" size={18} />
-                {d !== arrDay && shortDate(d, lang)}
-              </>
-            )}
+            {(hm) => hm || '––:––'}
           </WhenField>
         </div>
       )}

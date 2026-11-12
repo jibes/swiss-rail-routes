@@ -43,6 +43,7 @@ import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
 import { RestApply } from './RestApply';
 import { staysOnDay } from '../core/stay';
+import { onwardFrom } from '../core/nights';
 import { restDraft, useRestDrafts } from './restDraft';
 
 /** Into that element (the map's column), else where it stands. */
@@ -93,7 +94,8 @@ function LogRows({ trip, rows, at }: { trip: string; rows: LineRow[]; at: string
 export function TripScreen({ id }: { id: string }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
-  const trip = useTrips((s) => s.trips.find((x) => x.id === id));
+  const trips = useTrips((s) => s.trips);
+  const trip = trips.find((x) => x.id === id);
   const editRoute = useTrips((s) => s.editRoute);
   const update = useTrips((s) => s.update);
   const add = useTrips((s) => s.add);
@@ -200,9 +202,25 @@ export function TripScreen({ id }: { id: string }) {
   const anchor = 'departAt' in route.anchor ? route.anchor.departAt : route.anchor.arriveBy;
   const today = dayOf(now);
 
+  // A new trip's start: where the last one ends, the day after (0.64.0).
+  const onward =
+    sheet && sheet.after < 0 && !route.waypoints.length ? onwardFrom(trips, now, id) : undefined;
+  /** The trip moved to another day: its time on that day, stays until a time moved along. */
+  const toDay = (d: string) => {
+    const hm = timeOnDate(d, today, nextFive(now), anchor);
+    // A stay until a date and time moves with the trip (reported in review: it stayed).
+    edit((r) => ({
+      ...r,
+      date: d,
+      waypoints: staysOnDay(r.waypoints, r.date, d),
+      ...(hm !== anchor ? { anchor: { departAt: hm } } : {}),
+    }));
+  };
+
   const pick = (p: Picked) => {
     const at = sheet?.after ?? entries.length - 1;
     log('add.pick', { trip: id, kind: p.kind, after: at });
+    if (p.kind === 'onward') toDay(p.date);
     if (p.kind === 'trip' && !route.waypoints.length && !trip.name)
       update(id, (x) => ({ ...x, name: p.tour.name }));
     change((r, k) => insertEntries(r, k(at), entriesFor(p, r.date)));
@@ -221,14 +239,7 @@ export function TripScreen({ id }: { id: string }) {
         accept={(d) => acceptDate(d, today)}
         commit={(d) => {
           log('when.date', { trip: id, date: d });
-          const hm = timeOnDate(d, today, nextFive(now), anchor);
-          // A stay until a date and time moves with the trip (reported in review: it stayed).
-          edit((r) => ({
-            ...r,
-            date: d,
-            waypoints: staysOnDay(r.waypoints, r.date, d),
-            ...(hm !== anchor ? { anchor: { departAt: hm } } : {}),
-          }));
+          toDay(d);
         }}
       >
         {(d) => (
@@ -551,6 +562,7 @@ export function TripScreen({ id }: { id: string }) {
           after={entries[sheet.after]?.w}
           next={entries[sheet.after + 1]?.w}
           first={sheet.after === entries.length - 1 ? entries[0]?.w : undefined}
+          onward={onward}
           onPick={pick}
           onClose={closeSheet}
         />

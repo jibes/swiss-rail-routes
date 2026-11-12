@@ -232,6 +232,8 @@ export const de = {
   arrAt: 'an {time}',
   renameTrip: 'Reise umbenennen',
   backTo: 'Zurück nach {stop}',
+  onwardFrom: 'Ab {stop}',
+  onwardAfter: 'Nach {trip} · {date}',
   chooseStart: 'Wähle den Start',
   close: 'Schliessen',
   dragToMove: '{stop} verschieben (ziehen)',

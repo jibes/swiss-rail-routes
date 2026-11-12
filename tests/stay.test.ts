@@ -19,17 +19,12 @@ describe('a stay said as length and end (0.51.0)', () => {
     expect(stayLength(undefined, 30, undefined)).toBe(30);
   });
 
-  it('a time typed is on the arrival day, the day after when before the arrival', () => {
-    expect(untilAt('16:30', ARR, '2026-11-12', undefined)).toBe('2026-11-12T16:30');
-    expect(untilAt('01:00', ARR, '2026-11-12', undefined)).toBe('2026-11-13T01:00');
-    // Wrapped past midnight, then a time the same evening: that evening (not 25 h).
-    expect(untilAt('23:00', ARR, '2026-11-12', '2026-11-13T01:00')).toBe('2026-11-12T23:00');
-    // The next day chosen on the date pill (a time after the arrival's) is kept.
-    expect(untilAt('15:00', ARR, '2026-11-12', '2026-11-13T16:00')).toBe('2026-11-13T15:00');
-    // A day chosen later keeps its day.
-    expect(untilAt('09:15', ARR, '2026-11-12', '2026-11-14T08:00')).toBe('2026-11-14T09:15');
+  it('a time typed is on the arrival day; none before the arrival (a stay ends its day)', () => {
+    expect(untilAt('16:30', ARR, '2026-11-12')).toBe('2026-11-12T16:30');
+    // 0.64.0: no wrap past midnight; a night is the end of the trip.
+    expect(untilAt('01:00', ARR, '2026-11-12')).toBeNull();
     // Unplanned: on the trip's day.
-    expect(untilAt('09:15', undefined, '2026-11-12', undefined)).toBe('2026-11-12T09:15');
+    expect(untilAt('09:15', undefined, '2026-11-12')).toBe('2026-11-12T09:15');
   });
 
   it('moves across midnight and the clock change', () => {

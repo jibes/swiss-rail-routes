@@ -27,37 +27,15 @@ export function stayLength(
   return Math.max(0, Math.round((Date.parse(zurichDateTime(until)) - Date.parse(arr)) / MIN));
 }
 
-const nextDay = (d: string) => {
-  const t = new Date(`${d}T12:00:00Z`);
-  t.setUTCDate(t.getUTCDate() + 1);
-  return t.toISOString().slice(0, 10);
-};
-
 /**
- * A time typed for the stay's end, made a date and time: on the arrival's day (else the trip's),
- * a time before the arrival the day after (across midnight); a stay kept until a later day
- * than that (`was`, chosen by its date) keeps its day.
+ * A time typed for the stay's end, on the arrival's day (else the trip's): a stay ends the day it
+ * starts (0.64.0: a night is the end of a trip, the next one starts there). None before the
+ * arrival.
  */
-export function untilAt(
-  hm: string,
-  arr: string | undefined,
-  day: string,
-  was: string | undefined,
-): string {
+export function untilAt(hm: string, arr: string | undefined, day: string): string | null {
   const arrived = arr ? zurichLocal(Date.parse(arr)) : undefined;
-  const base = arrived?.slice(0, 10) ?? day;
-  // The day after is the wrap past midnight, not a day chosen: only a later one is kept
-  // (reported in review: 01:00 then 23:00 made a 25 h stay).
-  const wasDay = was?.slice(0, 10);
-  // A day chosen (on the date pill) is kept; the next day reached only by wrapping past midnight
-  // is not. A wrap gives a time before the arrival's, so a later one on the next day was chosen
-  // (review of 11 Nov 2026: Tue 21:00 chosen, retyped 21:30, became Mon).
-  const chosen =
-    !!wasDay &&
-    wasDay > base &&
-    (wasDay > nextDay(base) || !arrived || was!.slice(11, 16) >= arrived.slice(11, 16));
-  const at = `${chosen ? wasDay : base}T${hm}`;
-  return arrived && at < arrived ? `${nextDay(base)}T${hm}` : at;
+  const at = `${arrived?.slice(0, 10) ?? day}T${hm}`;
+  return arrived && at < arrived ? null : at;
 }
 
 /** A stay's time moved by `min` minutes. */
