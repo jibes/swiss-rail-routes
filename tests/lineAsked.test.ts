@@ -107,21 +107,19 @@ describe('a day trip back the next morning (B2)', () => {
     return { ...c, arr: arrIso, sections: [{ ...s, to: { ...s.to, arr: arrIso } }] };
   };
 
-  it('is not offered while one comes back the same day', async () => {
+  it('is not recommended while one comes back the same day: its hours count (0.64.1)', async () => {
     const list = [out('08:09', '10:08'), out('11:09', '13:08'), back('12:00', '14:00')];
     list.push(back('23:30', '06:55', true));
     const r = await plan(lugano(60), deps(list).deps);
-    expect(r.options!.length).toBeGreaterThan(0);
-    for (const c of r.options!) expect(c.arr.slice(0, 10)).toBe(DATE);
+    expect(r.recommended!.arr.slice(0, 10)).toBe(DATE);
   });
 
-  it('is said when it is the only way back', async () => {
+  it('is the plan when it is the only way back, with no rule of its own', async () => {
     const r = await plan(
       lugano(60),
       deps([out('11:09', '13:08'), back('23:30', '06:55', true)]).deps,
     ).then((x) => x.recommended!);
-    const w = r.warnings.find((x) => x.type === 'next-day')!;
-    expect(w).toMatchObject({ severity: 'warn', key: 'wNextDay' });
-    expect(w.params.time).toBe('06:55');
+    expect(r.arr.slice(0, 10) > DATE).toBe(true);
+    expect(r.warnings.some((x) => x.type === 'next-day')).toBe(false);
   });
 });

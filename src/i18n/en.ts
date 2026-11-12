@@ -224,6 +224,8 @@ export const en = {
   arrAt: 'arr. {time}',
   renameTrip: 'Rename trip',
   backTo: 'Back to {stop}',
+  plusDays: '+{n}',
+  plusDaysSaid: 'arrives {n} day(s) later',
   onwardFrom: 'From {stop}',
   onwardAfter: 'After {trip} · {date}',
   chooseStart: 'Choose where you start',

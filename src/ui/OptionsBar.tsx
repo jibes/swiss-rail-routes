@@ -4,6 +4,7 @@ import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
 import { isRoundTrip } from '../core/tour';
 import { dayOf, otherDay, type Trip } from '../core/trip';
+import { daysBetween } from '../core/stay';
 import { log } from '../io/log';
 import { planRoute } from '../io/planTrip';
 import { loadOptions, saveOptions } from '../io/tours';
@@ -257,6 +258,17 @@ export function OptionsBar({
                     {sameArr
                       ? duration(minutesBetween(c.dep, c.arr))
                       : t(arrKey, { time: hhmm(c.arr) })}
+                    {/* Arriving another day (a night train): said, as 09:28 alone reads as today. */}
+                    {(() => {
+                      const n = daysBetween(dayOf(Date.parse(c.dep)), dayOf(Date.parse(c.arr)));
+                      return n > 0 ? (
+                        <span className="plus-day" title={t('plusDaysSaid', { n })}>
+                          {' '}
+                          <span aria-hidden="true">{t('plusDays', { n })}</span>
+                          <span className="sr-only">{t('plusDaysSaid', { n })}</span>
+                        </span>
+                      ) : null;
+                    })()}
                   </span>
                 </button>
               );

@@ -11,7 +11,7 @@ import {
 } from '../src/core/line';
 import { decodeTripLink, encodeTripLink } from '../src/core/export/tripLink';
 import type { Tour } from '../src/core/model';
-import { plan, sameDayFirst } from '../src/core/planner/plan';
+import { plan } from '../src/core/planner/plan';
 import { stopKey } from '../src/core/stops';
 import { sanitiseTour } from '../src/core/tour';
 import { linesAfterDark } from '../src/core/warnings';
@@ -153,22 +153,6 @@ describe('a stay until a date and time, over several days (0.44.0)', () => {
     const t = visit({ stayUntil: `${DATE}T10:15` });
     const r = await plan(t, deps(day).deps);
     expect(r.recommended!.connections[1]!.dep).toBe(day[3]!.dep);
-  });
-
-  it('an option back on a later day is kept: over several days is the plan', () => {
-    const late = {
-      connections: [],
-      warnings: [],
-      score: 0,
-      dep: `${DATE}T07:00:00Z`,
-      arr: '2026-11-09T09:00:00Z',
-    };
-    const same = { ...late, arr: `${DATE}T18:00:00Z` };
-    // A day trip: the one back the same day only.
-    expect(sameDayFirst([late, same], visit({}))).toEqual([same]);
-    expect(sameDayFirst([late, same], visit({ stayUntil: '2026-11-09T08:00' }))).toHaveLength(2);
-    // Until a time the same day (0.51.0): still a day trip.
-    expect(sameDayFirst([late, same], visit({ stayUntil: `${DATE}T16:30` }))).toEqual([same]);
   });
 
   it('kept through storage, route links and trip links; riding through drops it', async () => {

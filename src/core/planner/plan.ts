@@ -287,44 +287,6 @@ export function lineMissed(c: Connection, rules: LegRules, legIndex: number): Wa
   });
 }
 
-/** A day trip is back the next day when its last arrival is a later day, from this hour on. */
-const NIGHT_ENDS = '03:00';
-
-/**
- * Reported 5 Nov 2026: a day trip offered with its way back at 04:23 the next morning. A chain
- * back on a later day than it left, past `NIGHT_ENDS`, is dropped while another is back the same
- * day; when none is, kept and said ("back the next day at 06:55"). Routes whose stays fill the
- * night themselves are left alone.
- */
-export function sameDayFirst(chains: PlannedChain[], tour: Tour): PlannedChain[] {
-  const stays = tour.waypoints.reduce((m, w) => m + w.dwellMin, 0);
-  // Over several days by design (a stay until a later day): no day trip to keep to one day. A
-  // stay until a time the same day (0.51.0, the panel's "until") is a day trip still.
-  const later = (w: Tour['waypoints'][number]) =>
-    !!w.stayUntil && w.stayUntil.slice(0, 10) > (tour.date ?? '');
-  if (stays >= 12 * 60 || tour.waypoints.some(later)) return chains;
-  const nextDay = (c: PlannedChain) => {
-    const dep = zurichLocal(ms(c.dep)).slice(0, 10);
-    const arr = zurichLocal(ms(c.arr));
-    return arr.slice(0, 10) > dep && arr.slice(11, 16) >= NIGHT_ENDS;
-  };
-  const sameDay = chains.filter((c) => !nextDay(c));
-  if (sameDay.length) return sameDay;
-  return chains.map((c) => ({
-    ...c,
-    warnings: [
-      ...c.warnings,
-      {
-        type: 'next-day',
-        severity: 'warn',
-        legIndex: c.connections.length - 1,
-        key: 'wNextDay',
-        params: { time: zurichLocal(ms(c.arr)).slice(11, 16) },
-      },
-    ],
-  }));
-}
-
 /**
  * Retest round 3, 6 Nov 2026: options that leave a stay later than asked (`leaveBy`) were listed
  * beside one that leaves in time. Once any leaves in time, those that cannot go; when none can,
@@ -620,16 +582,15 @@ async function planFrom(
 
   // Waiting after the time asked for costs as travel does (round 3, 6 Nov 2026: Nyon–La Cure
   // from 09:00 recommended the 13:29 for being a minute shorter than the 09:29).
-  const done = sameDayFirst(
-    beams.map((b): PlannedChain => ({
-      connections: b.conns,
-      warnings: b.warnings,
-      score: total(b) + Math.max(0, firstDep(b) - start) / MIN,
-      dep: b.conns[0]!.dep,
-      arr: b.conns.at(-1)!.arr,
-    })),
-    tour,
-  );
+  // No rule for the next day (0.64.1): a way back next morning costs its hours and is not
+  // recommended over one the same evening; a night train one way is a ride as any.
+  const done = beams.map((b): PlannedChain => ({
+    connections: b.conns,
+    warnings: b.warnings,
+    score: total(b) + Math.max(0, firstDep(b) - start) / MIN,
+    dep: b.conns[0]!.dep,
+    arr: b.conns.at(-1)!.arr,
+  }));
   const picked = pickOptions(inTime(done));
   trace('plan.result', {
     chains: done.length,
