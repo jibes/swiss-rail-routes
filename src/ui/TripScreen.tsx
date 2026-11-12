@@ -466,7 +466,7 @@ export function TripScreen({ id }: { id: string }) {
       )}
 
       {/* Followed, what is live: progress, next step, risks; changing, only Undo (0.63.2). */}
-      {following && <TripLive live={live} />}
+      {following && <TripLive live={live} change={() => setChanging(true)} />}
       {liveTrip && <UndoChange trip={liveTrip} />}
       {liveTrip && <RestApply trip={liveTrip} />}
       {

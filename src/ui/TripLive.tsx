@@ -13,9 +13,12 @@ function NextStep({
   state,
   now,
   source,
+  change,
 }: {
   state: LiveState;
   now: number;
+  /** Opens the trip for another connection. */
+  change: () => void;
   /** Where the times come from (live, or the timetable), said with them. */
   source: ReactNode;
 }) {
@@ -30,8 +33,11 @@ function NextStep({
   const { next } = state;
   const ride = state.rides[next.ride]!;
   const inMin = Math.max(0, Math.round((next.at - now) / 60_000));
-  const label =
-    next.kind === 'alight'
+  // Held at a change missed, its train gone: said so, with the way to another (0.63.3).
+  const missed = state.phase === 'waiting' && next.kind === 'board' && next.at < now - 60_000;
+  const label = missed
+    ? t('nowMissed')
+    : next.kind === 'alight'
       ? t('nowAlight', { stop: next.stop.name })
       : state.phase === 'before'
         ? t('nowDepart')
@@ -50,7 +56,13 @@ function NextStep({
             <span className="sr-only">{t('lateBy', { n: next.delayMin })}</span>
           </span>
         )}
-        <span className="next-in">{inMin === 0 ? t('nowNow') : t('inMin', { n: inMin })}</span>
+        {missed ? (
+          <button type="button" className="text-button next-in" onClick={change}>
+            {t('changeTrip')}
+          </button>
+        ) : (
+          <span className="next-in">{inMin === 0 ? t('nowNow') : t('inMin', { n: inMin })}</span>
+        )}
       </p>
       {/* Getting off: the label names the station already; only its platform is new. */}
       {(next.kind === 'board' || next.stop.platform) && (
@@ -91,7 +103,13 @@ export function UndoChange({ trip }: { trip: PlannedTrip }) {
  * What is live about a trip followed (SPEC §3a): progress, the next step, connections at risk.
  * Changing it (0.63.2) shows none of this; the line keeps its live times and marker.
  */
-export function TripLive({ live }: { live: ReturnType<typeof useLive> }) {
+export function TripLive({
+  live,
+  change,
+}: {
+  live: ReturnType<typeof useLive>;
+  change: () => void;
+}) {
   const t = useT();
   const state = live.state;
   return (
@@ -112,6 +130,7 @@ export function TripLive({ live }: { live: ReturnType<typeof useLive> }) {
           <NextStep
             state={state}
             now={live.now}
+            change={change}
             source={
               <p className="muted live-source">
                 {live.failed

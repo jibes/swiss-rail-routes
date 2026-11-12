@@ -135,6 +135,7 @@ export const it = {
   nowAlight: 'Scendere a {stop}',
   nowDepart: 'Partenza',
   nowChange: 'Prossimo treno',
+  nowMissed: 'Treno perso',
   nowNow: 'ora',
   inMin: 'tra {n} min',
   toward: 'per {to}',

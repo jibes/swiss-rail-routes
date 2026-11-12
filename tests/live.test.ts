@@ -239,6 +239,17 @@ describe('liveState', () => {
     expect(s.risks).toEqual([]);
   });
 
+  it('a change missed only by the plan’s estimate counts as made once the train has left', () => {
+    // Planned with the IR 70 due 09:03 (no report since): the 08:51 is said as missed...
+    const est = structuredClone(chain);
+    est[0]!.sections[0]!.to.arrEst = iso('09:03');
+    expect(liveState(est, at('08:50')).risks.map((r) => r.reason)).toEqual(['missed']);
+    // ...but once it has left you are on it (0.63.3, Vallorcine: held for good, as a train
+    // held at is never asked about again), unless the arriving train itself reported it.
+    expect(liveState(est, at('09:10'))).toMatchObject({ phase: 'riding', current: 1, risks: [] });
+    expect(liveState(est, at('09:10'), new Map([['j1', late('09:03')]])).phase).toBe('waiting');
+  });
+
   it('a missed change holds you there, even after the missed train has arrived', () => {
     // The onward 08:51 would arrive 10:41; at 11:00 you are still in Luzern.
     const s = liveState(chain, at('11:00'), new Map([['j1', late('09:03')]]));

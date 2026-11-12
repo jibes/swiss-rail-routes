@@ -134,6 +134,7 @@ export const de = {
   nowAlight: 'Aussteigen in {stop}',
   nowDepart: 'Abfahrt',
   nowChange: 'Nächster Zug',
+  nowMissed: 'Zug verpasst',
   nowNow: 'jetzt',
   inMin: 'in {n} min',
   toward: 'nach {to}',

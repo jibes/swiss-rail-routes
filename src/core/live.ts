@@ -18,6 +18,8 @@ export interface LiveStop {
   /** The timetable's platform. */
   platformPlan?: string;
   cancelled: boolean;
+  /** Its times come from the vehicle's own report, not the plan's estimate. */
+  reported: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ function liveStop(c: PlatformCall, live?: LiveCall): LiveStop {
     platform: live?.platform ?? c.platformEst ?? c.platform,
     platformPlan: c.platform,
     cancelled: live?.cancelled ?? false,
+    reported: !!live,
   };
 }
 
@@ -153,7 +156,12 @@ export function liveState(
     // A change missed by a minute or two is often made (trains wait a little, and an estimate
     // is rough): once the onward train has left, it counts as made, so where you are moves on
     // (reported, 0.40.0: "here" stayed at Vallorcine, 1 min short, through a stay at Chamonix).
-    const madeAfterAll = !b.cancelled && !boardGone && margin >= walk - HOLD_MIN && depOf(b) <= now;
+    // So is one missed only by the plan's own estimate, the arriving train not reporting it
+    // (0.63.3, reported: held at Vallorcine by a +7 known at planning, "next train 14:10, now"
+    // at 14:47; held, no train is asked about again, so nothing could correct it).
+    const certain = !!a && a.stops.at(-1)!.reported;
+    const madeAfterAll =
+      !b.cancelled && !boardGone && (margin >= walk - HOLD_MIN || !certain) && depOf(b) <= now;
     if ((b.cancelled || boardGone || margin < walk) && !madeAfterAll) {
       // Before boarding, or never boarded: lost. A ride long over was ridden.
       if (arrOf(b) <= now && !b.cancelled && !boardGone && margin >= 0) continue;

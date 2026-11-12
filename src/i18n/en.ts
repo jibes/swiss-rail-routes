@@ -129,6 +129,7 @@ export const en = {
   nowAlight: 'Get off at {stop}',
   nowDepart: 'Departure',
   nowChange: 'Next train',
+  nowMissed: 'Train missed',
   nowNow: 'now',
   inMin: 'in {n} min',
   toward: 'to {to}',
