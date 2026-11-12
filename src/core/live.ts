@@ -241,6 +241,15 @@ export function liveState(
   return { phase: 'done', rides, current: rides.length - 1, progress: 1, risks };
 }
 
+/**
+ * Held at a change whose train has gone (0.63.3): the card says Train missed. Then the risk that
+ * said it would be missed is said already, and in the wrong tense: shown no more (0.64.2).
+ */
+export function trainGone(state: LiveState, now: number): boolean {
+  const n = state.next;
+  return state.phase === 'waiting' && n?.kind === 'board' && n.at < now - 60_000;
+}
+
 /** Times with the gaps filled in a straight line between the known ones on either side. */
 function between(times: (number | undefined)[]): number[] {
   const out = [...times];

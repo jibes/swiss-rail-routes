@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { type LiveState } from '../core/live';
+import { trainGone, type LiveState } from '../core/live';
 import type { PlannedTrip } from '../core/trip';
 import { undo } from '../core/trip';
 import { useT } from '../store';
@@ -34,7 +34,7 @@ function NextStep({
   const ride = state.rides[next.ride]!;
   const inMin = Math.max(0, Math.round((next.at - now) / 60_000));
   // Held at a change missed, its train gone: said so, with the way to another (0.63.3).
-  const missed = state.phase === 'waiting' && next.kind === 'board' && next.at < now - 60_000;
+  const missed = trainGone(state, now);
   const label = missed
     ? t('nowMissed')
     : next.kind === 'alight'
@@ -143,23 +143,25 @@ export function TripLive({
               </p>
             }
           />
-          {state.risks.map((r, i) => {
-            const ride = state.rides[r.ride]!;
-            const at = ride.stops[0]!.name;
-            return (
-              <div key={i} role="alert" className="notice red">
-                <span>
-                  {r.reason === 'cancelled'
-                    ? t('riskCancelled', { line: badge(ride.s) })
-                    : r.reason === 'notServed'
-                      ? t('riskNotServed', { line: badge(ride.s), stop: r.stop ?? '' })
-                      : r.reason === 'missed'
-                        ? t('riskMissed', { at })
-                        : t('riskTight', { at, n: r.marginMin })}
-                </span>
-              </div>
-            );
-          })}
+          {state.risks
+            .filter((r) => !(r.reason === 'missed' && trainGone(state, live.now)))
+            .map((r, i) => {
+              const ride = state.rides[r.ride]!;
+              const at = ride.stops[0]!.name;
+              return (
+                <div key={i} role="alert" className="notice red">
+                  <span>
+                    {r.reason === 'cancelled'
+                      ? t('riskCancelled', { line: badge(ride.s) })
+                      : r.reason === 'notServed'
+                        ? t('riskNotServed', { line: badge(ride.s), stop: r.stop ?? '' })
+                        : r.reason === 'missed'
+                          ? t('riskMissed', { at })
+                          : t('riskTight', { at, n: r.marginMin })}
+                  </span>
+                </div>
+              );
+            })}
         </>
       )}
     </>

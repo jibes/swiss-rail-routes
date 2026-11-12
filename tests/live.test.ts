@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journeysToWatch, liveState } from '../src/core/live';
+import { journeysToWatch, liveState, trainGone } from '../src/core/live';
 import type { JourneyStatus } from '../src/core/ojp/journey';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { DATE, conn, ref, ride } from './helpers/timetable';
@@ -258,6 +258,11 @@ describe('liveState', () => {
     expect(s.risks.map((r) => r.reason)).toEqual(['missed']);
     // Nothing to ask about a train that has gone.
     expect(journeysToWatch(s, at('11:00'))).toEqual([]);
+    // Its train gone: the card says Train missed, the risk no more (0.64.2); not before it left.
+    expect(trainGone(s, at('11:00'))).toBe(true);
+    expect(
+      trainGone(liveState(chain, at('08:50'), new Map([['j1', late('09:03')]])), at('08:50')),
+    ).toBe(false);
   });
 
   it('on board when your exit is not served: still riding, and told', () => {
