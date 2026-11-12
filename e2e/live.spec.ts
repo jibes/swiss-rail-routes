@@ -25,6 +25,7 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await page.clock.runFor('25:00');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
+  await page.screenshot({ path: 'test-results/follow.png' });
   // Under way the route is not turned round: the line changes what lies ahead.
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Duplicate' })).toBeVisible();

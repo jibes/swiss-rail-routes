@@ -256,11 +256,6 @@ export function TripScreen({ id }: { id: string }) {
           </>
         )}
       </WhenField>
-      {liveTrip && (
-        <button type="button" className="pill done" onClick={() => setChanging(false)}>
-          {t('doneChanging')}
-        </button>
-      )}
     </div>
   );
 
@@ -309,6 +304,17 @@ export function TripScreen({ id }: { id: string }) {
           <Icon name="back" />
         </button>
         <span className="sp" />
+        {/* Under way, one switch (0.63.1): Change trip opens the plan's controls, Done follows. */}
+        {liveTrip && (
+          <button
+            type="button"
+            className="icon"
+            aria-label={t(changing ? 'doneChanging' : 'changeTrip')}
+            onClick={() => setChanging(!changing)}
+          >
+            <Icon name={changing ? 'check' : 'edit'} />
+          </button>
+        )}
         <button
           type="button"
           className="icon open-map"
@@ -413,18 +419,14 @@ export function TripScreen({ id }: { id: string }) {
         </div>
       )}
 
-      {following ? (
-        <div className="when">
-          <button type="button" className="pill" onClick={() => setChanging(true)}>
-            <Icon name="edit" size={18} />
-            {t('changeTrip')}
-          </button>
-        </div>
-      ) : (
-        when
-      )}
+      {!following && when}
 
-      {renaming ? (
+      {following ? (
+        // Followed: the name only; renamed while changing.
+        <h1>
+          <span className="title">{name}</span>
+        </h1>
+      ) : renaming ? (
         <input
           className="title-input"
           aria-label={t('tourName')}
@@ -468,7 +470,8 @@ export function TripScreen({ id }: { id: string }) {
       {liveTrip && <RestApply trip={liveTrip} />}
       {
         <>
-          {chain && <TripFacts chain={chain} />}
+          {/* Followed, the next step is the headline: the line has the times. */}
+          {chain && !following && <TripFacts chain={chain} />}
           <PlanNotices
             state={
               planning ? 'planning' : failed ? (planner.status as 'error' | 'unavailable') : 'done'
