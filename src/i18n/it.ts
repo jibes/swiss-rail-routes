@@ -276,7 +276,6 @@ export const it = {
   stayFor: 'Sosta {min} min',
   stayUntil: 'Sosta {min} min, entro le {time}',
   theLine: 'Il viaggio',
-  theWayHere: 'Il percorso fatto',
   train1: '1 corsa',
   trainsN: '{n} corse',
   tripsAhead: '{n} in programma',

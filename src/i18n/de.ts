@@ -277,7 +277,6 @@ export const de = {
   stayFor: '{min} min Aufenthalt',
   stayUntil: '{min} min Aufenthalt, bis {time}',
   theLine: 'Die Reise',
-  theWayHere: 'Der Weg hierher',
   train1: '1 Fahrt',
   trainsN: '{n} Fahrten',
   tripsAhead: '{n} geplant',

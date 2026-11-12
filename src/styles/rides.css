@@ -164,12 +164,6 @@
   height: 18px;
 }
 
-/* The way here (replan) ends with a ride: its rail runs on into the line of the rest. */
-.trip-line.past > li:last-child .rail::before {
-  bottom: 0;
-  height: auto;
-}
-
 /* A walk: one dotted grey line (you are not on a train) from the dot before to the dot after.
    The walk's row draws it, reaching into its neighbours by what useWalkSpans measured (--up,
    --down); spaced evenly, so the dots never bunch where rows meet. */

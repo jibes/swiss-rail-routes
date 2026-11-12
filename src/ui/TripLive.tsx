@@ -4,9 +4,7 @@ import type { PlannedTrip } from '../core/trip';
 import { undo } from '../core/trip';
 import { useT } from '../store';
 import { useTrips } from '../trips';
-import { plannedRows } from '../core/rows';
 import { badge } from './format';
-import { TripLine } from './TripLine';
 import { hhmm } from './format';
 import type { useLive } from './useLive';
 
@@ -75,21 +73,12 @@ function NextStep({
   );
 }
 
-/** The trip under way (SPEC §3a): progress, the next step, connections at risk, the timetable
- * live with where you are; what lies ahead is changed on the line itself (`edit`, 0.46.0). */
-export function TripLive({
-  trip,
-  live,
-  options,
-  edit,
-}: {
-  trip: PlannedTrip;
-  live: ReturnType<typeof useLive>;
-  /** Not left yet: the options strip, to take another connection. */
-  options?: ReactNode;
-  /** Begins editing the rest: at a station ahead (its key), or to add one (null). */
-  edit: (key: string | null) => void;
-}) {
+/**
+ * What is live about a trip under way (SPEC §3a), over the screen it shares with every other
+ * time (0.62.0): progress, the next step, connections at risk, Undo of the last change. The line
+ * itself is the trip screen's, with the live times on it.
+ */
+export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<typeof useLive> }) {
   const t = useT();
   const update = useTrips((s) => s.update);
   const state = live.state;
@@ -142,7 +131,6 @@ export function TripLive({
           })}
         </>
       )}
-      {options}
       {trip.previous && (
         <div className="live-actions">
           <button type="button" className="text-button" onClick={() => update(trip.id, undo)}>
@@ -150,14 +138,6 @@ export function TripLive({
           </button>
         </div>
       )}
-      <TripLine
-        route={trip.route}
-        rows={plannedRows(trip.route, trip.chain.connections)}
-        warnings={trip.chain.warnings}
-        planning={false}
-        live={state ? { state, now: live.now } : undefined}
-        edit={state ? edit : undefined}
-      />
     </>
   );
 }

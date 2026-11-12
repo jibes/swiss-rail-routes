@@ -213,18 +213,6 @@ export function keptLegs(trip: Trip, point: ReplanPoint): Leg[] {
   );
 }
 
-/** The route as travelled up to the point, for its own line above the rest (null before any ride). */
-export function travelledRoute(trip: Trip, point: ReplanPoint): Tour | null {
-  const legs = keptLegs(trip, point);
-  const first = legs[0]?.from;
-  if (!first) return null;
-  return {
-    ...trip.route,
-    id: `${trip.id}-travelled`,
-    waypoints: normalise([first, ...legs.flatMap((l) => [...l.vias, l.to])]),
-  };
-}
-
 /** The revised trip: the travelled part, then the new plan; warnings re-indexed by leg. */
 export function mergeReplan(
   trip: Trip,

@@ -268,7 +268,6 @@ export const en = {
   stayFor: 'Stay {min} min',
   stayUntil: 'Stay {min} min, by {time}',
   theLine: 'The trip',
-  theWayHere: 'The way here',
   train1: '1 ride',
   trainsN: '{n} rides',
   tripsAhead: '{n} ahead',

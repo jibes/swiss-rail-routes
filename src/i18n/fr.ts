@@ -277,7 +277,6 @@ export const fr = {
   stayFor: 'Arrêt {min} min',
   stayUntil: 'Arrêt {min} min, jusqu’à {time}',
   theLine: 'Le voyage',
-  theWayHere: 'Le chemin parcouru',
   train1: '1 trajet',
   trainsN: '{n} trajets',
   tripsAhead: '{n} à venir',

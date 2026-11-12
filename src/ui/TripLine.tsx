@@ -50,13 +50,14 @@ export function TripLine({
   open,
   setOpen,
   act,
-  fixedFirst = false,
+  fixed = 0,
   live,
-  travelled = false,
-  edit,
 }: {
-  /** Replan from here: the first station is where you are; only "Add after" it. */
-  fixedFirst?: boolean;
+  /**
+   * The first `fixed` entries are behind you (under way): not changed, the last of them (where
+   * you are) only added after.
+   */
+  fixed?: number;
   route: Pick<Tour, 'waypoints'> & Partial<Pick<Tour, 'travelClass' | 'date'>>;
   rows: LineRow[];
   warnings: Warning[];
@@ -67,13 +68,6 @@ export function TripLine({
   act?: LineActions;
   /** Under way: expected times, the travelled part grey, the marker where you are. */
   live?: LiveCtx;
-  /** Replan: the way here, grey, above the line of the rest. */
-  travelled?: boolean;
-  /**
-   * Under way (0.46.0): what lies ahead can be changed. A station ahead, or "Add a station",
-   * begins editing the rest (its key, or null to add); behind you nothing is.
-   */
-  edit?: (key: string | null) => void;
 }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
@@ -130,8 +124,8 @@ export function TripLine({
         const b = el.getBoundingClientRect();
         return ev.clientY > b.top + b.height / 2;
       }).length;
-      // Nothing moves above the fixed station (replan: where you are).
-      to = Math.max(fixedFirst ? 1 : 0, below);
+      // Nothing moves above where you are.
+      to = Math.max(fixed, below);
       const top = list.getBoundingClientRect().top;
       const at =
         rest[to]?.getBoundingClientRect().top ?? rest.at(-1)?.getBoundingClientRect().bottom ?? top;
@@ -149,6 +143,12 @@ export function TripLine({
     grip.addEventListener('pointercancel', up);
   };
 
+  /** An entry of yours behind you (under way): no panel, nothing changed. */
+  const behind = (k: number | undefined) => k !== undefined && k < fixed - 1;
+  /** Yours to open: what you entered, unless it is behind you. */
+  const mine = (k: number | undefined) => (act && !behind(k) ? k : undefined);
+  /** Where a station of the plan's goes when kept: never behind you. */
+  const keepAfter = (k: number | undefined) => (k !== undefined && k >= fixed - 1 ? k : undefined);
   const onRide = viasOnRides(rows);
   const onRideRows = new Set([...onRide.values()].flat().map((v) => v.row));
 
@@ -199,7 +199,7 @@ export function TripLine({
     return d ? <small className="day-of">{shortDate(d, lang)}</small> : null;
   };
   const nameOf = (r: StationRow, i: number) => {
-    const k = act ? r.entry : undefined;
+    const k = mine(r.entry);
     const isOpen = k !== undefined && open === k;
     const w = r.entry !== undefined ? entries[r.entry]?.w : undefined;
     const label = stayLabel(
@@ -208,20 +208,7 @@ export function TripLine({
       w?.leaveBy,
       w?.stayUntil ? { at: w.stayUntil, lang, day: route.date } : undefined,
     );
-    // Under way, a station ahead: a tap begins editing the rest there.
-    const L = edit ? stationLive(rows, i, live) : undefined;
-    if (k === undefined && edit && L && !L.passed && !L.here)
-      return (
-        <button type="button" className="m" onClick={() => edit(r.key)}>
-          <span className="n">
-            {r.name}
-            {alt(r)}
-            {platformBy(i, 'name')}
-          </span>
-          {label && <span className="chip quiet">{label}</span>}
-        </button>
-      );
-    if (!act && r.entry !== undefined)
+    if ((!act || behind(r.entry)) && r.entry !== undefined)
       return (
         // Nothing to edit: a station you entered is just its name.
         <div className="m">
@@ -305,7 +292,7 @@ export function TripLine({
 
   const whyLocked = (r: StationRow, i: number) => {
     if (hint !== `${r.key}@${i}`) return null;
-    const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
+    const k = act?.pin ? keepAfter(pinAfter(rows, i, entries)) : undefined;
     return planPanel(
       k,
       { stopRef: r.key, name: r.name },
@@ -318,11 +305,11 @@ export function TripLine({
 
   /** The open station's grip and panel. */
   const editing = (r: StationRow) => {
-    const k = act ? r.entry : undefined;
+    const k = mine(r.entry);
     if (k === undefined || open !== k) return null;
     return (
       <>
-        {n > 1 && !(fixedFirst && k === 0) && (
+        {n > 1 && k >= fixed && (
           <button
             type="button"
             className="grip"
@@ -338,7 +325,7 @@ export function TripLine({
           <StationPanel
             k={k}
             n={n}
-            fixed={fixedFirst ? 1 : 0}
+            fixed={fixed}
             name={r.name}
             stay={entries[k]!.w.kind === 'via' ? null : entries[k]!.w.dwellMin}
             stayUntil={entries[k]!.w.stayUntil}
@@ -357,7 +344,7 @@ export function TripLine({
 
   /** A route station on a ride: among the ride's stops, in white, editable as on the line. */
   const viaRow = (r: StationRow, i: number, when: ReactNode, passed: boolean) => {
-    const k = act ? r.entry : undefined;
+    const k = mine(r.entry);
     const dragging = drag && k === drag.from;
     return (
       <li
@@ -392,7 +379,7 @@ export function TripLine({
   };
 
   // Weather along the line (0.37.0): a cell a row at the right, once the times are known.
-  const weather = useWeather(rows, !planning && !travelled);
+  const weather = useWeather(rows, !planning);
   const wx = weather && 'rows' in weather ? weather : null;
   // Under way, the stripe dims what is behind you, to where you are (`useHereY`).
   const hereY = useHereY(box, !!wx && !!live, [live?.now, rows, open]);
@@ -413,11 +400,11 @@ export function TripLine({
     );
   return (
     <>
-      {wx && !travelled && <WeatherKey />}
+      {wx && <WeatherKey />}
       <ol
-        className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''} ${travelled ? 'past' : ''}`}
+        className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''}`}
         ref={box}
-        aria-label={travelled ? t('theWayHere') : t('theLine')}
+        aria-label={t('theLine')}
       >
         {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
         {weather && 'far' in weather && (
@@ -535,7 +522,7 @@ export function TripLine({
                       }}
                       // A stop the train calls at: yours with a tap, as a station the plan chose.
                       pin={(() => {
-                        const k = act?.pin ? pinAfter(rows, i, entries) : undefined;
+                        const k = act?.pin ? keepAfter(pinAfter(rows, i, entries)) : undefined;
                         if (k === undefined) return undefined;
                         return {
                           open: (call: number) => hint === `${id}:${call}`,
@@ -619,7 +606,7 @@ export function TripLine({
             );
           }
           if (onRideRows.has(i)) return null;
-          const k = act ? r.entry : undefined;
+          const k = mine(r.entry);
           const isOpen = k !== undefined && open === k;
           const L = stationLive(rows, i, live);
           // Where you change or stay: the arrival small above, the departure (what you act on) big.
@@ -713,9 +700,9 @@ export function TripLine({
             style={{ '--y': `${hereY}px` } as CSSProperties}
           />
         )}
-        {(act || (edit && live?.state.phase !== 'done')) && (
+        {act && live?.state.phase !== 'done' && (
           <li className="addrow">
-            <button type="button" onClick={act ? act.add : () => edit?.(null)}>
+            <button type="button" onClick={act.add}>
               <span className="t" />
               <span className="rail">
                 <span className="plus" aria-hidden="true">

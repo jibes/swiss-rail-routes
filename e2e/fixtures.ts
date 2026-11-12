@@ -203,7 +203,8 @@ export async function planShared(page: Page, hash: string) {
   await page.goto(`./${hash}`);
   await page.getByRole('button', { name: 'Plan this trip' }).click();
   await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  await expect(page.locator('.hero-times').or(page.locator('.trip-progress'))).toBeVisible({
+  // Under way both show (0.62.0: the live information over the same screen).
+  await expect(page.locator('.hero-times').or(page.locator('.trip-progress')).first()).toBeVisible({
     timeout: 30_000,
   });
 }

@@ -3,7 +3,7 @@ import { newTour, setStop } from './helpers/edit';
 import { liveState } from '../src/core/live';
 import type { Leg, Waypoint } from '../src/core/model';
 import { zurichDateTime } from '../src/core/ojp/request';
-import { mergeReplan, remainingRoute, replanPoint, travelledRoute } from '../src/core/replan';
+import { mergeReplan, remainingRoute, replanPoint } from '../src/core/replan';
 import { newTrip } from '../src/core/trip';
 import { DATE, conn, ref, ride } from './helpers/timetable';
 
@@ -104,30 +104,6 @@ describe('remainingRoute', () => {
       'Brienz:stop:30',
       'Interlaken Ost:end:0',
     ]);
-  });
-});
-
-describe('travelledRoute', () => {
-  it('riding: the start, the stations passed, the stop the ride is cut at', () => {
-    const p = replanPoint(trip, liveState(chain, at('08:15')), at('08:15'))!;
-    const r = travelledRoute(trip, p)!;
-    expect(r.waypoints.map((x) => `${x.name}:${x.kind}`)).toEqual(['Zürich HB:start', 'Zug:end']);
-  });
-
-  it('waiting at a stop: the whole first leg, with the stations passed on it', () => {
-    const p = replanPoint(trip, liveState(chain, at('09:00')), at('09:00'))!;
-    const r = travelledRoute(trip, p)!;
-    expect(r.waypoints.map((x) => `${x.name}:${x.kind}`)).toEqual([
-      'Zürich HB:start',
-      'Zug:via',
-      'Luzern:end',
-    ]);
-  });
-
-  it('before the trip: nothing travelled', () => {
-    expect(
-      travelledRoute(trip, replanPoint(trip, liveState(chain, at('07:00')), at('07:00'))!),
-    ).toBeNull();
   });
 });
 

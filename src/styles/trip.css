@@ -594,21 +594,6 @@
   letter-spacing: -0.025em;
 }
 
-/* Replan: the travelled part, grey and fixed, above where you are */
-.trip-line.past {
-  margin-bottom: 0;
-  opacity: 0.55;
-}
-
-/* Where you are follows straight on from where you have been: the rail runs through. */
-.trip-screen .trip-line.past + .trip-line {
-  margin-top: -12px;
-}
-
-.trip-line.past + .trip-line > li:first-child .rail::before {
-  top: 0;
-}
-
 .toast[hidden] {
   display: none;
 }

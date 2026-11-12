@@ -16,20 +16,12 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   // Not left yet: another connection can still be taken.
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
-  // 09:03:30, the train in half a minute: nothing leaves before it from now, so Earlier finds
-  // none and the trip stays as it is (choosing a connection gone would end it at once).
-  await page.clock.runFor('13:30');
-  const hero = await page.locator('.next-time .num').innerText();
-  await page.getByRole('button', { name: 'Earlier connections' }).click();
-  await expect(page.locator('.options-note')).toHaveText('No earlier connection on this day.');
-  await expect(page.locator('.next-time .num')).toHaveText(hero);
-  await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
-
-  // On the train: the marker rides along, its stops open, passed ones grey.
-  await page.clock.runFor('11:30');
+  // On the train: the marker rides along, its stops open, passed ones grey; the options stay
+  // (0.62.0: another connection can be chosen whenever, the live information over it).
+  await page.clock.runFor('25:00');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
-  await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
   // Under way the route is not turned round: the line changes what lies ahead.
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Duplicate' })).toBeVisible();
@@ -74,7 +66,9 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Under way');
 });
 
-test('under way, what lies ahead is changed on the line itself: a stop, at once, undo', async ({
+// One screen in every state (0.62.0): under way the date, time and options are there as at any
+// time, the live information over them; a change ahead is planned from where you are.
+test('under way, the same screen: time and options there; a stop added ahead, undone', async ({
   page,
 }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
@@ -82,30 +76,35 @@ test('under way, what lies ahead is changed on the line itself: a stop, at once,
   // 09:15, on the R62 (a trip is never planned from a time gone).
   await page.clock.runFor('25:00');
   const line = page.getByRole('list', { name: 'The trip', exact: true });
-  // One screen (0.46.0): no separate Replan from here. Behind you nothing opens; a station
-  // ahead opens its panel, the way here grey above.
-  await expect(page.getByRole('link', { name: 'Replan from here' })).toHaveCount(0);
-  await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
-  await expect(page).toHaveURL(/#\/trip\/[\w-]+$/);
-  await expect(page.locator('.trip-line.past .ride')).toHaveCount(1);
-  await expect(page.locator('.trip-line.past .station')).toHaveText([/Interlaken Ost/]);
-  await expect(page.getByRole('alert')).toHaveCount(0);
-  // No Update, no Discard (0.60.0): closed with nothing changed, the trip runs as it was.
+  await expect(page.getByRole('progressbar')).toBeVisible();
+  // The plan's own controls stay: its date and time, and its options.
+  await expect(page.getByRole('button', { name: /^Date/ }).or(page.locator('.when'))).toHaveCount(
+    1,
+  );
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
+  // No separate editor, no way-here line, no Update.
+  await expect(page.locator('.trip-line')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
+  // Where you set off: only Add after. Ahead: its own panel, as at any time.
+  await line.locator('.station.entry').first().locator('button.m').click();
+  await expect(page.locator('.panel').getByRole('button', { name: 'Add after' })).toBeVisible();
+  await expect(page.locator('.panel').getByRole('button', { name: /^Remove/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.trip-line.past')).toHaveCount(0);
-
-  // Adding: where you are is fixed, only "Add after".
   await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
-  await line.locator('.station.entry').first().getByRole('button').first().click();
-  await expect(page.getByRole('combobox', { name: 'Station' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Add after' }).click();
+  await expect(page.locator('.panel').getByRole('button', { name: /^Remove/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // A station added ahead, after where you set off: planned from where you are, then the
+  // trip's; Undo takes it back.
+  await line.locator('.station.entry').first().locator('button.m').click();
+  await page.locator('.panel').getByRole('button', { name: 'Add after' }).click();
   await pick(page, 'Wengen');
-  // The trip's at once, once its plan is there: the trip under way again, via Wengen.
-  await expect(page.locator('.trip-line.past')).toHaveCount(0, { timeout: 30_000 });
-  await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1);
+  await expect(line.locator('.station.entry', { hasText: 'Wengen' })).toHaveCount(1, {
+    timeout: 30_000,
+  });
+  // The way behind you as ridden: still the R62 you are on.
+  await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
   await page.getByRole('button', { name: 'Undo last change' }).click();
-  // No Wengen station any more (the GA note still names its stretch, Wengen–Kleine Scheidegg).
   await expect(line.locator('.station', { hasText: 'Wengen' })).toHaveCount(0);
   await expect(line.locator('.station', { hasText: 'Kleine Scheidegg' })).toHaveCount(1);
 });

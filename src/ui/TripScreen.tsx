@@ -41,7 +41,7 @@ import { WhenField } from './WhenField';
 import { rememberDeleted } from './undoDelete';
 import { useStopIndex } from './useStopIndex';
 import { log } from '../io/log';
-import { RestEditor } from './RestEditor';
+import { RestApply } from './RestApply';
 import { staysOnDay } from '../core/stay';
 import { restDraft, useRestDrafts } from './restDraft';
 
@@ -110,23 +110,13 @@ export function TripScreen({ id }: { id: string }) {
       ? trip
       : undefined;
   const live = useLive(liveTrip);
-  // Under way, the rest being changed (0.46.0): edited in place, the same draft as the map's.
-  const rest = useRestDrafts((s) => (liveTrip ? s.drafts[liveTrip.id] : undefined));
-  const beginRest = (key: string | null) => {
-    if (!liveTrip || !live.state) return;
-    const d = restDraft(liveTrip, live.state, live.now);
-    if (!d) return;
-    // The station tapped, as the rest names it (by key); or the add sheet after its last.
-    const open = key ? entriesOf(d.route).findIndex((e) => stopKey(e.w.stopRef) === key) : -1;
-    log('replan.begin', { trip: liveTrip.id, at: key ? 'station' : 'add' });
-    useRestDrafts
-      .getState()
-      // The station tapped opens (where you are: its own panel, Add after); else the add sheet.
-      .set(liveTrip.id, { ...d, focus: key ? { open: Math.max(0, open) } : { add: true } });
-  };
-  // Under way but not left yet: its options stay (from the saved plan, nothing asked).
-  const notLeft = !!liveTrip && now < Date.parse(liveTrip.chain.dep);
-  const planner = usePlanner(trip, !liveTrip || notLeft);
+  // Under way, a change ahead being planned from where you are (0.62.0): the line waits for it.
+  const pending = useRestDrafts((s) => (liveTrip ? !!s.drafts[liveTrip.id] : false));
+  // What lies ahead, from where you are: the entries before it stay as ridden (`fixed`), and an
+  // edit of the line maps onto the rest by its place (the rest's own tail is the trip's).
+  const ahead =
+    liveTrip && live.state && !pending ? restDraft(liveTrip, live.state, live.now) : null;
+  const planner = usePlanner(trip, true);
   const [open, setOpen] = useState<number | null>(null);
   // A new trip opens with the search: where it starts.
   const [sheet, setSheet] = useState<{ after: number } | null>(() =>
@@ -176,6 +166,20 @@ export function TripScreen({ id }: { id: string }) {
   const name = trip.name || autoName(route, stop, lineName) || t('newTour');
   const entries = entriesOf(route);
   const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
+  // Under way: the entries behind you, and an entry's place in the rest from where you are.
+  const restEntries = ahead ? entriesOf(ahead.route) : [];
+  const fixed = ahead ? entries.length - (restEntries.length - 1) : 0;
+  /**
+   * A change of the line, at any time. Under way it is made on the rest from where you are,
+   * planned and then the trip's (`RestApply`); the way behind you stays as ridden.
+   */
+  const change = (f: (r: Tour, at: (k: number) => number) => Tour) => {
+    if (!liveTrip) return edit((r) => f(r, (k) => k));
+    if (!ahead) return;
+    const at = (k: number) => k - fixed + 1;
+    log('replan.begin', { trip: id });
+    useRestDrafts.getState().set(id, { ...ahead, route: f(ahead.route, at) });
+  };
   const chain = trip.chain;
   // Planning from the first moment after an edit (the planner waits for edits to settle):
   // no flash of "nothing found" and no jump while it waits.
@@ -193,7 +197,7 @@ export function TripScreen({ id }: { id: string }) {
     log('add.pick', { trip: id, kind: p.kind, after: at });
     if (p.kind === 'trip' && !route.waypoints.length && !trip.name)
       update(id, (x) => ({ ...x, name: p.tour.name }));
-    edit((r) => insertEntries(r, at, entriesFor(p, r.date)));
+    change((r, k) => insertEntries(r, k(at), entriesFor(p, r.date)));
     setSheet(null);
     setOpen(null);
   };
@@ -252,7 +256,7 @@ export function TripScreen({ id }: { id: string }) {
       {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
       {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
         <OptionsBar
-          fromNow={!!liveTrip}
+          fromNow={false}
           trip={trip}
           result={planner.result}
           planning={planning}
@@ -395,7 +399,7 @@ export function TripScreen({ id }: { id: string }) {
         </div>
       )}
 
-      {!liveTrip && when}
+      {when}
 
       {renaming ? (
         <input
@@ -436,19 +440,10 @@ export function TripScreen({ id }: { id: string }) {
         </h1>
       )}
 
-      {liveTrip ? (
-        rest && live.state ? (
-          <RestEditor trip={liveTrip} state={live.state} now={live.now} />
-        ) : (
-          <TripLive
-            trip={liveTrip}
-            live={live}
-            edit={beginRest}
-            // Not left yet: another connection can still be chosen (an earlier one never ends it).
-            options={notLeft ? optionsBar : null}
-          />
-        )
-      ) : (
+      {/* Under way, what is live over the same screen (0.62.0): progress, next step, risks. */}
+      {liveTrip && <TripLive trip={liveTrip} live={live} />}
+      {liveTrip && <RestApply trip={liveTrip} />}
+      {
         <>
           {chain && <TripFacts chain={chain} />}
           <PlanNotices
@@ -470,37 +465,54 @@ export function TripScreen({ id }: { id: string }) {
             route={route}
             rows={rows}
             warnings={chain?.warnings ?? []}
-            planning={planning}
+            planning={planning || pending}
             open={open}
             setOpen={setOpen}
-            act={{
-              ...logged(id, {
-                replace: (k: number, s: { stopRef: string; name: string }) =>
-                  edit((r) => replaceEntry(r, k, s)),
-                stay: (k, min) => edit((r) => setEntryStay(r, k, min)),
-                stayUntil: (k, v) => edit((r) => setEntryStayUntil(r, k, v)),
-                move: (from, to) => {
-                  edit((r) => moveEntry(r, from, to));
-                  setOpen(to);
-                },
-                remove: (k) => {
-                  edit((r) => removeEntry(r, k));
-                  setOpen(null);
-                },
-                // A station the plan chose, kept: yours after entry `k`, its panel open.
-                pin: (k, stop) => {
-                  edit((r) => insertEntries(r, k, [stationEntry(stop)]));
-                  setOpen(k + 1);
-                },
-                dropLine: (k) => edit((r) => dropLine(r, k)),
-                addAfter: (k) => setSheet({ after: k }),
-                add: () => setSheet({ after: entries.length - 1 }),
-                later: () => edit((r) => ({ ...r, anchor: { departAt: shiftHm(anchor, 60) } })),
-              }),
-            }}
+            live={liveTrip && live.state ? { state: live.state, now: live.now } : undefined}
+            fixed={fixed}
+            // Under way while a change ahead is planned, or before the live state is known:
+            // nothing more is changed until it is the trip's.
+            act={
+              liveTrip && !ahead
+                ? undefined
+                : {
+                    ...logged(id, {
+                      replace: (k: number, s: { stopRef: string; name: string }) =>
+                        change((r, at) => replaceEntry(r, at(k), s)),
+                      stay: (k, min) => change((r, at) => setEntryStay(r, at(k), min)),
+                      stayUntil: (k, v) => change((r, at) => setEntryStayUntil(r, at(k), v)),
+                      move: (from, to) => {
+                        change((r, at) => moveEntry(r, at(from), at(to)));
+                        setOpen(liveTrip ? null : to);
+                      },
+                      remove: (k) => {
+                        change((r, at) => removeEntry(r, at(k)));
+                        setOpen(null);
+                      },
+                      // A station the plan chose, kept: yours after entry `k`, its panel open.
+                      pin: (k, stop) => {
+                        change((r, at) => insertEntries(r, at(k), [stationEntry(stop)]));
+                        setOpen(liveTrip ? null : k + 1);
+                      },
+                      dropLine: (k) => change((r, at) => dropLine(r, at(k))),
+                      addAfter: (k) => setSheet({ after: k }),
+                      add: () => setSheet({ after: entries.length - 1 }),
+                      later: () =>
+                        change((r) => ({
+                          ...r,
+                          anchor: {
+                            departAt: shiftHm(
+                              'departAt' in r.anchor ? r.anchor.departAt : r.anchor.arriveBy,
+                              60,
+                            ),
+                          },
+                        })),
+                    }),
+                  }
+            }
           />
         </>
-      )}
+      }
 
       {sheet && (
         <AddSheet
