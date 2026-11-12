@@ -18,6 +18,9 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Change trip' }).click();
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
+  // Changing, no live tile (0.63.2): the line keeps its marker.
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
@@ -306,8 +309,8 @@ test('a trip already under way can be put in', async ({ page }) => {
   await expect(time).toHaveValue('09:00');
   await page.getByRole('button', { name: 'Add a station' }).click();
   await pick(page, 'Kleine Scheidegg');
-  // Planned from 09:00, not from now: the 09:04 R62, already running.
-  await expect(page.getByRole('progressbar')).toBeVisible({ timeout: 30_000 });
+  // Planned from 09:00, not from now: the 09:04 R62, already running (live on the line).
+  await expect(page.locator('.trip-line.live')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
   // Put in here, it stays open for changing: no switch to following under your hands.
   await expect(time).toBeVisible();

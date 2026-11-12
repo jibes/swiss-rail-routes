@@ -73,14 +73,26 @@ function NextStep({
   );
 }
 
-/**
- * What is live about a trip under way (SPEC §3a), over the screen it shares with every other
- * time (0.62.0): progress, the next step, connections at risk, Undo of the last change. The line
- * itself is the trip screen's, with the live times on it.
- */
-export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<typeof useLive> }) {
+/** Undo of the last change made under way, following or changing. */
+export function UndoChange({ trip }: { trip: PlannedTrip }) {
   const t = useT();
   const update = useTrips((s) => s.update);
+  if (!trip.previous) return null;
+  return (
+    <div className="live-actions">
+      <button type="button" className="text-button" onClick={() => update(trip.id, undo)}>
+        {t('undoChange')}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * What is live about a trip followed (SPEC §3a): progress, the next step, connections at risk.
+ * Changing it (0.63.2) shows none of this; the line keeps its live times and marker.
+ */
+export function TripLive({ live }: { live: ReturnType<typeof useLive> }) {
+  const t = useT();
   const state = live.state;
   return (
     <>
@@ -130,13 +142,6 @@ export function TripLive({ trip, live }: { trip: PlannedTrip; live: ReturnType<t
             );
           })}
         </>
-      )}
-      {trip.previous && (
-        <div className="live-actions">
-          <button type="button" className="text-button" onClick={() => update(trip.id, undo)}>
-            {t('undoChange')}
-          </button>
-        </div>
       )}
     </>
   );

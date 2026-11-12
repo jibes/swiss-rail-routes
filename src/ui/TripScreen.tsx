@@ -26,7 +26,7 @@ import { PullReload, saidOf, useReload } from './PullReload';
 import { longDate, nextFive, shiftHm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
-import { TripLive } from './TripLive';
+import { TripLive, UndoChange } from './TripLive';
 import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
 import { ShareSheet } from './ShareSheet';
@@ -465,8 +465,9 @@ export function TripScreen({ id }: { id: string }) {
         </h1>
       )}
 
-      {/* Under way, what is live over the same screen (0.62.0): progress, next step, risks. */}
-      {liveTrip && <TripLive trip={liveTrip} live={live} />}
+      {/* Followed, what is live: progress, next step, risks; changing, only Undo (0.63.2). */}
+      {following && <TripLive live={live} />}
+      {liveTrip && <UndoChange trip={liveTrip} />}
       {liveTrip && <RestApply trip={liveTrip} />}
       {
         <>
