@@ -744,3 +744,8 @@ html.pull-reload {
   align-items: center;
   gap: 6px;
 }
+
+/* Under way, changing the plan: Done goes back to following it, at the row's end. */
+.trip-screen .when .done {
+  margin-inline-start: auto;
+}

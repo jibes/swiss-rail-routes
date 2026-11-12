@@ -13,15 +13,18 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByText('Departure', { exact: true })).toBeVisible();
   await expect(page.getByText('in 14 min')).toBeVisible();
   await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
-  // Not left yet: another connection can still be taken.
+  // Followed (0.63.0): the plan's controls behind Change trip; there another connection can
+  // still be taken, and Done goes back.
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Change trip' }).click();
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
-  // On the train: the marker rides along, its stops open, passed ones grey; the options stay
-  // (0.62.0: another connection can be chosen whenever, the live information over it).
+  // On the train: the marker rides along, its stops open, passed ones grey.
   await page.clock.runFor('25:00');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
   await expect(page.locator('.trip-line .ride.here')).toHaveCount(1);
-  await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
   // Under way the route is not turned round: the line changes what lies ahead.
   await page.getByRole('button', { name: 'More' }).click();
   await expect(page.getByRole('button', { name: 'Duplicate' })).toBeVisible();
@@ -66,9 +69,10 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Under way');
 });
 
-// One screen in every state (0.62.0): under way the date, time and options are there as at any
-// time, the live information over them; a change ahead is planned from where you are.
-test('under way, the same screen: time and options there; a stop added ahead, undone', async ({
+// One screen in every state (0.62.0): under way the trip is followed, and Change trip (0.63.0)
+// gives the date, time and options as at any time, the live information over them; a change
+// ahead is planned from where you are.
+test('under way, Change trip: time and options there; a stop added ahead, undone', async ({
   page,
 }) => {
   await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
@@ -77,10 +81,13 @@ test('under way, the same screen: time and options there; a stop added ahead, un
   await page.clock.runFor('25:00');
   const line = page.getByRole('list', { name: 'The trip', exact: true });
   await expect(page.getByRole('progressbar')).toBeVisible();
-  // The plan's own controls stay: its date and time, and its options.
-  await expect(page.getByRole('button', { name: /^Date/ }).or(page.locator('.when'))).toHaveCount(
-    1,
-  );
+  // Followed: the line read only, no date, time or options.
+  await expect(page.getByLabel('Leave from (time)')).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
+  await expect(line.locator('.station.entry').first().locator('button.m')).toHaveCount(0);
+  // Change trip: the plan's own controls, as at any time.
+  await page.getByRole('button', { name: 'Change trip' }).click();
+  await expect(page.getByLabel('Leave from (time)')).toHaveCount(1);
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
   // No separate editor, no way-here line, no Update.
   await expect(page.locator('.trip-line')).toHaveCount(1);
@@ -301,4 +308,6 @@ test('a trip already under way can be put in', async ({ page }) => {
   // Planned from 09:00, not from now: the 09:04 R62, already running.
   await expect(page.getByRole('progressbar')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('R62', { exact: true }).first()).toBeVisible();
+  // Put in here, it stays open for changing: no switch to following under your hands.
+  await expect(time).toBeVisible();
 });

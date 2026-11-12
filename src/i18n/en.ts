@@ -146,6 +146,8 @@ export const en = {
   sendLink: 'Send link',
   shareTrip: 'Share trip',
   change: 'Change',
+  changeTrip: 'Change trip',
+  doneChanging: 'Done',
   nChannel: 'Trip alerts',
   nDepartTitle: '{line} to {to} · {time}',
   nDepartBody: 'From {from}{platform}, in 10 min',

@@ -152,6 +152,8 @@ export const it = {
   sendLink: 'Invia il link',
   shareTrip: 'Condividi viaggio',
   change: 'Cambia',
+  changeTrip: 'Modifica viaggio',
+  doneChanging: 'Fatto',
   nChannel: 'Avvisi di viaggio',
   nDepartTitle: '{line} per {to} · {time}',
   nDepartBody: 'Da {from}{platform}, tra 10 min',

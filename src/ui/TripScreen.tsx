@@ -117,6 +117,10 @@ export function TripScreen({ id }: { id: string }) {
   const ahead =
     liveTrip && live.state && !pending ? restDraft(liveTrip, live.state, live.now) : null;
   const planner = usePlanner(trip, true);
+  // Under way the trip is followed (0.63.0): its plan's controls behind Change trip, back with
+  // Done. An edit made here keeps them out, so a trip put in that goes live meanwhile stays open.
+  const [changing, setChanging] = useState(false);
+  const following = !!liveTrip && !changing;
   const [open, setOpen] = useState<number | null>(null);
   // A new trip opens with the search: where it starts.
   const [sheet, setSheet] = useState<{ after: number } | null>(() =>
@@ -165,7 +169,10 @@ export function TripScreen({ id }: { id: string }) {
   const route = trip.route;
   const name = trip.name || autoName(route, stop, lineName) || t('newTour');
   const entries = entriesOf(route);
-  const edit = (f: (r: Tour) => Tour) => editRoute(id, f);
+  const edit = (f: (r: Tour) => Tour) => {
+    setChanging(true);
+    editRoute(id, f);
+  };
   // Under way: the entries behind you, and an entry's place in the rest from where you are.
   const restEntries = ahead ? entriesOf(ahead.route) : [];
   const fixed = ahead ? entries.length - (restEntries.length - 1) : 0;
@@ -176,6 +183,7 @@ export function TripScreen({ id }: { id: string }) {
   const change = (f: (r: Tour, at: (k: number) => number) => Tour) => {
     if (!liveTrip) return edit((r) => f(r, (k) => k));
     if (!ahead) return;
+    setChanging(true);
     const at = (k: number) => k - fixed + 1;
     log('replan.begin', { trip: id });
     useRestDrafts.getState().set(id, { ...ahead, route: f(ahead.route, at) });
@@ -248,6 +256,11 @@ export function TripScreen({ id }: { id: string }) {
           </>
         )}
       </WhenField>
+      {liveTrip && (
+        <button type="button" className="pill done" onClick={() => setChanging(false)}>
+          {t('doneChanging')}
+        </button>
+      )}
     </div>
   );
 
@@ -271,6 +284,7 @@ export function TripScreen({ id }: { id: string }) {
             // an edit) starts there.
             (
               log('options.choose', { trip: id, dep: c.dep, arr: c.arr }),
+              setChanging(true),
               update(id, (x) =>
                 compactTrip({
                   ...x,
@@ -399,7 +413,16 @@ export function TripScreen({ id }: { id: string }) {
         </div>
       )}
 
-      {when}
+      {following ? (
+        <div className="when">
+          <button type="button" className="pill" onClick={() => setChanging(true)}>
+            <Icon name="edit" size={18} />
+            {t('changeTrip')}
+          </button>
+        </div>
+      ) : (
+        when
+      )}
 
       {renaming ? (
         <input
@@ -454,7 +477,7 @@ export function TripScreen({ id }: { id: string }) {
             result={planner.result}
             retry={planner.retry}
           />
-          {optionsBar}
+          {!following && optionsBar}
 
           <LogRows
             trip={id}
@@ -473,7 +496,7 @@ export function TripScreen({ id }: { id: string }) {
             // Under way while a change ahead is planned, or before the live state is known:
             // nothing more is changed until it is the trip's.
             act={
-              liveTrip && !ahead
+              following || (liveTrip && !ahead)
                 ? undefined
                 : {
                     ...logged(id, {

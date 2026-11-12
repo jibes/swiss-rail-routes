@@ -151,6 +151,8 @@ export const de = {
   sendLink: 'Link senden',
   shareTrip: 'Reise teilen',
   change: 'Ändern',
+  changeTrip: 'Reise ändern',
+  doneChanging: 'Fertig',
   nChannel: 'Reise-Hinweise',
   nDepartTitle: '{line} nach {to} · {time}',
   nDepartBody: 'Ab {from}{platform}, in 10 min',
