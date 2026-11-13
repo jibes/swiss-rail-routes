@@ -160,14 +160,15 @@ export function TripScreen({ id }: { id: string }) {
   const [renaming, setRenaming] = useState(false);
   // Escape and Android's Back close what is open on top first.
   const closeSheet = useCallback(() => setSheet(null), []);
-  const [prices, setPrices] = useState(false);
+  const [prices, setPrices] = useState<false | 'share' | 'tickets'>(false);
   // Closed, focus goes back to the button that opened it.
   const moreButton = useRef<HTMLButtonElement>(null);
   const shareButton = useRef<HTMLButtonElement>(null);
   const closePrices = useCallback(() => {
+    const back = prices === 'tickets' ? moreButton : shareButton;
     setPrices(false);
-    setTimeout(() => shareButton.current?.focus(), 0);
-  }, []);
+    setTimeout(() => back.current?.focus(), 0);
+  }, [prices]);
   const closePanel = useCallback(() => setOpen(null), []);
   // Closed, focus goes back to ⋯ (review, 0.65.1: it was left on the page).
   const closeMenu = useCallback(() => {
@@ -369,7 +370,7 @@ export function TripScreen({ id }: { id: string }) {
           disabled={!isPlanned(trip)}
           onClick={() => {
             log('trip.share', { trip: id });
-            setPrices(true);
+            setPrices('share');
           }}
         >
           <Icon name="share" />
@@ -418,6 +419,19 @@ export function TripScreen({ id }: { id: string }) {
                 {t(trip.quiet ? 'notificationsOn' : 'notificationsOff')}
               </button>
             }
+            {isPlanned(trip) && (
+              <button
+                type="button"
+                onClick={() => {
+                  log('trip.tickets', { trip: id });
+                  setMenu(false);
+                  setPrices('tickets');
+                }}
+              >
+                <Icon name="ticket" size={18} />
+                {t('pricesOnSbb')}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -595,7 +609,9 @@ export function TripScreen({ id }: { id: string }) {
           onClose={closeSheet}
         />
       )}
-      {prices && isPlanned(trip) && <ShareSheet trip={trip} name={name} onClose={closePrices} />}
+      {prices && isPlanned(trip) && (
+        <ShareSheet trip={trip} name={name} part={prices} onClose={closePrices} />
+      )}
     </main>
   );
 }

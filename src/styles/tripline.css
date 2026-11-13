@@ -462,9 +462,10 @@
 }
 
 .panel .via-line {
-  background: var(--rail-soft);
+  /* A fact of the station, not an error (review, 0.66.0: pink read as one). */
+  background: var(--hair);
   box-shadow: none;
-  color: var(--rail-ink);
+  color: var(--ink);
 }
 
 .panel .via-line button {
@@ -718,4 +719,16 @@
 .notice.red > span {
   flex: 1;
   min-width: 0;
+}
+
+/* A note is one line (review, 0.66.0); its whole text on a tap. */
+.trip-line .warn .w-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-line .warn[aria-expanded='true'] .w-text {
+  white-space: normal;
 }

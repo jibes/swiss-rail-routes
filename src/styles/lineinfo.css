@@ -134,6 +134,15 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+  /* Beside the rail, never louder than it (review, 0.66.0: the gold outshone the rail, in dark
+     most). */
+  opacity: 0.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wx-cell {
+    opacity: 0.45;
+  }
 }
 
 .trip-line.wx > li:nth-child(1 of .station, .ride) .wx-cell {
@@ -151,7 +160,8 @@
   top: 9px;
   height: 18px;
   border-radius: 2px 0 0 2px;
-  background: rgb(40 105 215 / 0.9);
+  /* Slate, not the notices' blue (review, 0.66.0: rain read as information dots). */
+  background: rgb(60 78 104 / 0.9);
 }
 
 .wx-bar.night {

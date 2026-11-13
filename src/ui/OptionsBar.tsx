@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { optionsKey } from '../core/answers';
 import type { Leg } from '../core/model';
 import type { PlanResult, PlannedChain } from '../core/planner/plan';
-import { isRoundTrip } from '../core/tour';
 import { dayOf, otherDay, type Trip } from '../core/trip';
 import { daysBetween } from '../core/stay';
 import { log } from '../io/log';
@@ -11,7 +10,7 @@ import { loadOptions, saveOptions } from '../io/tours';
 import { useTrips } from '../trips';
 import { useNow } from './useNow';
 import { usePrefs, useT } from '../store';
-import { duration, hhmm, minutesBetween, shortDate, zurichHm } from './format';
+import { hhmm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { RailLoader } from './RailLoader';
 
@@ -98,9 +97,6 @@ export function OptionsBar({
   const all = [...new Map([...extra, ...own, ...chosen].map((o) => [keyOf(o.c), o])).values()]
     .filter(ahead)
     .sort((a, b) => Date.parse(a.c.dep) - Date.parse(b.c.dep));
-  const sameArr = all.length > 1 && all.every((o) => o.c.arr === all[0]!.c.arr);
-  // Under each option its arrival: "back" where the trip ends where it started.
-  const arrKey = isRoundTrip(trip.route) ? 'backAt' : 'arrAt';
   const noMore = none?.base === base && !none.failed ? none.dir : null;
   const failed = none?.base === base && none.failed;
   const strip = useRef<HTMLDivElement>(null);
@@ -255,9 +251,9 @@ export function OptionsBar({
                         </span>
                       )
                     }
-                    {sameArr
-                      ? duration(minutesBetween(c.dep, c.arr))
-                      : t(arrKey, { time: hhmm(c.arr) })}
+                    {/* Under each option its arrival, always (review, 0.66.0: "back", a duration or
+                        an arrival, by the trip; the duration is in the facts below). */}
+                    {t('arrAt', { time: hhmm(c.arr) })}
                     {/* Arriving another day (a night train): said, as 09:28 alone reads as today. */}
                     {(() => {
                       const n = daysBetween(dayOf(Date.parse(c.dep)), dayOf(Date.parse(c.arr)));

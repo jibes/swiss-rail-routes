@@ -72,7 +72,7 @@ test('sync: start on one device, join with the key on another, changes go both w
   await page.getByRole('link', { name: /Renamed on the phone/ }).click();
   await page.getByRole('button', { name: 'Add a station' }).click();
   await expect(page.locator('.add-sheet .result.recent')).toContainText(['Arosa']);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
 
   // A new key closes the old copy: the laptop, still on it, says so instead of refilling it.
   await page.goto('./#/settings');

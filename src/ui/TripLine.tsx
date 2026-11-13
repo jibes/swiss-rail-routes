@@ -26,7 +26,7 @@ import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
 import { runsOn } from '../core/planner/connection';
 import { stayLabel } from './stayLabel';
-import { productText } from './product';
+import { productText, saidByBadge } from './product';
 import { useStopIndex } from './useStopIndex';
 import { useWeather } from './useWeather';
 import { WeatherCell, WeatherKey } from './WeatherCell';
@@ -456,7 +456,9 @@ export function TripLine({
                           how long and the notes. */}
                       <span className="ride-l1">
                         <span className="badge">{badge(s)}</span>
-                        {s.product && <b className="product">{productText(t, s.product)}</b>}
+                        {s.product && !saidByBadge(s.category, s.product) && (
+                          <b className="product">{productText(t, s.product)}</b>
+                        )}
                         {dest && (
                           <span className="towards">
                             <span aria-hidden="true">→ {dest}</span>
@@ -563,7 +565,7 @@ export function TripLine({
                             aria-expanded={more === wid}
                             onClick={() => setMore(more === wid ? null : wid)}
                           >
-                            <span>{text}</span>
+                            <span className="w-text">{text}</span>
                             <Icon name="chevron" size={14} />
                           </button>
                           {more === wid && (
@@ -586,9 +588,17 @@ export function TripLine({
                           )}
                         </span>
                       ) : (
-                        <span key={j} className={`warn ${SEVERITY[w.severity]}`}>
-                          {text}
-                        </span>
+                        // One line each, the whole of it on a tap (review, 0.66.0: two or three
+                        // notes of several lines each stood taller than the ride).
+                        <button
+                          key={j}
+                          type="button"
+                          className={`warn ${SEVERITY[w.severity]}`}
+                          aria-expanded={more === wid}
+                          onClick={() => setMore(more === wid ? null : wid)}
+                        >
+                          <span className="w-text">{text}</span>
+                        </button>
                       );
                     }
                   })}

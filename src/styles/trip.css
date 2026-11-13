@@ -142,11 +142,10 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--rail-ink);
+  /* A date, not the rail (review, 0.66.0: red caps on a shared trip, alone in the app). */
+  color: var(--ink-2);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .pill.on,
@@ -610,6 +609,15 @@
 
 .trip-screen .hero-times {
   margin-top: 4px;
+}
+
+/* The connection chosen is the options strip's own (review, 0.66.0: "07:02 › 19:28" stood over
+   a chip saying the same): on screen the headline goes while the strip is there; in print, where
+   the strip is not, it stays. */
+@media screen {
+  .trip-screen:has(.options-bar) .hero-times {
+    display: none;
+  }
 }
 
 .trip-screen .facts {

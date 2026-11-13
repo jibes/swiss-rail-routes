@@ -169,7 +169,8 @@ export function Home() {
       )}
       {ahead.length > 0 && (
         <section>
-          <h2 className="section-label">{t('upcoming')}</h2>
+          {/* Said only beside another part (review, 0.66.0: "5 planned" over "Upcoming"). */}
+          {live.length > 0 && <h2 className="section-label">{t('upcoming')}</h2>}
           <ul className="cards" aria-label={t('upcoming')}>
             {ahead.map((x) => (
               <Card key={x.id} trip={x} open={x.id === openId} live={false} stop={stop} />

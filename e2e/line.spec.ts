@@ -25,7 +25,7 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   await line.locator('.station.ring button').first().click();
   await expect(page.locator('.plan-panel').getByText(/Part of the Brünig line/)).toBeVisible();
   await expect(page.locator('.panel:not(.plan-panel)')).toHaveCount(0);
-  await page.locator('.plan-panel').getByRole('button', { name: 'Close' }).click();
+  await page.locator('.plan-panel').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.panel')).toHaveCount(0);
 
   // The panel: what you do there, the line that leads there, add after, up, down, remove.
@@ -46,7 +46,7 @@ test('one line: stations, a scenic line as rings, the panel, a round trip, kept 
   await expect(page.getByText('Via Brünig')).toBeVisible();
   // The panel's cross closes it (the name's own Clear shows only while another is typed).
   await expect(page.locator('.panel').getByRole('button', { name: 'Clear' })).toHaveCount(0);
-  await page.locator('.panel').getByRole('button', { name: 'Close' }).click();
+  await page.locator('.panel').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.panel')).toHaveCount(0);
   await entries.nth(2).getByRole('button').first().click();
   const blocking = (await new AxeBuilder({ page }).analyze()).violations.filter(
@@ -450,7 +450,7 @@ test('your trips say where they went; stations you entered come first', async ({
   await page.getByRole('button', { name: 'Add a station' }).click();
   await expect(sheet.locator('.result.recent').first()).toHaveText(/^Chur/);
   await expect(sheet.locator('.result.recent')).not.toContainText(['Landquart']);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'New trip' }).click();
   await expect(sheet.locator('.result.recent').first()).toHaveText(/^Landquart/);
@@ -475,7 +475,7 @@ test.describe('a small phone', () => {
     // The time really spent there, beside the stay asked for (0.53.0); the chip shows again
     // once the panel closes.
     await expect(
-      page.locator('.trip-line .station.entry .chip', { hasText: 'Stay 60 min · 1h45 here' }),
+      page.locator('.trip-line .station.entry .chip', { hasText: 'Stay 1h45' }),
     ).toHaveCount(1);
     // A disruption elsewhere on the VAE's route is said with its stops, not under the ride.
     const vae = page.locator('.trip-line li.ride', {

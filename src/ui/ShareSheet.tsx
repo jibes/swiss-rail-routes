@@ -17,10 +17,14 @@ import { useModal } from './useModal';
 export function ShareSheet({
   trip,
   name,
+  part,
   onClose,
 }: {
   trip: PlannedTrip;
   name: string;
+  /** What leaves the app (link, calendar, print), or the tickets on sbb.ch (review, 0.66.0:
+   * buying is not sharing; the prices sat in the share sheet). */
+  part: 'share' | 'tickets';
   onClose: () => void;
 }) {
   const t = useT();
@@ -51,62 +55,69 @@ export function ShareSheet({
         onKeyDown={trap}
       >
         <div className="sheet-head">
-          <h2 id={id}>{t('shareTrip')}</h2>
+          <h2 id={id}>{t(part === 'share' ? 'shareTrip' : 'pricesOnSbb')}</h2>
           <button type="button" className="icon" aria-label={t('close')} onClick={onClose}>
             <Icon name="close" />
           </button>
         </div>
-        <div className="share-acts">
-          <button type="button" className="pill" onClick={() => void send()}>
-            <Icon name={copied ? 'check' : 'share'} size={18} />
-            {copied ? t('copied') : t('sendLink')}
-          </button>
-          <button
-            type="button"
-            className="pill"
-            onClick={() => {
-              log('export.ics', { trip: trip.id });
-              downloadIcs(trip.route, name, trip.chain, trip.id);
-            }}
-          >
-            <Icon name="calendar" size={18} />
-            {t('calendar')}
-          </button>
-          <button
-            type="button"
-            className="pill"
-            onClick={() => {
-              log('trip.print', { trip: trip.id });
-              onClose();
-              // After the sheet has gone, so it is not on the page.
-              requestAnimationFrame(() => window.print());
-            }}
-          >
-            <Icon name="print" size={18} />
-            {t('print')}
-          </button>
-        </div>
-        {/* Said and shown: the icon's change alone is easy to miss. */}
-        <p className="sr-only" role="status">
-          {copied ? t('copied') : ''}
-        </p>
-        <h3 className="section-label">{t('pricesOnSbb')}</h3>
-        <p className="muted">{t('pricesHint')}</p>
-        <ul className="prices">
-          {links.map((l, i) => (
-            <li key={i}>
-              <a href={l.url} target="_blank" rel="noopener noreferrer" className="result">
-                <span className="r-name">
-                  {l.from} → {l.to}{' '}
-                  {/* Opens sbb.ch, outside the app (review of 11 Nov 2026: no cue it leaves). */}
-                  <Icon name="external" size={14} />
-                  <span className="sr-only">{t('opensOutside')}</span>
-                </span>
-                <span className="r-sub">{t('pricesLeg', { time: hhmm(l.dep) })}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        {part === 'share' && (
+          <>
+            <div className="share-acts">
+              <button type="button" className="pill" onClick={() => void send()}>
+                <Icon name={copied ? 'check' : 'share'} size={18} />
+                {copied ? t('copied') : t('sendLink')}
+              </button>
+              <button
+                type="button"
+                className="pill"
+                onClick={() => {
+                  log('export.ics', { trip: trip.id });
+                  downloadIcs(trip.route, name, trip.chain, trip.id);
+                }}
+              >
+                <Icon name="calendar" size={18} />
+                {t('calendar')}
+              </button>
+              <button
+                type="button"
+                className="pill"
+                onClick={() => {
+                  log('trip.print', { trip: trip.id });
+                  onClose();
+                  // After the sheet has gone, so it is not on the page.
+                  requestAnimationFrame(() => window.print());
+                }}
+              >
+                <Icon name="print" size={18} />
+                {t('print')}
+              </button>
+            </div>
+            {/* Said and shown: the icon's change alone is easy to miss. */}
+            <p className="sr-only" role="status">
+              {copied ? t('copied') : ''}
+            </p>
+          </>
+        )}
+        {part === 'tickets' && (
+          <>
+            <p className="muted">{t('pricesHint')}</p>
+            <ul className="prices">
+              {links.map((l, i) => (
+                <li key={i}>
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="result">
+                    <span className="r-name">
+                      {l.from} → {l.to}{' '}
+                      {/* Opens sbb.ch, outside the app (review of 11 Nov 2026: no cue it leaves). */}
+                      <Icon name="external" size={14} />
+                      <span className="sr-only">{t('opensOutside')}</span>
+                    </span>
+                    <span className="r-sub">{t('pricesLeg', { time: hhmm(l.dep) })}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </div>
   );

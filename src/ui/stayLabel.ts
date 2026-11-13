@@ -38,7 +38,10 @@ export function stayLabel(
   const label = leaveBy
     ? t('stayUntil', { min: r.stay, time: leaveBy })
     : t('stayFor', { min: r.stay });
-  return there !== undefined && there >= r.stay + WAIT_SAID_MIN
-    ? t('stayThere', { label, d: duration(there) })
+  // The time really there when the next train leaves well after the stay asked for, said alone
+  // (review, 0.66.0: "60 min stay · 1h45 here" was two lengths for one stay; the panel has the
+  // 60 min).
+  return there !== undefined && there >= r.stay + WAIT_SAID_MIN && !leaveBy
+    ? t('stayThere', { d: duration(there) })
     : label;
 }
