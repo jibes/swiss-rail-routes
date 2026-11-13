@@ -52,7 +52,7 @@ export function AddSheet({
   next?: Pick<Waypoint, 'stopRef' | 'name'>;
   /** The trip's first station: offered as the way back (a round trip) when adding at the end. */
   first?: Pick<Waypoint, 'stopRef' | 'name'>;
-  /** A new trip's start: where the last trip ends, and the day after it (`onwardFrom`). */
+  /** A new trip's start: where the last trip ends, the day after it, and that trip's name. */
   onward?: { stopRef: string; name: string; date: string; from: string };
   onPick: (p: Picked) => void;
   onClose: () => void;
@@ -136,7 +136,7 @@ export function AddSheet({
   const remember = useRecentStops((x) => x.add);
   const trips0 = useTrips((x) => x.trips);
   const pick = (p: Picked) => {
-    if (p.kind === 'station') remember([p.stop]);
+    if (p.kind === 'station' || p.kind === 'onward') remember([p.stop]);
     onPick(p);
   };
   const recent = f
@@ -249,7 +249,7 @@ export function AddSheet({
               <span className="r-name">{t('onwardFrom', { stop: onward.name })}</span>
               <span className="r-sub">
                 {t('onwardAfter', {
-                  trip: `${onward.from} → ${onward.name}`,
+                  trip: onward.from,
                   date: shortDate(onward.date, lang),
                 })}
               </span>

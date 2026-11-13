@@ -51,7 +51,12 @@ export function useLive(trip: Trip | undefined) {
         );
         if (settled.every((x) => x.status === 'rejected')) throw new Error('live');
         const got = settled.map((x) => (x.status === 'fulfilled' ? x.value : null));
-        const next = new Map(useLiveStatus.getState().status);
+        // Only the journeys watched now (review, 0.65.1: every train ever watched was kept), the
+        // last answer kept for one whose request failed this time.
+        const old = useLiveStatus.getState().status;
+        const next = new Map(
+          watch.split('|').flatMap((j) => (old.has(j) ? [[j, old.get(j)!] as const] : [])),
+        );
         for (const g of got) if (g) next.set(g[0], g[1]);
         useLiveStatus.setState({ status: next, fetchedAt: Date.now(), failed: false });
       } catch {

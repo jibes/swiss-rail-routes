@@ -36,6 +36,19 @@ export function sunTimes(date: string, at: LatLon): { rise: Date; set: Date } | 
   return { rise: at_(jTransit - half), set: at_(jTransit + half) };
 }
 
+/**
+ * True when it is dark at that place as `passAt`: before sunrise + `marginMin`, or later than
+ * sunset − `marginMin` (SPEC §3; review, 0.65.1: a winter 06:30 train was never said in the dark).
+ */
+export function isDark(passAt: Date, date: string, at: LatLon, marginMin = 15): boolean {
+  const s = sunTimes(date, at);
+  const t = passAt.getTime();
+  return (
+    s !== null &&
+    (t < s.rise.getTime() + marginMin * 60_000 || t > s.set.getTime() - marginMin * 60_000)
+  );
+}
+
 /** True when `passAt` is later than sunset − `marginMin` at that place (SPEC §3). */
 export function isAfterSunset(passAt: Date, date: string, at: LatLon, marginMin = 15): boolean {
   const s = sunset(date, at);

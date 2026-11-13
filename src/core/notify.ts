@@ -41,6 +41,20 @@ function base(tripId: string): number {
   return (Math.abs(h) % 1_000_000) * 1000;
 }
 
+/**
+ * Every notice its own id (review, 0.65.1: two trips whose ids hash alike replaced each other's).
+ * All are cancelled before any is scheduled, so an id need only be unique, not stable.
+ */
+export function uniqueIds<N extends { id: number }>(notices: N[]): N[] {
+  const used = new Set<number>();
+  return notices.map((n) => {
+    let id = n.id;
+    while (used.has(id)) id++;
+    used.add(id);
+    return id === n.id ? n : { ...n, id };
+  });
+}
+
 const hhmm = (t: number) =>
   new Intl.DateTimeFormat('de-CH', {
     timeZone: 'Europe/Zurich',

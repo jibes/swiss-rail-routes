@@ -3,6 +3,7 @@ import type { Lang } from '../i18n';
 import { lineReversed } from '../core/lineDirection';
 import type { LatLon } from '../core/model';
 import { TEMPLATES } from '../data';
+import { usePrefs } from '../store';
 
 export { TEMPLATES };
 
@@ -23,8 +24,12 @@ export function directionFrom(
   );
 }
 
-/** A scenic line's name by its id (a route that is just that line is called by it). */
-export const lineName = (id: string, lang: Lang = 'en') => {
+/**
+ * A scenic line's name by its id (a route that is just that line is called by it), in the app's
+ * language (review, 0.65.1: trip names and cards said "Gotthard mountain line" in German too).
+ * Screens that call it re-render on a language change already (`useT`).
+ */
+export const lineName = (id: string, lang: Lang = usePrefs.getState().lang) => {
   const t = TEMPLATES.find((x) => x.id === id);
   return t && templateName(t, lang);
 };

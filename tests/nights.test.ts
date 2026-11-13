@@ -171,7 +171,7 @@ describe('one trip per day of travel (0.64.0)', () => {
       stopRef: 'ch:1:sloid:Umeå',
       name: 'Umeå',
       date: '2026-12-28',
-      from: 'Boden',
+      trip: t,
     });
     expect(onwardFrom([t], now, 't')).toBeUndefined();
     expect(onwardFrom([t], Date.parse('2027-01-10T10:00:00Z'), 'new')).toBeUndefined();

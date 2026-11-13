@@ -154,7 +154,7 @@ export function onwardFrom(
   trips: Trip[],
   now: number,
   self: string,
-): { stopRef: string; name: string; date: string; from: string } | undefined {
+): { stopRef: string; name: string; date: string; trip: Trip } | undefined {
   const last = trips
     .filter((t) => t.id !== self && t.route.waypoints.length >= 2 && !isOver(t, now))
     .sort((a, b) => departure(b) - departure(a))[0];
@@ -168,6 +168,6 @@ export function onwardFrom(
     stopRef: end.stopRef,
     name: end.name,
     date: d.toISOString().slice(0, 10),
-    from: last.route.waypoints[0]!.name,
+    trip: last,
   };
 }

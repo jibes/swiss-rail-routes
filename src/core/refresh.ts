@@ -68,7 +68,8 @@ export function chainWarnings(
 }
 
 /** Said by the planner about the choice itself (other options, the stay's window): kept as said. */
-const CHOICE: ReadonlySet<Warning['type']> = new Set(['window-missed', 'next-day', 'sparse']);
+// `next-day` is no longer said (0.64.1): an old one is not carried on (review, 0.65.1).
+const CHOICE: ReadonlySet<Warning['type']> = new Set(['window-missed', 'sparse']);
 
 export async function refreshChain(trip: PlannedTrip, deps: RefreshDeps): Promise<Refreshed> {
   const asked = trip.chain.connections.flatMap((c, ci) =>

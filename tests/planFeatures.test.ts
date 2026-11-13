@@ -52,6 +52,16 @@ describe('scenic lines by daylight (F2)', () => {
     }).format(dusk[0]!.from);
     expect(at).toMatch(/^17:(0[5-9]|1\d)$/);
     expect(linesAfterDark(albulaRide('12:58', '14:00', '15:00'), ctx)).toEqual([]);
+    // Before sunrise too (review, 0.65.1: 7 Nov sunrise about 07:25): dark from its start.
+    const dawn = linesAfterDark(albulaRide('05:58', '06:30', '07:00'), ctx);
+    expect(dawn.map((d) => d.template.id)).toEqual(['albula']);
+    expect(
+      new Intl.DateTimeFormat('de-CH', {
+        timeZone: 'Europe/Zurich',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(dawn[0]!.from),
+    ).toBe('05:58');
   });
 
   it('of two otherwise equal options, the one by daylight is recommended and the other said', async () => {

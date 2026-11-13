@@ -5,7 +5,7 @@ import { highlightName, type GaData, type GaRule, type RouteTemplate } from './d
 import type { Connection, LatLon, Section, WarningType } from './model';
 import { calls, transferGaps, isTight } from './planner/connection';
 import { stopKey } from './stops';
-import { dayAt, isAfterSunset, sunset } from './sun';
+import { dayAt, isDark, sunTimes } from './sun';
 
 export interface Warning {
   type: WarningType;
@@ -301,7 +301,7 @@ const km = (a: LatLon, b: LatLon) => {
   return Math.hypot(x, (b.lat - a.lat) * r) * 6371;
 };
 
-/** Highlights of the leg's templates passed after sunset − 15 min. */
+/** Highlights of the leg's templates passed in the dark (before sunrise or after sunset, 15 min). */
 export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
   const cs = calls(c).filter((x) => x.at !== undefined);
   const out: { id: string; name: string; at: number }[] = [];
@@ -315,7 +315,7 @@ export function highlightsAfterSunset(c: Connection, ctx: WarningContext) {
         const d = km(p, h);
         if (d <= HIGHLIGHT_KM && (!best || d < best.d)) best = { d, at: x.at! };
       }
-      if (best && isAfterSunset(new Date(best.at), dayAt(best.at), h))
+      if (best && isDark(new Date(best.at), dayAt(best.at), h))
         out.push({ id: h.id, name: highlightName(h), at: best.at });
     }
   return out;
@@ -342,13 +342,18 @@ export function linesAfterDark(
     if (on.length < 2) continue;
     const middle = on[Math.floor((on.length - 1) / 2)]!;
     const mid = ctx.stop(middle.key);
-    const set = mid && sunset(dayAt(middle.at!), mid);
-    if (!set) continue;
-    const dark = set.getTime() + DUSK_MIN * 60_000;
-    const last = on.at(-1)!;
-    if (last.at! <= dark) continue;
-    const first = on.find((x) => x.at! > dark) ?? last;
-    out.push({ template: t, from: Math.max(on[0]!.at!, dark), sectionIndex: first.sectionIndex });
+    const sun = mid && sunTimes(dayAt(middle.at!), mid);
+    if (!sun) continue;
+    // Dark before sunrise as after sunset, dusk and dawn counted (review, 0.65.1).
+    const dawn = sun.rise.getTime() + DUSK_MIN * 60_000;
+    const dusk = sun.set.getTime() + DUSK_MIN * 60_000;
+    const first = on.find((x) => x.at! < dawn || x.at! > dusk);
+    if (!first) continue;
+    out.push({
+      template: t,
+      from: first.at! < dawn ? first.at! : Math.max(on[0]!.at!, dusk),
+      sectionIndex: first.sectionIndex,
+    });
   }
   return out;
 }

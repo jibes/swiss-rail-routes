@@ -326,4 +326,32 @@ describe('the sync lock', () => {
     };
     expect(saved.stamps.trips.f!.h, 'not a deletion').not.toBe('');
   });
+
+  it('a trip over goes without its timetable; the device that planned it keeps it (review, 0.65.1)', async () => {
+    reset();
+    const chain = {
+      connections: [],
+      warnings: [],
+      score: 0,
+      dep: '2026-11-07T08:00:00.000Z',
+      arr: '2026-11-07T10:00:00.000Z',
+    };
+    const past = newTrip(
+      'p',
+      { ...newTour('p', '2026-11-07'), name: 'Past' },
+      [],
+      chain,
+      new Date(0),
+    );
+    const a = await device();
+    await a.sync.startSync();
+    const key = a.sync.useSync.getState().key!;
+    a.useTrips.getState().add(past);
+    await a.sync.syncNow();
+    const b = await device();
+    await b.sync.startSync(key);
+    expect(b.useTrips.getState().trips.find((t) => t.id === 'p')?.chain).toBeUndefined();
+    await a.sync.syncNow();
+    expect(a.useTrips.getState().trips.find((t) => t.id === 'p')?.chain).toBeDefined();
+  });
 });

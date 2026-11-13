@@ -169,7 +169,11 @@ export function TripScreen({ id }: { id: string }) {
     setTimeout(() => shareButton.current?.focus(), 0);
   }, []);
   const closePanel = useCallback(() => setOpen(null), []);
-  const closeMenu = useCallback(() => setMenu(false), []);
+  // Closed, focus goes back to ⋯ (review, 0.65.1: it was left on the page).
+  const closeMenu = useCallback(() => {
+    setMenu(false);
+    setTimeout(() => moreButton.current?.focus(), 0);
+  }, []);
   // Followed, no panel is open (review, 0.65.0: one left open behind Done took the first Back).
   useLayer(open !== null && !following, closePanel);
   useLayer(menu, closeMenu);
@@ -210,8 +214,14 @@ export function TripScreen({ id }: { id: string }) {
   const today = dayOf(now);
 
   // A new trip's start: where the last one ends, the day after (0.64.0).
-  const onward =
+  const next =
     sheet && sheet.after < 0 && !route.waypoints.length ? onwardFrom(trips, now, id) : undefined;
+  // Named as the list names it (review, 0.65.1: by its route, "Zürich HB → Zürich HB" for a round
+  // trip, and every trip of the week the same).
+  const onward = next && {
+    ...next,
+    from: next.trip.name || autoName(next.trip.route, stop, lineName) || t('newTour'),
+  };
   /** The trip moved to another day: its time on that day, stays until a time moved along. */
   const toDay = (d: string) => {
     const hm = timeOnDate(d, today, nextFive(now), anchor);
@@ -378,7 +388,7 @@ export function TripScreen({ id }: { id: string }) {
         </button>
       </header>
       {menu && (
-        <div className="menu-scrim" onClick={() => setMenu(false)}>
+        <div className="menu-scrim" onClick={closeMenu}>
           {/* A disclosure of plain buttons, not an ARIA menu (no arrow-key menu behaviour). */}
           <div className="menu" onClick={(e) => e.stopPropagation()}>
             {isPlanned(trip) && (
@@ -412,12 +422,15 @@ export function TripScreen({ id }: { id: string }) {
               type="button"
               onClick={() => {
                 const copy = crypto.randomUUID();
+                const date = addDays(route.date < today ? today : route.date, 7);
                 const r = {
                   ...structuredClone(route),
                   // The name you gave it comes along.
                   name: trip.name,
                   id: copy,
-                  date: addDays(route.date < today ? today : route.date, 7),
+                  date,
+                  // A stay until a time moves with the day (review, 0.65.1: it stayed behind).
+                  waypoints: staysOnDay(route.waypoints, route.date, date),
                 };
                 add(newTrip(copy, r, undefined, undefined, new Date()));
                 setMenu(false);

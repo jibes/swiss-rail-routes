@@ -97,14 +97,23 @@ export function liveRides(chain: Connection[], status: Map<string, JourneyStatus
     c.sections.flatMap((s, section): LiveRide[] => {
       if (s.mode === 'walk') return [];
       const st = s.journey ? status.get(s.journey) : undefined;
-      const byKey = new Map(st?.calls.map((x) => [x.key, x]) ?? []);
+      const reported = st?.calls ?? [];
       const calls = [s.from, ...s.intermediate, s.to];
+      // Matched in order, not by stop alone: a train calling twice at one stop (a loop, a
+      // reversal) has two calls there (review, 0.65.1: the second's times went to the first).
+      let at = 0;
+      const callOf = (key: string) => {
+        const i = reported.findIndex((x, j) => j >= at && x.key === key);
+        if (i < 0) return undefined;
+        at = i + 1;
+        return reported[i];
+      };
       return [
         {
           leg,
           section,
           s,
-          stops: calls.map((x) => liveStop(x, byKey.get(stopKey(x.stopRef)))),
+          stops: calls.map((x) => liveStop(x, callOf(stopKey(x.stopRef)))),
           cancelled: st?.cancelled ?? false,
         },
       ];

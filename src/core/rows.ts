@@ -215,7 +215,14 @@ export function plannedRows(
       const calling = new Set(s.intermediate.map((x) => stopKey(x.stopRef)));
       for (const key of (s.byRoad ?? []).slice(1, -1))
         if (wanted.has(key) && !calling.has(key))
-          seq.push({ type: 'station', name: key, key, role: 'pass', leg });
+          seq.push({
+            type: 'station',
+            // Its name from the route (review, 0.65.1: the raw key showed where none matched).
+            name: route.find((r) => r.key === key)?.name ?? key,
+            key,
+            role: 'pass',
+            leg,
+          });
       // A walk's end without its own time: when you get there on foot (second audit: the wait
       // after a walk, for the next train, was not said, as the row had no arrival).
       const walkedIn =

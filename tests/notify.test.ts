@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insertTemplate, newTour } from './helpers/edit';
-import { noticesFor } from '../src/core/notify';
+import { noticesFor, uniqueIds } from '../src/core/notify';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { newTrip } from '../src/core/trip';
 import { DATE, conn, index, ref, ride, templates } from './helpers/timetable';
@@ -150,5 +150,12 @@ describe('noticesFor', () => {
     const list = noticesFor(t, at('08:00'), templates, stop);
     expect(list.filter((n) => n.kind === 'depart').map((n) => n.params.time)).toEqual(['15:58']);
     expect(list.filter((n) => n.kind === 'exit').map((n) => n.params.time)).toEqual(['17:58']);
+  });
+});
+
+describe('notification ids', () => {
+  it('two trips hashing alike keep both their notices (review, 0.65.1)', () => {
+    const n = (id: number) => ({ id });
+    expect(uniqueIds([n(5), n(5), n(6), n(5)]).map((x) => x.id)).toEqual([5, 6, 7, 8]);
   });
 });

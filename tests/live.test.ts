@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { journeysToWatch, liveState, trainGone } from '../src/core/live';
+import { journeysToWatch, liveRides, liveState, trainGone } from '../src/core/live';
 import type { JourneyStatus } from '../src/core/ojp/journey';
 import { zurichDateTime } from '../src/core/ojp/request';
 import { DATE, conn, ref, ride } from './helpers/timetable';
@@ -302,5 +302,36 @@ describe('liveState', () => {
     // 6 min between the trains: a 4-min walk fits (not even tight), a 7-min one does not.
     expect(liveState(withWalk(4), at('08:30')).risks).toEqual([]);
     expect(liveState(withWalk(7), at('08:30')).risks[0]).toMatchObject({ reason: 'missed' });
+  });
+
+  it('a train calling twice at one stop: each call its own report (review, 0.65.1)', () => {
+    const loop = [
+      conn(
+        ride(
+          'R 1',
+          [
+            ['Zug', '08:00'],
+            ['Baar', '08:10'],
+            ['Zug', '08:20'],
+          ],
+          { journey: 'j' },
+        ),
+      ),
+    ];
+    const call = (dep: string, depEst: string, arr?: string, arrEst?: string) => ({
+      key: ref('Zug'),
+      name: 'Zug',
+      ...(dep ? { dep: iso(dep), depEst: iso(depEst) } : {}),
+      ...(arr ? { arr: iso(arr), arrEst: iso(arrEst!) } : {}),
+      passed: false,
+      cancelled: false,
+    });
+    const st: JourneyStatus = {
+      cancelled: false,
+      calls: [call('08:00', '08:02'), call('', '', '08:20', '08:29')],
+    };
+    const [r] = liveRides(loop, new Map([['j', st]]));
+    expect(r!.stops[0]!.dep).toBe(at('08:02'));
+    expect(r!.stops[2]!.arr).toBe(at('08:29'));
   });
 });

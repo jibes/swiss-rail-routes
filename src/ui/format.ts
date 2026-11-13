@@ -50,13 +50,6 @@ const ZURICH_HM = new Intl.DateTimeFormat('de-CH', {
 /** A time as `HH:MM` in Zurich. */
 export const zurichHm = (ms: number) => ZURICH_HM.format(ms);
 
-/** The next full or half hour in Zurich, `HH:MM` (the day's last, 23:30, at most). */
-export function nextHalfHour(now: number): string {
-  const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];
-  const t = Math.min(23 * 60 + 30, Math.ceil((h * 60 + m + 1) / 30) * 30);
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-}
-
 /** The next five minutes in Zurich, `HH:MM` (a new trip leaves from then; 23:55 at most). */
 export function nextFive(now: number): string {
   const [h, m] = ZURICH_HM.format(now).split(':').map(Number) as [number, number];

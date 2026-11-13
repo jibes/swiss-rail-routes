@@ -18,7 +18,7 @@ import {
   type Stamps,
   type SyncDoc,
 } from '../core/sync';
-import { compactTrip, type Trip } from '../core/trip';
+import { compactTrip, isOver, withoutTimetable, type Trip } from '../core/trip';
 import { useTours } from '../tours';
 import type { RecentStop } from '../core/recentStops';
 import { useRecentStops } from '../ui/recentStops';
@@ -280,7 +280,18 @@ async function round(start: Saved): Promise<Saved> {
     await keepFor(start.key, saved);
     if (!plan.push) return { ...saved, at: now };
     try {
-      const data = await seal({ ...plan.merged, v: DOC_V } satisfies Doc, aes);
+      // A trip over is shared without its timetable (review, 0.65.1: every past trip's
+      // connections made the copy grow until it was too big to sync at all). A device that has
+      // it keeps its own planned copy (`itemsOf`: the same trip but for its timetable).
+      // Items this version cannot read go as they came.
+      const readable = (x: unknown): x is Trip =>
+        !!x && typeof x === 'object' && 'chain' in x && 'route' in x && !!(x as Trip).route?.date;
+      const trips = plan.merged.trips.map((e) =>
+        readable(e.value) && e.value.chain && isOver(e.value, now)
+          ? { ...e, value: { ...withoutTimetable(e.value), previous: undefined } }
+          : e,
+      );
+      const data = await seal({ ...plan.merged, trips, v: DOC_V } satisfies Doc, aes);
       if (data.length > MAX_DATA) throw new SyncProblem('tooBig');
       const next = await push(id, v, data);
       log('sync.write', { v: next, chars: data.length });
