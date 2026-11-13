@@ -24,7 +24,6 @@ import { StationPanel, type LineActions } from './StationPanel';
 import { isCurrent, Mids, rideOf, stationLive, When, type LiveCtx } from './lineLive';
 import { useWalkSpans } from './walkSpans';
 import { seatOn } from '../core/seat';
-import { useHereY } from './useHereY';
 import { runsOn } from '../core/planner/connection';
 import { stayLabel } from './stayLabel';
 import { productText } from './product';
@@ -381,8 +380,6 @@ export function TripLine({
   // Weather along the line (0.37.0): a cell a row at the right, once the times are known.
   const weather = useWeather(rows, !planning);
   const wx = weather && 'rows' in weather ? weather : null;
-  // Under way, the stripe dims what is behind you, to where you are (`useHereY`).
-  const hereY = useHereY(box, !!wx && !!live, [live?.now, rows, open]);
   // A row without weather of its own (a walk, a stop not placed) takes its neighbour's sky, so
   // the stripe runs on unbroken; its rain stays its own (none).
   const skyAt = (i: number) => (wx ? (wx.rows[i] ?? wx.rows[i - 1] ?? wx.rows[i + 1]) : undefined);
@@ -693,13 +690,6 @@ export function TripLine({
             </li>
           );
         })}
-        {hereY !== null && (
-          <li
-            className="wx-now"
-            aria-hidden="true"
-            style={{ '--y': `${hereY}px` } as CSSProperties}
-          />
-        )}
         {act && live?.state.phase !== 'done' && (
           <li className="addrow">
             <button type="button" onClick={act.add}>

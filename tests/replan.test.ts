@@ -384,4 +384,92 @@ describe('mergeReplan', () => {
     expect(v.legs.map((l) => l.index)).toEqual([0, 1]);
     expect(v.chain.warnings[0]!.legIndex).toBe(1);
   });
+
+  it('a tight change to a train missed, a walk between, is gone with that train (review, 0.65.0)', () => {
+    const walk = {
+      mode: 'walk' as const,
+      walkMin: 2,
+      from: { stopRef: ref('Luzern'), name: 'Luzern' },
+      to: { stopRef: ref('Luzern'), name: 'Luzern' },
+      intermediate: [],
+    };
+    const ir = ride(
+      'IR 70',
+      [
+        ['Zürich HB', '08:04'],
+        ['Luzern', '08:45'],
+      ],
+      { journey: 'j1' },
+    );
+    const lix = ride(
+      'PE LIX',
+      [
+        ['Luzern', '08:48'],
+        ['Interlaken Ost', '10:41'],
+      ],
+      { journey: 'j2' },
+    );
+    const one = [conn(ir, walk, lix)];
+    const l: Leg[] = [
+      { index: 0, from: w('Zürich HB', 'start'), vias: [], to: w('Interlaken Ost', 'end') },
+    ];
+    const t = newTrip(
+      't',
+      { ...newTour('r', DATE), waypoints: [l[0]!.from, l[0]!.to] },
+      l,
+      {
+        connections: one,
+        warnings: [
+          {
+            type: 'tight-transfer',
+            severity: 'warn',
+            legIndex: 0,
+            sectionIndex: 0,
+            key: 'wTightTransfer',
+            params: {},
+          },
+        ],
+        score: 0,
+        dep: one[0]!.dep,
+        arr: one[0]!.arr,
+      },
+      new Date(0),
+    );
+    // The IR 70 reports +10: the 08:48 is missed, the rest planned from Luzern.
+    const late = {
+      cancelled: false,
+      calls: [
+        {
+          key: ref('Luzern'),
+          name: 'Luzern',
+          arr: one[0]!.sections[0]!.to.arr!,
+          arrEst: new Date(at('08:55')).toISOString(),
+          passed: false,
+          cancelled: false,
+        },
+      ],
+    };
+    const p = replanPoint(t, liveState(one, at('09:00'), new Map([['j1', late]])), at('09:00'))!;
+    const fresh = conn(
+      ride('IR 1', [
+        ['Luzern', '09:20'],
+        ['Interlaken Ost', '11:10'],
+      ]),
+    );
+    const v = mergeReplan(
+      t,
+      p,
+      [{ index: 0, from: w('Luzern', 'start'), vias: [], to: w('Interlaken Ost', 'end') }],
+      {
+        connections: [fresh],
+        warnings: [],
+        score: 0,
+        dep: fresh.dep,
+        arr: fresh.arr,
+      },
+    );
+    expect(v.chain.warnings.filter((x) => x.type === 'tight-transfer' && x.legIndex === 0)).toEqual(
+      [],
+    );
+  });
 });

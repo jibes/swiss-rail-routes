@@ -221,9 +221,13 @@ export function mergeReplan(
   chain: PlannedChain,
 ): Omit<TripVersion, 'savedAt'> & { legs: Leg[]; chain: PlannedChain } {
   // The cut leg's warnings about rides after the cut are gone with them (review of 11 Nov 2026).
-  const cutRides = point.keep[point.leg]?.sections.length ?? Infinity;
-  // A tight change at the cut itself was to the train now replaced: the joint is said anew.
-  const after = (w: { type: string }) => (w.type === 'tight-transfer' ? cutRides - 1 : cutRides);
+  const kept = point.keep[point.leg]?.sections;
+  const cutRides = kept?.length ?? Infinity;
+  // A tight change at the cut itself was to the train now replaced: the joint is said anew. It
+  // sits on the last ride kept, a walk after it or not (review, 0.65.0: with a walk to the
+  // missed train, "tight" stayed for a train no longer taken).
+  const lastRide = kept ? kept.findLastIndex((s) => s.mode !== 'walk') : Infinity;
+  const after = (w: { type: string }) => (w.type === 'tight-transfer' ? lastRide : cutRides);
   const keptWarnings = trip.chain.warnings.filter(
     (w) =>
       w.legIndex < point.keep.length &&

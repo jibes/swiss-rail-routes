@@ -247,7 +247,13 @@ export function liveState(
  */
 export function trainGone(state: LiveState, now: number): boolean {
   const n = state.next;
-  return state.phase === 'waiting' && n?.kind === 'board' && n.at < now - 60_000;
+  // Missed, not cancelled or no longer stopping here: those say so themselves (review, 0.65.0).
+  return (
+    state.phase === 'waiting' &&
+    n?.kind === 'board' &&
+    n.at < now - 60_000 &&
+    state.risks.some((r) => r.ride === n.ride && r.reason === 'missed')
+  );
 }
 
 /** Times with the gaps filled in a straight line between the known ones on either side. */

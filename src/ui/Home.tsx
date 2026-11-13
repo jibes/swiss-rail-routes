@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { expectedArrival, liveState } from '../core/live';
+import { expectedArrival, liveState, trainGone } from '../core/live';
 import { autoName } from '../core/naming';
 import { stopKey } from '../core/stops';
 import { dayOf, isPlanned, newTrip, sortTrips, type Trip } from '../core/trip';
@@ -90,6 +90,8 @@ function nextStep(
   const n = s.next;
   const ride = n ? s.rides[n.ride] : undefined;
   if (!n || !ride) return undefined;
+  // As the trip's card says it (review, 0.65.0: the list still said the train gone).
+  if (trainGone(s, now)) return `${hhmm(n.at)} · ${t('nowMissed')}`;
   return n.kind === 'board'
     ? `${hhmm(n.at)} · ${badge(ride.s)}${n.stop.platform ? ` · ${t('platform', { p: n.stop.platform })}` : ''}`
     : `${hhmm(n.at)} · ${t('nowAlight', { stop: n.stop.name })}`;

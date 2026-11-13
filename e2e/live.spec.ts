@@ -18,12 +18,15 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Change trip' }).click();
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
-  // Changing, no live tile (0.63.2): the line keeps its marker.
-  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  // Changing, no live tile (0.63.2): the line keeps its marker. Under way nothing gone is
+  // offered (0.65.0): the 09:04 being ridden is the earliest.
+  await expect(page.locator('.next')).toHaveCount(0);
   await expect(page.locator('.trip-line .station.here')).toHaveCount(1);
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
-  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+  // Followed: the next step; no progress bar (0.65.0: the line's marker says it).
+  await expect(page.locator('.next')).toBeVisible();
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
   // On the train: the marker rides along, its stops open, passed ones grey.
   await page.clock.runFor('25:00');
   await expect(page.getByText(/Get off at Lauterbrunnen|Get off at Grindelwald/)).toBeVisible();
@@ -56,9 +59,6 @@ test('a trip under way: next step, progress, the marker on the line', async ({ p
   expect(marker.y).toBeGreaterThanOrEqual(marker.from - 1);
   expect(marker.y).toBeLessThanOrEqual(marker.to + 1);
   await expect(page.locator('.trip-line.live .passed').first()).toBeVisible();
-  expect(Number(await page.getByRole('progressbar').getAttribute('aria-valuenow'))).toBeGreaterThan(
-    0,
-  );
 
   // The list's card of the trip under way says its next step, the time first (0.60.0: no bar
   // above the list); opening the app goes straight to Now.
@@ -84,7 +84,7 @@ test('under way, Change trip: time and options there; a stop added ahead, undone
   // 09:15, on the R62 (a trip is never planned from a time gone).
   await page.clock.runFor('25:00');
   const line = page.getByRole('list', { name: 'The trip', exact: true });
-  await expect(page.getByRole('progressbar')).toBeVisible();
+  await expect(page.locator('.next')).toBeVisible();
   // Followed: the line read only, no date, time or options.
   await expect(page.getByLabel('Leave from (time)')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Alternatives' })).toHaveCount(0);
@@ -93,6 +93,21 @@ test('under way, Change trip: time and options there; a stop added ahead, undone
   await page.getByRole('button', { name: 'Change trip' }).click();
   await expect(page.getByLabel('Leave from (time)')).toHaveCount(1);
   await expect(page.getByRole('group', { name: 'Alternatives' })).toBeVisible();
+  // Nothing gone is offered under way (review, 0.65.0: Earlier asked for the 08:04, gone; an
+  // unrecorded query fails this test).
+  await page.getByRole('button', { name: 'Earlier connections' }).click();
+  await expect(page.getByText('No earlier connection on this day.')).toBeVisible();
+  // A panel open, then Done: closed with it, so Back is not taken by it (review, 0.65.0).
+  await line.locator('.station', { hasText: 'Kleine Scheidegg' }).locator('button.m').click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('.panel')).toHaveCount(0);
+  const taken = await page.evaluate(() => {
+    const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    document.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(taken).toBe(false);
+  await page.getByRole('button', { name: 'Change trip' }).click();
   // No separate editor, no way-here line, no Update.
   await expect(page.locator('.trip-line')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Update trip' })).toHaveCount(0);
@@ -126,7 +141,7 @@ test('before departure and after its day: edited in place', async ({ page }) => 
 
   // Before departure: the timetable, every station a button for the panel; nothing live.
   await expect(page.locator('.hero-times')).toContainText('09:04');
-  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await expect(page.locator('.next')).toHaveCount(0);
   await page.locator('.trip-line .station.entry').first().getByRole('button').first().click();
   await expect(page.getByRole('button', { name: 'Add after' })).toBeVisible();
   await page.goto('./');
@@ -138,7 +153,7 @@ test('before departure and after its day: edited in place', async ({ page }) => 
   await expect(page.getByRole('list', { name: 'Upcoming' })).toHaveCount(0);
   await page.getByText('Past trips (1)').click();
   await page.getByRole('list', { name: 'Past trips' }).getByRole('link').click();
-  await expect(page.getByRole('progressbar')).toHaveCount(0);
+  await expect(page.locator('.next')).toHaveCount(0);
   await page.locator('.trip-line .station.entry').first().getByRole('button').first().click();
   await expect(page.getByRole('button', { name: 'Add after' })).toBeVisible();
 });

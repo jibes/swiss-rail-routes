@@ -260,6 +260,10 @@ describe('liveState', () => {
     expect(journeysToWatch(s, at('11:00'))).toEqual([]);
     // Its train gone: the card says Train missed, the risk no more (0.64.2); not before it left.
     expect(trainGone(s, at('11:00'))).toBe(true);
+    // A train cancelled is said as cancelled, not missed (review, 0.65.0).
+    const gone = liveState(chain, at('09:10'), new Map([['j2', { cancelled: true, calls: [] }]]));
+    expect(gone.phase).toBe('waiting');
+    expect(trainGone(gone, at('09:10'))).toBe(false);
     expect(
       trainGone(liveState(chain, at('08:50'), new Map([['j1', late('09:03')]])), at('08:50')),
     ).toBe(false);

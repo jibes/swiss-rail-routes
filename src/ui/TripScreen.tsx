@@ -124,6 +124,12 @@ export function TripScreen({ id }: { id: string }) {
   const [changing, setChanging] = useState(false);
   const following = !!liveTrip && !changing;
   const [open, setOpen] = useState<number | null>(null);
+  // A change ahead left when the trip is no longer under way (arrived, moved off its day): nothing
+  // would plan or offer to discard it (review, 0.65.0).
+  const stale = useRestDrafts((s) => !liveTrip && !!s.drafts[id]);
+  useEffect(() => {
+    if (stale) useRestDrafts.getState().discard(id);
+  }, [stale, id]);
   // A new trip opens with the search: where it starts.
   const [sheet, setSheet] = useState<{ after: number } | null>(() =>
     trip && !trip.route.waypoints.length ? { after: -1 } : null,
@@ -164,7 +170,8 @@ export function TripScreen({ id }: { id: string }) {
   }, []);
   const closePanel = useCallback(() => setOpen(null), []);
   const closeMenu = useCallback(() => setMenu(false), []);
-  useLayer(open !== null, closePanel);
+  // Followed, no panel is open (review, 0.65.0: one left open behind Done took the first Back).
+  useLayer(open !== null && !following, closePanel);
   useLayer(menu, closeMenu);
   if (!trip) return <NotFound />;
 
@@ -275,7 +282,9 @@ export function TripScreen({ id }: { id: string }) {
       {/* Failed with nothing to choose from: the notice says it, no empty strip. */}
       {route.waypoints.length >= 2 && !(failed && !planner.result?.options?.length) && (
         <OptionsBar
-          fromNow={false}
+          // Under way, nothing that has left is offered (review, 0.65.0: Earlier asked for
+          // trains gone, and taking one that had arrived ended the trip).
+          fromNow={!!liveTrip}
           trip={trip}
           result={planner.result}
           planning={planning}
@@ -319,11 +328,16 @@ export function TripScreen({ id }: { id: string }) {
         {liveTrip && (
           <button
             type="button"
-            className="icon"
+            className="bar-text"
+            // In words (review, 0.65.0): the title's pencil renames, this changes the trip.
             aria-label={t(changing ? 'doneChanging' : 'changeTrip')}
-            onClick={() => setChanging(!changing)}
+            onClick={() => {
+              setChanging(!changing);
+              setOpen(null);
+              setRenaming(false);
+            }}
           >
-            <Icon name={changing ? 'check' : 'edit'} />
+            {t(changing ? 'doneChanging' : 'change')}
           </button>
         )}
         <button
@@ -430,7 +444,8 @@ export function TripScreen({ id }: { id: string }) {
         </div>
       )}
 
-      {!following && when}
+      {/* While a change ahead is planned, nothing else is changed until it is the trip's. */}
+      {!following && !pending && when}
 
       {following ? (
         // Followed: the name only; renamed while changing.
@@ -492,7 +507,7 @@ export function TripScreen({ id }: { id: string }) {
             result={planner.result}
             retry={planner.retry}
           />
-          {!following && optionsBar}
+          {!following && !pending && optionsBar}
 
           <LogRows
             trip={id}

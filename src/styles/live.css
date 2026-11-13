@@ -54,21 +54,6 @@
 
 /* ─── Now ─── */
 
-.trip-progress {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--hair);
-  overflow: hidden;
-}
-
-.trip-progress span {
-  display: block;
-  height: 100%;
-  width: var(--p);
-  background: var(--rail);
-  border-radius: 2px;
-}
-
 .next {
   display: flex;
   flex-direction: column;

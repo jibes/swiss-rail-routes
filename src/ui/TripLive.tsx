@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { trainGone, type LiveState } from '../core/live';
 import type { PlannedTrip } from '../core/trip';
 import { undo } from '../core/trip';
@@ -116,31 +116,20 @@ export function TripLive({
     <>
       {state && (
         <>
-          <div
-            className="trip-progress"
-            role="progressbar"
-            aria-label={t('progress')}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(state.progress * 100)}
-            style={{ '--p': `${(state.progress * 100).toFixed(1)}%` } as CSSProperties}
-          >
-            <span />
-          </div>
           <NextStep
             state={state}
             now={live.now}
             change={change}
+            // Where the times come from, said only when live data was asked for and did not come
+            // (0.65.0: progress and source were said four ways under way; the line has the rest).
             source={
-              <p className="muted live-source">
-                {live.failed
-                  ? live.fetchedAt
+              live.failed && (
+                <p className="muted live-source">
+                  {live.fetchedAt
                     ? t('liveStale', { time: hhmm(live.fetchedAt) })
-                    : t('liveOffline')
-                  : live.fetchedAt
-                    ? t('liveAt', { time: hhmm(live.fetchedAt) })
-                    : t('liveTimetable')}
-              </p>
+                    : t('liveOffline')}
+                </p>
+              )
             }
           />
           {state.risks

@@ -70,20 +70,3 @@ test('a trip more than a week ahead: no stripe, the day the weather comes from',
   await expect(line.locator('.wx-far')).toHaveText(/^Weather from /, { timeout: 15_000 });
   await expect(line.locator('.wx-cell')).toHaveCount(0);
 });
-
-// Reported, 0.40.0: under way the stripe dimmed row by row, a whole ride behind the train. Now
-// it is dimmed down to where you are and marked there, in step with the line's marker.
-test('under way, the stripe is dimmed to where you are, and marked there', async ({ page }) => {
-  await page.clock.install({ time: new Date(`${FIXTURE_DATE}T07:50:00Z`) }); // planned at 08:50
-  await planShared(page, encodeTour({ ...acceptanceTours(FIXTURE_DATE).T5!, name: 'Wx live' }));
-  await page.clock.runFor('25:00'); // 09:15, on the R62
-  const line = page.getByRole('list', { name: 'The trip', exact: true });
-  const now = line.locator('.wx-now');
-  await expect(now).toHaveCount(1, { timeout: 15_000 });
-  // Its lower edge where the ride's rail turns red: inside the ride you are on.
-  const ride = line.locator(':scope > li.ride.here');
-  const [r, n] = await Promise.all([ride.boundingBox(), now.boundingBox()]);
-  const bottom = n!.y + n!.height;
-  expect(bottom).toBeGreaterThan(r!.y);
-  expect(bottom).toBeLessThan(r!.y + r!.height);
-});

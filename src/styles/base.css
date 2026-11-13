@@ -293,3 +293,20 @@ button {
   min-width: 44px;
   min-height: 44px;
 }
+
+/* A word in the bar (Change / Done under way, 0.65.0): as tall as the icons beside it. */
+.bar .bar-text {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bar .bar-text:hover {
+  background: var(--surface-2, rgb(127 127 127 / 0.12));
+}

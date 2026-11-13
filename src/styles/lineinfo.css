@@ -144,22 +144,6 @@
   border-radius: 0 0 8px 8px;
 }
 
-/* Under way (0.42.0): behind you dimmed, to where you are, and that marked in red, in step with
-   the line's marker; not row by row. */
-.trip-line > li.wx-now {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  right: 6px;
-  width: 16px;
-  height: var(--y);
-  padding: 0;
-  border-bottom: 2px solid var(--rail);
-  border-radius: 8px 8px 0 0;
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
-  pointer-events: none;
-}
-
 /* The chance of rain or snow: as wide as it is likely, its top at the name's. */
 .wx-bar {
   position: absolute;
