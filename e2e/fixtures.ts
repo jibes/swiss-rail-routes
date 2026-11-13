@@ -92,14 +92,14 @@ export async function answerWorker(page: Page, problems: string[] = []) {
     const req = route.request();
     const body = req.postData() ?? undefined;
     const path = new URL(req.url()).pathname;
-    const eu = body && path.startsWith('/eu/') ? recordedEu(body) : null;
+    // Stations abroad are asked as you type (0.66.1): one not recorded is none found, not a
+    // failure (a test pausing over a name would otherwise fail by its timing).
+    const eu =
+      body && path.startsWith('/eu/')
+        ? (recordedEu(body) ?? (path === '/eu/stops' ? '[]' : null))
+        : null;
     const recorded = body ? (eu ?? recordedAnswer(body)) : null;
-    if (
-      body &&
-      !recorded &&
-      /\/(trip|departures|eu\/stops|eu\/plan)$/.test(path) &&
-      !lenient.has(page)
-    )
+    if (body && !recorded && /\/(trip|departures|eu\/plan)$/.test(path) && !lenient.has(page))
       problems.push(`no recorded answer for ${body}`);
     const res = await handle(
       new Request(req.url(), {

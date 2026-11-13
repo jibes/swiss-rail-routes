@@ -92,9 +92,90 @@ export function euPlanUrl(base: string, q: EuPlanQuery): string {
   return `${base.replace(/[/]$/, '')}/api/v5/plan?${p}`;
 }
 
+/** Stops and places by name (places too: a town's stations are found by the town, below). */
 export function euStopsUrl(base: string, q: EuStopQuery): string {
-  const p = new URLSearchParams({ text: q.text, type: 'STOP' });
+  const p = new URLSearchParams({ text: q.text });
   return `${base.replace(/[/]$/, '')}/api/v1/geocode?${p}`;
+}
+
+/** Half the box looked in round a town for its stations, degrees (about 4.5 by 4 km there). */
+const AREA_LAT = 0.04;
+const AREA_LON = 0.08;
+
+export interface EuPlace {
+  lat: number;
+  lon: number;
+  country?: string;
+}
+
+/**
+ * Of Transitous' geocoding answer, the first town (a second was noise: "Narvik" a street in
+ * Stockholm). Its search ranks a small town's stations
+ * below bus stops of the same name, or not at all (13 Nov 2026: "Umeå" no station, "Boden" a
+ * Swiss halt and bus stops, not Boden C), but finds the town: its stations are looked up there.
+ */
+export function euPlaces(answer: unknown): EuPlace[] {
+  if (!Array.isArray(answer)) return [];
+  return answer
+    .filter(
+      (x): x is Record<string, unknown> =>
+        isObj(x) && x.type === 'PLACE' && typeof x.lat === 'number' && typeof x.lon === 'number',
+    )
+    .slice(0, 1)
+    .map((x) => ({
+      lat: x.lat as number,
+      lon: x.lon as number,
+      ...(typeof x.country === 'string' ? { country: x.country } : {}),
+    }));
+}
+
+/** Two stops this near are one station (several feeds name it: "Lyon Part Dieu" eight times). */
+const SAME_KM = 0.3;
+const kmBetween = (a: EuStop, b: EuStop) => {
+  const r = Math.PI / 180;
+  const x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  return Math.hypot(x, (b.lat - a.lat) * r) * 6371;
+};
+
+/** Transitous' stops within a box round a town. */
+export function euAreaUrl(base: string, p: EuPlace): string {
+  const q = new URLSearchParams({
+    min: `${(p.lat - AREA_LAT).toFixed(5)},${(p.lon - AREA_LON).toFixed(5)}`,
+    max: `${(p.lat + AREA_LAT).toFixed(5)},${(p.lon + AREA_LON).toFixed(5)}`,
+  });
+  return `${base.replace(/[/]$/, '')}/api/v1/map/stops?${q}`;
+}
+
+/** The railway stations of an area's stops, the most important first, with the town's country. */
+export function euAreaStations(answer: unknown, place: EuPlace): EuStop[] {
+  if (!Array.isArray(answer)) return [];
+  return answer
+    .filter(
+      (x): x is Record<string, unknown> =>
+        isObj(x) &&
+        typeof x.stopId === 'string' &&
+        typeof x.name === 'string' &&
+        typeof x.lat === 'number' &&
+        typeof x.lon === 'number' &&
+        Array.isArray(x.modes) &&
+        x.modes.some((m) => RAIL.has(String(m))),
+    )
+    .sort((a, b) => Number(b.importance ?? 0) - Number(a.importance ?? 0))
+    .map((x) => ({
+      id: x.stopId as string,
+      name: x.name as string,
+      lat: x.lat as number,
+      lon: x.lon as number,
+      ...(place.country ? { country: place.country } : {}),
+    }));
+}
+
+/** The town's stations, then those found by name, each station once, at most 8. */
+export function euStationsMerged(byName: EuStop[], byTown: EuStop[][]): EuStop[] {
+  const out: EuStop[] = [];
+  for (const s of [...byTown.flat(), ...byName])
+    if (out.length < 8 && !out.some((o) => o.id === s.id || kmBetween(o, s) < SAME_KM)) out.push(s);
+  return out;
 }
 
 const RAIL = new Set(['HIGHSPEED_RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_RAIL', 'RAIL']);

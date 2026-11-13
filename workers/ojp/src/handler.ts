@@ -22,7 +22,11 @@ import {
 } from '../../../src/core/ojp/request';
 import {
   euPlanUrl,
+  euAreaStations,
+  euAreaUrl,
+  euPlaces,
   euStations,
+  euStationsMerged,
   euStopsUrl,
   parseEuPlanQuery,
   parseEuStopQuery,
@@ -252,7 +256,27 @@ async function europe(
     return reply(502, 'upstream');
   }
   if (!up.ok) return reply(up.status === 429 ? 503 : 502, `upstream ${up.status}`);
-  const text = stops ? JSON.stringify(euStations(await up.json())) : await up.text();
+  let text: string;
+  if (stops) {
+    const answer: unknown = await up.json();
+    // A town's stations, looked up round the town (13 Nov 2026: small towns' stations were not
+    // found by name); a town that fails leaves those found by name.
+    const town = d.transitous;
+    const byTown = await Promise.all(
+      euPlaces(answer).map(async (p) => {
+        try {
+          const r = await d.fetch(euAreaUrl(town, p), {
+            headers: { 'User-Agent': UA, Accept: 'application/json' },
+            signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+          });
+          return r.ok ? euAreaStations(await r.json(), p) : [];
+        } catch {
+          return [];
+        }
+      }),
+    );
+    text = JSON.stringify(euStationsMerged(euStations(answer), byTown));
+  } else text = await up.text();
   d.defer(
     d.cache.put(
       cacheReq,

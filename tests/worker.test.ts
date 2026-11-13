@@ -264,8 +264,59 @@ describe('Europe through Transitous (0.31.0)', () => {
       { id: 'it:1', name: 'Milano Centrale', lat: 45.48, lon: 9.2, country: 'IT' },
     ]);
     const [url, init] = upstream.mock.calls[0]!;
-    expect(String(url)).toBe('https://tr.example/api/v1/geocode?text=Milano&type=STOP');
+    expect(String(url)).toBe('https://tr.example/api/v1/geocode?text=Milano');
     expect((init!.headers as Record<string, string>)['User-Agent']).toContain('Viadukt');
+  });
+
+  it('a small town: its stations looked up round it, before those found by name (13 Nov 2026)', async () => {
+    const s = setup({ transitous: 'https://tr.example' });
+    s.upstream.mockImplementation(async (url: unknown) => {
+      const u = String(url);
+      if (u.includes('/geocode'))
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'ch:7278',
+              name: 'Boden',
+              lat: 46.47,
+              lon: 7.43,
+              country: 'CH',
+              modes: ['REGIONAL_RAIL'],
+              type: 'STOP',
+            },
+            { id: 'p', name: 'Boden', lat: 65.8275, lon: 21.6964, country: 'SE', type: 'PLACE' },
+            { id: 'se:bus', name: 'Boden', lat: 57.88, lon: 12.33, modes: ['BUS'], type: 'STOP' },
+          ]),
+        );
+      return new Response(
+        JSON.stringify([
+          {
+            stopId: 'se:bus2',
+            name: 'Boden busstation',
+            lat: 65.82,
+            lon: 21.69,
+            modes: ['BUS'],
+            importance: 9,
+          },
+          {
+            stopId: 'se:c',
+            name: 'Boden C/Resecentrum',
+            lat: 65.82,
+            lon: 21.68,
+            modes: ['REGIONAL_RAIL', 'NIGHT_RAIL'],
+            importance: 5,
+          },
+        ]),
+      );
+    });
+    const res = await s.call('/eu/stops', { body: JSON.stringify({ text: 'Boden' }) });
+    expect(await res.json()).toEqual([
+      { id: 'se:c', name: 'Boden C/Resecentrum', lat: 65.82, lon: 21.68, country: 'SE' },
+      { id: 'ch:7278', name: 'Boden', lat: 46.47, lon: 7.43, country: 'CH' },
+    ]);
+    const area = new URL(String(s.upstream.mock.calls[1]![0]));
+    expect(area.pathname).toBe('/api/v1/map/stops');
+    expect(area.searchParams.get('min')).toBe('65.78750,21.61640');
   });
 
   it('a trip abroad: trains only, a few, from points; nonsense refused', async () => {

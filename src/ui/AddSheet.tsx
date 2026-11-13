@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { searchAttractions, type AttractionData } from '../core/attractions';
 import { templateName, type RouteTemplate } from '../core/data';
 import attractionData from '../data/attractions.json';
@@ -38,6 +38,9 @@ export type Picked =
  * `after` is the station it adds after (lines run on from there; none: a new trip), `next` the
  * one that follows it (a line ending there leads to it).
  */
+/** The text rests this long before stations abroad are asked for (Transitous, through the Worker). */
+const ABROAD_REST_MS = 500;
+
 export function AddSheet({
   title,
   after,
@@ -68,21 +71,34 @@ export function AddSheet({
     now,
   );
   const [q, setQ] = useState('');
-  // Stations abroad (0.33.0, Transitous): asked only on the tap, for the text as it was then.
+  // Stations abroad (0.33.0, Transitous): asked as you type, once the text rests half a second,
+  // under the Swiss ones (13 Nov 2026: a tap first was a step too many). Swiss stations come
+  // from the index on the device, so they are left out of the answer.
   const [abroad, setAbroad] = useState<{ q: string; found: EuStop[] | 'asking' | 'failed' }>();
-  const askAbroad = () => {
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
     const text = q.trim();
-    setAbroad({ q: text, found: 'asking' });
-    fetchEuStops(text).then(
-      (found) =>
-        setAbroad((a) =>
-          a?.q === text
-            ? { q: text, found: found.map((x) => ({ ...x, name: placeName(x.name, x) })) }
-            : a,
-        ),
-      () => setAbroad((a) => (a?.q === text ? { q: text, found: 'failed' } : a)),
-    );
-  };
+    if (fold(text).length < 3) return;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      setAbroad({ q: text, found: 'asking' });
+      fetchEuStops(text, ctrl.signal).then(
+        (found) =>
+          setAbroad({
+            q: text,
+            found: found
+              .filter((x) => x.country !== 'CH')
+              .map((x) => ({ ...x, name: placeName(x.name, x) })),
+          }),
+        () => !ctrl.signal.aborted && setAbroad({ q: text, found: 'failed' }),
+      );
+    }, ABROAD_REST_MS);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [q, retry]);
+  const askAbroad = () => setRetry((n) => n + 1);
   const abroadNow = abroad?.q === q.trim() ? abroad.found : undefined;
   const input = useRef<HTMLInputElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
@@ -300,15 +316,6 @@ export function AddSheet({
               </button>
             );
           })}
-          {f.length >= 3 && !abroadNow && (
-            <button type="button" className="result" onClick={askAbroad}>
-              <span className="r-icon" aria-hidden="true">
-                <Icon name="globe" />
-              </span>
-              <span className="r-name">{t('searchAbroad', { q: q.trim() })}</span>
-              <span className="r-sub">{t('abroadSource')}</span>
-            </button>
-          )}
           {abroadNow === 'asking' && <RailLoader label={t('abroadAsking')} />}
           {abroadNow === 'failed' && (
             <p className="muted" role="status">
@@ -320,8 +327,7 @@ export function AddSheet({
           )}
           {Array.isArray(abroadNow) && (
             <>
-              <h3 className="section-label">{t('abroadLabel')}</h3>
-              {!abroadNow.length && <p className="muted">{t('abroadNone')}</p>}
+              {abroadNow.length > 0 && <h3 className="section-label">{t('abroadLabel')}</h3>}
               {abroadNow.map((s) => (
                 <button
                   key={s.id}
