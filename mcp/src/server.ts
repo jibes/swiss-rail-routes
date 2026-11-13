@@ -105,7 +105,7 @@ const stops = z
         .string()
         .optional()
         .describe(
-          "YYYY-MM-DDTHH:MM, Zurich, on the trip's day: stay until then; the next train leaves no earlier. A later day is refused (overnight_stay): a trip is one day of travel, the next day its own trip. Makes the stop a stay (30 min when stay is left out).",
+          'YYYY-MM-DDTHH:MM, Zurich, on the day of the arrival there: stay until then; the next train leaves no earlier. A night there (a later day than the plan arrives) is refused (overnight_stay): a trip is one day of travel, the next day its own trip; the morning after a night train is fine. Makes the stop a stay (30 min when stay is left out).',
         ),
     }),
   )

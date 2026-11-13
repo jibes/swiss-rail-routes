@@ -11,6 +11,7 @@ import type { Leg, Section, Tour } from '../../src/core/model';
 import { delayMin, UnknownJourneyError } from '../../src/core/ojp/journey';
 import { journeyQueryOf, parseJourneyQuery } from '../../src/core/ojp/request';
 import { missedByDisruption, plannedRows } from '../../src/core/rows';
+import { nightsOf } from '../../src/core/nights';
 import {
   fold,
   placeByName,
@@ -480,6 +481,19 @@ export function createTools(deps: ToolDeps) {
       const r = await waitFor(job);
       if (!r) return stillPlanning(job);
       if (!r.options?.length || !r.legs) return failed({ ...r, legs: r.legs });
+      // One trip per day of travel (0.64.0, as the app): a stay until a later day than the plan
+      // arrives there is a night, and ends the trip; the morning after a night train is not.
+      const night = nightsOf({
+        route: job.tour,
+        legs: r.legs,
+        chain: r.recommended ?? r.options[0]!,
+      })[0];
+      if (night) {
+        const at = job.tour.waypoints[night.k]!;
+        throw new ToolError(
+          `overnight_stay: stayUntil ${night.end} at ${at.name} is a later day than the plan arrives there. A trip is one day of travel (a night train is a ride in it): end this trip at ${at.name} and plan the next day as its own trip from there.`,
+        );
+      }
       const t = now();
       const left = r.options.filter(notLeftSince(job.at, t));
       if (!left.length) throw new ToolError('every connection found has left: plan again');

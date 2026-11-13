@@ -157,7 +157,7 @@ describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2
     ).toThrow(/not a time/);
   });
 
-  it('a stay until a time, kept in the route and its link; a later day refused (0.64.0)', () => {
+  it('a stay until a time, kept in the route and its link', () => {
     const next = new Date(Date.parse(`${FIXTURE_DATE}T12:00:00Z`) + 86400_000)
       .toISOString()
       .slice(0, 10);
@@ -173,10 +173,11 @@ describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2
       stayUntil: `${FIXTURE_DATE}T15:15`,
     });
     expect(routeLinkOf(t, URL_)).toContain(`.n${FIXTURE_DATE.replace(/-/g, '')}1515`);
-    // A night there: one trip per day of travel.
-    expect(() => route({ date: FIXTURE_DATE, stops: stops(`${next}T09:15`) })).toThrow(
-      /overnight_stay/,
-    );
+    // A later day is the plan's to judge (0.64.3: the morning after a night train is fine;
+    // plan_trip refuses a night, `nightsOf`).
+    expect(
+      route({ date: FIXTURE_DATE, stops: stops(`${next}T09:15`) }).waypoints[1]!.stayUntil,
+    ).toBe(`${next}T09:15`);
     expect(() => route({ date: FIXTURE_DATE, stops: stops('tomorrow') })).toThrow(/not a date/);
     expect(() => route({ date: FIXTURE_DATE, stops: stops('2020-01-01T09:00') })).toThrow(
       /before the trip/,

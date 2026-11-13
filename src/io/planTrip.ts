@@ -158,5 +158,7 @@ export function keepPlan(id: string, json: string, r: PlanResult): boolean {
     log('plan.keep', { trip: id, kept: fits, dep: chain.dep, arr: chain.arr });
     return fits ? compactTrip({ ...t, chain, legs, compact: undefined }) : t;
   });
+  // Planned over a night (a link, a route from before): one trip a day from now on (0.64.3).
+  useTrips.getState().splitNights(id);
   return true;
 }

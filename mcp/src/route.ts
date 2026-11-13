@@ -199,11 +199,6 @@ export function buildRoute(
   for (const e of entries) {
     if (e.w.stayUntil && e.w.stayUntil.slice(0, 10) < date)
       throw new ToolError(`stayUntil ${e.w.stayUntil} is before the trip's day, ${date}`);
-    // One trip per day of travel (0.64.0, as the app): a night at a station ends the trip.
-    if (e.w.stayUntil && e.w.stayUntil.slice(0, 10) > date)
-      throw new ToolError(
-        `overnight_stay: stayUntil ${e.w.stayUntil} is after the trip's day, ${date}. A trip is one day of travel (a night train is a ride in it): end this trip at ${e.w.name} and plan the next day as its own trip from there.`,
-      );
   }
   return fromEntries(
     {
