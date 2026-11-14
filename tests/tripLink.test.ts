@@ -344,8 +344,7 @@ describe('the compact link (0.21.0)', async () => {
         w.templateId,
         w.line,
         !!w.ring,
-        w.leaveBy,
-        w.arriveAfter,
+        w.stayUntil,
       ]),
       connections: t.chain.connections.map((c) => [
         c.dep,

@@ -2,13 +2,7 @@
 // attraction closes), and a round trip's way back the fastest.
 import { describe, expect, it } from 'vitest';
 import { parseRoute } from '../src/core/export/routeLink';
-import {
-  DEFAULT_STAY,
-  setEntryLeaveBy,
-  setEntryStay,
-  setEntryStayUntil,
-  UNTIL_DWELL,
-} from '../src/core/line';
+import { DEFAULT_STAY, setEntryStay, setEntryStayUntil, UNTIL_DWELL } from '../src/core/line';
 import { decodeTripLink, encodeTripLink } from '../src/core/export/tripLink';
 import type { Tour } from '../src/core/model';
 import { plan } from '../src/core/planner/plan';
@@ -109,52 +103,29 @@ const day = [
   on('11:00', '12:00'),
 ];
 
-describe('a stay with a time to leave by, or not before (F3)', () => {
-  // Retest round 3, 6 Nov 2026: the option that cannot leave in time was still offered beside
-  // the one that can. Once one can, only those that can are offered; when none can, each is said.
-  it('leave by: only the options that leave in time are offered while any can', async () => {
-    const r = await plan(visit({ leaveBy: '10:30' }), deps(day).deps);
-    expect(r.recommended!.dep).toBe(day[0]!.dep);
-    expect(r.recommended!.warnings.map((w) => w.type)).not.toContain('window-missed');
-    expect(r.options!.map((o) => o.dep)).not.toContain(day[1]!.dep);
-    // None can leave by 09:30: all are offered, each said late.
-    const none = await plan(visit({ leaveBy: '09:30' }), deps(day).deps);
-    const w = none.recommended!.warnings.find((x) => x.type === 'window-missed')!;
-    expect(w.params).toMatchObject({ at: 'Luzern', time: '09:30' });
-    // Without the time, both are just options.
-    const free = await plan(visit({}), deps(day).deps);
-    expect(free.options!.flatMap((o) => o.warnings).map((x) => x.type)).not.toContain(
-      'window-missed',
-    );
-  });
+describe('a time to leave by, read as a stay until then (0.67.0)', () => {
+  it('older links and data: leave by becomes a stay until that time, come after is dropped', () => {
+    const t = visit({});
+    const old = {
+      ...t,
+      waypoints: t.waypoints.map((w, i) =>
+        i === 1 ? { ...w, leaveBy: '17:30', arriveAfter: '10:00' } : w,
+      ),
+    };
+    const back = sanitiseTour(old, DATE)!;
+    expect(back.waypoints[1]).toMatchObject({ stayUntil: `${DATE}T17:30` });
+    expect(back.waypoints[1]).not.toHaveProperty('leaveBy');
+    expect(back.waypoints[1]).not.toHaveProperty('arriveAfter');
 
-  it('not before: the stay starts when it opens, so the next train is the later one', async () => {
-    const r = await plan(visit({ arriveAfter: '09:30' }), deps(day).deps);
-    expect(r.recommended!.connections[1]!.dep).toBe(day[3]!.dep);
-    const free = await plan(visit({}), deps(day).deps);
-    expect(free.recommended!.connections[1]!.dep).toBe(day[2]!.dep);
-  });
-
-  it('kept through storage, route links and trip links; older links never set it', async () => {
-    const t = visit({ leaveBy: '17:30', arriveAfter: '10:00' });
-    const back = sanitiseTour(t, DATE)!;
-    expect(back.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '10:00' });
-    expect(sanitiseTour(visit({ leaveBy: '25:00' }), DATE)!.waypoints[1]!.leaveBy).toBeUndefined();
-
-    const { stops, query } = routeParts(t, true);
+    const { stops, query } = routeParts(old, true);
     expect(stops).toContain('.f1000.u1730');
     const ctx = { templates, name: (r: string) => index.byRef(r)?.name, today: DATE };
     const read = parseRoute(stops, query, ctx)!;
-    expect(read.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '10:00' });
+    expect(read.waypoints[1]).toMatchObject({ stayUntil: `${DATE}T17:30` });
+    expect(read.waypoints[1]).not.toHaveProperty('arriveAfter');
     // The old, never-enforced windows (a/b) are still read past.
-    const old = parseRoute(stops.replace('.f1000.u1730', '.a1000.b1730'), query, ctx)!;
-    expect(old.waypoints[1]!.leaveBy).toBeUndefined();
-
-    const nameOf = (r: string) => index.byRef(stopKey(r))?.name;
-    const r = await plan(t, deps(day).deps);
-    const trip = newTrip('mine', { ...t, name: 'Luzern' }, r.legs!, r.recommended!, new Date(0));
-    const opened = await decodeTripLink(await encodeTripLink(trip, nameOf), 'theirs', nameOf);
-    expect(opened?.route.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '10:00' });
+    const older = parseRoute(stops.replace('.f1000.u1730', '.a1000.b1730'), query, ctx)!;
+    expect(older.waypoints[1]!.stayUntil).toBeUndefined();
   });
 });
 
@@ -192,31 +163,6 @@ describe('a stay until a date and time, over several days (0.44.0)', () => {
     expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('stayUntil');
     // Its time taken away, a stay is a stay's length again, not a minute.
     expect(setEntryStayUntil(set, 1, null).waypoints[1]!.dwellMin).toBe(DEFAULT_STAY);
-  });
-});
-
-describe('editing the time to leave by', () => {
-  it('only on a stay; riding through takes it away with the stay', () => {
-    const t = visit({});
-    const set = setEntryLeaveBy(t, 1, '17:30');
-    expect(set.waypoints[1]!.leaveBy).toBe('17:30');
-    expect(setEntryLeaveBy(set, 1, null).waypoints[1]!.leaveBy).toBeUndefined();
-    // The start and a station ridden through have no stay to end.
-    expect(setEntryLeaveBy(t, 0, '17:30').waypoints[0]!.leaveBy).toBeUndefined();
-    const through = setEntryStay(set, 1, null);
-    expect(through.waypoints[1]).not.toHaveProperty('leaveBy');
-    // A length or a time set in the panel replaces it (0.51.0: the panel no longer offers it).
-    expect(setEntryStay(set, 1, 45).waypoints[1]).not.toHaveProperty('leaveBy');
-    // Its opening time too: the panel neither shows nor sets it (review of 11 Nov 2026).
-    const opens = {
-      ...set,
-      waypoints: set.waypoints.map((w, i) => (i === 1 ? { ...w, arriveAfter: '10:00' } : w)),
-    };
-    expect(setEntryStay(opens, 1, 45).waypoints[1]).not.toHaveProperty('arriveAfter');
-    expect(setEntryStayUntil(opens, 1, `${DATE}T17:00`).waypoints[1]).not.toHaveProperty(
-      'arriveAfter',
-    );
-    expect(setEntryStayUntil(set, 1, `${DATE}T17:00`).waypoints[1]).not.toHaveProperty('leaveBy');
   });
 });
 

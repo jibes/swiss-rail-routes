@@ -3,8 +3,9 @@
 // read here. A few hundred characters, so messengers leave it whole (the whole
 // timetable, `#/j/`, ran to 5,600, and they cut it off). What anyone can get again is left out:
 // station names come from the app's own list, the rest from OJP when it opens (core/refresh.ts).
+import { asStay, type OldWaypoint } from '../stay';
 import { fromB64Url, toB64Url } from '../b64';
-import type { Mode, Section, Waypoint, WaypointKind } from '../model';
+import type { Mode, Section, WaypointKind } from '../model';
 import { changesOf, type PlannedTrip, type Trip } from '../trip';
 import { decodePacked, encodePacked } from './tripLinkPacked';
 import { pipe, tripFromData } from './tripShare';
@@ -69,11 +70,6 @@ export async function encodeTripLinkV1(t: PlannedTrip, nameOf: NameOf): Promise<
         w.templateId,
         w.line,
         w.ring ? 1 : 0,
-        // Slots 7 and 8 held never-enforced windows until 0.15.0: the stay's window goes after.
-        0,
-        0,
-        w.arriveAfter,
-        w.leaveBy,
       ),
     ),
     chain.connections.map((c) => [
@@ -181,7 +177,7 @@ async function decodeV1(data: string, id: string, nameOf: NameOf): Promise<Trip 
         sections,
       };
     });
-    const way = (w: unknown[]): Waypoint => {
+    const way = (w: unknown[]): OldWaypoint => {
       const ref = longRef(String(w[0]));
       return {
         stopRef: ref,
@@ -192,9 +188,10 @@ async function decodeV1(data: string, id: string, nameOf: NameOf): Promise<Trip 
         ...(text(w[5]) ? { line: text(w[5]) } : {}),
         ...(w[6] === 1 ? { ring: true } : {}),
         // Slots 7 and 8 (arrive no earlier, leave no later) were written until 0.15.0: read past.
+        // Slots 9 and 10 (come after, leave by) until 0.67.0: leave by read as a stay until.
         ...(hhmm(w[9]) ? { arriveAfter: hhmm(w[9]) } : {}),
         ...(hhmm(w[10]) ? { leaveBy: hhmm(w[10]) } : {}),
-      };
+      } as OldWaypoint;
     };
     const when = anchor.slice(1);
     return tripFromData(
@@ -209,7 +206,7 @@ async function decodeV1(data: string, id: string, nameOf: NameOf): Promise<Trip 
           anchor: anchor.startsWith('a') ? { arriveBy: when } : { departAt: when },
           ticket,
           travelClass,
-          waypoints: (waypoints as unknown[][]).map(way),
+          waypoints: (waypoints as unknown[][]).map((w) => asStay(way(w), date)),
           schema: 1,
         },
         legs: [],

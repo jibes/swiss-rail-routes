@@ -3,6 +3,7 @@
 // (absolute, `stayUntil`). Times here are local Zurich `YYYY-MM-DDTHH:MM`; arrivals ISO.
 import { zurichDateTime } from './ojp/request';
 import { zurichLocal } from './planner/plan';
+import type { Waypoint } from './model';
 
 const MIN = 60_000;
 
@@ -70,5 +71,37 @@ export function staysOnDay<W extends { stayUntil?: string }>(
   if (!days) return waypoints;
   return waypoints.map((w) =>
     w.stayUntil ? { ...w, stayUntil: untilByDays(w.stayUntil, days) } : w,
+  );
+}
+
+/** A station as older links and data may hold it: with a time to leave by, or to come after. */
+export type OldWaypoint = Waypoint & { leaveBy?: string; arriveAfter?: string };
+
+/**
+ * A station read from older links or data (0.67.0): a time to leave a stay by (`HH:MM`, the place
+ * closes) is the stay until then on the trip's day, `stayUntil`, the one way a stay ends at a
+ * time; a time to come no earlier (`arriveAfter`) is dropped. Both went: they were a second and
+ * third way to say when a stay ends, set by no screen since 0.51.0.
+ */
+export function asStay(w: OldWaypoint, date: string): Waypoint {
+  const { leaveBy, arriveAfter: _a, ...rest } = w;
+  if (!leaveBy || rest.stayUntil || rest.kind !== 'stop') return rest;
+  return { ...rest, stayUntil: `${date}T${leaveBy}` };
+}
+
+/** Trips as stored, an old time to leave by read as a stay until (`asStay`); unchanged: the same. */
+export function staysOfOld<T extends { route?: { date: string; waypoints: Waypoint[] } }>(
+  trips: T[],
+): T[] {
+  const old = (w: OldWaypoint) => w.leaveBy !== undefined || w.arriveAfter !== undefined;
+  if (!trips.some((t) => Array.isArray(t.route?.waypoints) && t.route!.waypoints.some(old)))
+    return trips;
+  return trips.map((t) =>
+    t.route && Array.isArray(t.route.waypoints) && t.route.waypoints.some(old)
+      ? {
+          ...t,
+          route: { ...t.route, waypoints: t.route.waypoints.map((w) => asStay(w, t.route!.date)) },
+        }
+      : t,
   );
 }

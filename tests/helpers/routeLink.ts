@@ -13,7 +13,12 @@ function code(ref: string): string {
 }
 
 /** The 0.3 builder's time windows, written into links until 0.15.0; the app reads past them. */
-export type OldWaypoint = Waypoint & { earliestArr?: string; latestDep?: string };
+export type OldWaypoint = Waypoint & {
+  earliestArr?: string;
+  latestDep?: string;
+  leaveBy?: string;
+  arriveAfter?: string;
+};
 
 function token(w: OldWaypoint): string {
   const mods: string[] = [];

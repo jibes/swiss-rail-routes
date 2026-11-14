@@ -16,6 +16,7 @@
 // date when that is later, as the stays name the trip's days: never before today, the stays
 // moving with it), dep or arr (time, default dep=08:00),
 // ticket (default GA), class (default 2), name, notes.
+import { asStay, type OldWaypoint } from '../stay';
 import type { RouteTemplate } from '../data';
 import { insertTemplate, normalise } from '../edit';
 import { staysOnDay } from '../stay';
@@ -111,8 +112,11 @@ export function parseRoute(
         Object.assign(w, { kind: 'turnaround', dwellMin: Number(m.slice(1)) });
       else if (m.startsWith('@') && ctx.templates.some((x) => x.id === m.slice(1)))
         w.templateId = m.slice(1);
+      // `u<hhmm>` (leave by) is read as a stay until then; `f<hhmm>` (come after) is dropped
+      // (0.67.0, `asStay`).
       else if (/^[fu]([01]\d|2[0-3])[0-5]\d$/.test(m))
-        w[m[0] === 'f' ? 'arriveAfter' : 'leaveBy'] = `${m.slice(1, 3)}:${m.slice(3)}`;
+        (w as OldWaypoint)[m[0] === 'f' ? 'arriveAfter' : 'leaveBy'] =
+          `${m.slice(1, 3)}:${m.slice(3)}`;
       else if (/^l[a-z0-9-]+$/.test(m) && ctx.templates.some((x) => x.id === m.slice(1)))
         w.line = m.slice(1);
       // `n<YYYYMMDDHHMM>`: stay until then (0.44.0, several days).
@@ -131,6 +135,7 @@ export function parseRoute(
       waypoints: tour.waypoints.map((w) => (w.templateId && !w.line ? { ...w, ring: true } : w)),
     };
   if (tour.waypoints.length < 2) return null;
+  tour = { ...tour, waypoints: tour.waypoints.map((w) => asStay(w, tour.date)) };
   if (!(d && DATE.test(d))) tour = undatedStays(tour, ctx.today);
   const { id: _id, ...rest } = tour;
   // Start and end where they are now, every station between them kept as what it is.

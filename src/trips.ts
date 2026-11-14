@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { Tour } from './core/model';
 import { splitAllNights } from './core/nights';
+import { staysOfOld } from './core/stay';
 import { withoutTimetable, type Trip } from './core/trip';
 import { log } from './io/log';
 import { tripsList } from './io/trips';
@@ -35,7 +36,8 @@ export const useTrips = create<TripsState>()((set, get) => ({
       // One trip per day of travel (0.64.0): one planned over a night, not yet begun, is split
       // there, once, each part with its share of the timetable (0.64.3: only here, never on a
       // sync or an add, so nothing synced in or edited is regenerated or replaced).
-      const trips = splitAllNights(saved, Date.now());
+      // A time to leave by from before 0.67.0 is a stay until then (`asStay`).
+      const trips = splitAllNights(staysOfOld(saved), Date.now());
       log('trips.load', { count: trips.length, split: trips.length - saved.length });
       set({ trips, loaded: true });
       if (trips !== saved) void tripsList.save(saved, trips, true).catch(() => undefined);

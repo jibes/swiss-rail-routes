@@ -15,7 +15,6 @@ export const WAIT_SAID_MIN = 10;
 export function stayLabel(
   t: ReturnType<typeof useT>,
   r: StationRow,
-  leaveBy?: string,
   until?: { at: string; lang: string; day?: string },
 ) {
   const there =
@@ -35,13 +34,11 @@ export function stayLabel(
       when: date === day ? time : `${shortDate(date, until.lang)} ${time}`,
     });
   }
-  const label = leaveBy
-    ? t('stayUntil', { min: r.stay, time: leaveBy })
-    : t('stayFor', { min: r.stay });
+  const label = t('stayFor', { min: r.stay });
   // The time really there when the next train leaves well after the stay asked for, said alone
   // (review, 0.66.0: "60 min stay · 1h45 here" was two lengths for one stay; the panel has the
   // 60 min).
-  return there !== undefined && there >= r.stay + WAIT_SAID_MIN && !leaveBy
+  return there !== undefined && there >= r.stay + WAIT_SAID_MIN
     ? t('stayThere', { d: duration(there) })
     : label;
 }

@@ -24,13 +24,6 @@ export interface Waypoint {
   /** A scenic line's must-pass station between the two you entered (0.4.0): part of the line. */
   ring?: boolean;
   /**
-   * Leave by then (`HH:MM`, Zurich, on the trip's date): the place closes (0.20.0). The planner
-   * keeps to it, and says so where no connection can.
-   */
-  leaveBy?: string;
-  /** Not there before then (`HH:MM`): the place opens; a stay starts then at the earliest. */
-  arriveAfter?: string;
-  /**
    * A stay that ends at a date and time, `YYYY-MM-DDTHH:MM` in Zurich (0.44.0): the next train
    * leaves no earlier. On the day it starts since 0.64.0 (one trip per day of travel); a later
    * one, from before or a link, splits the trip there (`splitNights`).
@@ -87,7 +80,7 @@ export type WarningType =
   | 'line-missed'
   /** A day trip back only the next morning (the only way back there is). */
   | 'next-day'
-  /** No connection leaves a stop by the time you asked to leave it (`leaveBy`). */
+  /** No connection left a stop by the time asked (`leaveBy`, gone in 0.67.0): read from old plans. */
   | 'window-missed';
 
 export interface LatLon {

@@ -22,12 +22,10 @@ const HEARTBEAT_MS = 10_000;
 const MEANT: Record<string, string> = {
   return: 'returnWay',
   returnMode: 'returnWay',
-  openUntil: 'leaveBy',
+  openUntil: 'stayUntil',
   until: 'stayUntil',
   stayTill: 'stayUntil',
-  closesAt: 'leaveBy',
-  openFrom: 'arriveAfter',
-  opensAt: 'arriveAfter',
+  closesAt: 'stayUntil',
   depart: 'departAt',
   arrive: 'arriveBy',
   count: 'options',
@@ -95,12 +93,8 @@ const stops = z
         .string()
         .optional()
         .describe(
-          'HH:MM, Zurich: leave this stop by then (it closes). Options that cannot are kept only when none can, with a window-missed error.',
+          "Deprecated: HH:MM, Zurich, read as stayUntil at that time on the trip's day (the stay ends then; the place closes).",
         ),
-      arriveAfter: z
-        .string()
-        .optional()
-        .describe('HH:MM, Zurich: not there before then (it opens); the stay starts then.'),
       stayUntil: z
         .string()
         .optional()

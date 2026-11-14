@@ -274,7 +274,6 @@ export const it = {
   station: 'Stazione',
   stationsN: '{n} stazioni',
   stayFor: 'Sosta {min} min',
-  stayUntil: 'Sosta {min} min, entro le {time}',
   theLine: 'Il viaggio',
   train1: '1 corsa',
   trainsN: '{n} corse',

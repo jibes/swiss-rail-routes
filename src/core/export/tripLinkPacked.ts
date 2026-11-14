@@ -1,5 +1,6 @@
 // The compact `#/s/` link (0.21.0; the format is in tripPack.ts): about a third of the JSON form's
 // length. Encoded here; tripLink.ts tries it first when a link opens.
+import { asStay } from '../stay';
 import { fromB64Url, toB64Url } from '../b64';
 import type { Mode, Section, StopCall, TicketType, Waypoint, WaypointKind } from '../model';
 import { stopKey } from '../stops';
@@ -98,12 +99,7 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
         : w.templateId === prevTpl
           ? 2
           : 3;
-    const rare =
-      (w.dwellMin > 0 ? 1 : 0) |
-      (w.line ? 2 : 0) |
-      (w.arriveAfter ? 4 : 0) |
-      (w.leaveBy ? 8 : 0) |
-      (w.stayUntil ? 16 : 0);
+    const rare = (w.dwellMin > 0 ? 1 : 0) | (w.line ? 2 : 0) | (w.stayUntil ? 16 : 0);
     body.uv(
       Math.max(0, KINDS.indexOf(w.kind)) |
         (tplMode << 3) |
@@ -116,8 +112,6 @@ export async function encodePacked(t: PlannedTrip, nameOf: NameOf): Promise<stri
     if (rare & 1) body.uv(Math.round(w.dwellMin));
     if (tplMode === 3) strRef(w.templateId);
     if (w.line) strRef(w.line);
-    if (w.arriveAfter) body.uv(hm(w.arriveAfter));
-    if (w.leaveBy) body.uv(hm(w.leaveBy));
     if (w.stayUntil) body.uv(Math.max(0, untilMin(w.stayUntil, route.date)));
     prevTpl = w.templateId;
   }
@@ -304,6 +298,7 @@ function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
 
   let next = 0;
   let prevTpl: string | undefined;
+  // Bits 4 and 8 (come after, leave by) were written until 0.67.0: leave by read as a stay until.
   const waypoints = Array.from({ length: r.uv() }, (): Waypoint => {
     const f = r.uv();
     const s = f & 64 ? stopOf() : stops[next++];
@@ -318,7 +313,8 @@ function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
     const stayUntil = rare & 16 ? untilOf(r.uv(), date) : undefined;
     const tpl = [undefined, line, prevTpl, own][tplMode];
     prevTpl = tpl;
-    return {
+    void arriveAfter;
+    const w: Waypoint = {
       stopRef: s.stopRef,
       name: s.name,
       kind: KINDS[f & 7] ?? 'via',
@@ -326,10 +322,9 @@ function read(r: Reader, id: string, nameOf: NameOf, v: 1 | 2): Trip | null {
       ...(tpl ? { templateId: tpl } : {}),
       ...(line ? { line } : {}),
       ...(f & 32 ? { ring: true } : {}),
-      ...(arriveAfter ? { arriveAfter } : {}),
-      ...(leaveBy ? { leaveBy } : {}),
       ...(stayUntil ? { stayUntil } : {}),
     };
+    return asStay({ ...w, ...(leaveBy ? { leaveBy } : {}) }, date);
   });
 
   const base = Date.parse(`${date}T00:00:00Z`);

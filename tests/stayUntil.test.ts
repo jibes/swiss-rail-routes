@@ -74,7 +74,7 @@ describe('a stay until a time', () => {
   it('goes with the stay: a station that is no stop keeps no time to end by', () => {
     const out = normalise([
       w('Zürich HB', 'start'),
-      w('Luzern', 'stop', 1, { stayUntil: '2026-11-08T09:00', leaveBy: '17:00' }),
+      w('Luzern', 'stop', 1, { stayUntil: '2026-11-08T09:00' }),
     ]);
     expect(out[1]).toEqual(w('Luzern', 'end'));
   });
@@ -168,45 +168,6 @@ describe('a trip over two days', () => {
     );
     const zug = m.route.waypoints.find((x) => x.name === 'Zug')!;
     expect(zug).not.toHaveProperty('stayUntil');
-    expect(zug).not.toHaveProperty('leaveBy');
-  });
-
-  it('a time to leave by is on the day you are there', async () => {
-    const r2 = (d: string, line: string, calls: [string, string][]) => {
-      const x = ride(line, calls);
-      const fix = <T extends { dep?: string; arr?: string }>(y: T): T => ({
-        ...y,
-        ...(y.dep ? { dep: zurichDateTime(`${d}T${y.dep.slice(11, 16)}`) } : {}),
-        ...(y.arr ? { arr: zurichDateTime(`${d}T${y.arr.slice(11, 16)}`) } : {}),
-      });
-      return conn({
-        ...x,
-        from: fix(x.from),
-        to: fix(x.to),
-        intermediate: x.intermediate.map(fix),
-      });
-    };
-    const t: Tour = {
-      ...newTour('t', DATE),
-      anchor: { departAt: '08:00' },
-      waypoints: [
-        w('Zürich HB', 'start'),
-        w('Luzern', 'stop', 1, { stayUntil: `${NEXT}T09:00`, leaveBy: '14:00' }),
-        w('Bern', 'end'),
-      ],
-    };
-    const d = deps([
-      r2(DATE, 'IR 70', [
-        ['Zürich HB', '08:00'],
-        ['Luzern', '08:50'],
-      ]),
-      r2(NEXT, 'IR 75', [
-        ['Luzern', '10:00'],
-        ['Bern', '11:00'],
-      ]),
-    ]);
-    const r = await plan(t, d.deps);
-    expect(r.recommended?.warnings.map((x) => x.type)).not.toContain('window-missed');
   });
 
   it('a scenic line on day 2 is dark by day 2’s sunset, not day 1’s', async () => {

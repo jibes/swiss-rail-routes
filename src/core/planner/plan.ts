@@ -3,7 +3,6 @@
 import type { GaData, RouteTemplate } from '../data';
 import type { Connection, LatLon, Leg, Tour, Waypoint } from '../model';
 import type { TripQuery } from '../ojp/request';
-import { dayAt } from '../sun';
 import { zurichDateTime } from '../ojp/request';
 import { withLines } from '../line';
 import { stopKey } from '../stops';
@@ -50,8 +49,6 @@ export interface Weights {
   tightTransfer: number;
   /** A scenic line asked for and not ridden: well behind any plan that rides it. */
   lineMissed: number;
-  /** A stop left later than you asked (`leaveBy`): only when no connection leaves in time. */
-  windowMissed: number;
 }
 /** Chains kept per leg, and the shortest change planned (minutes). */
 const BEAM_WIDTH = 6;
@@ -66,7 +63,6 @@ export const DEFAULT_WEIGHTS: Weights = {
   disruption: 30,
   tightTransfer: 10,
   lineMissed: 120,
-  windowMissed: 120,
 };
 
 /** The one rule that can be let go: a leg's must-pass stations (and its lines' modes). */
@@ -252,8 +248,7 @@ function scoreOf(c: Connection, w: Warning[], wt: Weights): number {
         .filter((x) => x.type === 'disruption' || x.type === 'notice')
         .reduce((n, x) => n + (x.severity === 'error' ? 1 : x.severity === 'warn' ? 0.5 : 0.1), 0) +
     wt.tightTransfer * count('tight-transfer') +
-    wt.lineMissed * count('line-missed') +
-    wt.windowMissed * count('window-missed')
+    wt.lineMissed * count('line-missed')
   );
 }
 
@@ -287,16 +282,6 @@ export function lineMissed(c: Connection, rules: LegRules, legIndex: number): Wa
   });
 }
 
-/**
- * Retest round 3, 6 Nov 2026: options that leave a stay later than asked (`leaveBy`) were listed
- * beside one that leaves in time. Once any leaves in time, those that cannot go; when none can,
- * all stay, each said (`window-missed`).
- */
-export function inTime(chains: PlannedChain[]): PlannedChain[] {
-  const ok = chains.filter((c) => !c.warnings.some((w) => w.type === 'window-missed'));
-  return ok.length ? ok : chains;
-}
-
 /** ms → `YYYY-MM-DDTHH:MM` in Swiss local time. */
 export function zurichLocal(t: number): string {
   const p = Object.fromEntries(
@@ -313,44 +298,6 @@ export function zurichLocal(t: number): string {
       .map((x) => [x.type, x.value]),
   );
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
-}
-
-/** A stop's time on the trip's day (`leaveBy`, `arriveAfter`), as ms; undefined when unset. */
-const timeOn = (date: string, hhmm: string | undefined) =>
-  hhmm ? ms(zurichDateTime(`${date}T${hhmm}`)) : undefined;
-
-/**
- * Connections that leave `from` by its `leaveBy` (reported on the MCP, 5 Nov 2026: a stay at
- * Melide ran past Swissminiatur's closing). None in time: all of them, each said as leaving late
- * (`window-missed`, scored well behind one in time).
- */
-export function leavingBy(
-  opts: Connection[],
-  from: Waypoint,
-  date: string,
-  legIndex: number,
-): { opts: Connection[]; late: (c: Connection) => Warning[] } {
-  const by = timeOn(date, from.leaveBy);
-  if (by === undefined) return { opts, late: () => [] };
-  const inTime = opts.filter((c) => ms(expectedDep(c)) <= by);
-  if (inTime.length) return { opts: inTime, late: () => [] };
-  return {
-    opts,
-    late: (c) => [
-      {
-        type: 'window-missed',
-        severity: 'error',
-        legIndex,
-        ...(rides(c)[0] ? { sectionIndex: rides(c)[0]![1] } : {}),
-        key: 'wWindowMissed',
-        params: {
-          at: from.name,
-          time: from.leaveBy!,
-          dep: zurichLocal(ms(expectedDep(c))).slice(11, 16),
-        },
-      },
-    ],
-  };
 }
 
 interface Beam {
@@ -529,15 +476,11 @@ async function planFrom(
           );
           opts = preferred(own);
         }
-        // A stay's window is on the day you are there, not the trip's first (review of 11 Nov
-        // 2026: a day-2 stop's leave by was read on day 1).
-        const fit = leavingBy(opts, rules.leg.from, dayAt(b.ready), i);
-        for (const c of fit.opts) {
+        for (const c of opts) {
           const w = [
-            ...fit.late(c),
             ...warningsFor(c, ctx),
             ...changeWarning(b.conns.at(-1), c, i),
-            ...gapWarning(c, fit.opts, i),
+            ...gapWarning(c, opts, i),
             ...(step === 'all' ? [] : lineMissed(c, rules, i)),
           ];
           const dwell = Math.max(rules.leg.to.dwellMin, minTransfer);
@@ -545,14 +488,9 @@ async function planFrom(
             conns: [...b.conns, c],
             warnings: [...b.warnings, ...w],
             penalty: b.penalty + scoreOf(c, w, wt),
-            // A place that opens later: the stay starts when it does.
-            // A stay until a date and time: no earlier, on whatever day (multi-day trips).
+            // A stay until a time: no earlier.
             ready: Math.max(
-              Math.max(
-                ms(expectedArr(c)),
-                timeOn(dayAt(ms(expectedArr(c))), rules.leg.to.arriveAfter) ?? 0,
-              ) +
-                dwell * MIN,
+              ms(expectedArr(c)) + dwell * MIN,
               rules.leg.to.stayUntil ? ms(zurichDateTime(rules.leg.to.stayUntil)) : 0,
             ),
           });
@@ -591,7 +529,7 @@ async function planFrom(
     dep: b.conns[0]!.dep,
     arr: b.conns.at(-1)!.arr,
   }));
-  const picked = pickOptions(inTime(done));
+  const picked = pickOptions(done);
   trace('plan.result', {
     chains: done.length,
     options: picked.options?.map(

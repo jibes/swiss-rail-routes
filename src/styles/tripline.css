@@ -732,3 +732,8 @@
 .trip-line .warn[aria-expanded='true'] .w-text {
   white-space: normal;
 }
+
+/* Focus given to the line itself (a panel closed on a change): no ring round the whole line. */
+.trip-line:focus {
+  outline: none;
+}

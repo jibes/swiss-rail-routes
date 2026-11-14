@@ -748,7 +748,7 @@ describe('over HTTP, with the real MCP client', () => {
     });
     expect(inStop.isError).toBe(true);
     expect(text(inStop)).toContain('`openUntil`');
-    expect(text(inStop)).toContain('leaveBy');
+    expect(text(inStop)).toContain('stayUntil');
     const find = await client.callTool({ name: 'find_stops', arguments: { query: 'Bern', q: 1 } });
     expect(find.isError).toBe(true);
     expect(text(find)).toContain('`q`');

@@ -2,11 +2,12 @@
 import type { RouteTemplate } from '../../src/core/data';
 import { lineEntries, stationEntry, fromEntries, type Entry } from '../../src/core/line';
 import { lineReversed } from '../../src/core/lineDirection';
-import type { Anchor, TicketType, Tour, Waypoint } from '../../src/core/model';
+import type { Anchor, TicketType, Tour } from '../../src/core/model';
 import { fold, stopKey, type Stop, type StopSearch } from '../../src/core/stops';
 import { dayOf } from '../../src/core/trip';
 import { earliestDay, PAST_DAYS } from '../../src/core/when';
 import { zurichLocal } from '../../src/core/planner/plan';
+import { asStay, type OldWaypoint } from '../../src/core/stay';
 
 /** A request the caller can correct: said as it is. */
 export class ToolError extends Error {}
@@ -17,10 +18,8 @@ export interface StopInput {
   /** Minutes to get off for; 0 or left out rides through (or changes, as the plan needs). */
   stay?: number;
   line?: string;
-  /** Leave by then (`HH:MM`): the place closes. */
+  /** Deprecated (0.67.0): leave by then (`HH:MM`), read as a stay until then on the trip's day. */
   leaveBy?: string;
-  /** Not there before then (`HH:MM`): the place opens. */
-  arriveAfter?: string;
   /** Stay until then (`YYYY-MM-DDTHH:MM`, Zurich), also on a later day. */
   stayUntil?: string;
 }
@@ -175,12 +174,12 @@ export function buildRoute(
       prev && stopKey(prev.w.stopRef) === stopKey(stop.ref)
         ? entries.pop()!
         : stationEntry({ stopRef: stop.ref, name: stop.name });
-    for (const t of [s.leaveBy, s.arriveAfter])
-      if (t !== undefined && !TIME.test(t)) throw new ToolError(`not a time (HH:MM): ${t}`);
-    const w: Waypoint = {
-      ...(stay ? { ...entry.w, kind: 'stop', dwellMin: stay } : entry.w),
+    if (s.leaveBy !== undefined && !TIME.test(s.leaveBy))
+      throw new ToolError(`not a time (HH:MM): ${s.leaveBy}`);
+    // A time to leave by is a stay until then, on the trip's day (0.67.0, `asStay` below).
+    const w: OldWaypoint = {
+      ...(stay || s.leaveBy ? { ...entry.w, kind: 'stop', dwellMin: stay || 30 } : entry.w),
       ...(s.leaveBy ? { leaveBy: s.leaveBy } : {}),
-      ...(s.arriveAfter ? { arriveAfter: s.arriveAfter } : {}),
       ...(until ? { stayUntil: until } : {}),
     };
     entries.push({ ...entry, w });
@@ -196,6 +195,7 @@ export function buildRoute(
   }
   if (entries.length < 2) throw new ToolError('a trip needs at least two stations');
   const { date, anchor } = resolveWhen(input, now);
+  for (const e of entries) e.w = asStay(e.w, date);
   for (const e of entries) {
     if (e.w.stayUntil && e.w.stayUntil.slice(0, 10) < date)
       throw new ToolError(`stayUntil ${e.w.stayUntil} is before the trip's day, ${date}`);
@@ -233,8 +233,6 @@ export function routeLinkOf(tour: Tour, publicUrl: string): string {
       // A line by its rings (`@`) and its end (`l`): lines back to back keep their ends.
       ...(w.ring && w.templateId ? [`@${w.templateId}`] : []),
       ...(w.line ? [`l${w.line}`] : []),
-      ...(w.arriveAfter ? [`f${w.arriveAfter.replace(':', '')}`] : []),
-      ...(w.leaveBy ? [`u${w.leaveBy.replace(':', '')}`] : []),
       ...(w.stayUntil ? [`n${w.stayUntil.replace(/[-T:]/g, '')}`] : []),
     ].join('.');
   });

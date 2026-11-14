@@ -275,7 +275,6 @@ export const fr = {
   station: 'Gare',
   stationsN: '{n} gares',
   stayFor: 'Arrêt {min} min',
-  stayUntil: 'Arrêt {min} min, jusqu’à {time}',
   theLine: 'Le voyage',
   train1: '1 trajet',
   trainsN: '{n} trajets',

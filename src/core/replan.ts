@@ -177,7 +177,7 @@ export function remainingRoute(trip: Trip, point: ReplanPoint): Tour {
  * planned there stays; else it is a change, never a scenic line's station). The stations of
  * the current leg already passed stay on it (the line still shows them).
  */
-const withoutTimes = ({ stayUntil: _u, leaveBy: _l, arriveAfter: _a, ...w }: Waypoint) => w;
+const withoutTimes = ({ stayUntil: _u, ...w }: Waypoint) => w;
 
 export function keptLegs(trip: Trip, point: ReplanPoint): Leg[] {
   const passed = new Set(

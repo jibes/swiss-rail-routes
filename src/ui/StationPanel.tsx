@@ -30,6 +30,8 @@ export interface LineActions {
  * button there, so the keyboard can move it on (review of 11 Nov 2026: it fell to the page).
  */
 let refocus: 'up' | 'down' | null = null;
+/** The panel closed on its move (under way): no arrow to focus in the next one opened (0.67.0). */
+export const forgetRefocus = () => void (refocus = null);
 
 export function StationPanel({
   k,

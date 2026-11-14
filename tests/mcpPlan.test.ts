@@ -141,17 +141,13 @@ describe('plan_trip: daylight, a time to leave by, the fastest way back (5 Nov 2
     expect(none.reason).toMatch(/Albula/);
   });
 
-  it('a stop’s time to leave by and to arrive after, kept in the route and its link', () => {
+  it('a time to leave by (deprecated) is a stay until then on the trip’s day (0.67.0)', () => {
     const t = route({
       date: FIXTURE_DATE,
-      stops: [
-        { name: 'Zürich HB' },
-        { name: 'Melide', stay: 150, arriveAfter: '09:00', leaveBy: '17:30' },
-        { name: 'Lugano' },
-      ],
+      stops: [{ name: 'Zürich HB' }, { name: 'Melide', leaveBy: '17:30' }, { name: 'Lugano' }],
     });
-    expect(t.waypoints[1]).toMatchObject({ leaveBy: '17:30', arriveAfter: '09:00' });
-    expect(routeLinkOf(t, URL_)).toContain('.f0900.u1730');
+    expect(t.waypoints[1]).toMatchObject({ kind: 'stop', stayUntil: `${FIXTURE_DATE}T17:30` });
+    expect(t.waypoints[1]).not.toHaveProperty('leaveBy');
     expect(() =>
       route({ stops: [{ name: 'Zürich HB' }, { name: 'Melide', leaveBy: '5pm' }] }),
     ).toThrow(/not a time/);

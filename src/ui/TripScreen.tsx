@@ -26,6 +26,7 @@ import { PullReload, saidOf, useReload } from './PullReload';
 import { longDate, nextFive, shiftHm, shortDate, zurichHm } from './format';
 import { Icon } from './icons';
 import { TripLine } from './TripLine';
+import { forgetRefocus } from './StationPanel';
 import { TripLive, UndoChange } from './TripLive';
 import { NotFound } from './NotFound';
 import { OptionsBar } from './OptionsBar';
@@ -118,7 +119,7 @@ export function TripScreen({ id }: { id: string }) {
   // edit of the line maps onto the rest by its place (the rest's own tail is the trip's).
   const ahead =
     liveTrip && live.state && !pending ? restDraft(liveTrip, live.state, live.now) : null;
-  const planner = usePlanner(trip, true);
+  const planner = usePlanner(trip);
   // Under way the trip is followed (0.63.0): its plan's controls behind Change trip, back with
   // Done. An edit made here keeps them out, so a trip put in that goes live meanwhile stays open.
   const [changing, setChanging] = useState(false);
@@ -201,6 +202,11 @@ export function TripScreen({ id }: { id: string }) {
     const at = (k: number) => k - fixed + 1;
     log('replan.begin', { trip: id });
     useRestDrafts.getState().set(id, { ...ahead, route: f(ahead.route, at) });
+  };
+  // The panel closed on a change: focus back on the line, not lost (review, 0.67.0).
+  const toLine = () => {
+    forgetRefocus();
+    setTimeout(() => document.querySelector<HTMLElement>('.trip-screen .trip-line')?.focus(), 0);
   };
   const chain = trip.chain;
   // Planning from the first moment after an edit (the planner waits for edits to settle):
@@ -564,10 +570,12 @@ export function TripScreen({ id }: { id: string }) {
                       move: (from, to) => {
                         change((r, at) => moveEntry(r, at(from), at(to)));
                         setOpen(liveTrip ? null : to);
+                        if (liveTrip) toLine();
                       },
                       remove: (k) => {
                         change((r, at) => removeEntry(r, at(k)));
                         setOpen(null);
+                        toLine();
                       },
                       // A station the plan chose, kept: yours after entry `k`, its panel open.
                       pin: (k, stop) => {

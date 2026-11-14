@@ -132,15 +132,18 @@ export function SharedTrip({ hash }: { hash: string }) {
               className="primary wide"
               onClick={() => {
                 // The same shared trip saved before: open it (no second copy, no double alerts).
+                // Known by its first train and first station, as a trip over nights is kept split
+                // (review, 0.67.0: its legs then differed, and a second save made a copy).
                 const same = useTrips
                   .getState()
                   .trips.find(
                     (x) =>
                       x.chain?.dep === trip.chain.dep &&
-                      JSON.stringify(x.legs) === JSON.stringify(trip.legs),
+                      x.route.waypoints[0]?.stopRef === trip.route.waypoints[0]?.stopRef,
                   );
                 if (same) return location.replace(`#/trip/${same.id}`);
                 add(trip);
+                useTrips.getState().splitNights(trip.id);
                 saved.current = trip.id;
                 location.replace(`#/trip/${trip.id}`);
               }}

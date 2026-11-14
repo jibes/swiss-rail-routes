@@ -536,3 +536,18 @@ test('your trips kept before come back as past trips', async ({ page }) => {
   await page.reload();
   await expect(page.getByText('Past trips (1)')).toBeVisible();
 });
+
+// Review, 0.67.0: a station removed from its panel left focus nowhere (on the page's body).
+test('a station removed: focus on the line, not lost', async ({ page }) => {
+  await page.clock.install({ time: BEFORE });
+  allowUnrecorded(page);
+  await newTrip(page, 'zürich hb', 'luzern', 'bern');
+  const line = page.getByRole('list', { name: 'The trip' });
+  await line.locator('.station.entry').nth(1).getByRole('button').first().click();
+  await page
+    .locator('.panel')
+    .getByRole('button', { name: /^Remove/ })
+    .click();
+  await expect(line.locator('.station.entry')).toHaveCount(2);
+  await expect(line).toBeFocused();
+});

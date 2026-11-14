@@ -204,7 +204,6 @@ export function TripLine({
     const label = stayLabel(
       t,
       r,
-      w?.leaveBy,
       w?.stayUntil ? { at: w.stayUntil, lang, day: route.date } : undefined,
     );
     if ((!act || behind(r.entry)) && r.entry !== undefined)
@@ -402,6 +401,8 @@ export function TripLine({
         className={`trip-line ${wx ? 'wx' : ''} ${planning ? 'planning' : ''} ${act ? '' : 'read'} ${live ? 'live' : ''}`}
         ref={box}
         aria-label={t('theLine')}
+        // Focus lands here when the panel it was in closes on a change (under way).
+        tabIndex={-1}
       >
         {drag && <li className="dropmark" style={{ top: drag.markY }} aria-hidden="true" />}
         {weather && 'far' in weather && (

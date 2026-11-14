@@ -17,9 +17,9 @@ export function normalise(waypoints: Waypoint[]): Waypoint[] {
     const dwellMin = stays ? w.dwellMin : 0;
     // No stay, no time it ends by (reported in review: a hidden stay until next morning kept a
     // day trip's late returns once its station became the end).
-    const timed = !stays && (w.stayUntil || w.leaveBy || w.arriveAfter);
+    const timed = !stays && w.stayUntil;
     if (kind === w.kind && dwellMin === w.dwellMin && !timed) return w;
-    const { stayUntil: _u, leaveBy: _l, arriveAfter: _a, ...plain } = w;
+    const { stayUntil: _u, ...plain } = w;
     return { ...(stays ? w : plain), kind, dwellMin };
   });
 }

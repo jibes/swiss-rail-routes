@@ -47,7 +47,7 @@ export function nightsOf(t: Pick<Trip, 'route' | 'legs' | 'chain'>): { k: number
 const ending = (ws: Waypoint[]): Waypoint[] =>
   ws.map((w, i) => {
     if (i < ws.length - 1) return w;
-    const { stayUntil: _s, leaveBy: _l, ring: _r, ...rest } = w;
+    const { stayUntil: _s, ring: _r, ...rest } = w;
     return { ...rest, kind: 'end', dwellMin: 0 };
   });
 
@@ -55,15 +55,7 @@ const ending = (ws: Waypoint[]): Waypoint[] =>
 const starting = (ws: Waypoint[]): Waypoint[] =>
   ws.map((w, i) => {
     if (i > 0) return w;
-    const {
-      stayUntil: _s,
-      arriveAfter: _a,
-      leaveBy: _b,
-      ring: _r,
-      line: _l,
-      templateId: _t,
-      ...rest
-    } = w;
+    const { stayUntil: _s, ring: _r, line: _l, templateId: _t, ...rest } = w;
     return { ...rest, kind: 'start', dwellMin: 0 };
   });
 

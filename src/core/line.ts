@@ -235,30 +235,12 @@ export function setEntryStay<T extends Pick<Tour, 'waypoints'>>(
   const x = e[k];
   if (!x || k === 0 || k === e.length - 1) return tour;
   // Riding through, there is no stay to end by a time. A length given is the stay's intent
-  // (0.51.0): a time it ended by (until, leave by) goes, as the panel says the two as one.
-  const { leaveBy: _l, arriveAfter: _a, stayUntil: _u, ...through } = x.w;
-  const { leaveBy: _l2, stayUntil: _u2, arriveAfter: _a2, ...kept } = x.w;
+  // (0.51.0): a time it ended by goes, as the panel says the two as one.
+  const { stayUntil: _u, ...w } = x.w;
   e[k] = {
     ...x,
-    w:
-      stay === null
-        ? { ...through, kind: 'via', dwellMin: 0 }
-        : { ...kept, kind: 'stop', dwellMin: stay },
+    w: stay === null ? { ...w, kind: 'via', dwellMin: 0 } : { ...w, kind: 'stop', dwellMin: stay },
   };
-  return fromEntries(tour, e);
-}
-
-/** Entry `k`'s stay to end by `hhmm` (the place closes), or at any time (null). */
-export function setEntryLeaveBy<T extends Pick<Tour, 'waypoints'>>(
-  tour: T,
-  k: number,
-  hhmm: string | null,
-): T {
-  const e = entriesOf(tour);
-  const x = e[k];
-  if (!x || x.w.kind !== 'stop') return tour;
-  const { leaveBy: _l, ...w } = x.w;
-  e[k] = { ...x, w: hhmm ? { ...w, leaveBy: hhmm } : w };
   return fromEntries(tour, e);
 }
 
@@ -292,8 +274,8 @@ export function setEntryStayUntil<T extends Pick<Tour, 'waypoints'>>(
   const e = entriesOf(tour);
   const x = e[k];
   if (!x || x.w.kind !== 'stop') return tour;
-  const { stayUntil: _u, ...w } = x.w;
-  const { leaveBy: _l, arriveAfter: _a, ...timed } = w;
+  const { stayUntil: _u, ...timed } = x.w;
+  const w = timed;
   e[k] = {
     ...x,
     w: until

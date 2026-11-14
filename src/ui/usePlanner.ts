@@ -4,8 +4,8 @@
 import { useEffect, useState } from 'react';
 import { optionsKey } from '../core/answers';
 import type { Tour } from '../core/model';
-import type { PlanResult, PlannedChain } from '../core/planner/plan';
-import { compactTrip, type Trip } from '../core/trip';
+import type { PlanResult } from '../core/planner/plan';
+import type { Trip } from '../core/trip';
 import { PlanningUnavailable, WorkerError } from '../io/ojp';
 import { keepPlan, planRoute, routeJson } from '../io/planTrip';
 import { loadPlans } from '../io/tours';
@@ -27,7 +27,7 @@ function sameOptions(a: string, b: string): boolean {
 /** Edits come in bursts (a chip, then another): plan once they settle. */
 const QUIET_MS = 400;
 
-export function usePlanner(trip: Trip | undefined, enabled: boolean) {
+export function usePlanner(trip: Trip | undefined) {
   const update = useTrips((s) => s.update);
   const reservations = 'avoid';
   // The status with the route it is about: after an edit an old error or "done" never shows
@@ -43,7 +43,7 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   const [attempt, setAttempt] = useState(0);
   const id = trip?.id;
   const json = trip ? routeJson(trip) : '';
-  const needs = !!trip && enabled && trip.route.waypoints.length >= 2;
+  const needs = !!trip && trip.route.waypoints.length >= 2;
   const planned = !!trip?.chain;
 
   useEffect(() => {
@@ -113,14 +113,6 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
   }, [id, json, needs, planned, attempt, update, reservations]);
 
   const result = planned_?.json === json ? planned_.result : null;
-  const pick = (c: PlannedChain) => {
-    if (!id || !result?.legs) return;
-    log('planner.pick', { trip: id, dep: c.dep, arr: c.arr });
-    const legs = result.legs;
-    update(id, (t) =>
-      routeJson(t) === json ? compactTrip({ ...t, chain: c, legs, compact: undefined }) : t,
-    );
-  };
 
   const status: PlanStatus = !needs ? 'idle' : st.json === json ? st.status : 'planning';
   return {
@@ -130,6 +122,5 @@ export function usePlanner(trip: Trip | undefined, enabled: boolean) {
     previous: needs ? (planned_?.result ?? null) : null,
     detail: st.json === json ? st.detail : '',
     retry: () => setAttempt((a) => a + 1),
-    pick,
   };
 }
