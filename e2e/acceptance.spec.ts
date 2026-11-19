@@ -117,8 +117,8 @@ test('more options that fail to load change nothing; a tap chooses one', async (
   await expect(page.locator('.opt.loading')).toBeVisible();
   // As many options as a day of loading gives (copies of the first): the strip scrolls, the
   // page keeps the screen's width (on a phone the page itself would grow, so `innerWidth` is
-  // measured against the device's width, not the page's), and the arrows stay at the strip's
-  // ends however it is scrolled (audit, 11 Nov 2026: at 360 px "Later" began out of view).
+  // measured against the device's width, not the page's), and the arrows scroll with the
+  // options, Earlier before the first and Later after the last, each reached at its end (0.67.1).
   const width = page.viewportSize()!.width;
   const fits = await page.evaluate(() => {
     const strip = document.querySelector('.options-bar .opts')!;
@@ -131,14 +131,14 @@ test('more options that fail to load change nothing; a tap chooses one', async (
     }
     const [earlier, later] = [...strip.querySelectorAll<HTMLElement>(':scope > .shift')];
     const box = strip.getBoundingClientRect();
-    const inView = () => {
-      const [e, l] = [earlier!.getBoundingClientRect(), later!.getBoundingClientRect()];
-      return e.left >= box.left - 1 && l.right <= box.right + 1 && l.left > e.right;
+    const seen = (b: HTMLElement) => {
+      const r = b.getBoundingClientRect();
+      return r.left >= box.left - 1 && r.right <= box.right + 1;
     };
     strip.scrollLeft = 0;
-    const atStart = inView();
+    const atStart = seen(earlier!) && !seen(later!);
     strip.scrollLeft = strip.scrollWidth;
-    const atEnd = inView();
+    const atEnd = seen(later!) && !seen(earlier!);
     strip.scrollLeft = 0;
     const page = document.querySelector('.page')!.getBoundingClientRect();
     return {

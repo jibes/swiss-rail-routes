@@ -210,26 +210,9 @@
   border-radius: 12px;
 }
 
-/* The arrows stay at the strip's ends while it scrolls (audit, 11 Nov 2026: at 360 px "Later"
-   began out of view), over the options passing under them. */
-.options-bar .opts > .shift {
-  position: sticky;
-  z-index: 1;
-  left: 0;
-  background: var(--surface);
-}
-
-.options-bar .opts > .shift:first-child {
-  /* Its edge said, so an option passing under it reads as tucked away, not cut (dark too). */
-  box-shadow: 6px 0 6px -6px color-mix(in srgb, var(--ink) 40%, transparent);
-}
-
-.options-bar .opts > .shift:last-child {
-  left: auto;
-  right: 0;
-  box-shadow: -6px 0 6px -6px color-mix(in srgb, var(--ink) 40%, transparent);
-}
-
+/* The arrows scroll with the options, one before the first and one after the last, so each reads
+   as "more beyond these" (0.67.1: kept at the strip's edges since 0.56.0, they read as moving the
+   strip, not as asking beyond what is loaded). Playwright clicks scroll them into view. */
 .options-bar .opts {
   position: relative;
   flex: 1;
